@@ -1,5 +1,10 @@
 import { EmbedPresets } from "@/discord/embeds";
-import { MessageFlags, type RepliableInteraction } from "discord.js";
+import {
+  escapeMarkdown,
+  MessageFlags,
+  type RepliableInteraction,
+  type User,
+} from "discord.js";
 
 export async function replyError(
   interaction: RepliableInteraction,
@@ -27,4 +32,17 @@ export async function replyError(
     embeds,
     flags: ephemeral ? MessageFlags.Ephemeral : undefined,
   });
+}
+
+export async function replyNotRegistered(
+  interaction: RepliableInteraction,
+  user: User,
+  options?: { ephemeral?: boolean },
+): Promise<void> {
+  await replyError(
+    interaction,
+    "Not Registered",
+    `${escapeMarkdown(user.displayName)} is not registered.`,
+    options,
+  );
 }

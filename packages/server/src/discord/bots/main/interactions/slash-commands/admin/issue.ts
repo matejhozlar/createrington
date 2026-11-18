@@ -10,6 +10,7 @@ import {
 import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
 import { replyError } from "@/discord/utils/interaction-reply";
+import { InteractionError } from "@/discord/utils/interaction-error";
 import {
   TRANSCRIPT_MAX_MESSAGES,
   buildChannelTranscript,
@@ -230,18 +231,15 @@ export async function execute(
 
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-  let selection: MessageSelection | null;
-  try {
-    selection = await readMessages(interaction, channel);
-  } catch (error) {
-    logger.error("/issue could not read messages:", error);
-    await replyError(
-      interaction,
-      "Could not read messages",
-      "Check that the link points to a message in this channel and that the bot can read its history.",
-    );
-    return;
-  }
+  const selection = await readMessages(interaction, channel).catch(
+    (error: unknown) => {
+      throw new InteractionError(
+        "Could not read messages",
+        "Check that the link points to a message in this channel and that the bot can read its history.",
+        { cause: error },
+      );
+    },
+  );
   if (!selection) {
     await replyError(
       interaction,
@@ -278,10 +276,10 @@ export async function execute(
     }));
   } catch (error) {
     const kind = error instanceof IssueTriageError ? error.kind : "failed";
-    if (kind === "failed") {
-      logger.error("/issue could not start triage:", error);
-    }
     const [title, description] = START_ERRORS[kind];
+    if (kind === "failed") {
+      throw new InteractionError(title, description, { cause: error });
+    }
     await replyError(interaction, title, description);
     return;
   }

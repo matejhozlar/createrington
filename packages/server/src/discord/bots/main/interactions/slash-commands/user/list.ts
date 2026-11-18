@@ -1,5 +1,4 @@
 import { EmbedPresets } from "@/discord/embeds";
-import { replyError } from "@/discord/utils/interaction-reply";
 import { getService, Services } from "@/services";
 import {
   type ChatInputCommandInteraction,
@@ -24,30 +23,20 @@ export async function execute(
   const serverOpt = interaction.options.getString("server", true);
   const serverId = parseInt(serverOpt, 10);
 
-  try {
-    const playtimeManager = await getService(Services.PLAYTIME_MANAGER_SERVICE);
+  const playtimeManager = await getService(Services.PLAYTIME_MANAGER_SERVICE);
 
-    const playtimeService = playtimeManager.getService(serverId);
+  const playtimeService = playtimeManager.getService(serverId);
 
-    if (!playtimeService) {
-      throw new Error(`Playtime service is not configured for this server`);
-    }
-
-    const activeSessions = playtimeService.getActiveSessions();
-
-    const embed = EmbedPresets.commands.list(activeSessions, playtimeService);
-
-    await interaction.reply({
-      embeds: [embed.build()],
-      flags: MessageFlags.Ephemeral,
-    });
-  } catch (error) {
-    logger.error("/list failed:", error);
-
-    await replyError(
-      interaction,
-      "List Error",
-      "Failed to fetch player list. Please try again.",
-    );
+  if (!playtimeService) {
+    throw new Error(`Playtime service is not configured for this server`);
   }
+
+  const activeSessions = playtimeService.getActiveSessions();
+
+  const embed = EmbedPresets.commands.list(activeSessions, playtimeService);
+
+  await interaction.reply({
+    embeds: [embed.build()],
+    flags: MessageFlags.Ephemeral,
+  });
 }

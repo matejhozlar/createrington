@@ -43,58 +43,48 @@ export const cooldown = {
 export async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
-  try {
-    const playerEntry = await Q.player.find({ discordId: interaction.user.id });
+  const playerEntry = await Q.player.find({ discordId: interaction.user.id });
 
-    if (!playerEntry) {
-      await replyError(
-        interaction,
-        "Not Registered",
-        "You must be registered to view history. Use `/register` to get started.",
-      );
-      return;
-    }
-
-    const transactions = await balanceRepo.getHistory(
-      playerEntry,
-      TRANSACTION_LIMIT,
+  if (!playerEntry) {
+    await replyError(
+      interaction,
+      "Not Registered",
+      "You must be registered to view history. Use `/register` to get started.",
     );
+    return;
+  }
 
-    if (transactions.length === 0) {
-      const embed = EmbedPresets.info(
-        "Transaction History",
-        "You don't have any transactions yet.",
-      );
-      await interaction.reply({
-        embeds: [embed.build()],
-        flags: MessageFlags.Ephemeral,
-      });
-      return;
-    }
+  const transactions = await balanceRepo.getHistory(
+    playerEntry,
+    TRANSACTION_LIMIT,
+  );
 
-    const lines = transactions.map((tx) => {
-      const isPositive = tx.amount >= 0n;
-      const sign = isPositive ? "+" : "";
-      const amount = BalanceUtils.formatMoney(tx.amount);
-      const label = typeLabels[tx.transactionType] ?? tx.transactionType;
-      const desc = tx.description ? ` - ${tx.description}` : "";
-
-      return `${discordTimestamp(tx.createdAt, "R")} **${sign}${amount}** ${label}${desc}`;
-    });
-
-    const embed = EmbedPresets.info("Transaction History", lines.join("\n"));
-
+  if (transactions.length === 0) {
+    const embed = EmbedPresets.info(
+      "Transaction History",
+      "You don't have any transactions yet.",
+    );
     await interaction.reply({
       embeds: [embed.build()],
       flags: MessageFlags.Ephemeral,
     });
-  } catch (error) {
-    logger.error("/history failed:", error);
-
-    await replyError(
-      interaction,
-      "History Error",
-      "Failed to fetch transaction history. Please try again.",
-    );
+    return;
   }
+
+  const lines = transactions.map((tx) => {
+    const isPositive = tx.amount >= 0n;
+    const sign = isPositive ? "+" : "";
+    const amount = BalanceUtils.formatMoney(tx.amount);
+    const label = typeLabels[tx.transactionType] ?? tx.transactionType;
+    const desc = tx.description ? ` - ${tx.description}` : "";
+
+    return `${discordTimestamp(tx.createdAt, "R")} **${sign}${amount}** ${label}${desc}`;
+  });
+
+  const embed = EmbedPresets.info("Transaction History", lines.join("\n"));
+
+  await interaction.reply({
+    embeds: [embed.build()],
+    flags: MessageFlags.Ephemeral,
+  });
 }

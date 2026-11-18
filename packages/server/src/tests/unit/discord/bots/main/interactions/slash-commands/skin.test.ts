@@ -5,7 +5,7 @@ const sdkRender = vi.hoisted(() => vi.fn(async () => new Uint8Array([1])));
 vi.mock("@/db", () => ({
   Q: {
     player: {
-      get: async () => ({
+      find: async () => ({
         minecraftUuid: "uuid-1",
         minecraftUsername: "Steve",
       }),
@@ -163,7 +163,7 @@ describe("/skin style option", () => {
     );
   });
 
-  it("resolves the deferred reply with an error embed when the styled render fails", async () => {
+  it("fails with a render error naming the pose when the styled render fails", async () => {
     sdkRender.mockRejectedValue(
       new SkinApiError("Render failed upstream", {
         code: "render_failed",
@@ -172,15 +172,14 @@ describe("/skin style option", () => {
     );
     const { fake, raw, sent } = interactionWith({ pose: "wave", style: "cel" });
 
-    await execute(fake);
+    await expect(execute(fake)).rejects.toMatchObject({
+      title: "Render Error",
+      description:
+        "Could not render the **Wave** pose for Steve. Please try again later.",
+      cause: expect.any(SkinApiError),
+    });
 
     expect(raw.deferReply).toHaveBeenCalledOnce();
-    expect(raw.editReply).toHaveBeenCalledOnce();
-    expect(sent).toEqual([
-      expect.objectContaining({ kind: "error", title: "Render Error" }),
-    ]);
-    expect(sent[0]?.description).toBe(
-      "Could not render the **Wave** pose for Steve. Please try again later.",
-    );
+    expect(sent).toEqual([]);
   });
 });

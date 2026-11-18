@@ -107,117 +107,105 @@ function buildRows(roles: Role[]): ActionRowBuilder<ButtonBuilder>[] {
 export async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
-  try {
-    if (!interaction.inCachedGuild()) {
-      await replyError(
-        interaction,
-        "Server Only",
-        "This command can only be used in a server.",
-      );
-      return;
-    }
-
-    if (!isSendableChannel(interaction.channel)) {
-      await replyError(
-        interaction,
-        "Invalid Channel",
-        "This command can only be used in text channels.",
-      );
-      return;
-    }
-
-    const me = await interaction.guild.members.fetchMe();
-
-    if (!me.permissions.has(PermissionFlagsBits.ManageRoles)) {
-      await replyError(
-        interaction,
-        "Missing Permission",
-        "I need the Manage Roles permission to hand out roles from a panel.",
-      );
-      return;
-    }
-
-    const { roles, duplicates } = collectRoles(interaction);
-
-    const rejected = roles.flatMap((role) => {
-      const reason = getUnassignableReason(role, me);
-      return reason ? [`${role} ${reason}`] : [];
-    });
-
-    if (rejected.length > 0) {
-      await replyError(
-        interaction,
-        "Roles Not Allowed",
-        `These roles cannot be self-assigned:\n${rejected.join("\n")}`,
-      );
-      return;
-    }
-
-    const title = interaction.options.getString("title") ?? DEFAULT_TITLE;
-
-    const embed = createEmbed()
-      .title(title)
-      .description(
-        "Click a button to get a role, click it again to remove it. You can pick as many as you like.\n\n" +
-          roles.map((role) => `- ${role}`).join("\n"),
-      )
-      .color(EmbedColors.Info);
-
-    const payload = { embeds: [embed.build()], components: buildRows(roles) };
-    const messageId = interaction.options.getString("message_id");
-    const selection = describeSelection(roles, duplicates);
-
-    if (messageId) {
-      const existing = await interaction.channel.messages
-        .fetch(messageId)
-        .catch(() => null);
-
-      if (!existing) {
-        await replyError(
-          interaction,
-          "Message Not Found",
-          `Could not find message with ID \`${messageId}\` in this channel.`,
-        );
-        return;
-      }
-
-      await existing.edit(payload);
-
-      const successEmbed = EmbedPresets.success(
-        "Panel Updated",
-        `Role panel has been updated with ${selection}`,
-      );
-      await interaction.reply({
-        embeds: [successEmbed.build()],
-        flags: MessageFlags.Ephemeral,
-      });
-
-      logger.info(
-        `${interaction.user.tag} updated role panel (${messageId}) with ${selection}`,
-      );
-    } else {
-      await interaction.channel.send(payload);
-
-      const successEmbed = EmbedPresets.success(
-        "Panel Created",
-        `Role panel has been created with ${selection}`,
-      );
-      await interaction.reply({
-        embeds: [successEmbed.build()],
-        flags: MessageFlags.Ephemeral,
-      });
-
-      logger.info(
-        `${interaction.user.tag} created role panel with ${selection}`,
-      );
-    }
-  } catch (error) {
-    logger.error("/role-panel failed:", error);
-
+  if (!interaction.inCachedGuild()) {
     await replyError(
       interaction,
-      "Panel Creation Failed",
-      "Failed to create the role panel. Please try again.",
+      "Server Only",
+      "This command can only be used in a server.",
     );
+    return;
+  }
+
+  if (!isSendableChannel(interaction.channel)) {
+    await replyError(
+      interaction,
+      "Invalid Channel",
+      "This command can only be used in text channels.",
+    );
+    return;
+  }
+
+  const me = await interaction.guild.members.fetchMe();
+
+  if (!me.permissions.has(PermissionFlagsBits.ManageRoles)) {
+    await replyError(
+      interaction,
+      "Missing Permission",
+      "I need the Manage Roles permission to hand out roles from a panel.",
+    );
+    return;
+  }
+
+  const { roles, duplicates } = collectRoles(interaction);
+
+  const rejected = roles.flatMap((role) => {
+    const reason = getUnassignableReason(role, me);
+    return reason ? [`${role} ${reason}`] : [];
+  });
+
+  if (rejected.length > 0) {
+    await replyError(
+      interaction,
+      "Roles Not Allowed",
+      `These roles cannot be self-assigned:\n${rejected.join("\n")}`,
+    );
+    return;
+  }
+
+  const title = interaction.options.getString("title") ?? DEFAULT_TITLE;
+
+  const embed = createEmbed()
+    .title(title)
+    .description(
+      "Click a button to get a role, click it again to remove it. You can pick as many as you like.\n\n" +
+        roles.map((role) => `- ${role}`).join("\n"),
+    )
+    .color(EmbedColors.Info);
+
+  const payload = { embeds: [embed.build()], components: buildRows(roles) };
+  const messageId = interaction.options.getString("message_id");
+  const selection = describeSelection(roles, duplicates);
+
+  if (messageId) {
+    const existing = await interaction.channel.messages
+      .fetch(messageId)
+      .catch(() => null);
+
+    if (!existing) {
+      await replyError(
+        interaction,
+        "Message Not Found",
+        `Could not find message with ID \`${messageId}\` in this channel.`,
+      );
+      return;
+    }
+
+    await existing.edit(payload);
+
+    const successEmbed = EmbedPresets.success(
+      "Panel Updated",
+      `Role panel has been updated with ${selection}`,
+    );
+    await interaction.reply({
+      embeds: [successEmbed.build()],
+      flags: MessageFlags.Ephemeral,
+    });
+
+    logger.info(
+      `${interaction.user.tag} updated role panel (${messageId}) with ${selection}`,
+    );
+  } else {
+    await interaction.channel.send(payload);
+
+    const successEmbed = EmbedPresets.success(
+      "Panel Created",
+      `Role panel has been created with ${selection}`,
+    );
+    await interaction.reply({
+      embeds: [successEmbed.build()],
+      flags: MessageFlags.Ephemeral,
+    });
+
+    logger.info(`${interaction.user.tag} created role panel with ${selection}`);
   }
 }

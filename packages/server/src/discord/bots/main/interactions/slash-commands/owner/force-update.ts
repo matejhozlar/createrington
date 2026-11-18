@@ -92,26 +92,16 @@ export async function execute(
 
   const subcommand = interaction.options.getSubcommand();
 
-  try {
-    switch (subcommand) {
-      case "roles":
-        await handleRoles(interaction);
-        break;
-      default:
-        logger.warn(`/force-update got an unhandled subcommand: ${subcommand}`);
-        await replyError(
-          interaction,
-          "Unknown Subcommand",
-          `\`${subcommand}\` is not something /force-update can run.`,
-        );
-    }
-  } catch (error) {
-    logger.error(`/force-update ${subcommand} failed:`, error);
-
-    await replyError(
-      interaction,
-      "Update Failed",
-      error instanceof Error ? error.message : "An unknown error occurred",
-    );
+  switch (subcommand) {
+    case "roles":
+      await handleRoles(interaction);
+      break;
+    default:
+      logger.warn(`/force-update got an unhandled subcommand: ${subcommand}`);
+      await replyError(
+        interaction,
+        "Unknown Subcommand",
+        `\`${subcommand}\` is not something /force-update can run.`,
+      );
   }
 }

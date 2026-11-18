@@ -25,54 +25,44 @@ export const permissions = {
 export async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
-  try {
-    if (!isSendableChannel(interaction.channel)) {
-      await replyError(
-        interaction,
-        "Invalid Channel",
-        "This command can only be used in text channels.",
-      );
-      return;
-    }
-
-    const ticketTypes = getAllTicketTypes();
-
-    const embed = EmbedPresets.ticket.panel();
-
-    const buttons = ticketTypes.map((config) => {
-      const button = new ButtonBuilder()
-        .setCustomId(TicketButtonGenerator.create(config.type))
-        .setLabel(config.label)
-        .setStyle(ButtonStyle.Primary);
-
-      button.setEmoji(config.emoji);
-
-      return button;
-    });
-
-    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(buttons);
-
-    await interaction.channel.send({
-      embeds: [embed.build()],
-      components: [row],
-    });
-
-    const successEmbed = EmbedPresets.success(
-      "Panel Created",
-      "Ticket panel has been created in this channel.",
-    );
-
-    await interaction.reply({
-      embeds: [successEmbed.build()],
-      flags: MessageFlags.Ephemeral,
-    });
-  } catch (error) {
-    logger.error("/ticket-panel failed:", error);
-
+  if (!isSendableChannel(interaction.channel)) {
     await replyError(
       interaction,
-      "Panel Creation Failed",
-      "Failed to create ticket panel. Please try again.",
+      "Invalid Channel",
+      "This command can only be used in text channels.",
     );
+    return;
   }
+
+  const ticketTypes = getAllTicketTypes();
+
+  const embed = EmbedPresets.ticket.panel();
+
+  const buttons = ticketTypes.map((config) => {
+    const button = new ButtonBuilder()
+      .setCustomId(TicketButtonGenerator.create(config.type))
+      .setLabel(config.label)
+      .setStyle(ButtonStyle.Primary);
+
+    button.setEmoji(config.emoji);
+
+    return button;
+  });
+
+  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(buttons);
+
+  await interaction.channel.send({
+    embeds: [embed.build()],
+    components: [row],
+  });
+
+  const successEmbed = EmbedPresets.success(
+    "Panel Created",
+    "Ticket panel has been created in this channel.",
+  );
+
+  await interaction.reply({
+    embeds: [successEmbed.build()],
+    flags: MessageFlags.Ephemeral,
+  });
 }

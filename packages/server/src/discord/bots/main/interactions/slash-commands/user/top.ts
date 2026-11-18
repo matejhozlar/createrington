@@ -85,69 +85,61 @@ export async function execute(
 
   await interaction.deferReply();
 
-  try {
-    const results = await Q.player.minecraft.stat.total.compareItem(
-      item,
-      [category],
-      { limit: 3 },
-    );
+  const results = await Q.player.minecraft.stat.total.compareItem(
+    item,
+    [category],
+    { limit: 3 },
+  );
 
-    if (results.length === 0) {
-      await replyError(
-        interaction,
-        "No Data",
-        `No players found with stats for **${item}** in **${category}**.`,
-      );
-      return;
-    }
-
-    const screenshotBuffer = await renderScreenshot("top", { category, item });
-
-    const itemName = formatStatItem(category, item);
-    const links = new ActionRowBuilder<ButtonBuilder>().addComponents(
-      ButtonPresets.links.leaderboard({ category, item }),
-    );
-
-    if (screenshotBuffer) {
-      const safeName = item.replace(/[^a-zA-Z0-9]/g, "_");
-      const attachment = new AttachmentBuilder(screenshotBuffer, {
-        name: `top_${safeName}.png`,
-      });
-
-      const embed = EmbedPresets.info(`Top ${itemName}`).image(
-        `attachment://top_${safeName}.png`,
-      );
-
-      await interaction.editReply({
-        embeds: [embed.build()],
-        files: [attachment],
-        components: [links],
-      });
-    } else {
-      const medals = ["🥇", "🥈", "🥉"];
-      const leaderboard = results
-        .map(
-          (r, i) =>
-            `${medals[i]} **${r.minecraftUsername}** - ${formatStatValue(category, item, r.values[0])}`,
-        )
-        .join("\n");
-
-      const embed = EmbedPresets.info(`Top ${itemName}`).field(
-        formatStatCategory(category),
-        leaderboard,
-        false,
-      );
-
-      await interaction.editReply({
-        embeds: [embed.build()],
-        components: [links],
-      });
-    }
-  } catch {
+  if (results.length === 0) {
     await replyError(
       interaction,
-      "Leaderboard Error",
-      "Could not fetch stat data.",
+      "No Data",
+      `No players found with stats for **${item}** in **${category}**.`,
     );
+    return;
+  }
+
+  const screenshotBuffer = await renderScreenshot("top", { category, item });
+
+  const itemName = formatStatItem(category, item);
+  const links = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    ButtonPresets.links.leaderboard({ category, item }),
+  );
+
+  if (screenshotBuffer) {
+    const safeName = item.replace(/[^a-zA-Z0-9]/g, "_");
+    const attachment = new AttachmentBuilder(screenshotBuffer, {
+      name: `top_${safeName}.png`,
+    });
+
+    const embed = EmbedPresets.info(`Top ${itemName}`).image(
+      `attachment://top_${safeName}.png`,
+    );
+
+    await interaction.editReply({
+      embeds: [embed.build()],
+      files: [attachment],
+      components: [links],
+    });
+  } else {
+    const medals = ["🥇", "🥈", "🥉"];
+    const leaderboard = results
+      .map(
+        (r, i) =>
+          `${medals[i]} **${r.minecraftUsername}** - ${formatStatValue(category, item, r.values[0])}`,
+      )
+      .join("\n");
+
+    const embed = EmbedPresets.info(`Top ${itemName}`).field(
+      formatStatCategory(category),
+      leaderboard,
+      false,
+    );
+
+    await interaction.editReply({
+      embeds: [embed.build()],
+      components: [links],
+    });
   }
 }

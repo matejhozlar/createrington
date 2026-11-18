@@ -101,261 +101,247 @@ export async function execute(
   const ticketService = await getService(Services.TICKET_SERVICE);
 
   const subcommand = interaction.options.getSubcommand();
-  try {
-    if (!interaction.channel) {
+  if (!interaction.channel) {
+    await replyError(
+      interaction,
+      "Error",
+      "This command can only be used in a channel.",
+    );
+    return;
+  }
+
+  if (subcommand === "open") {
+    const user = interaction.options.getUser("user", true);
+
+    const result = await ticketService.createTicket({
+      type: TicketType.GENERAL,
+      creatorId: user.id,
+    });
+
+    const embed = EmbedPresets.success(
+      "Ticket Created",
+      `The ticket for user ${Discord.Users.mention(
+        user.id,
+      )} has been created: ${Discord.Channels.mention(
+        result.ticket.channelId,
+      )}`,
+    );
+
+    await interaction.reply({
+      embeds: [embed.build()],
+      flags: MessageFlags.Ephemeral,
+    });
+  } else if (subcommand === "close") {
+    const ticket = await Q.ticket.find({
+      channelId: interaction.channelId,
+    });
+
+    if (!ticket) {
       await replyError(
         interaction,
-        "Error",
-        "This command can only be used in a channel.",
+        "Not a Ticket",
+        "This command can only be used inside a ticket channel.",
       );
       return;
     }
 
-    if (subcommand === "open") {
-      const user = interaction.options.getUser("user", true);
-
-      const result = await ticketService.createTicket({
-        type: TicketType.GENERAL,
-        creatorId: user.id,
-      });
-
-      const embed = EmbedPresets.success(
-        "Ticket Created",
-        `The ticket for user ${Discord.Users.mention(
-          user.id,
-        )} has been created: ${Discord.Channels.mention(
-          result.ticket.channelId,
-        )}`,
+    if (ticket.status === "closed") {
+      await replyError(
+        interaction,
+        "Already Closed",
+        "This ticket is already closed.",
       );
+      return;
+    }
 
-      await interaction.reply({
-        embeds: [embed.build()],
-        flags: MessageFlags.Ephemeral,
-      });
-    } else if (subcommand === "close") {
-      const ticket = await Q.ticket.find({
-        channelId: interaction.channelId,
-      });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    await ticketService.closeTicket(ticket.id, interaction.user.id);
 
-      if (!ticket) {
-        await replyError(
-          interaction,
-          "Not a Ticket",
-          "This command can only be used inside a ticket channel.",
-        );
-        return;
-      }
+    const embed = EmbedPresets.success(
+      "Ticket Closed",
+      "This ticket has been closed.",
+    );
+    await interaction.editReply({ embeds: [embed.build()] });
+  } else if (subcommand === "add") {
+    const ticket = await Q.ticket.find({
+      channelId: interaction.channelId,
+    });
 
-      if (ticket.status === "closed") {
-        await replyError(
-          interaction,
-          "Already Closed",
-          "This ticket is already closed.",
-        );
-        return;
-      }
-
-      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-      await ticketService.closeTicket(ticket.id, interaction.user.id);
-
-      const embed = EmbedPresets.success(
-        "Ticket Closed",
-        "This ticket has been closed.",
+    if (!ticket) {
+      await replyError(
+        interaction,
+        "Not a Ticket",
+        "This command can only be used inside a ticket channel.",
       );
-      await interaction.editReply({ embeds: [embed.build()] });
-    } else if (subcommand === "add") {
-      const ticket = await Q.ticket.find({
-        channelId: interaction.channelId,
-      });
+      return;
+    }
 
-      if (!ticket) {
-        await replyError(
-          interaction,
-          "Not a Ticket",
-          "This command can only be used inside a ticket channel.",
-        );
-        return;
-      }
+    const user = interaction.options.getUser("user", false);
+    const partyUuid = interaction.options.getString("party", false);
 
-      const user = interaction.options.getUser("user", false);
-      const partyUuid = interaction.options.getString("party", false);
-
-      if (!user && !partyUuid) {
-        await replyError(
-          interaction,
-          "Nothing to Add",
-          "Provide a user, a party, or both.",
-        );
-        return;
-      }
-
-      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-
-      const added: string[] = [];
-      const skippedNotInGuild: string[] = [];
-      const skippedNotLinked: string[] = [];
-      const skippedChannelError: string[] = [];
-
-      if (user) {
-        const result = await ticketService.addParticipant(
-          interaction.channelId,
-          user.id,
-        );
-        if (result.added) {
-          added.push(Discord.Users.mention(user.id));
-        } else if (result.reason === "not-in-guild") {
-          skippedNotInGuild.push(Discord.Users.mention(user.id));
-        } else {
-          skippedChannelError.push(Discord.Users.mention(user.id));
-        }
-      }
-
-      let partyName: string | null = null;
-      if (partyUuid) {
-        const party = await Q.server.party.find({
-          serverId: TICKET_PARTY_SERVER_ID,
-          teamId: partyUuid,
-        });
-
-        if (!party) {
-          partyName = "(unknown party)";
-        } else {
-          partyName = party.name;
-          const memberUuids = (
-            await Q.server.party.member.findAll({ partyId: party.id })
-          ).map((m) => m.minecraftUuid);
-          const players = await Q.player.findAll({
-            minecraftUuid: { $in: memberUuids },
-          });
-          const linkedByUuid = new Map(
-            players.filter((p) => p.discordId).map((p) => [p.minecraftUuid, p]),
-          );
-
-          for (const uuid of memberUuids) {
-            if (!linkedByUuid.has(uuid)) {
-              const fallback = players.find((p) => p.minecraftUuid === uuid);
-              skippedNotLinked.push(fallback?.minecraftUsername ?? uuid);
-            }
-          }
-
-          const linkedPlayers = [...linkedByUuid.values()];
-          const labelByDiscordId = new Map<string, string>(
-            linkedPlayers.map((p) => [
-              p.discordId,
-              p.minecraftUsername
-                ? `${Discord.Users.mention(p.discordId)} (${p.minecraftUsername})`
-                : Discord.Users.mention(p.discordId),
-            ]),
-          );
-
-          const results = await ticketService.addParticipants(
-            interaction.channelId,
-            linkedPlayers.map((p) => p.discordId),
-          );
-
-          for (const [discordId, result] of results) {
-            const label =
-              labelByDiscordId.get(discordId) ??
-              Discord.Users.mention(discordId);
-            if (result.added) {
-              added.push(label);
-            } else if (result.reason === "not-in-guild") {
-              skippedNotInGuild.push(label);
-            } else {
-              skippedChannelError.push(label);
-            }
-          }
-        }
-      }
-
-      const lines: string[] = [];
-      if (partyName) lines.push(`**Party:** ${partyName}`);
-      lines.push(
-        `**Added:** ${added.length > 0 ? added.join(", ") : "_none_"}`,
+    if (!user && !partyUuid) {
+      await replyError(
+        interaction,
+        "Nothing to Add",
+        "Provide a user, a party, or both.",
       );
-      if (skippedNotLinked.length > 0) {
-        lines.push(
-          `**Skipped (no linked Discord):** ${skippedNotLinked.join(", ")}`,
-        );
-      }
-      if (skippedNotInGuild.length > 0) {
-        lines.push(
-          `**Skipped (not in guild):** ${skippedNotInGuild.join(", ")}`,
-        );
-      }
-      if (skippedChannelError.length > 0) {
-        lines.push(
-          `**Skipped (channel error):** ${skippedChannelError.join(", ")}`,
-        );
-      }
+      return;
+    }
 
-      const embed =
-        added.length > 0
-          ? EmbedPresets.success("Added to Ticket", lines.join("\n"))
-          : EmbedPresets.info("Nothing Added", lines.join("\n"));
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-      await interaction.editReply({ embeds: [embed.build()] });
-    } else if (subcommand === "remove") {
-      const ticket = await Q.ticket.find({
-        channelId: interaction.channelId,
-      });
+    const added: string[] = [];
+    const skippedNotInGuild: string[] = [];
+    const skippedNotLinked: string[] = [];
+    const skippedChannelError: string[] = [];
 
-      if (!ticket) {
-        await replyError(
-          interaction,
-          "Not a Ticket",
-          "This command can only be used inside a ticket channel.",
-        );
-        return;
-      }
-
-      const user = interaction.options.getUser("user", true);
-
-      if (user.id === ticket.creatorDiscordId) {
-        await replyError(
-          interaction,
-          "Ticket Owner",
-          `${Discord.Users.mention(user.id)} owns this ticket and cannot be removed from it. Close the ticket instead.`,
-        );
-        return;
-      }
-
-      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-
-      const result = await ticketService.removeParticipant(
+    if (user) {
+      const result = await ticketService.addParticipant(
         interaction.channelId,
         user.id,
       );
-
-      if (result.removed) {
-        const embed = EmbedPresets.success(
-          "Removed from Ticket",
-          `${Discord.Users.mention(user.id)} no longer has access to this ticket.`,
-        );
-        await interaction.editReply({ embeds: [embed.build()] });
-      } else if (result.reason === "not-participant") {
-        const embed = EmbedPresets.info(
-          "Nothing Removed",
-          `${Discord.Users.mention(user.id)} was never added to this ticket.`,
-        );
-        await interaction.editReply({ embeds: [embed.build()] });
+      if (result.added) {
+        added.push(Discord.Users.mention(user.id));
+      } else if (result.reason === "not-in-guild") {
+        skippedNotInGuild.push(Discord.Users.mention(user.id));
       } else {
-        await replyError(
-          interaction,
-          "Ticket Error",
-          `Could not remove ${Discord.Users.mention(user.id)} from this ticket. Please try again.`,
-        );
+        skippedChannelError.push(Discord.Users.mention(user.id));
       }
-    } else {
-      await replyError(interaction, "Error", "Invalid subcommand.");
+    }
+
+    let partyName: string | null = null;
+    if (partyUuid) {
+      const party = await Q.server.party.find({
+        serverId: TICKET_PARTY_SERVER_ID,
+        teamId: partyUuid,
+      });
+
+      if (!party) {
+        partyName = "(unknown party)";
+      } else {
+        partyName = party.name;
+        const memberUuids = (
+          await Q.server.party.member.findAll({ partyId: party.id })
+        ).map((m) => m.minecraftUuid);
+        const players = await Q.player.findAll({
+          minecraftUuid: { $in: memberUuids },
+        });
+        const linkedByUuid = new Map(
+          players.filter((p) => p.discordId).map((p) => [p.minecraftUuid, p]),
+        );
+
+        for (const uuid of memberUuids) {
+          if (!linkedByUuid.has(uuid)) {
+            const fallback = players.find((p) => p.minecraftUuid === uuid);
+            skippedNotLinked.push(fallback?.minecraftUsername ?? uuid);
+          }
+        }
+
+        const linkedPlayers = [...linkedByUuid.values()];
+        const labelByDiscordId = new Map<string, string>(
+          linkedPlayers.map((p) => [
+            p.discordId,
+            p.minecraftUsername
+              ? `${Discord.Users.mention(p.discordId)} (${p.minecraftUsername})`
+              : Discord.Users.mention(p.discordId),
+          ]),
+        );
+
+        const results = await ticketService.addParticipants(
+          interaction.channelId,
+          linkedPlayers.map((p) => p.discordId),
+        );
+
+        for (const [discordId, result] of results) {
+          const label =
+            labelByDiscordId.get(discordId) ?? Discord.Users.mention(discordId);
+          if (result.added) {
+            added.push(label);
+          } else if (result.reason === "not-in-guild") {
+            skippedNotInGuild.push(label);
+          } else {
+            skippedChannelError.push(label);
+          }
+        }
+      }
+    }
+
+    const lines: string[] = [];
+    if (partyName) lines.push(`**Party:** ${partyName}`);
+    lines.push(`**Added:** ${added.length > 0 ? added.join(", ") : "_none_"}`);
+    if (skippedNotLinked.length > 0) {
+      lines.push(
+        `**Skipped (no linked Discord):** ${skippedNotLinked.join(", ")}`,
+      );
+    }
+    if (skippedNotInGuild.length > 0) {
+      lines.push(`**Skipped (not in guild):** ${skippedNotInGuild.join(", ")}`);
+    }
+    if (skippedChannelError.length > 0) {
+      lines.push(
+        `**Skipped (channel error):** ${skippedChannelError.join(", ")}`,
+      );
+    }
+
+    const embed =
+      added.length > 0
+        ? EmbedPresets.success("Added to Ticket", lines.join("\n"))
+        : EmbedPresets.info("Nothing Added", lines.join("\n"));
+
+    await interaction.editReply({ embeds: [embed.build()] });
+  } else if (subcommand === "remove") {
+    const ticket = await Q.ticket.find({
+      channelId: interaction.channelId,
+    });
+
+    if (!ticket) {
+      await replyError(
+        interaction,
+        "Not a Ticket",
+        "This command can only be used inside a ticket channel.",
+      );
       return;
     }
-  } catch (error) {
-    logger.error("/ticket failed:", error);
-    await replyError(
-      interaction,
-      "Ticket Error",
-      "Something went wrong while executing the command. Please try again.",
+
+    const user = interaction.options.getUser("user", true);
+
+    if (user.id === ticket.creatorDiscordId) {
+      await replyError(
+        interaction,
+        "Ticket Owner",
+        `${Discord.Users.mention(user.id)} owns this ticket and cannot be removed from it. Close the ticket instead.`,
+      );
+      return;
+    }
+
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+    const result = await ticketService.removeParticipant(
+      interaction.channelId,
+      user.id,
     );
+
+    if (result.removed) {
+      const embed = EmbedPresets.success(
+        "Removed from Ticket",
+        `${Discord.Users.mention(user.id)} no longer has access to this ticket.`,
+      );
+      await interaction.editReply({ embeds: [embed.build()] });
+    } else if (result.reason === "not-participant") {
+      const embed = EmbedPresets.info(
+        "Nothing Removed",
+        `${Discord.Users.mention(user.id)} was never added to this ticket.`,
+      );
+      await interaction.editReply({ embeds: [embed.build()] });
+    } else {
+      await replyError(
+        interaction,
+        "Ticket Error",
+        `Could not remove ${Discord.Users.mention(user.id)} from this ticket. Please try again.`,
+      );
+    }
+  } else {
+    await replyError(interaction, "Error", "Invalid subcommand.");
+    return;
   }
 }

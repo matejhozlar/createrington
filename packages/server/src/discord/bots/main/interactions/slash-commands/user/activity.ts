@@ -1,6 +1,7 @@
 import { playerRepo } from "@/db";
+import { nullIfNotFound } from "@/db/utils";
 import { EmbedPresets } from "@/discord/embeds";
-import { replyError } from "@/discord/utils/interaction-reply";
+import { replyNotRegistered } from "@/discord/utils/interaction-reply";
 import { CooldownType } from "@/discord/utils/cooldown";
 import { formatPlaytime } from "@createrington/shared/format";
 import { renderScreenshot } from "@/discord/utils/render-screenshot";
@@ -35,43 +36,41 @@ export async function execute(
 
   await interaction.deferReply();
 
-  try {
-    const details = await playerRepo.getDetailed({ discordId: targetUser.id });
-    const username = details.player.minecraftUsername;
+  const details = await playerRepo
+    .getDetailed({ discordId: targetUser.id })
+    .catch(nullIfNotFound);
+  if (!details) {
+    await replyNotRegistered(interaction, targetUser);
+    return;
+  }
+  const username = details.player.minecraftUsername;
 
-    const screenshotBuffer = await renderScreenshot("activity", {
-      player: targetUser.id,
+  const screenshotBuffer = await renderScreenshot("activity", {
+    player: targetUser.id,
+  });
+
+  if (screenshotBuffer) {
+    const attachment = new AttachmentBuilder(screenshotBuffer, {
+      name: `activity_${username}.png`,
     });
 
-    if (screenshotBuffer) {
-      const attachment = new AttachmentBuilder(screenshotBuffer, {
-        name: `activity_${username}.png`,
-      });
-
-      const embed = EmbedPresets.info(`${username}'s Activity`).image(
-        `attachment://activity_${username}.png`,
-      );
-
-      await interaction.editReply({
-        embeds: [embed.build()],
-        files: [attachment],
-      });
-    } else {
-      const pt = formatPlaytime(details.playtime.totalSeconds);
-      const sessions = details.playtime.totalSessions.toLocaleString();
-
-      const embed = EmbedPresets.info(`${username}'s Activity`)
-        .thumbnail(playerAvatarUrl(details.player.minecraftUuid))
-        .field("Total Playtime", pt, true)
-        .field("Sessions", sessions, true);
-
-      await interaction.editReply({ embeds: [embed.build()] });
-    }
-  } catch {
-    await replyError(
-      interaction,
-      "Activity Error",
-      "Could not fetch player data. They may not be registered.",
+    const embed = EmbedPresets.info(`${username}'s Activity`).image(
+      `attachment://activity_${username}.png`,
     );
+
+    await interaction.editReply({
+      embeds: [embed.build()],
+      files: [attachment],
+    });
+  } else {
+    const pt = formatPlaytime(details.playtime.totalSeconds);
+    const sessions = details.playtime.totalSessions.toLocaleString();
+
+    const embed = EmbedPresets.info(`${username}'s Activity`)
+      .thumbnail(playerAvatarUrl(details.player.minecraftUuid))
+      .field("Total Playtime", pt, true)
+      .field("Sessions", sessions, true);
+
+    await interaction.editReply({ embeds: [embed.build()] });
   }
 }

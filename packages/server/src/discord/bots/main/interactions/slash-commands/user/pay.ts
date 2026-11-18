@@ -63,77 +63,65 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     return;
   }
 
-  try {
-    const senderPlayer = await Q.player.find({ discordId: sender.id });
+  const senderPlayer = await Q.player.find({ discordId: sender.id });
 
-    if (!senderPlayer) {
-      await replyError(
-        interaction,
-        "Not Registered",
-        "You must be registered to send money. Use `/register` to get started.",
-      );
-      return;
-    }
-
-    const recipientPlayer = await Q.player.find({ discordId: recipient.id });
-
-    if (!recipientPlayer) {
-      await replyError(
-        interaction,
-        "Recipient Not Registered",
-        `${recipient.tag} is not registered in the system.`,
-      );
-      return;
-    }
-
-    const hasSufficient = await balanceRepo.hasSufficient(senderPlayer, amount);
-
-    if (!hasSufficient) {
-      const senderBalance = await balanceRepo.getAmount(senderPlayer);
-
-      await replyError(
-        interaction,
-        "Insufficient Balance",
-        `You don't have enough money to complete this transfer.\n\n` +
-          `**Your Balance:** ${formatMoney(senderBalance)}\n` +
-          `**Required:** ${formatMoney(amount)}`,
-      );
-      return;
-    }
-
-    const result = await balanceRepo.transfer(
-      senderPlayer,
-      recipientPlayer,
-      amount,
-      note,
+  if (!senderPlayer) {
+    await replyError(
+      interaction,
+      "Not Registered",
+      "You must be registered to send money. Use `/register` to get started.",
     );
+    return;
+  }
 
-    const embed = EmbedPresets.success(
-      "Transfer Complete",
-      `You sent **${formatMoney(amount)}** to ${recipient.tag}`,
-    ).field("Your New Balance", formatMoney(result.senderBalance), true);
+  const recipientPlayer = await Q.player.find({ discordId: recipient.id });
 
-    if (note) {
-      embed.field("Note", note, false);
-    }
-
-    await interaction.reply({
-      embeds: [embed.build()],
-      flags: MessageFlags.Ephemeral,
-    });
-
-    logger.info(
-      `User ${sender.tag} (${sender.id}) sent $${amount} to ${recipient.tag} (${recipient.id})${note ? ` - Note: ${note}` : ""}`,
+  if (!recipientPlayer) {
+    await replyError(
+      interaction,
+      "Recipient Not Registered",
+      `${recipient.tag} is not registered in the system.`,
     );
-  } catch (error) {
-    logger.error("/pay failed:", error);
+    return;
+  }
+
+  const hasSufficient = await balanceRepo.hasSufficient(senderPlayer, amount);
+
+  if (!hasSufficient) {
+    const senderBalance = await balanceRepo.getAmount(senderPlayer);
 
     await replyError(
       interaction,
-      "Transfer Failed",
-      error instanceof Error
-        ? error.message
-        : "Something went wrong while processing the transfer.",
+      "Insufficient Balance",
+      `You don't have enough money to complete this transfer.\n\n` +
+        `**Your Balance:** ${formatMoney(senderBalance)}\n` +
+        `**Required:** ${formatMoney(amount)}`,
     );
+    return;
   }
+
+  const result = await balanceRepo.transfer(
+    senderPlayer,
+    recipientPlayer,
+    amount,
+    note,
+  );
+
+  const embed = EmbedPresets.success(
+    "Transfer Complete",
+    `You sent **${formatMoney(amount)}** to ${recipient.tag}`,
+  ).field("Your New Balance", formatMoney(result.senderBalance), true);
+
+  if (note) {
+    embed.field("Note", note, false);
+  }
+
+  await interaction.reply({
+    embeds: [embed.build()],
+    flags: MessageFlags.Ephemeral,
+  });
+
+  logger.info(
+    `User ${sender.tag} (${sender.id}) sent $${amount} to ${recipient.tag} (${recipient.id})${note ? ` - Note: ${note}` : ""}`,
+  );
 }

@@ -221,47 +221,36 @@ function lookup(interaction: ChatInputCommandInteraction): Promise<TagLookup> {
 export async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
-  try {
-    const result = await lookup(interaction);
-    if (!result.ok) {
-      await replyError(interaction, result.title, result.message);
-      return;
-    }
+  const result = await lookup(interaction);
+  if (!result.ok) {
+    await replyError(interaction, result.title, result.message);
+    return;
+  }
 
-    const { code, title, description, color } = result.card;
-    await interaction.deferReply();
+  const { code, title, description, color } = result.card;
+  await interaction.deferReply();
 
-    const screenshotBuffer = await renderScreenshot("tag", { design: code });
-    const embed = EmbedPresets.plain({ title, description, color }).field(
-      "Design code",
-      `\`${code}\``,
-    );
-    const links = new ActionRowBuilder<ButtonBuilder>().addComponents(
-      ButtonPresets.links.teamTag(code),
-    );
+  const screenshotBuffer = await renderScreenshot("tag", { design: code });
+  const embed = EmbedPresets.plain({ title, description, color }).field(
+    "Design code",
+    `\`${code}\``,
+  );
+  const links = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    ButtonPresets.links.teamTag(code),
+  );
 
-    if (!screenshotBuffer) {
-      await interaction.editReply({
-        embeds: [embed.build()],
-        components: [links],
-      });
-      return;
-    }
-
-    embed.image(`attachment://${ATTACHMENT_NAME}`);
+  if (!screenshotBuffer) {
     await interaction.editReply({
       embeds: [embed.build()],
-      files: [
-        new AttachmentBuilder(screenshotBuffer, { name: ATTACHMENT_NAME }),
-      ],
       components: [links],
     });
-  } catch (error) {
-    logger.error("/tag failed:", error);
-    await replyError(
-      interaction,
-      "Team Tag Error",
-      "Could not render the team tag.",
-    );
+    return;
   }
+
+  embed.image(`attachment://${ATTACHMENT_NAME}`);
+  await interaction.editReply({
+    embeds: [embed.build()],
+    files: [new AttachmentBuilder(screenshotBuffer, { name: ATTACHMENT_NAME })],
+    components: [links],
+  });
 }
