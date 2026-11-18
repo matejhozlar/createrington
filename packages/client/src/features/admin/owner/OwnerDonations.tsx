@@ -170,6 +170,12 @@ export function OwnerDonations() {
             text="Loading statistics..."
             className="flex-none py-8"
           />
+        ) : statsQuery.isError ? (
+          <ErrorState
+            message={`Failed to load donation statistics: ${statsQuery.error.message}`}
+            onRetry={() => statsQuery.refetch()}
+            className="flex-none py-8"
+          />
         ) : stats ? (
           <div className="grid gap-4 md:grid-cols-3">
             <StatCard
@@ -193,7 +199,13 @@ export function OwnerDonations() {
           </div>
         ) : null}
 
-        {subStatsQuery.data && (
+        {subStatsQuery.isError ? (
+          <ErrorState
+            message={`Failed to load subscription statistics: ${subStatsQuery.error.message}`}
+            onRetry={() => subStatsQuery.refetch()}
+            className="flex-none py-8"
+          />
+        ) : subStatsQuery.data ? (
           <div className="grid gap-4 md:grid-cols-3">
             <StatCard
               label="Monthly Recurring Revenue"
@@ -214,7 +226,7 @@ export function OwnerDonations() {
               tone="chart-3"
             />
           </div>
-        )}
+        ) : null}
 
         <Card className="gap-2">
           <CardHeader>

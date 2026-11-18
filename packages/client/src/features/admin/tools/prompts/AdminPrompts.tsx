@@ -15,6 +15,7 @@ import {
   type DataTableColumn,
 } from "@/components/data-table";
 import { Paginator } from "@/components/paginator";
+import { EmptyState, ErrorState } from "@/components/query-states";
 import {
   Select,
   SelectContent,
@@ -211,13 +212,22 @@ export function AdminPrompts() {
           }
         />
 
-        {!loading && items.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-border bg-card py-16 text-center">
-            <MessageSquare className="size-10 text-muted-foreground" />
-            <p className="text-muted-foreground">No prompts yet.</p>
-            <p className="text-sm text-muted-foreground/80">
-              Create one to ask players a question in Discord.
-            </p>
+        {listQuery.isError ? (
+          <div className="rounded-lg border border-border bg-card">
+            <ErrorState
+              message={listQuery.error.message}
+              onRetry={() => listQuery.refetch()}
+              className="py-16"
+            />
+          </div>
+        ) : !loading && items.length === 0 ? (
+          <div className="rounded-lg border border-border bg-card">
+            <EmptyState
+              icon={MessageSquare}
+              message="No prompts yet."
+              hint="Create one to ask players a question in Discord."
+              className="py-16"
+            />
           </div>
         ) : (
           <div className="rounded-lg border border-border bg-card">

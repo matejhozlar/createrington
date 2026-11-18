@@ -9,12 +9,13 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CellText } from "@/components/cell-text";
+import { EmptyState, ErrorState } from "@/components/query-states";
 import {
   AvatarCellSkeleton,
   DataTable,
   type DataTableColumn,
 } from "@/components/data-table";
-import { UserMinus, UserPlus } from "lucide-react";
+import { UserCog, UserMinus, UserPlus } from "lucide-react";
 import { PlayerLabel } from "@/components/player-label";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
@@ -112,13 +113,17 @@ export function OwnerAdmins() {
           </CardHeader>
           <CardContent className="p-0">
             {adminsQuery.isError ? (
-              <p className="py-8 text-center text-destructive">
-                Failed to load admins: {adminsQuery.error.message}
-              </p>
+              <ErrorState
+                message={`Failed to load admins: ${adminsQuery.error.message}`}
+                onRetry={() => adminsQuery.refetch()}
+                compact
+              />
             ) : !adminsQuery.isLoading && admins.length === 0 ? (
-              <p className="py-8 text-center text-muted-foreground">
-                No admins configured yet.
-              </p>
+              <EmptyState
+                icon={UserCog}
+                message="No admins configured yet."
+                className="py-8"
+              />
             ) : (
               <DataTable
                 columns={columns}

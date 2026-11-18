@@ -3,7 +3,7 @@ import { Settings2, Sparkles } from "lucide-react";
 import { trpc, queryClient } from "@/lib/trpc";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { LabeledSwitch } from "@/components/labeled-switch";
-import { ErrorState } from "@/components/query-states";
+import { EmptyState, ErrorState } from "@/components/query-states";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -173,11 +173,10 @@ export function AdminGallery() {
               />
             ) : detailQuery.error ? (
               <Card>
-                <CardContent className="flex items-center justify-center py-12">
-                  <p className="text-destructive">
-                    {detailQuery.error.message}
-                  </p>
-                </CardContent>
+                <ErrorState
+                  message={detailQuery.error.message}
+                  onRetry={() => detailQuery.refetch()}
+                />
               </Card>
             ) : (
               <ReviewSkeleton />
@@ -200,15 +199,12 @@ export function AdminGallery() {
 function EmptyQueue() {
   return (
     <Card>
-      <CardContent className="flex items-center justify-center py-16">
-        <div className="text-center">
-          <Sparkles className="mx-auto size-12 text-muted-foreground" />
-          <p className="mt-3 font-medium">All caught up</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            New screenshots posted in the submissions channel show up here.
-          </p>
-        </div>
-      </CardContent>
+      <EmptyState
+        icon={Sparkles}
+        message="All caught up"
+        hint="New screenshots posted in the submissions channel show up here."
+        className="py-16"
+      />
     </Card>
   );
 }

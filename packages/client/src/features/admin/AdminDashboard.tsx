@@ -2,7 +2,11 @@ import { useNavigate } from "react-router";
 import { useAuth } from "@/contexts/auth";
 import { trpc } from "@/lib/trpc";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
-import { LoadingState } from "@/components/query-states";
+import {
+  EmptyState,
+  ErrorState,
+  LoadingState,
+} from "@/components/query-states";
 import { StatCard } from "@/components/stat-card";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import {
@@ -85,6 +89,34 @@ export function AdminDashboard() {
           ]}
         />
         <LoadingState text="Loading dashboard..." />
+      </div>
+    );
+  }
+
+  const coreError =
+    profileQuery.error ??
+    playerStatsQuery.error ??
+    serversQuery.error ??
+    waitlistStatsQuery.error;
+
+  if (coreError) {
+    return (
+      <div className="flex flex-1 flex-col gap-4">
+        <AdminPageHeader
+          trail={[
+            { label: "Admin", href: "/admin/dashboard" },
+            { label: "Dashboard" },
+          ]}
+        />
+        <ErrorState
+          message={coreError.message}
+          onRetry={() => {
+            void profileQuery.refetch();
+            void playerStatsQuery.refetch();
+            void serversQuery.refetch();
+            void waitlistStatsQuery.refetch();
+          }}
+        />
       </div>
     );
   }
@@ -256,10 +288,18 @@ export function AdminDashboard() {
               </Button>
             </CardHeader>
             <CardContent>
-              {!recentBansQuery.isLoading && recentBans.length === 0 ? (
-                <p className="py-4 text-center text-sm text-muted-foreground">
-                  No recent bans
-                </p>
+              {recentBansQuery.isError ? (
+                <ErrorState
+                  message={recentBansQuery.error.message}
+                  onRetry={() => recentBansQuery.refetch()}
+                  compact
+                />
+              ) : !recentBansQuery.isLoading && recentBans.length === 0 ? (
+                <EmptyState
+                  icon={Shield}
+                  message="No recent bans"
+                  className="px-0 py-4"
+                />
               ) : (
                 <DataTable
                   columns={recentBanColumns}
@@ -294,10 +334,18 @@ export function AdminDashboard() {
                   text="Loading activity..."
                   className="p-0"
                 />
+              ) : recentLogsQuery.isError ? (
+                <ErrorState
+                  message={recentLogsQuery.error.message}
+                  onRetry={() => recentLogsQuery.refetch()}
+                  compact
+                />
               ) : recentLogs.length === 0 ? (
-                <p className="py-4 text-center text-sm text-muted-foreground">
-                  No recent activity
-                </p>
+                <EmptyState
+                  icon={Activity}
+                  message="No recent activity"
+                  className="px-0 py-4"
+                />
               ) : (
                 <div className="space-y-0">
                   {recentLogs.map((action, i) => (
@@ -347,10 +395,18 @@ export function AdminDashboard() {
                   text="Loading stats..."
                   className="p-0"
                 />
+              ) : commandStatsQuery.isError ? (
+                <ErrorState
+                  message={commandStatsQuery.error.message}
+                  onRetry={() => commandStatsQuery.refetch()}
+                  compact
+                />
               ) : !commandStatsQuery.data?.topCommands.length ? (
-                <p className="py-4 text-center text-sm text-muted-foreground">
-                  No command usage yet
-                </p>
+                <EmptyState
+                  icon={Terminal}
+                  message="No command usage yet"
+                  className="px-0 py-4"
+                />
               ) : (
                 <div className="space-y-3">
                   {commandStatsQuery.data.topCommands.map((cmd) => {
@@ -399,9 +455,11 @@ export function AdminDashboard() {
             </CardHeader>
             <CardContent>
               {serversData?.servers.length === 0 ? (
-                <p className="py-4 text-center text-sm text-muted-foreground">
-                  No servers configured
-                </p>
+                <EmptyState
+                  icon={Server}
+                  message="No servers configured"
+                  className="px-0 py-4"
+                />
               ) : (
                 <div className="grid gap-2 sm:grid-cols-2">
                   {serversData?.servers.map((server) => (

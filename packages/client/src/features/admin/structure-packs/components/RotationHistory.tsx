@@ -3,6 +3,7 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { History, CheckCircle2, XCircle } from "lucide-react";
 import { Paginator } from "@/components/paginator";
+import { EmptyState, ErrorState } from "@/components/query-states";
 import { Badge } from "@/components/ui/badge";
 import { CellDate, CellText } from "@/components/cell-text";
 import {
@@ -102,10 +103,18 @@ export function RotationHistory() {
         </h2>
         <p className="text-sm text-muted-foreground">Past rotation events</p>
       </div>
-      {!loading && (!data || data.data.length === 0) ? (
-        <p className="py-4 text-center text-sm text-muted-foreground">
-          No rotations yet
-        </p>
+      {historyQuery.isError ? (
+        <ErrorState
+          message={historyQuery.error.message}
+          onRetry={() => historyQuery.refetch()}
+          compact
+        />
+      ) : !loading && (!data || data.data.length === 0) ? (
+        <EmptyState
+          icon={History}
+          message="No rotations yet"
+          className="py-4"
+        />
       ) : (
         <>
           <DataTable

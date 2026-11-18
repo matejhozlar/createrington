@@ -1,8 +1,16 @@
 import { useMemo, useState } from "react";
 import { colorHex } from "@createrington/shared/team-tag";
-import { ChevronDown, Map as MapIcon } from "lucide-react";
+import {
+  ChevronDown,
+  Map as MapIcon,
+  Search as SearchIcon,
+} from "lucide-react";
 import { ChoiceField } from "@/components/choice-field";
-import { LoadingState } from "@/components/query-states";
+import {
+  EmptyState,
+  ErrorState,
+  LoadingState,
+} from "@/components/query-states";
 import { TeamTagPlate } from "@/features/team-tag/components/TeamTagPlate";
 import { Button } from "@/components/ui/button";
 import {
@@ -186,18 +194,16 @@ function ClaimsBrowser({
 
   if (query.isError) {
     return (
-      <p className="flex flex-1 items-center justify-center text-center text-destructive">
-        Failed to load the claimed chunks: {query.error.message}
-      </p>
+      <ErrorState
+        message={`Failed to load the claimed chunks: ${query.error.message}`}
+        onRetry={() => query.refetch()}
+        compact
+      />
     );
   }
 
   if (!query.data || blocks.length === 0) {
-    return (
-      <p className="flex flex-1 items-center justify-center text-center text-muted-foreground">
-        {COPY.empty}
-      </p>
-    );
+    return <EmptyState icon={MapIcon} message={COPY.empty} />;
   }
 
   return (
@@ -248,9 +254,11 @@ function ClaimsBrowser({
 
       <div className="min-h-0 flex-1 overflow-y-auto rounded-md border border-border bg-card">
         {shown.length === 0 ? (
-          <p className="px-6 py-8 text-center text-muted-foreground">
-            {COPY.noMatch}
-          </p>
+          <EmptyState
+            icon={SearchIcon}
+            message={COPY.noMatch}
+            className="py-8"
+          />
         ) : (
           <ul className="divide-y divide-border">
             {shown.map((block) => {

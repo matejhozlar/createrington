@@ -1,9 +1,13 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router";
-import { LoadingState } from "@/components/query-states";
+import {
+  EmptyState,
+  ErrorState,
+  LoadingState,
+} from "@/components/query-states";
 import { Button } from "@/components/ui/button";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, UserX } from "lucide-react";
 import { useAdminPlayers } from "@/contexts/admin";
 import { PlayerHeader } from "./components/PlayerHeader";
 import { PlayerStatsCards } from "./components/PlayerStatsCards";
@@ -74,6 +78,7 @@ export function AdminPlayerDetail() {
   const player = playerQuery.data;
   const loading = playerQuery.isLoading;
   const error = playerQuery.error?.message ?? null;
+  const notFound = playerQuery.error?.data?.code === "NOT_FOUND";
 
   if (loading) {
     return (
@@ -91,18 +96,24 @@ export function AdminPlayerDetail() {
 
   if (error || !player) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="text-center">
-          <p className="text-destructive">{error || "Player not found"}</p>
-          <Button
-            onClick={() => navigate("/admin/players")}
-            className="mt-4"
-            variant="outline"
-          >
-            <ArrowLeft className="size-4" />
-            Back to Players
-          </Button>
-        </div>
+      <div className="flex h-screen flex-col items-center justify-center gap-4">
+        {error && !notFound ? (
+          <ErrorState
+            message={error}
+            onRetry={() => playerQuery.refetch()}
+            className="flex-none py-0"
+          />
+        ) : (
+          <EmptyState
+            icon={UserX}
+            message="Player not found"
+            className="flex-none py-0"
+          />
+        )}
+        <Button onClick={() => navigate("/admin/players")} variant="outline">
+          <ArrowLeft className="size-4" />
+          Back to Players
+        </Button>
       </div>
     );
   }

@@ -9,7 +9,7 @@ import {
 } from "@createrington/shared/launcher";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { FilterBar } from "@/features/admin/components/FilterBar";
-import { ErrorState } from "@/components/query-states";
+import { EmptyState, ErrorState } from "@/components/query-states";
 import {
   LAUNCHER_PLATFORM_DISPLAY,
   launcherPlatformLabel,
@@ -507,9 +507,11 @@ export function OwnerLauncherReleases() {
           </CardHeader>
           <CardContent className="p-0">
             {releasesQuery.isError ? (
-              <p className="py-8 text-center text-destructive">
-                Failed to load launcher releases: {releasesQuery.error.message}
-              </p>
+              <ErrorState
+                message={`Failed to load launcher releases: ${releasesQuery.error.message}`}
+                onRetry={() => releasesQuery.refetch()}
+                compact
+              />
             ) : (
               <Tabs
                 value={platform}
@@ -528,11 +530,13 @@ export function OwnerLauncherReleases() {
                 </TabsList>
                 <TabsContent value={platform}>
                   {!loading && releases.length === 0 ? (
-                    <p className="px-6 py-8 text-center text-muted-foreground">
-                      {(filtered ? LIST_COPY.noMatch : LIST_COPY.empty)(
+                    <EmptyState
+                      icon={Rocket}
+                      message={(filtered ? LIST_COPY.noMatch : LIST_COPY.empty)(
                         launcherPlatformLabel(platform),
                       )}
-                    </p>
+                      className="py-8"
+                    />
                   ) : (
                     <DataTable
                       columns={columns}

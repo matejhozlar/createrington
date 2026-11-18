@@ -12,7 +12,11 @@ import { formatDateTime } from "@/lib/format";
 import { describeEntryRules } from "./format";
 import { DeletePromptModal } from "./components/DeletePromptModal";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { LoadingState } from "@/components/query-states";
+import {
+  EmptyState,
+  ErrorState,
+  LoadingState,
+} from "@/components/query-states";
 
 type ResponseRow = RouterOutput["admin"]["prompts"]["get"]["responses"][number];
 
@@ -77,21 +81,29 @@ export function PromptDetail() {
   );
 
   if (!Number.isFinite(promptId)) {
-    return <div className="p-6 text-muted-foreground">Invalid prompt id.</div>;
+    return <EmptyState icon={MessageSquare} message="Invalid prompt id." />;
   }
 
   if (detailQuery.isLoading) {
     return <LoadingState text="Loading..." className="py-10" />;
   }
 
+  if (detailQuery.isError && detailQuery.error.data?.code !== "NOT_FOUND") {
+    return (
+      <ErrorState
+        message={detailQuery.error.message}
+        onRetry={() => detailQuery.refetch()}
+      />
+    );
+  }
+
   if (!detailQuery.data) {
     return (
-      <div className="p-6 text-muted-foreground">
-        Prompt not found.{" "}
+      <EmptyState icon={MessageSquare} message="Prompt not found.">
         <NavLink to="/admin/tools/prompts" className="text-primary underline">
           Back to list
         </NavLink>
-      </div>
+      </EmptyState>
     );
   }
 
@@ -175,9 +187,8 @@ export function PromptDetail() {
         />
 
         {responses.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-border bg-card py-12 text-center">
-            <MessageSquare className="size-8 text-muted-foreground" />
-            <p className="text-muted-foreground">No responses yet.</p>
+          <div className="rounded-lg border border-border bg-card">
+            <EmptyState icon={MessageSquare} message="No responses yet." />
           </div>
         ) : (
           <ul className="flex flex-col gap-3">

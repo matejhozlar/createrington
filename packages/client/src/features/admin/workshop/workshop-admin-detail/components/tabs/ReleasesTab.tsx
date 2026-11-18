@@ -159,9 +159,12 @@ function ReleaseDiff({ releaseId }: { releaseId: number }) {
   }
   if (diffQuery.error) {
     return (
-      <p className="px-4 py-3 text-sm text-destructive">
-        {diffQuery.error.message}
-      </p>
+      <ErrorState
+        message={diffQuery.error.message}
+        onRetry={() => diffQuery.refetch()}
+        compact
+        className="px-4 py-3"
+      />
     );
   }
 

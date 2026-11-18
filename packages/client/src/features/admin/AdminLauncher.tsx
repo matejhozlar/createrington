@@ -18,7 +18,11 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { LoadingState } from "@/components/query-states";
+import {
+  EmptyState,
+  ErrorState,
+  LoadingState,
+} from "@/components/query-states";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { useQuery } from "@tanstack/react-query";
 
@@ -91,15 +95,18 @@ export function AdminLauncher() {
         {releasesQuery.isLoading ? (
           <LoadingState text="Loading launcher versions..." />
         ) : releasesQuery.isError ? (
-          <p className="py-8 text-center text-destructive">
-            Failed to load launcher versions: {releasesQuery.error.message}
-          </p>
+          <ErrorState
+            message={`Failed to load launcher versions: ${releasesQuery.error.message}`}
+            onRetry={() => releasesQuery.refetch()}
+          />
         ) : !latest ? (
           <Card>
             <CardContent>
-              <p className="py-8 text-center text-muted-foreground">
-                No launcher version has been released yet.
-              </p>
+              <EmptyState
+                icon={Download}
+                message="No launcher version has been released yet."
+                className="py-8"
+              />
             </CardContent>
           </Card>
         ) : (
