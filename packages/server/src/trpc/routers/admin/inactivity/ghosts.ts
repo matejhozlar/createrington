@@ -4,7 +4,6 @@ import { Q } from "@/db";
 import {
   buildPagination,
   paginationInput,
-  rethrowTrpc,
   trpcError,
   auditActor,
 } from "@/trpc/utils";
@@ -111,16 +110,11 @@ export const ghostsRouter = router({
 
       const service = await getGhostService();
 
-      let result: { minecraftUuid: string; minecraftUsername: string };
-      try {
-        result = await service.remove(input.discordId, {
-          type: "admin",
-          discordId: ctx.user.discordId,
-          username: ctx.user.minecraftUsername,
-        });
-      } catch (error) {
-        rethrowTrpc(error);
-      }
+      const result = await service.remove(input.discordId, {
+        type: "admin",
+        discordId: ctx.user.discordId,
+        username: ctx.user.minecraftUsername,
+      });
 
       try {
         const embed = EmbedPresets.ghost.adminRemoval({

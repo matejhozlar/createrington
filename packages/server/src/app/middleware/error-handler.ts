@@ -1,5 +1,5 @@
 import config from "@/config";
-import { DatabaseError } from "@/db/utils";
+import { DatabaseError, NotFoundError as DbNotFoundError } from "@/db/utils";
 import type { NextFunction, Request, Response } from "express";
 import { ZodError } from "zod";
 import { AppError, NotFoundError } from "@/errors";
@@ -105,14 +105,13 @@ export function errorHandler(
     playerMessage = err.playerMessage;
     code = err.code;
     if (err.headers) res.set(err.headers);
+  } else if (err instanceof DbNotFoundError) {
+    statusCode = 404;
+    message = err.message;
+    isOperational = true;
   } else if (err instanceof DatabaseError) {
     statusCode = 500;
     message = config.envMode.isDev ? err.message : "Database error occurred";
-
-    if (err.name === "NotFoundError") {
-      statusCode = 404;
-      message = err.message;
-    }
   } else if (isRequestBodyError(err)) {
     statusCode = err.status;
     message = REQUEST_BODY_ERROR_MESSAGES[err.type] ?? err.message;

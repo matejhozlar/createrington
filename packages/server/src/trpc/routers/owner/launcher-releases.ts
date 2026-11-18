@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { router, ownerProcedure, launcherAvailable } from "@/trpc/trpc";
-import { id, paginateQuery, paginationInput, rethrowTrpc } from "@/trpc/utils";
+import { id, paginateQuery, paginationInput } from "@/trpc/utils";
 import config from "@/config";
 import { Q } from "@/db";
 import { ilikeContains } from "@/db/utils";
@@ -73,17 +73,13 @@ export const ownerLauncherReleasesRouter = router({
     })
     .input(releaseInput)
     .mutation(async ({ ctx, input }) => {
-      try {
-        return toDto(
-          await launcherReleaseService.release(
-            input.id,
-            ctx.user.discordId,
-            input.required,
-          ),
-        );
-      } catch (error) {
-        rethrowTrpc(error);
-      }
+      return toDto(
+        await launcherReleaseService.release(
+          input.id,
+          ctx.user.discordId,
+          input.required,
+        ),
+      );
     }),
 
   withdraw: launcherOwnerProcedure
@@ -93,12 +89,8 @@ export const ownerLauncherReleasesRouter = router({
     })
     .input(idInput)
     .mutation(async ({ ctx, input }) => {
-      try {
-        return toDto(
-          await launcherReleaseService.withdraw(input.id, ctx.user.discordId),
-        );
-      } catch (error) {
-        rethrowTrpc(error);
-      }
+      return toDto(
+        await launcherReleaseService.withdraw(input.id, ctx.user.discordId),
+      );
     }),
 });

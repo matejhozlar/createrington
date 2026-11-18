@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { router, ownerProcedure } from "@/trpc/trpc";
-import { auditActor, rethrowTrpc } from "@/trpc/utils";
+import { auditActor } from "@/trpc/utils";
 import { Q } from "@/db";
 import { featureFlagService, FeatureFlags } from "@/services/feature-flag";
 
@@ -26,21 +26,17 @@ export const ownerCurseforgeCdnRouter = router({
     })
     .input(z.object({ enabled: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
-      try {
-        const flag = await featureFlagService.setEnabled(
-          FeatureFlags.launcherCurseforgeCdn,
-          input.enabled,
-          CDN_FLAG_DESCRIPTION,
-        );
-        await Q.admin.log.action.logAction({
-          ...auditActor(ctx),
-          actionType: "feature_flag_set",
-          description: `${input.enabled ? "Enabled" : "Disabled"} feature "${flag.name}"`,
-          metadata: { name: flag.name, enabled: flag.enabled },
-        });
-        return { enabled: flag.enabled };
-      } catch (error) {
-        rethrowTrpc(error);
-      }
+      const flag = await featureFlagService.setEnabled(
+        FeatureFlags.launcherCurseforgeCdn,
+        input.enabled,
+        CDN_FLAG_DESCRIPTION,
+      );
+      await Q.admin.log.action.logAction({
+        ...auditActor(ctx),
+        actionType: "feature_flag_set",
+        description: `${input.enabled ? "Enabled" : "Disabled"} feature "${flag.name}"`,
+        metadata: { name: flag.name, enabled: flag.enabled },
+      });
+      return { enabled: flag.enabled };
     }),
 });
