@@ -3,13 +3,9 @@ import { redisService } from "@/services/redis";
 const DEFAULT_MAX_ENTRIES = 5000;
 const SWEEP_SHARE_OF_CAPACITY = 0.1;
 
-/** A store of short-lived string values by key. Every value is written with a time limit. */
 export interface KeyValueStore {
-  /** The value under the key, or `null` when there is none or its time is up. */
   get(key: string): Promise<string | null>;
-  /** The values under the keys in the order asked, `null` where there is none or its time is up. */
   getMany(keys: string[]): Promise<Array<string | null>>;
-  /** Writes the value under the key for `ttlMs` milliseconds, replacing what was there. */
   set(key: string, value: string, ttlMs: number): Promise<void>;
 }
 

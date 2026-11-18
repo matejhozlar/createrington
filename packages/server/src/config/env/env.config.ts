@@ -9,7 +9,6 @@ const ENV_PATH = path.resolve(__dirname, "..", "..", "..", "..", "..");
 
 dotenv.config({ path: path.join(ENV_PATH, ".env"), quiet: true });
 
-// Reusable validators
 const port = (label = "Port") =>
   z.coerce
     .number()
@@ -31,9 +30,6 @@ const ipv4 = (label = "IP") =>
       { message: `${label} must be a valid IPv4 address` },
     );
 
-// Placeholder the game-server IP falls back to when unset. Local dev never
-// talks to a real server, but production must never boot on it: the mod-API
-// allowlist and the IP-to-server playtime mapping are both keyed on this value.
 const DEV_FALLBACK_SERVER_IP = "0.0.0.0";
 
 const discordId = (label = "ID") =>
@@ -48,12 +44,6 @@ const discordToken = (label = "Token") =>
     .min(1, `${label} is required`)
     .regex(/^[\w\-.]+$/, `${label} format is invalid`);
 
-/**
- * True when the configured WEBSITE_URL points at a local or dev deployment
- * (localhost / 127.0.0.1 / dev.* subdomain). Shared by the prod superRefine
- * (decides whether to re-require prod-only vars) and `checkIsDevDeployment`
- * (drives `envMode.isDevDeployment`) so the two definitions cannot drift.
- */
 function isDevHostname(websiteUrl: string): boolean {
   try {
     const host = new URL(websiteUrl).hostname;
@@ -67,37 +57,27 @@ function isDevHostname(websiteUrl: string): boolean {
 
 const envSchema = z
   .object({
-    // Server
     PORT: port("Server port").default(5001),
     NODE_ENV: z.enum(["development", "production", "test"], {
       message: "NODE_ENV must be set to development, production or test",
     }),
     APP_VERSION: z.string().optional(),
 
-    // Database: required in every environment
     DB_USER: z.string().min(1, "Database user is required"),
     DB_HOST: z.string().min(1, "Database host is required"),
     DB_DATABASE: z.string().min(1, "Database name is required"),
     DB_PASSWORD: z.string().min(1, "Database password is required"),
     DB_PORT: port("Database port").default(5432),
 
-    // SFTP: Rails 'n Sails
-    // Production-only: SFTP is gated behind `!isDev && !isDevDeployment`
-    // (see services/mc-server/file-ops.ts), so dev never opens a connection.
-    // Required at runtime by the prod superRefine below.
     RAILS_N_SAILS_SFTP_HOST: z.string().optional(),
     RAILS_N_SAILS_SFTP_PORT: port("Rails 'n Sails SFTP port").optional(),
     RAILS_N_SAILS_SFTP_USER: z.string().optional(),
     RAILS_N_SAILS_SFTP_PASS: z.string().optional(),
     RAILS_N_SAILS_SFTP_STATS_PATH: z.string().optional(),
 
-    // Discord: required in every environment
     DISCORD_GUILD_ID: discordId("Guild ID"),
     DISCORD_MAIN_BOT_TOKEN: discordToken("Main bot token"),
     DISCORD_MAIN_BOT_ID: discordId("Main bot ID"),
-    // OAuth2 client secret of the main bot's Discord application. User login
-    // runs against that application, so DISCORD_MAIN_BOT_ID doubles as the
-    // OAuth client ID.
     DISCORD_MAIN_BOT_CLIENT_SECRET: z
       .string()
       .min(32, "Main bot client secret must be at least 32 characters"),
@@ -105,14 +85,9 @@ const envSchema = z
       .string()
       .url("OAuth redirect URI must be a valid URL"),
 
-    // Auth
     JWT_ACCESS_SECRET: z
       .string()
       .min(32, "JWT access secret must be at least 32 characters"),
-    // Dedicated mod JWT signing secret. Must NOT reuse JWT_ACCESS_SECRET:
-    // mod hosts self-sign with this value, so a compromised Minecraft host
-    // would otherwise be able to mint arbitrary createrington.web admin
-    // tokens by reusing the shared secret with a different `aud`.
     MOD_JWT_SECRET: z
       .string()
       .min(32, "Mod JWT secret must be at least 32 characters"),
@@ -128,11 +103,6 @@ const envSchema = z
       )
       .optional(),
     LAUNCHER_DOWNLOAD_HOSTS: z.string().default(""),
-    // Where the sandbox serves the mod files no CDN gives the launcher, on
-    // an address the app reaches on the host (the sandbox answers on the VPN
-    // only). The app verifies such files there and streams them to the
-    // launcher from its own /api/launcher/packs/files routes. Without it,
-    // such files stay manual.
     LAUNCHER_PACK_FILES_INTERNAL_URL: z.string().url().optional(),
     JWT_ACCESS_EXPIRES_IN: z
       .string()
@@ -144,39 +114,18 @@ const envSchema = z
     REFRESH_TOKEN_EXPIRES_IN_DAYS: z.coerce.number().int().min(1).default(30),
     REFRESH_COOKIE_NAME: z.string().default("crt_refresh"),
     ACCESS_COOKIE_NAME: z.string().default("crt_access"),
-    // Empty string means host-only cookies (the existing behavior). Set to a
-    // parent domain like ".createrington.com" to enable cross-subdomain SSO.
     COOKIE_DOMAIN: z.string().default(""),
-    // Server-driven SSO callback URL. Must be registered as an OAuth2 redirect
-    // URI on the main bot's application, next to DISCORD_OAUTH_REDIRECT_URI.
-    // Used by /api/auth/sso/start + /api/auth/sso/callback.
     SSO_CALLBACK_URL: z.string().default(""),
-    // Comma-separated list of additional CORS origins (e.g.
-    // "https://sandbox.createrington.com") that are allowed to call the API
-    // with credentials. Doubles as the SSO return-to allowlist: the main
-    // website is included automatically via config.meta.links.website.
     SSO_CORS_ORIGINS: z.string().default(""),
-    // Comma-separated list of allowed SSO origins that complete login via a
-    // one-time code in the redirect (skin-api) instead of the parent-domain
-    // access cookie. These origins are automatically added to the return-to
-    // allowlist, so they do not also need to be in SSO_CORS_ORIGINS.
     SSO_CODE_EXCHANGE_ORIGINS: z.string().default(""),
-    // Shared secret authenticating server-to-server calls from skin-api to
-    // /api/internal/* (sso-exchange, player-exists). Distinct from
-    // PLAYTIME_SYNC_SECRET: different trust boundary (public-facing sibling
-    // product, not the dev/prod playtime relay). Internal skin-api routes
-    // only mount when this is set.
     INTERNAL_API_SHARED_SECRET: z
       .string()
       .min(32, "Internal API shared secret must be at least 32 characters")
       .optional(),
-    // Discord ID of the sole owner; gates the owner-only admin management
-    // panel. Must be a Discord snowflake (17–20 digits).
     OWNER_DISCORD_ID: z
       .string()
       .regex(/^\d{17,20}$/, "OWNER_DISCORD_ID must be a Discord snowflake"),
 
-    // Minecraft Servers: defaults are local-dev safe; prod overrides via .env
     RAILS_N_SAILS_SERVER_IP: ipv4("Rails 'n Sails server IP").default(
       DEV_FALLBACK_SERVER_IP,
     ),
@@ -190,19 +139,12 @@ const envSchema = z
       .max(1000, "Player limit must be between 0 and 1000")
       .default(100),
 
-    // RCON
     RAILS_N_SAILS_RCON_PORT: port("Rails 'n Sails RCON port").default(25583),
-    // Required at runtime by the prod superRefine below. Optional in dev:
-    // point it at the local Docker server (docker/mc, password MC_RCON_PASSWORD)
-    // to drive maintenance mode and the other RCON features locally.
     RAILS_N_SAILS_RCON_PASSWORD: z
       .string()
       .max(100, "RCON password is too long")
       .optional(),
 
-    // Votifier (server-list votes). The listener only starts when both the
-    // port and the token are set; the token is the HMAC secret the server
-    // list signs v2 votes with.
     VOTIFIER_HOST: z.string().default("0.0.0.0"),
     VOTIFIER_PORT: port("Votifier port").optional(),
     VOTIFIER_TOKEN: z
@@ -210,16 +152,11 @@ const envSchema = z
       .min(16, "Votifier token must be at least 16 characters")
       .optional(),
 
-    // URLs
     WEBSITE_URL: z.string().url("Website URL must be a valid URL"),
     ADMIN_PANEL_URL: z.string().url("Admin panel URL must be a valid URL"),
     MAP_URL: z.string().url("Map URL must be a valid URL"),
     DEV_CLIENT_ORIGIN: z.string().url().default("http://localhost:3000"),
 
-    // Puppeteer (internal rendering)
-    // Production-only: render routes reject calls when the secret is empty
-    // (app/features/render/render.routes.ts). Required at runtime by the prod
-    // superRefine below.
     PUPPETEER_SECRET: z
       .string()
       .min(32, "Puppeteer secret must be at least 32 characters")
@@ -227,28 +164,20 @@ const envSchema = z
     PUPPETEER_EXECUTABLE_PATH: z.string().min(1).optional(),
     PUPPETEER_BASE_URL: z.string().url().optional(),
 
-    // skin-api's loopback-only internal listener; no key, reachability is the
-    // guard. Point it at the public API only with a key-bearing client of
-    // your own, the app never sends one.
     SKIN_API_URL: z.string().url("Skin API URL must be a valid URL").optional(),
 
-    // Playtime sync (cross-environment forwarding)
     PLAYTIME_SYNC_TARGET_URL: z.string().url().optional(),
     PLAYTIME_SYNC_SECRET: z
       .string()
       .min(32, "Playtime sync secret must be at least 32 characters")
       .optional(),
 
-    // Claude automation proxy: admin chat widget talks to claude-automation
-    // through the app backend so the shared secret never ships to clients.
     CLAUDE_API_URL: z.string().url().optional(),
     ADMIN_CHAT_SECRET: z
       .string()
       .min(32, "Admin chat secret must be at least 32 characters")
       .optional(),
 
-    // Redis (optional; caches, rate limits and counters stay in process
-    // memory when not configured)
     REDIS_URL: z
       .string()
       .regex(
@@ -257,41 +186,25 @@ const envSchema = z
       )
       .optional(),
 
-    // Content gateway: the loopback service that holds the CurseForge API key
-    // and fronts CurseForge and Modrinth for every process on the box. Every
-    // CurseForge and Modrinth feature is disabled while either is unset.
     CONTENT_GATEWAY_URL: z.string().url().optional(),
     CONTENT_GATEWAY_TOKEN: z.string().min(32).optional(),
 
-    // CurseForge
     CURSEFORGE_MODPACK_PROJECT_ID: z.coerce
       .number()
       .int()
       .positive()
       .default(1660984),
 
-    // Sandbox: shared secret the sandbox presents as a bearer token when it
-    // reports a publish from a background job (no user session to forward)
     SANDBOX_SERVICE_TOKEN: z.string().min(32).optional(),
 
-    // AI (OpenAI): optional; AI features are disabled when the key is not set
     OPENAI_API_KEY: z.string().min(1).optional(),
     OPENAI_DEFAULT_MODEL: z.string().default("gpt-4o-mini"),
 
-    // MC Server local path
-    // Optional local path for direct filesystem access (bypasses SFTP).
-    // Set to the Minecraft server data directory (e.g. /opt/infrastructure/mc-test/data).
-    // Used by maintenance service and structure pack rotation.
-    // When absent, these services fall back to SFTP (production-only).
     MC_SERVER_LOCAL_PATH: z.string().min(1).optional(),
 
-    // Stripe (optional; donation features are disabled when not configured)
     STRIPE_SECRET_KEY: z.string().min(1).optional(),
     STRIPE_WEBHOOK_SECRET: z.string().min(1).optional(),
 
-    // Cloudflare R2 (optional; gallery publishing is disabled when not configured)
-    // One bucket and one bucket-scoped API token per environment, so a dev
-    // token can never write into the prod bucket.
     R2_ACCOUNT_ID: z.string().min(1).optional(),
     R2_ACCESS_KEY_ID: z.string().min(1).optional(),
     R2_SECRET_ACCESS_KEY: z.string().min(1).optional(),
@@ -301,22 +214,15 @@ const envSchema = z
       .url("R2 public URL must be a valid URL")
       .optional(),
 
-    // Email: Resend transactional API, no consumer yet.
-    // Required at runtime by the prod superRefine below.
     RESEND_API_KEY: z.string().min(1).optional(),
     RESEND_FROM_EMAIL: z
       .string()
       .email("Must be valid email address")
       .default("admin@createrington.com"),
 
-    // Storage: server-writable directory for transcripts and other runtime artifacts
     STORAGE_PATH: z.string().min(1).default("./storage"),
   })
   .superRefine((data, ctx) => {
-    // Runs in every environment: MOD_JWT_SECRET must differ from
-    // JWT_ACCESS_SECRET, otherwise the trust-boundary split is silently
-    // defeated — a compromised mod host could mint web tokens with the
-    // shared value.
     if (data.MOD_JWT_SECRET === data.JWT_ACCESS_SECRET) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -339,18 +245,9 @@ const envSchema = z
       });
     }
 
-    // Re-require production-only vars when running a real production
-    // deployment. dev.createrington.com ships with NODE_ENV=production but
-    // hits the same dev-deployment guards as local dev (no SFTP, no RCON to
-    // a live game server, etc.), so the hostname check is required in
-    // addition to NODE_ENV.
     if (data.NODE_ENV !== "production") return;
     if (isDevHostname(data.WEBSITE_URL)) return;
 
-    // Empty-string detection works because zod parses an unset env var as ""
-    // for `.string().optional()` fields, and the coerced numeric fields
-    // (e.g. SFTP_PORT) reject NaN before this refinement runs, so by the
-    // time we get here, missing values surface as `undefined` or `""`.
     const required: Array<[keyof typeof data, string]> = [
       ["RAILS_N_SAILS_SFTP_HOST", "Rails 'n Sails SFTP host required"],
       ["RAILS_N_SAILS_SFTP_PORT", "Rails 'n Sails SFTP port required"],
@@ -376,8 +273,6 @@ const envSchema = z
       }
     }
 
-    // Defaulted, so the loop above can never catch it: an unset var still
-    // parses, and prod would silently allowlist and ping 0.0.0.0.
     if (data.RAILS_N_SAILS_SERVER_IP === DEV_FALLBACK_SERVER_IP) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -386,9 +281,6 @@ const envSchema = z
       });
     }
 
-    // Required in every environment, so the loop above cannot tell a value
-    // copied from staging apart from the real one: prod would send users to
-    // dev.createrington.com and Discord would reject the unregistered URI.
     if (isDevHostname(data.DISCORD_OAUTH_REDIRECT_URI)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -398,23 +290,10 @@ const envSchema = z
     }
   });
 
-/**
- * Type representing validated environment configuration
- * Automatically inferred from the envSchema
- */
 export type Env = z.infer<typeof envSchema>;
 
-/**
- * Flag for running only validation of env variables
- * Exits the process on success
- */
 const isValidateOnly = process.argv.includes("--validate-only");
 
-/**
- * Parses each variable on its own, without the cross-field checks: a missing
- * or malformed value falls back to the field's default, or is left out when
- * the field has none.
- */
 function parseForGeneration(): Env {
   const parsed: Record<string, unknown> = {};
   for (const [key, schema] of Object.entries(envSchema.shape)) {
@@ -426,17 +305,6 @@ function parseForGeneration(): Env {
   return parsed as Env;
 }
 
-/**
- * Validates environment variables against the defined schema
- *
- * Parses process.env and ensures all required environment variables are present
- * and valid according to the schema. If validation fails, it logs detailed error
- * messages and exits the process. VALIDATION_MODE=generation skips validation
- * and returns the per-field parse instead.
- *
- * @returns Validated and type-safe environment configuration object
- * @throws Exits process with code 1 if validation fails
- */
 function validateEnv(): Env {
   if (process.env.VALIDATION_MODE === "generation") {
     return parseForGeneration();
@@ -464,12 +332,6 @@ function validateEnv(): Env {
   }
 }
 
-/**
- * Pre-validated environment configuration object
- *
- * Created at module load time. Only `config/` reads it; everything else goes
- * through the config object (enforced by the server ESLint config).
- */
 export const env = validateEnv();
 
 export interface envModeConfig {
@@ -485,32 +347,10 @@ function checkIsDevDeployment(): boolean {
 }
 
 export const envMode: envModeConfig = {
-  /**
-   * True when NODE_ENV is 'development'
-   * Used to enable development-specific features and logging
-   */
   isDev: env.NODE_ENV === "development",
-  /**
-   * True when NODE_ENV is 'production'
-   * Used to enable production optimizations and disable debug features
-   */
   isProd: env.NODE_ENV === "production",
-  /**
-   * True when NODE_ENV = 'test'
-   * Used to enable test-specific configuration and mocking
-   */
   isTest: env.NODE_ENV === "test",
-  /**
-   * True when WEBSITE_URL points to a dev/local environment
-   * (localhost, 127.0.0.1, or dev.* subdomain).
-   * Used to disable production-only features like AI generation and SFTP.
-   */
   isDevDeployment: checkIsDevDeployment(),
-  /**
-   * True only on the production deployment (createrington.com): NODE_ENV is
-   * 'production' and WEBSITE_URL is not a dev/local host. The dev deployment
-   * also runs with NODE_ENV=production, so isProd alone is not enough.
-   */
   isProductionDeployment:
     env.NODE_ENV === "production" && !checkIsDevDeployment(),
 } as const;

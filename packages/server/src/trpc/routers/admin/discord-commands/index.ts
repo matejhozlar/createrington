@@ -15,7 +15,6 @@ const JSON_PATH = path.join(
   "discord-commands.json",
 );
 
-/** Admin Discord commands router: serves auto-generated slash command documentation. */
 export const discordCommandsRouter = router({
   list: adminProcedure
     .meta({

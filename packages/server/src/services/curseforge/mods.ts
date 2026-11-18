@@ -50,10 +50,8 @@ export interface CurseForgeTarget {
 
 export interface CurseForgeSearchOptions {
   gameVersion?: string;
-  /** null omits the loader filter, for classes whose files carry no loader tags */
   modLoaderType?: number | null;
   classId?: number;
-  /** Modpack used for the inModpack annotation; null skips the check entirely */
   packProjectId?: number | null;
 }
 
@@ -282,8 +280,6 @@ export async function getModFiles(
 
 type RawCurseForgeMod = z.infer<typeof curseforgeModSchema>;
 
-// CurseForge surfaces the author-assigned environment checkboxes as plain
-// "Client" / "Server" entries mixed into each file's gameVersions array
 export function deriveEnvironmentHint(
   files: Array<{ gameVersions?: string[] | null }>,
 ): CurseForgeEnvironmentHint | null {
@@ -306,7 +302,6 @@ const CLIENT_ONLY_CLASSES: ReadonlySet<number> = new Set([
   CurseForgeClass.resourcePacks,
 ]);
 
-/** Classes whose files carry no loader tags, so a loader-filtered search returns nothing */
 export const LOADERLESS_CLASSES: ReadonlySet<number> = new Set([
   CurseForgeClass.shaders,
   CurseForgeClass.resourcePacks,

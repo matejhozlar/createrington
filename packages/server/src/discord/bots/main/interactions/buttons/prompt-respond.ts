@@ -8,15 +8,6 @@ import {
   TextInputStyle,
 } from "discord.js";
 
-/**
- * Button handler for player-prompt "Respond" / "Add entry" buttons.
- *
- * Pattern: `prompt:respond:<promptId>`. PlayerPromptService decides whether
- * the click earns a modal and what it should hold: single-entry prompts
- * prefill the existing answer so submitting overwrites it, multi-entry
- * prompts open blank unless the cap or cooldown blocks them. The actual
- * write happens in the modal handler at interactions/modals/prompt-submit.ts.
- */
 export const pattern = "prompt:respond:*";
 
 function parseCustomId(customId: string): { promptId: number } | null {

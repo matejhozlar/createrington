@@ -1,14 +1,8 @@
-/**
- * Ticket System Type Definitions
- */
-
-/** Available ticket categories */
 export enum TicketType {
   GENERAL = "general",
   REPORT = "report",
 }
 
-/** Actions a user or moderator can perform on a ticket */
 export enum TicketUserAction {
   CREATED = "created",
   CLOSED = "closed",
@@ -17,26 +11,20 @@ export enum TicketUserAction {
   TRANSCRIPT_GENERATED = "transcript_generated",
 }
 
-/** Configuration for a specific ticket type */
 export interface TicketTypeConfig {
   type: TicketType;
   label: string;
   emoji: string;
-  /** Prefix used when naming the Discord channel (e.g., "general-0001") */
   channelPrefix: string;
   description: string;
-  /** Discord role IDs that can view and manage tickets of this type */
   allowedRoleIds: string[];
 }
 
-/** Options required to create a new ticket */
 export interface CreateTicketOptions {
   type: TicketType;
-  /** Discord user ID of the ticket creator */
   creatorId: string;
 }
 
-/** Discord button custom ID prefixes for ticket interactions */
 export const TicketButtonIds = {
   CREATE_PREFIX: "ticket:create:",
   CLOSE: "ticket:close:",
@@ -47,7 +35,6 @@ export const TicketButtonIds = {
   TRANSCRIPT: "ticket:transcript:",
 };
 
-/** Helper to generate button custom IDs for ticket interactions */
 export const TicketButtonGenerator = {
   create(type: TicketType): string {
     return `${TicketButtonIds.CREATE_PREFIX}${type}`;

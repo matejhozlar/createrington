@@ -12,7 +12,6 @@ import {
 import { REGISTER_BUTTON_ID } from "@/discord/components/presets/registration";
 import { denyForeignVerificationChannel } from "@/discord/bots/main/registration/verification-channel";
 
-/** Opens the registration modal when the applicant clicks the welcome button. */
 export const pattern = REGISTER_BUTTON_ID;
 
 export async function execute(interaction: ButtonInteraction): Promise<void> {

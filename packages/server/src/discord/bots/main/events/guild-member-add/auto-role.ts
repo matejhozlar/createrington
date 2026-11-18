@@ -11,27 +11,11 @@ import { createVerificationChannel } from "@/discord/bots/main/registration/veri
 
 const autoRoleConfig = config.discord.events.onGuildMemberAdd.autoRole;
 
-/**
- * Guild member join event handler
- *
- * Handles the onboarding flow for members:
- * 1. Records the member join in the database (gets persistent join number)
- * 2. If the player already exists in the database, assigns the "Verified" role (skips verification)
- * 3. Otherwise, assigns "Unverified" role and creates a private verification channel
- *
- * The welcome card is sent after registration completes (see
- * registration/post-welcome-card.ts), not on guild join.
- */
 export const eventName: EventModule<"guildMemberAdd">["eventName"] =
   "guildMemberAdd";
 
 export const prodOnly = true;
 
-/**
- * Executes when a new member joins the guild
- *
- * @param member - The guild member who joined
- */
 export async function execute(
   _client: Client,
   member: GuildMember,
@@ -44,7 +28,6 @@ export async function execute(
 
     logger.info(`Member ${member.user.tag} joined - Join #${joinNumber}`);
 
-    // Cancel any active departure record so the 30-day deletion doesn't fire
     try {
       const activeDeparture = await Q.discord.guild.member.leave.findActive(
         member.user.id,
@@ -116,7 +99,6 @@ export async function execute(
         );
       }
 
-      // Sync Discord nickname to Minecraft username
       try {
         await member.setNickname(
           existingPlayer.minecraftUsername,

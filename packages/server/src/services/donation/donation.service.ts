@@ -201,7 +201,6 @@ export class DonationService {
       return new Date(invoice.period_end * 1000);
     }
 
-    // Fallback: approximate from billing cycle anchor
     const anchor = new Date(sub.billing_cycle_anchor * 1000);
     const now = new Date();
     while (anchor <= now) {

@@ -29,12 +29,6 @@ const SHIP_CLAIMABLE_STATUSES: WorkshopModStatus[] = [
   "next_update",
 ];
 
-/**
- * Post pipeline moves to their threads off the caller's path: reconcile runs
- * from an admin mutation, and a pack's worth of posts would both stall that
- * request and hit Discord in one burst. Sequential so the rate limiter paces
- * itself; the announce helpers swallow their own errors.
- */
 function announceStatusMoves(mods: WorkshopMod[]): void {
   if (mods.length === 0) return;
   void (async () => {
@@ -164,8 +158,6 @@ export class ModpackSyncService {
       version: seed.version,
     });
 
-    // Members dropped by an earlier seed keep their rows, so the count of
-    // what this manifest covers is derived from the manifest side
     const rows = await Q.modpack.mod.findAll(
       { modpackId, curseforgeProjectId: { $in: [...modIds] } },
       { select: ["curseforgeProjectId"] },
@@ -215,11 +207,6 @@ export class ModpackSyncService {
     }
   }
 
-  /**
-   * Sync suggestions with what the manifest ships. rejected is excluded from
-   * the shipped move so a sweep never undoes an explicit rejection; it
-   * surfaces as a shipped_rejected attention item instead.
-   */
   private async moveSuggestions(
     workshopModIds: number[],
     to: Extract<WorkshopModStatus, "next_update" | "in_pack">,
@@ -247,10 +234,6 @@ export class ModpackSyncService {
       groups.set(key, group);
     }
 
-    // Concurrent reconciles read the same rows, so the status-guarded update
-    // picks one winner per move. Announcements and events are therefore
-    // at-most-once: a crash between the claim and the write loses them,
-    // since no later sweep retries
     const moved: WorkshopMod[] = [];
     for (const group of groups.values()) {
       const claimed = await Q.workshop.mod.updateAllAndReturn(
@@ -319,9 +302,6 @@ export class ModpackSyncService {
         continue;
       }
 
-      // A row only exists because the pack shipped the mod, so falling out of
-      // the manifest is always a drop-out. Imports have no suggestion behind
-      // them to fall back to, so they simply cease to be members
       if (row.origin === "import") {
         removedImportIds.push(row.id);
         continue;
@@ -400,12 +380,6 @@ export class ModpackSyncService {
     ]);
   }
 
-  /**
-   * Promote CurseForge hints the published pack agrees with to manifest.
-   * Needs a server pack to say anything about sides; a hint the pack
-   * disagrees with is left for the next refresh, and unspecified members
-   * stay unspecified so they keep surfacing for review.
-   */
   private async applyManifestEnvironments(
     manifest: ModpackManifest,
   ): Promise<void> {
@@ -434,11 +408,6 @@ export class ModpackSyncService {
     );
   }
 
-  /**
-   * Create rows for manifest entries the pack does not know yet, classifying
-   * each by where it came from: a suggestion it satisfies, a required
-   * dependency of something else that shipped, or an outright import.
-   */
   private async importManifestMods(
     modpack: Modpack,
     workshopIds: number[],

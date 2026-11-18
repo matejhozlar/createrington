@@ -102,7 +102,6 @@ function boardPage(
   };
 }
 
-/** Public leaderboards router: the top-role hero, the full ranked boards, per-stat rankings, per-player activity and head-to-head comparisons. */
 export const leaderboardsRouter = router({
   hero: publicProcedure
     .use(leaderboardsReadLimit)

@@ -17,10 +17,8 @@ import {
 import { CommonComponentPresets } from "../common";
 import { Discord } from "@/discord/constants";
 
-/** Custom ID of the button that opens the registration modal */
 export const REGISTER_BUTTON_ID = "registration:open";
 
-/** Custom ID of the button that closes a completed registration channel */
 export const REGISTER_CLOSE_BUTTON_ID = "registration:close";
 
 const PROGRESS_BAR_LENGTH = 12;
@@ -64,15 +62,7 @@ function registerRow(): ActionRowBuilder<ButtonBuilder> {
   return new ActionRowBuilder<ButtonBuilder>().addComponents(button);
 }
 
-/**
- * Components V2 renderings of the registration flow that anchors each
- * verification channel: the idle "click Register" card (optionally with the
- * last failure attached), the per-step progress card, the success card with
- * a close button, the closing card, and error cards. Every method returns the
- * top-level components plus the `IS_COMPONENTS_V2` flag.
- */
 export const RegistrationComponentPresets = {
-  /** The idle welcome card; a failed attempt re-renders it red with the error and the step it failed at. */
   idle(params: {
     memberMention: string;
     errorMessage?: string;
@@ -108,7 +98,6 @@ export const RegistrationComponentPresets = {
     return message(container);
   },
 
-  /** The in-flight progress card: bar, percentage, and per-step checklist. */
   progress(
     username: string,
     steps: RegistrationStepView[],
@@ -146,7 +135,6 @@ export const RegistrationComponentPresets = {
     return message(container);
   },
 
-  /** The completed-registration card with getting-started links and a close button. */
   success(
     username: string,
     uuid: string,
@@ -206,7 +194,6 @@ export const RegistrationComponentPresets = {
     return message(container);
   },
 
-  /** The channel-is-going-away card, shown when a registration channel closes. */
   closing(): RegistrationMessage {
     const container = new ContainerBuilder()
       .setAccentColor(ComponentColors.Error)
@@ -218,7 +205,6 @@ export const RegistrationComponentPresets = {
     return message(container);
   },
 
-  /** A plain error card. */
   error(title: string, description: string): RegistrationMessage {
     const { components } = buildComponentsMessage(
       CommonComponentPresets.error(title, description, { accent: true }),
@@ -226,7 +212,6 @@ export const RegistrationComponentPresets = {
     return { components, flags: MessageFlags.IsComponentsV2 };
   },
 
-  /** An error card with the admin-contact prompt appended. */
   errorWithAdmin(title: string, description: string): RegistrationMessage {
     const { components } = buildComponentsMessage(
       CommonComponentPresets.errorWithAdmin(title, description, {

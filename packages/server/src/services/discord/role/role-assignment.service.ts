@@ -223,9 +223,6 @@ export class RoleAssignmentService {
         };
       }
 
-      // Assign the new role BEFORE removing old ones so that if the assign
-      // fails, the player keeps their current role instead of ending up with
-      // no role at all.
       let justAssigned = false;
       if (!hasTargetRole) {
         const assigned = await RoleManager.assign(

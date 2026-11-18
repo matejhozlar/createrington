@@ -25,7 +25,6 @@ export function isFileOpsAllowed(): boolean {
   return getLocalPath() !== null || isSftpAllowed();
 }
 
-/** Resolves SFTP config for a given server ID */
 function getSftpConfig(serverId: number) {
   if (serverId === config.servers.rails.id) {
     return config.servers.rails.sftp;
@@ -33,7 +32,6 @@ function getSftpConfig(serverId: number) {
   throw new Error(`No SFTP config for server ${serverId}`);
 }
 
-/** Resolves the SFTP base path for a server */
 function getBasePath(serverId: number): string {
   const sftpConfig = getSftpConfig(serverId);
   const parts = sftpConfig.statsPath.split("/");
@@ -43,7 +41,6 @@ function getBasePath(serverId: number): string {
   return ".";
 }
 
-/** Creates a connected SFTP client */
 async function createSftpClient(): Promise<SftpClient> {
   const sftpConfig = getSftpConfig(config.servers.rails.id);
   const sftp = new SftpClient();
@@ -56,7 +53,6 @@ async function createSftpClient(): Promise<SftpClient> {
   return sftp;
 }
 
-/** Gets the SFTP base path for the default server */
 function getDefaultBasePath(): string {
   return getBasePath(config.servers.rails.id);
 }

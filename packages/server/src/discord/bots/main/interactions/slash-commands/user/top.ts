@@ -30,10 +30,6 @@ const CATEGORY_CHOICES = [
   { name: "Custom (misc stats)", value: "minecraft:custom" },
 ];
 
-/**
- * Slash command definition for the top command
- * Shows top 3 players for a given Minecraft stat
- */
 export const data = new SlashCommandBuilder()
   .setName("top")
   .setDescription("Show top 3 players for a Minecraft stat")
@@ -58,10 +54,6 @@ export const cooldown = {
   message: "Please wait before checking stats again!",
 };
 
-/**
- * Handles autocomplete for the item option
- * Searches stat items that have data in the chosen category
- */
 export async function autocomplete(
   interaction: AutocompleteInteraction,
 ): Promise<void> {
@@ -81,16 +73,12 @@ export async function autocomplete(
   );
 }
 
-/**
- * Executes the top command to generate a leaderboard card
- */
 export async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
   const category = interaction.options.getString("category", true);
   let item = interaction.options.getString("item", true).trim().toLowerCase();
 
-  // Normalize: add minecraft: prefix if missing and no namespace present
   if (!item.includes(":")) {
     item = `minecraft:${item.replace(/\s+/g, "_")}`;
   }
@@ -98,7 +86,6 @@ export async function execute(
   await interaction.deferReply();
 
   try {
-    // Verify the stat actually has data
     const results = await Q.player.minecraft.stat.total.compareItem(
       item,
       [category],
@@ -137,7 +124,6 @@ export async function execute(
         components: [links],
       });
     } else {
-      // Text fallback
       const medals = ["🥇", "🥈", "🥉"];
       const leaderboard = results
         .map(

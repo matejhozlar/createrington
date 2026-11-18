@@ -3,7 +3,6 @@ import { Q } from "@/db";
 import { metricsService } from "@/services/metrics";
 import { dateRangeWithGranularity } from "./schemas";
 
-/** Admin growth metrics: registrations, waitlist funnel, Discord member trends */
 export const growthMetricsRouter = router({
   getOverview: adminProcedure
     .meta({ description: "Get growth overview with total player count" })

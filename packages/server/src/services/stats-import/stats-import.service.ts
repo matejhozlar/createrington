@@ -7,7 +7,6 @@ import type { PlaytimeManagerService } from "../playtime/playtime-manager.servic
 import type { StatsImportServerConfig } from "./config";
 import { MC_UUID_REGEX } from "@/utils/zod-schemas";
 
-/** Debounce delay before triggering an import after a player count change */
 const DEBOUNCE_MS = 30_000;
 
 function extractPlayTimeTicks(stats: Record<string, unknown>): number | null {
@@ -48,12 +47,10 @@ export class StatsImportService {
       `Initializing StatsImportService for ${this.configs.length} server(s)...`,
     );
 
-    // Run initial import in the background, don't block server startup
     Promise.allSettled(
       this.configs.map((cfg) => this.importServerStats(cfg.serverId)),
     ).catch((error) => logger.error("Initial stats import failed:", error));
 
-    // Subscribe to session events to detect player count changes
     for (const cfg of this.configs) {
       const playtimeService = this.playtimeManager.getService(cfg.serverId);
       if (!playtimeService) {
@@ -164,7 +161,6 @@ export class StatsImportService {
       let skipped = 0;
 
       for (const file of jsonFiles) {
-        // Filename is <uuid>.json: extract UUID
         const uuid = file.name.replace(".json", "");
         if (!knownUuids.has(uuid)) {
           skipped++;
@@ -226,9 +222,7 @@ export class StatsImportService {
       this.importInProgress.set(serverId, false);
       try {
         await sftp.end();
-      } catch {
-        // Ignore disconnect errors
-      }
+      } catch {}
     }
   }
 

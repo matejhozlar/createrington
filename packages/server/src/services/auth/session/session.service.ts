@@ -71,7 +71,7 @@ class SessionService {
       discordUsername: params.username,
       discordAvatar: params.avatar ?? null,
       tokenHash,
-      familyId: null, // new family: DB default gen_random_uuid()
+      familyId: null,
       ipAddress: params.ip ?? null,
       userAgent: params.userAgent ?? null,
       expiresAt,
@@ -155,19 +155,16 @@ class SessionService {
   ): Promise<RotateResult | null> {
     const session = await Q.auth.session.findByTokenHash(tokenHash);
 
-    // Unknown token
     if (!session) {
       logger.warn("Refresh token rotation failed: token not found");
       return null;
     }
 
-    // Theft detection: token was already revoked → attacker replaying old token
     if (session.revoked_at) {
       await this.revokeFamilyAsTheft(session);
       return null;
     }
 
-    // Expired
     if (new Date(session.expires_at) < new Date()) {
       logger.debug(
         `Refresh token expired for user ${session.discord_id}, revoking`,

@@ -8,31 +8,6 @@ import { InternalPresenceController } from "./presence.controller";
 
 const router = Router();
 
-/**
- * Internal presence routes
- * Base path: /api/internal/presence
- *
- * These endpoints receive forwarded presence events from the dev environment.
- * Authentication: X-Sync-Secret header (shared secret between environments).
- */
-
-/**
- * POST /api/internal/presence
- *
- * Receive a forwarded player join/leave event from the dev server.
- *
- * Security:
- * - Requires valid X-Sync-Secret header
- *
- * Request body:
- * {
- *   uuid: string,
- *   minecraftUsername: string,
- *   state: "joined" | "left",
- *   timestamp?: string (ISO 8601),
- *   playTimeTicks?: number (vanilla play_time stat at the event)
- * }
- */
 router.post(
   "/",
   ...customRoute(
@@ -41,22 +16,6 @@ router.post(
   ),
 );
 
-/**
- * POST /api/internal/presence/heartbeat
- *
- * Receive a forwarded heartbeat from the dev server containing the full
- * online player list. Credits present players, ends stale test server
- * sessions, and starts missing ones on production.
- *
- * Security:
- * - Requires valid X-Sync-Secret header
- *
- * Request body:
- * {
- *   players: Array<{ uuid: string, minecraftUsername: string, playTimeTicks?: number }>,
- *   timestamp?: string (ISO 8601)
- * }
- */
 router.post(
   "/heartbeat",
   ...customRoute(

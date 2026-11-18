@@ -7,9 +7,6 @@ import type { RotationPeriod } from "./types";
  *
  * All wall-clock comparisons are performed in the configured IANA timezone so that
  * DST transitions do not shift the scheduled time.
- *
- * @param cfg - The current rotation configuration
- * @returns UTC Date of the next scheduled rotation
  */
 export function computeNextRotationTime(
   cfg: StructurePackRotationConfig,
@@ -18,7 +15,6 @@ export function computeNextRotationTime(
   const now = new Date();
   const period = cfg.period as RotationPeriod;
 
-  // Get today's date components in the target timezone
   const todayParts = new Intl.DateTimeFormat("en-US", {
     timeZone: cfg.timezone,
     year: "numeric",
@@ -35,7 +31,6 @@ export function computeNextRotationTime(
   const todayDay = get("day");
 
   if (period === "daily") {
-    // Next occurrence is today at the configured time, or tomorrow
     const target = dateInTimezone(
       todayYear,
       todayMonth,
@@ -58,7 +53,6 @@ export function computeNextRotationTime(
   }
 
   if (period === "monthly") {
-    // Next occurrence is on dayOfMonth this month or next month
     const target = dateInTimezone(
       todayYear,
       todayMonth,
@@ -80,7 +74,6 @@ export function computeNextRotationTime(
     return target;
   }
 
-  // Weekly (default)
   const weekdayStr = todayParts.find((p) => p.type === "weekday")?.value ?? "";
   const dayMap: Record<string, number> = {
     Sun: 0,
@@ -129,9 +122,6 @@ export function computeNextRotationTime(
  * The cycle start is the most recent past occurrence of the configured
  * rotation time (daily, weekly, or monthly). Boost purchases are scoped
  * to this timestamp so they expire automatically after a rotation fires.
- *
- * @param cfg - The current rotation configuration
- * @returns UTC Date representing the start of the active cycle
  */
 export function computeCycleStart(cfg: StructurePackRotationConfig): Date {
   const [hours, minutes] = cfg.time.split(":").map(Number);
@@ -154,7 +144,6 @@ export function computeCycleStart(cfg: StructurePackRotationConfig): Date {
   const todayDay = get("day");
 
   if (period === "daily") {
-    // Cycle started today at the configured time, or yesterday if time hasn't passed
     const cycleStart = dateInTimezone(
       todayYear,
       todayMonth,
@@ -177,7 +166,6 @@ export function computeCycleStart(cfg: StructurePackRotationConfig): Date {
   }
 
   if (period === "monthly") {
-    // Cycle started on dayOfMonth this month, or last month
     const cycleStart = dateInTimezone(
       todayYear,
       todayMonth,
@@ -199,7 +187,6 @@ export function computeCycleStart(cfg: StructurePackRotationConfig): Date {
     return cycleStart;
   }
 
-  // Weekly (default)
   const dayMap: Record<string, number> = {
     Sun: 0,
     Mon: 1,
@@ -247,10 +234,6 @@ export function computeCycleStart(cfg: StructurePackRotationConfig): Date {
  *
  * A rotation is considered missed when the elapsed time since `lastRotatedAt`
  * exceeds one full period plus the configured grace period.
- *
- * @param cfg - The current rotation configuration
- * @param lastRotatedAt - Timestamp of the most recent recorded rotation
- * @returns Whether a rotation should have fired and was missed
  */
 export function checkMissedRotation(
   cfg: StructurePackRotationConfig,

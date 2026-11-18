@@ -13,10 +13,6 @@ import {
   SlashCommandBuilder,
 } from "discord.js";
 
-/**
- * Slash command definition for the profile command
- * Displays a Minecraft-themed player profile card with 3D skin
- */
 export const data = new SlashCommandBuilder()
   .setName("profile")
   .setDescription("View a player's profile card")
@@ -27,27 +23,12 @@ export const data = new SlashCommandBuilder()
       .setRequired(false),
   );
 
-/**
- * Cooldown configuration for the profile command
- *
- * - duration: 5 seconds
- * - type: "user" - Each user has their own cooldown
- * - message: Custom message shown when the user is on cooldown
- */
 export const cooldown = {
   duration: 5,
   type: CooldownType.USER,
   message: "Please wait before viewing profiles again!",
 };
 
-/**
- * Executes the profile command to generate a player profile card
- *
- * Process:
- * 1. Get the target user (defaults to command initiator)
- * 2. Screenshot the profile render page via PuppeteerService
- * 3. Reply with the screenshot embedded in an embed, with text fallback
- */
 export async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
@@ -78,7 +59,6 @@ export async function execute(
         files: [attachment],
       });
     } else {
-      // Text fallback if Puppeteer is unavailable
       const networth = BalanceUtils.formatMoney(details.balance?.balance ?? 0n);
 
       const pt = formatPlaytime(details.playtime.totalSeconds);

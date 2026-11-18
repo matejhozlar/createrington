@@ -15,13 +15,6 @@ import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
 import type { GhostMemberService } from "@/services/discord/cleanup/ghost/ghost-member.service";
 
-/**
- * True when the inactivity cleanup service is registered and safe to
- * mutate against, i.e. we're running on the real production deployment.
- *
- * Mirrors the gate used by the inactivity removeManual procedure so the
- * ghost-removal action has the same destructive-action policy.
- */
 function isManualActionsEnabled(): boolean {
   return config.envMode.isProductionDeployment;
 }
@@ -34,13 +27,6 @@ async function getGhostService(): Promise<GhostMemberService> {
   }
 }
 
-/**
- * Admin sub-router for the "Members Missing from Discord" tool.
- *
- * The list is an in-memory cache populated only by explicit refresh
- * (no auto-runs, no persistence). The destructive remove action is
- * gated to the real prod deployment, matching the inactivity tool.
- */
 export const ghostsRouter = router({
   capabilities: adminProcedure
     .meta({

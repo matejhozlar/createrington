@@ -10,16 +10,6 @@ import { CurrencyController } from "./currency.controller";
 
 const router = Router();
 
-/**
- * Currency routes
- * Base path: /api/currency
- *
- * These endpoints are called by the Minecraft mod for in-game economy operations.
- * Mods mint their own short-lived JWTs (HS256 + aud="createrington.mod")
- * via CRNet's selfSignedJwt strategy: no login endpoint.
- */
-
-// GET /api/currency/balance: current balance for the authenticated player
 router.get(
   "/balance",
   ...customRoute(
@@ -28,7 +18,6 @@ router.get(
   ),
 );
 
-// POST /api/currency/pay: transfer currency between two players
 router.post(
   "/pay",
   ...customRoute(
@@ -42,7 +31,6 @@ router.post(
   ),
 );
 
-// POST /api/currency/deposit: add currency to the authenticated player
 router.post(
   "/deposit",
   ...customRoute(
@@ -56,7 +44,6 @@ router.post(
   ),
 );
 
-// POST /api/currency/withdraw: remove currency from the authenticated player
 router.post(
   "/withdraw",
   ...customRoute(
@@ -70,7 +57,6 @@ router.post(
   ),
 );
 
-// GET /api/currency/history: paginated transaction history
 router.get(
   "/history",
   ...customRoute(
@@ -79,7 +65,6 @@ router.get(
   ),
 );
 
-// GET /api/currency/top: leaderboard of top 10 balances
 router.get(
   "/top",
   ...customRoute(
@@ -88,7 +73,6 @@ router.get(
   ),
 );
 
-// POST /api/currency/daily: claim the daily reward
 router.post(
   "/daily",
   ...customRoute(

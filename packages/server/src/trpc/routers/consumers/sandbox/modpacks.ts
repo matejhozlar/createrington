@@ -97,7 +97,6 @@ function toSandboxPackMod(item: ModpackModListItem): SandboxPackMod {
   };
 }
 
-/** Sandbox consumer modpacks router: what main says is in the published pack. */
 export const sandboxModpacksRouter = router({
   listMods: adminProcedure
     .meta({

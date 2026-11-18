@@ -8,33 +8,14 @@ import {
   MessageFlags,
 } from "discord.js";
 
-/**
- * Handles registration-related buttons
- * Pattern: registration:action
- */
 export const pattern = "registration:*";
 
-/**
- * Parses the registration button customId (format: registration:action)
- *
- * @param customId - The button's customId string
- * @returns Parsed action, or null if invalid
- * @private
- */
 function parseCustomId(customId: string): { action: string } | null {
   const [, action] = customId.split(":");
   if (!action) return null;
   return { action };
 }
 
-/**
- * Handles registration channel close button
- *
- * Deletes the verification channel after `CLOSE_GRACE_MS`
- * to allow the user to see the closing confirmation.
- *
- * @param interaction - The button interaction from Discord
- */
 export async function execute(interaction: ButtonInteraction): Promise<void> {
   const parsed = parseCustomId(interaction.customId);
 
@@ -77,10 +58,6 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
       const closing = RegistrationComponentPresets.closing();
 
       try {
-        // `content` and `embeds` have to be cleared explicitly: setting
-        // IS_COMPONENTS_V2 on an edit requires both to be empty, and success
-        // cards written before the Components V2 migration still carry an
-        // embed that would otherwise be retained and rejected.
         await interaction.update({
           components: closing.components,
           flags: closing.flags,
@@ -88,8 +65,6 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
           embeds: [],
         });
       } catch (error) {
-        // The card is cosmetic; the channel still has to go either way. Ack
-        // the click so Discord doesn't show "This interaction failed".
         logger.error("Failed to render the registration closing card:", error);
         await interaction.deferUpdate().catch(() => {});
       }

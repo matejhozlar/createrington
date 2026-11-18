@@ -16,7 +16,6 @@ import type { ComponentsData } from "@createrington/shared/api/embed";
 
 export interface AppReleaseNotice {
   version: string;
-  /** The version's changelog section, null when the changelog has none */
   summary: ReleaseSummary | null;
   changelogUrl: string;
 }
@@ -42,9 +41,7 @@ function countsLine(counts: ReleaseSummary["counts"]): string {
     .join(" · ");
 }
 
-/** Components V2 presets for releases of the app itself */
 export const AppReleaseComponentPresets = {
-  /** Admin-facing notice that a new app version is live, with change counts and a changelog link */
   live(data: AppReleaseNotice): ComponentsData {
     const lines = [`### App v${data.version} is live`];
 

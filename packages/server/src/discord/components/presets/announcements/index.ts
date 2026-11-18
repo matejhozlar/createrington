@@ -22,7 +22,6 @@ export interface MaintenanceAnnouncement {
   estimatedMinutes: number;
   iconUrl?: string;
   statusUrl?: string;
-  /** Add the warning-colored stripe (off by default) */
   accent?: boolean;
 }
 
@@ -31,13 +30,10 @@ export interface FeatureSpotlight {
   description: string;
   imageUrls: [string, ...string[]];
   learnMoreUrl?: string;
-  /** Add the info-colored stripe (off by default) */
   accent?: boolean;
 }
 
-/** Components V2 presets for server-wide announcements */
 export const AnnouncementComponentPresets = {
-  /** A maintenance notice with timing, an optional icon, and a status link */
   maintenance(data: MaintenanceAnnouncement): ComponentsData {
     const body = [
       `**${data.title}**`,
@@ -71,7 +67,6 @@ export const AnnouncementComponentPresets = {
     };
   },
 
-  /** A feature spotlight with a media gallery and an optional details link */
   spotlight(data: FeatureSpotlight): ComponentsData {
     const children: ComponentContainer["components"] = [
       text(`✨ **${data.title}**`),

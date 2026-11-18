@@ -144,9 +144,6 @@ export class AutoMessageService {
     }
   }
 
-  // Each follow-up's delay is additive: follow-up #1 fires at t=delay1,
-  // #2 at t=delay1+delay2, etc. Uses in-memory setTimeout, so a server
-  // restart mid-chain drops pending follow-ups.
   private async scheduleFollowups(
     messageId: number,
     channelId: string,
@@ -202,7 +199,6 @@ export class AutoMessageService {
     }
   }
 
-  // Supported variables: {memberCount} (total registered player count).
   private async resolveTemplateVariables(content: string): Promise<string> {
     if (!content.includes("{")) return content;
 

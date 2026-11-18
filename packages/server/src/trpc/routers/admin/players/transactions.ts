@@ -9,7 +9,6 @@ import {
 import { Q } from "@/db";
 import { BalanceUtils } from "@/db/repositories/balance/utils";
 
-/** Admin transactions router: paginated balance transaction history for a player. */
 export const transactionsRouter = router({
   list: adminProcedure
     .meta({ description: "Get paginated balance transactions for a player" })

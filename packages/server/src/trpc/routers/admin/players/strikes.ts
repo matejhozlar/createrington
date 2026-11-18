@@ -7,7 +7,6 @@ import { router, adminProcedure } from "@/trpc/trpc";
 import { playerStrikeRepo } from "@/db";
 import { parsePlayerId } from "@/trpc/utils";
 
-/** Admin strikes router: list, issue, and remove player strikes. */
 export const strikesRouter = router({
   list: adminProcedure
     .meta({

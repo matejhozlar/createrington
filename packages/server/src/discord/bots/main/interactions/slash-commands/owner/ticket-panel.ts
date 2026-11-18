@@ -13,37 +13,15 @@ import { getAllTicketTypes } from "@/services/discord/tickets";
 import { TicketButtonGenerator } from "@/services/discord/tickets";
 import { isSendableChannel } from "@/discord/utils/channel-guard";
 
-/**
- * Slash command definition for the ticket-panel command
- * Admin-only command to create or refresh the ticket support panel
- */
 export const data = new SlashCommandBuilder()
   .setName("ticket-panel")
   .setDescription("Create or refresh the ticket panel")
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
 
-/**
- * Permission configuration for the ticket-panel command
- * Requires admin privileges to execute
- */
 export const permissions = {
   requireOwner: true,
 };
 
-/**
- * Executes the ticket-panel command to create a ticket support panel
- *
- * Process:
- * 1. Validates that the command is used in a sendable text channel
- * 2. Retrieves all configured ticket types from the system
- * 3. Creates an embed using the ticket panel preset
- * 4. Generates a button for each ticket type with label and emoji
- * 5. Sends the panel to the channel with all ticket buttons
- * 6. Sends ephemeral confirmation to the admin who ran the command
- *
- * @param interaction - The chat input command interaction
- * @returns Promise resolving when the command execution is completed
- */
 export async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {

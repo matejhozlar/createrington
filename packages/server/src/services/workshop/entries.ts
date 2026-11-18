@@ -142,7 +142,6 @@ export async function prepareEntries(
   return prepared;
 }
 
-/** Pick the latest compatible file for the workshop's game version and loader. */
 function snapshotFile(
   workshop: Workshop,
   data: CurseForgeProjectData,

@@ -3,7 +3,6 @@ import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
 import { paginateQuery, paginationInput } from "@/trpc/utils";
 
-/** Sandbox consumer players router: lists registered players and resolves their names from Minecraft UUIDs. */
 export const sandboxPlayersRouter = router({
   list: adminProcedure
     .meta({

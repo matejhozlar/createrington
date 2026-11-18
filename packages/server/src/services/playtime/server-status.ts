@@ -2,7 +2,6 @@ import { maintenanceService } from "@/services/maintenance";
 import type { PlaytimeService } from "./playtime.service";
 import { ServerState, type ActiveSession } from "./types";
 
-/** Basic player information included in server status responses. */
 export interface PlayerInfo {
   uuid: string;
   username: string;
@@ -16,7 +15,6 @@ export interface PlayerInfo {
   };
 }
 
-/** Online state, maintenance flag and player count of a server, without the player list. */
 export interface ServerStatusSummary {
   serverId: number;
   serverName: string;
@@ -27,7 +25,6 @@ export interface ServerStatusSummary {
   playerCount: number;
 }
 
-/** Server status with connection info, online state, and current player list. */
 export interface ServerStatus extends ServerStatusSummary {
   ip: string;
   port: number;
@@ -35,7 +32,6 @@ export interface ServerStatus extends ServerStatusSummary {
   lastChecked: Date;
 }
 
-/** Server config fields a status snapshot is built from. */
 export interface ServerStatusConfig {
   name: string;
   slug: string;

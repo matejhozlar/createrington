@@ -9,14 +9,6 @@ import { sweepRegistrationChannels } from "./registration-cleanup";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-/**
- * Loads command, button, and event handlers for the main bot
- *
- * Must be called after bot login but before other services that
- * depend on interaction handling.
- *
- * @param bot - The Discord client instance for the main bot
- */
 export async function setupMainBotHandlers(bot: Client): Promise<void> {
   logger.info("Loading main bot handlers...");
 
@@ -30,7 +22,6 @@ export async function setupMainBotHandlers(bot: Client): Promise<void> {
   registerInteractionHandler(bot, commandHandlers, buttonHandlers);
   await loadEventHandlers(bot, eventsPath);
 
-  // Re-schedule any pending registration channel auto-closes from before restart
   sweepRegistrationChannels(bot).catch((err) =>
     logger.error("Registration channel sweep failed:", err),
   );

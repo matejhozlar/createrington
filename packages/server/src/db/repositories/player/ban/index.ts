@@ -123,7 +123,7 @@ export class PlayerBanRepository extends BasePlayerRepository {
       reason: data.reason,
       bannedByDiscordId: adminDiscordId,
       bannedByUsername: adminUsername,
-      expiresAt: null, // Permanent bans don't expire
+      expiresAt: null,
       serverId: data.serverId,
       metadata: data.metadata || {},
     });

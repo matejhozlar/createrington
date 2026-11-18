@@ -3,13 +3,6 @@ import { DatabaseError } from "@/db/utils";
 import type { NextFunction, Request, Response } from "express";
 import { ZodError } from "zod";
 
-/**
- * Custom app error class with HTTP status code
- *
- * `playerMessage` is an optional player-facing message intended for in-game
- * chat display (mod endpoints). When omitted, only the system `message` is
- * surfaced.
- */
 export class AppError extends Error {
   public playerMessage?: string;
   public code?: string;
@@ -35,7 +28,6 @@ export class AppError extends Error {
   }
 }
 
-/** 400 Bad Request */
 export class BadRequestError extends AppError {
   constructor(
     message: string = "Bad Request",
@@ -47,7 +39,6 @@ export class BadRequestError extends AppError {
   }
 }
 
-/** 401 Unauthorized */
 export class UnauthorizedError extends AppError {
   constructor(message: string = "Unauthorized", options?: { code?: string }) {
     super(message, 401, true, undefined, options);
@@ -55,7 +46,6 @@ export class UnauthorizedError extends AppError {
   }
 }
 
-/** 403 Forbidden */
 export class ForbiddenError extends AppError {
   constructor(message: string = "Forbidden") {
     super(message, 403);
@@ -63,7 +53,6 @@ export class ForbiddenError extends AppError {
   }
 }
 
-/** 404 Not Found */
 export class NotFoundError extends AppError {
   constructor(message: string = "Resource not found") {
     super(message, 404);
@@ -71,7 +60,6 @@ export class NotFoundError extends AppError {
   }
 }
 
-/** 409 Conflict */
 export class ConflictError extends AppError {
   constructor(message: string = "Conflict") {
     super(message, 409);
@@ -79,7 +67,6 @@ export class ConflictError extends AppError {
   }
 }
 
-/** 429 Too Many Requests */
 export class TooManyRequestsError extends AppError {
   constructor(message: string = "Too Many Requests") {
     super(message, 429);
@@ -87,7 +74,6 @@ export class TooManyRequestsError extends AppError {
   }
 }
 
-/** 500 Internal Server Error */
 export class InternalServerError extends AppError {
   constructor(message: string = "Internal Server Error") {
     super(message, 500);
@@ -117,9 +103,6 @@ function isRequestBodyError(err: Error): err is RequestBodyError {
   );
 }
 
-/**
- * Error response interface
- */
 interface ErrorResponse {
   success: false;
   message: string;
@@ -133,17 +116,10 @@ interface ErrorResponse {
   };
 }
 
-/**
- * Format Zod validation errors into a readable structure
- *
- * @param error - The ZodError instance to format
- * @returns Object containing a human-readable message and per-field error details
- */
 export function formatZodError(error: ZodError<unknown>): {
   message: string;
   fieldErrors: Array<{ field: string; message: string }>;
 } {
-  // Zod v3 uses `issues` (not `errors`)
   const fieldErrors = error.issues.map((issue) => ({
     field: issue.path.map(String).join("."),
     message: issue.message,
@@ -157,8 +133,6 @@ export function formatZodError(error: ZodError<unknown>): {
   return { message, fieldErrors };
 }
 
-// Substring (not anchored) so camelCase / prefixed / header variants like
-// accessToken, client_secret, and X-Admin-Chat-Secret are also redacted.
 const SENSITIVE_KEYS =
   /(password|secret|token|api_?key|authorization|cookie|jwt)/i;
 
@@ -174,21 +148,6 @@ function redactSensitive(value: unknown): unknown {
   return result;
 }
 
-/**
- * Centralized error handling middleware
- *
- * Automatically handles:
- * - Zod validation errors
- * - App errors (custom errors)
- * - Database errors
- * - Request body errors from the body parsers (malformed JSON, body too large)
- * - Unknown errors
- *
- * @param err - Error object
- * @param req - Express request
- * @param res - Express response
- * @param next - Express next function
- */
 export function errorHandler(
   err: Error | AppError | DatabaseError | ZodError,
   req: Request,
@@ -275,13 +234,6 @@ export function errorHandler(
   res.status(statusCode).json(errorResponse);
 }
 
-/**
- * 404 Not Found error handler for undefined routes, should be registered after all other routes
- *
- * @param req - Express request
- * @param res - Express response
- * @param next - Express next function
- */
 export function notFoundHandler(
   req: Request,
   res: Response,

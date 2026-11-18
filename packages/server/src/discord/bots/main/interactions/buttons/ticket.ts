@@ -19,7 +19,6 @@ import { replyError } from "@/discord/utils/interaction-reply";
 import { TicketSystemIds } from "@/services/discord/tickets";
 import { getService, Services } from "@/services";
 
-// A ticket button's customId carries the ticket ID, so it is attacker-spoofable; every mutation must re-check ownership.
 async function authorizeTicketAction(
   interaction: ButtonInteraction,
   ticketId: number,
@@ -63,21 +62,8 @@ async function respondDenied(
   }
 }
 
-/**
- * Handles ticket-related buttons
- * Pattern: ticket:*
- */
 export const pattern = "ticket:*";
 
-/**
- * Main button interaction handler for ticket system buttons
- *
- * Parses the button custom ID and routes to appropriate handler based on action type
- *
- * @param interaction - The button interaction from Discord
- * @returns Promise resolving when the interaction is handled
- * @throws Will catch and handle errors internally, sending error embeds to user
- */
 export async function execute(interaction: ButtonInteraction): Promise<void> {
   const parsed = parseTicketButtonId(interaction.customId);
 
@@ -137,18 +123,6 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
   }
 }
 
-/**
- * Handles transcript generation and distribution for a ticket
- *
- * If a transcript already exists, sends it to the transcript channel
- * If not, generates a new transcript, saves the path to the ticket metadata
- * and then sends it to the transcript channel
- *
- * @param interaction - The button interaction from Discord
- * @param ticketId - Database ID of the ticket
- * @returns Promise resolving when the transcript is handled
- * @throws Will send error embed to user if transcript generation or sending fails
- */
 async function handleTranscript(
   interaction: ButtonInteraction,
   ticketId: number,
@@ -192,16 +166,6 @@ async function handleTranscript(
   }
 }
 
-/**
- * Handles ticket creation button interaction
- *
- * Checks if the user already has an open ticket and prevents creation if so
- * Otherwise, creates a new ticket and channel through the ticket service
- *
- * @param interaction - The button interaction from Discord
- * @param type - The type of ticket to create
- * @returns Promise resolving when the ticket is created
- */
 async function handleCreate(
   interaction: ButtonInteraction,
   type: TicketType,
@@ -241,17 +205,6 @@ async function handleCreate(
   });
 }
 
-/**
- * Handles the initial close button interaction
- *
- * Sends a confirmation message via Confirm/Cancel buttons to prevent accidental closure
- * Does not actually close the ticket until confirmation is received
- *
- * @param interaction - The button interaction from Discord
- * @param ticketId - Dabase ID of the ticket to close
- * @returns Promise resolving when the confirmation is sent
- * @throws Error if the channel is not found or not sendable
- */
 async function handleClose(
   interaction: ButtonInteraction,
   ticketId: number,
@@ -281,16 +234,6 @@ async function handleClose(
   });
 }
 
-/**
- * Handles confirmed ticket closure
- *
- * Called when user clicks the "Confirm" button after initiating close
- * Closes the ticket through the ticket service and cleans up the confirmation message
- *
- * @param interaction - The button interaction from Discord
- * @param ticketId - The database ID of the ticket to close
- * @returns Promise resolving when the ticket is closed and message deleted
- */
 async function handleConfirmClose(
   interaction: ButtonInteraction,
   ticketId: number,
@@ -307,16 +250,6 @@ async function handleConfirmClose(
   });
 }
 
-/**
- * Handles cancelled ticket closure
- *
- * Called when user clicks the "Cancel" button after initiating close.
- * Simply removes the confirmation message without closing the ticket.
- *
- * @param interaction - The button interaction from Discord
- * @param ticketId - Database ID of the ticket (unused, but required for routing)
- * @returns Promise resolving when the confirmation message is deleted
- */
 async function handleCancelClose(
   interaction: ButtonInteraction,
   ticketId: number,
@@ -334,15 +267,6 @@ async function handleCancelClose(
   }
 }
 
-/**
- * Handles ticket reopening
- *
- * Reopens a closed ticket through the ticket service, restoring access to the ticket channel.
- *
- * @param interaction - The button interaction from Discord
- * @param ticketId - Database ID of the ticket to reopen
- * @returns Promise resolving when the ticket is reopened
- */
 async function handleReopen(
   interaction: ButtonInteraction,
   ticketId: number,
@@ -358,17 +282,6 @@ async function handleReopen(
   await ticketService.reopenTicket(ticketId, interaction.user.id);
 }
 
-/**
- * Handles permanent ticket deletion
- *
- * Deletes the ticket from the database and schedules the Discord channel for deletion
- * after a 5-second delay to allow users to see the deletion notice.
- *
- * @param interaction - The button interaction from Discord
- * @param ticketId - The database ID of the ticket to delete
- * @returns Promise resolving when the deletion is initiated
- * @throws Error if the channel is not found or not sendable
- */
 async function handleDelete(
   interaction: ButtonInteraction,
   ticketId: number,

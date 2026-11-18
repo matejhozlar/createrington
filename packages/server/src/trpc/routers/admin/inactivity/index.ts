@@ -30,15 +30,10 @@ const warningStatusSchema = z.enum([
   "removed",
 ]);
 
-/**
- * True when the inactivity cleanup service is registered and safe to
- * mutate against, i.e. we're running on the real production deployment.
- */
 function isManualActionsEnabled(): boolean {
   return config.envMode.isProductionDeployment;
 }
 
-/** Admin inactivity router: list, stats, and manual resolve/remove/trigger. */
 export const inactivityRouter = router({
   ghosts: ghostsRouter,
   unlinked: unlinkedRouter,

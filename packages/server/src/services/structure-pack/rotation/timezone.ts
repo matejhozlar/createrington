@@ -26,11 +26,8 @@ export function dateInTimezone(
   minutes: number,
   timezone: string,
 ): Date {
-  // Build an approximate UTC date, then nudge it so the wall-clock in the
-  // target timezone matches the requested values.
   const guess = new Date(Date.UTC(year, month, day, hours, minutes, 0, 0));
 
-  // Format the guess in the target timezone to see what wall-clock it produces
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: timezone,
     year: "numeric",
@@ -54,8 +51,6 @@ export function dateInTimezone(
     ),
   );
 
-  // The difference between our guess and what the timezone produced tells us
-  // the UTC offset: apply it to get the correct UTC instant.
   const offsetMs = guess.getTime() - wallDate.getTime();
   return new Date(guess.getTime() + offsetMs);
 }

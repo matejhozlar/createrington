@@ -258,16 +258,7 @@ function pack(input: ChangelogInput, lead: ComponentTextDisplay[]): Child[][] {
   return parts;
 }
 
-/** Components V2 renderings of a modpack release changelog for the changelog channel. */
 export const ModpackChangelogComponentPresets = {
-  /**
-   * One message per chunk of the diff, each within Discord's component and
-   * text ceilings. Only the first opens with the release header; the others
-   * open with a transparent full-width image, without which Discord would
-   * shrink them to their content instead of matching the first one's width.
-   * With `mentionRoleId`, the first message leads with a spoilered role
-   * mention above the container; it only pings when the send allows that role.
-   */
   release(
     input: ChangelogInput,
     options: ChangelogReleaseOptions = {},

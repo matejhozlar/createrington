@@ -1,4 +1,3 @@
-/** Maps command names to logical display groups for player-facing docs. */
 export const COMMAND_GROUPS: Record<string, string> = {
   verify: "Getting Started",
   register: "Getting Started",
@@ -20,7 +19,6 @@ export const COMMAND_GROUPS: Record<string, string> = {
   map: "Server",
 };
 
-/** Ordered list of group names for display. */
 export const GROUP_ORDER = [
   "Getting Started",
   "Economy",

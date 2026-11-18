@@ -86,24 +86,11 @@ function buttonRow(
   return new ActionRowBuilder<ButtonBuilder>().addComponents(button);
 }
 
-/**
- * Wrap the role mention in Discord spoiler tags so the message reads clean
- * while the ping still fires. Components V2 messages can't carry `content`,
- * so the mention rides along as its own top-level text display above the
- * container, where `content` used to sit.
- */
 function mentionLine(prompt: PlayerPrompt): TextDisplayBuilder[] {
   return prompt.rolePingId ? [text(`||<@&${prompt.rolePingId}>||`)] : [];
 }
 
-/**
- * Components V2 renderings of a player prompt: a gold-striped card while it
- * accepts answers, gray with a disabled button once it closes. Both open with
- * the full-width Createrington woodmark and return the top-level components
- * plus the `IS_COMPONENTS_V2` flag for `messageService.send` / `edit`.
- */
 export const PlayerPromptComponentPresets = {
-  /** The live announcement: question, closing time, entry rules, respond button. */
   active(prompt: PlayerPrompt): ComponentsMessage {
     const meta = [`**Closes** ${discordTimestamp(prompt.endsAt)}`];
     meta.push(
@@ -127,7 +114,6 @@ export const PlayerPromptComponentPresets = {
     };
   },
 
-  /** The post-close card: same question, final tally, disabled button. */
   closed(prompt: PlayerPrompt, totals: PlayerPromptTotals): ComponentsMessage {
     const { entryCount, responderCount } = totals;
     const tally =

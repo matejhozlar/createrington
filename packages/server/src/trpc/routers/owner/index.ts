@@ -7,7 +7,6 @@ import { ownerLauncherPacksRouter } from "./launcher-packs";
 import { ownerLauncherReleasesRouter } from "./launcher-releases";
 import { ownerVoteRewardsRouter } from "./vote-rewards";
 
-/** Owner-only router namespace. Every procedure gates on `OWNER_DISCORD_ID`. */
 export const ownerRouter = router({
   admins: ownerAdminsRouter,
   contentGateway: ownerContentGatewayRouter,

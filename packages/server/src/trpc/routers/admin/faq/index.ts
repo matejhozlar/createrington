@@ -18,8 +18,6 @@ import type { FaqEntryFilters } from "@createrington/shared/db";
 const matchModeSchema = z.enum(["keywords", "regex"]).default("keywords");
 
 const MAX_PATTERN_LENGTH = 200;
-// Catastrophic-backtracking shapes: `(a+)+`, `(.*)*`, `(a|a)+`, etc. FAQ
-// patterns run against every #questions message, so reject these shapes.
 const NESTED_QUANTIFIER = /\([^()]*[+*][^()]*\)[+*?{]/;
 const QUANTIFIED_ALTERNATION = /\([^()]*\|[^()]*\)[+*]/;
 
@@ -54,7 +52,6 @@ function validatePattern(matchMode: string, pattern: string): void {
   }
 }
 
-/** Admin FAQ router: CRUD for FAQ entries and welcome message management. */
 export const faqRouter = router({
   list: adminProcedure
     .meta({ description: "List FAQ entries with filtering and pagination" })

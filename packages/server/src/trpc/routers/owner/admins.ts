@@ -101,9 +101,7 @@ export const ownerAdminsRouter = router({
             .catch(() => null);
           hasDiscordRole = !!member?.roles.cache.has(Discord.Roles.ADMIN);
         }
-      } catch {
-        // Leave hasDiscordRole false on bot-unreachable.
-      }
+      } catch {}
 
       const activeSessions = await Q.auth.session.getActiveSessions(
         input.discordId,
@@ -199,9 +197,6 @@ export const ownerAdminsRouter = router({
       const player = await Q.player.find({ discordId: input.discordId });
       const dbEntry = await Q.admin.find({ discordId: input.discordId });
 
-      // Security-critical steps first: DB + session revoke. External
-      // systems (Discord, RCON) follow and are best-effort: partial
-      // failures are logged but don't abort.
       if (dbEntry) {
         await Q.admin.delete({ discordId: input.discordId });
       }

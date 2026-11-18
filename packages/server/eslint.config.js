@@ -35,6 +35,7 @@ export default defineConfig([
         },
       ],
       "no-console": "error",
+      "no-empty": ["error", { allowEmptyCatch: true }],
       "@typescript-eslint/restrict-template-expressions": "off",
       "@typescript-eslint/unbound-method": "off",
     },

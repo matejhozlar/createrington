@@ -9,10 +9,6 @@ import {
   SlashCommandBuilder,
 } from "discord.js";
 
-/**
- * Fallback slash command: primary registration flow is the button + modal in
- * the verification channel. Kept here so power users can still bypass the UI.
- */
 export const data = new SlashCommandBuilder()
   .setName("register")
   .setDescription("Register to Createrington")

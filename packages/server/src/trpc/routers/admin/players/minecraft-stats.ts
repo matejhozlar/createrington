@@ -3,7 +3,6 @@ import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
 import { parsePlayerId, findOrThrow } from "@/trpc/utils";
 
-/** Admin minecraft stats router: fetch per-server JSONB stats for a player, and search stats across all players. */
 export const minecraftStatsRouter = router({
   list: adminProcedure
     .meta({
@@ -39,7 +38,6 @@ export const minecraftStatsRouter = router({
       };
     }),
 
-  /** Search for item keys matching a query string across all categories. */
   searchItems: adminProcedure
     .meta({ description: "Autocomplete search for item keys" })
     .input(z.object({ query: z.string().min(1) }))
@@ -47,7 +45,6 @@ export const minecraftStatsRouter = router({
       return Q.player.minecraft.stat.key.searchItems(input.query);
     }),
 
-  /** Compare a single item across multiple categories for all players. */
   compare: adminProcedure
     .meta({
       description:

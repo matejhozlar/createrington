@@ -5,7 +5,6 @@ import {
 } from "@createrington/content-gateway-client";
 import { cfFetch, parseCfResponse, sha1Of, type RawFile } from "./client";
 
-/** Which of a release's manifests listed an entry. */
 export type ModpackManifestSides = "client" | "server" | "both";
 
 export interface ModpackManifestEntry {
@@ -16,9 +15,7 @@ export interface ModpackManifestEntry {
 }
 
 export interface ModpackManifest {
-  /** The client pack file; identity of the release. */
   fileId: number;
-  /** The server pack read alongside the client file, null when the release ships none. */
   serverPackFileId: number | null;
   displayName: string | null;
   version: string | null;
@@ -27,7 +24,6 @@ export interface ModpackManifest {
   publishedAt: string | null;
   entries: ModpackManifestEntry[];
   modIds: Set<number>;
-  /** Projects the manifest ships only as not-required entries, i.e. disabled in the pack. */
   disabledModIds: Set<number>;
 }
 
@@ -82,7 +78,6 @@ export function mergeManifestFiles<T extends { projectId: number }>(
   ];
 }
 
-/** One file of a modpack project as CurseForge describes it, server packs and additional files included. */
 export interface ModpackFile {
   id: number;
   projectId: number;
@@ -100,13 +95,11 @@ export interface ModpackFile {
   isServerPack: boolean;
 }
 
-/** A release the sandbox reported after publishing it: the client file and the server pack it uploaded. */
 export interface ModpackPublishHint {
   clientFileId: number;
   serverPackFileId: number | null;
 }
 
-/** What the database knows about a pack that shapes how its newest release is read. */
 export interface ModpackReadContext {
   shipsServerPack: boolean;
   publishes: ModpackPublishHint[];
@@ -115,7 +108,6 @@ export interface ModpackReadContext {
 export interface ModpackReleaseResolution {
   file: ModpackFile;
   serverPackFileId: number | null;
-  /** False when the pack ships a server pack and this read found none. */
   complete: boolean;
 }
 
@@ -188,7 +180,6 @@ export async function getLatestListedModpackFile(
   return latest ? toModpackFile(latest) : null;
 }
 
-// Lazy so this module stays importable without a database (unit tests, scripts)
 export async function loadModpackReadContext(
   packProjectId: number,
 ): Promise<ModpackReadContext> {

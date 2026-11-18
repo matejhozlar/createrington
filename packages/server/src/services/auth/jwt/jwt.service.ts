@@ -3,11 +3,6 @@ import type { AuthenticatedUser } from "@/services/discord/oauth/oauth.service";
 import jwt, { type SignOptions } from "jsonwebtoken";
 import { AuthRole, type JWTPayload } from "@createrington/shared/auth";
 
-/**
- * Audience claim for web session tokens. Mod-signed tokens carry
- * `createrington.mod` instead, so a mod token can never satisfy a web
- * auth check even though both use the same HS256 secret.
- */
 export const JWT_AUDIENCE_WEB = "createrington.web";
 
 /** Thrown when a token verifies cryptographically but the payload shape is wrong. */

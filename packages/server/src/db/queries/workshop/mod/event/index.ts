@@ -34,13 +34,6 @@ const SEARCH_JOINS = `
 const ROW_JOINS = `${SEARCH_JOINS}
   LEFT JOIN workshop_mod m ON m.id = e.workshop_mod_id`;
 
-/**
- * Custom queries for workshop_mod_event table
- *
- * Extends the auto-generated base class with custom methods.
- * This file is scaffolded once and never overwritten - add your custom
- * query methods here while inheriting all generated CRUD operations.
- */
 export class WorkshopModEventQueries extends WorkshopModEventBaseQueries {
   constructor(db: Pool | PoolClient) {
     super(db);

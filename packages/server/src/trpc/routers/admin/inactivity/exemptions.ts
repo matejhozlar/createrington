@@ -11,11 +11,6 @@ import {
 import { idToObject } from "@/app/utils/helpers";
 import { mcUuid } from "@/utils/zod-schemas";
 
-/**
- * Admin sub-router for inactivity exemptions. Players on the list are never
- * warned or removed by the inactivity sweep. Not gated to production: the
- * list is plain data and safe to manage on any deployment.
- */
 export const exemptionsRouter = router({
   list: adminProcedure
     .meta({

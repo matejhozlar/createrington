@@ -1,28 +1,9 @@
-/**
- * Database layer entry point
- *
- * Initializes the PostgreSQL connection pool and exposes:
- * - `db` -- DatabaseQueries instance with transaction support
- * - `Q` -- singleton query instances for direct table access
- * - `xRepo` -- named repository singletons for transactional business logic
- */
-
 import pg from "pg";
 import config from "@/config";
 import { DatabaseQueries, createQueryInstances } from "@/generated/db";
 import * as repositories from "./repositories";
 import { registerPgTypeParsers } from "./utils/pg-types";
 
-/**
- * PostgreSQL database pool instance using environment variables
- *
- * Environment variables used:
- * @env DB_USER - The PostgreSQL username
- * @env DB_HOST - The PostgreSQL host
- * @env DB_DATABASE - The name of the database
- * @env DB_PASSWORD - The database user's password
- * @env DB_PORT - The port PostgreSQL is running on
- */
 registerPgTypeParsers();
 
 const pool = new pg.Pool(config.database.pool);
@@ -35,24 +16,8 @@ try {
   process.exit(1);
 }
 
-/**
- * Primary database interface with transaction support
- *
- * @example
- * // Normal usage
- * await db.player.create({...});
- * await db.player.balance.findAll();
- *
- * @example
- * // Transactions
- * await db.inTransaction(async (tx) => {
- *  await tx.player.create({...});
- *  await tx.player.balance.create({...});
- * });
- */
 export const db = new DatabaseQueries(pool);
 
-/** Pre-built query instances sharing the pool -- use for non-transactional reads/writes */
 export const Q = createQueryInstances(pool);
 
 export const waitlistRepo = new repositories.WaitlistRepository();

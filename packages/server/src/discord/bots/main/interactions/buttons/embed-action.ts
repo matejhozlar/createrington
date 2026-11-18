@@ -2,17 +2,10 @@ import { Q } from "@/db";
 import { ChannelType, type ButtonInteraction, MessageFlags } from "discord.js";
 import type { EmbedActionButton } from "@createrington/shared/api/embed";
 
-/**
- * Handles embed action buttons (e.g. "Create Thread")
- * Pattern: embed-action:*
- *
- * Custom ID format: embed-action:<presetId>:<buttonIndex>
- */
 export const pattern = "embed-action:*";
 
-// Per-user cooldown: userId -> last click timestamp
 const cooldowns = new Map<string, number>();
-const COOLDOWN_MS = 10_000; // 10 seconds between thread creations per user
+const COOLDOWN_MS = 10_000;
 
 function parseCustomId(customId: string): {
   presetId: number;
@@ -79,7 +72,6 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
     return;
   }
 
-  // Rate limit per user
   const now = Date.now();
   const lastUsed = cooldowns.get(interaction.user.id);
   if (lastUsed && now - lastUsed < COOLDOWN_MS) {
@@ -127,7 +119,6 @@ async function handleCreateThread(
     const member = interaction.member as { displayName?: string } | null;
     const username = member?.displayName ?? interaction.user.displayName;
 
-    // Truncate to 100 chars (Discord thread name limit) after template substitution
     const threadName = applyTemplate(config.threadName, userId, username).slice(
       0,
       100,

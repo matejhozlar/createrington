@@ -41,10 +41,7 @@ export async function resolveProjectDependencies(
   if (workshop.baseModpackProjectId) {
     try {
       basePackIds = await getModpackModIds(workshop.baseModpackProjectId);
-    } catch {
-      // Without the manifest some base-pack deps get stored; the next
-      // sweep clears them
-    }
+    } catch {}
   }
 
   const allDepIds = [

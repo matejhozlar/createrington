@@ -2,13 +2,6 @@ import { BadRequestError, InternalServerError } from "@/app/middleware";
 import { getServerByIp, isValidServerId } from "@/services/playtime/config";
 import type { Request } from "express";
 
-/**
- * Resolves the originating Minecraft server id for a mod request. Requires a
- * verified server IP on the request. An explicit `serverId` in the request
- * body must name a configured server and, whenever the verified IP maps to a
- * configured server, must match it; otherwise the IP mapping alone decides.
- * `context` labels the warning logged when a request is rejected.
- */
 export function resolveServerId(req: Request, context: string): number {
   const serverIp = req.serverIp;
   if (!serverIp) {

@@ -23,7 +23,6 @@ import {
 } from "./client";
 
 export interface CurseForgePage {
-  /** Zero-based offset of the first result; CurseForge refuses `index + pageSize` above 10,000. */
   index: number;
   pageSize: number;
 }
@@ -48,7 +47,6 @@ export interface CurseForgeContentFile {
   fileName: string | null;
   fileDate: string | null;
   releaseType: number | null;
-  /** Null when the author opted out of third-party distribution. */
   downloadUrl: string | null;
   fileLength: number | null;
   sha1: string | null;
@@ -233,10 +231,6 @@ export async function getContentFiles(
   return files.map(toContentFile);
 }
 
-/**
- * Reads an endpoint that answers one piece of HTML, an empty text when
- * CurseForge holds none there. Null when CurseForge answers 404.
- */
 async function getHtml(path: string, endpoint: string): Promise<string | null> {
   const answer = await cfFetch(path);
   if (answer.status === 404) return null;

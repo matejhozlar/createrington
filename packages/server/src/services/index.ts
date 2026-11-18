@@ -6,18 +6,6 @@ import {
   type ServiceTypeMap,
 } from "./container";
 
-/**
- * Type-safe service accessors
- *
- * Usage:
- * ```ts
- * import { getService } from "@/services";
- *
- * const ticketService = await getService(Services.TICKET_SERVICE);
- * // ticketService is typed as TicketService automatically
- * ```
- */
-
 export { Services, ServiceState, container };
 export type { ServiceTypeMap };
 

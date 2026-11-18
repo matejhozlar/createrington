@@ -1,13 +1,6 @@
 import type { Pool, PoolClient } from "pg";
 import { WorkshopModUpvoteBaseQueries } from "@/generated/db/workshop_mod_upvote.queries";
 
-/**
- * Custom queries for workshop_mod_upvote table
- *
- * Extends the auto-generated base class with custom methods.
- * This file is scaffolded once and never overwritten - add your custom
- * query methods here while inheriting all generated CRUD operations.
- */
 export class WorkshopModUpvoteQueries extends WorkshopModUpvoteBaseQueries {
   constructor(db: Pool | PoolClient) {
     super(db);

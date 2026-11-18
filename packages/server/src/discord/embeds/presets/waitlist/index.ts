@@ -7,10 +7,6 @@ import type { WaitlistStatus } from "@createrington/shared/db";
 import { discordTimestamp } from "@/utils/format";
 
 export const WaitlistEmbedPresets = {
-  /**
-   * Admin notification for a new waitlist entry (informational only;
-   * promotion happens in the admin panel)
-   */
   queueNotification(data: {
     id: number;
     discordId: string;
@@ -37,9 +33,6 @@ export const WaitlistEmbedPresets = {
     return { embed, components: [linkRow] };
   },
 
-  /**
-   * Creates a progress embed for admins to see
-   */
   createProgressEmbed(
     entry: WaitlistEntry,
     discordUser?: User | null,

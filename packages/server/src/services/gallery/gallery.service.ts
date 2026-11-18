@@ -562,8 +562,6 @@ export class GalleryService {
       });
     } catch (error) {
       const translated = translateDbError(error);
-      // A unique violation means a concurrent delivery of the same message
-      // already owns this file, so deleting it would strand that row.
       if (!(translated instanceof UniqueViolationError)) {
         await this.removeOriginal(originalPath);
       }

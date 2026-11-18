@@ -9,7 +9,6 @@ export interface CurseForgeFileDetail {
   fileDate: string | null;
   releaseType: number | null;
   gameId: number | null;
-  /** Null when the author opted out of third-party distribution. */
   downloadUrl: string | null;
   fileLength: number | null;
   sha1: string | null;

@@ -173,9 +173,6 @@ export class PlaytimeRepository {
         lastPlayTicks: event.playTimeTicks ?? null,
       };
 
-      // The unique partial index on (uuid, server_id) WHERE session_end IS NULL
-      // means a concurrent join from the same player can lose the close-then-
-      // insert race here. Retry once after closing orphans again.
       let session;
       try {
         session = await Q.player.session.createAndReturn(row);
@@ -205,9 +202,7 @@ export class PlaytimeRepository {
           if (entry && !entry.joinedMinecraft) {
             await waitlistRepo.markJoinedMinecraft(player.discordId);
           }
-        } catch {
-          // No waitlist entry for this player; skip
-        }
+        } catch {}
       }
 
       logger.info(

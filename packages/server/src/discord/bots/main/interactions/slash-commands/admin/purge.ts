@@ -7,10 +7,6 @@ import {
   SlashCommandBuilder,
 } from "discord.js";
 
-/**
- * Slash command definition for the purge command
- * Admin utility command to bulk purge recent messages from a channel
- */
 export const data = new SlashCommandBuilder()
   .setName("purge")
   .setDescription("Purge up to 100 recent messages")
@@ -30,20 +26,10 @@ export const data = new SlashCommandBuilder()
       .setRequired(false),
   );
 
-/**
- * Permission configuration for the purge command
- * Requires admin privileges to execute
- */
 export const permissions = {
   requireAdmin: true,
 };
 
-/**
- * Executes the purge command to bulk delete messages from a channel
- *
- * @param interaction - The chat input command interaction
- * @returns Promise resolving when the command execution is completed
- */
 export async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {

@@ -9,10 +9,6 @@ import {
   SlashCommandBuilder,
 } from "discord.js";
 
-/**
- * Slash command definition for the pay command
- * Allows users to transfer money to other registered users
- */
 export const data = new SlashCommandBuilder()
   .setName("pay")
   .setDescription("Send money to another player")
@@ -37,35 +33,12 @@ export const data = new SlashCommandBuilder()
       .setMaxLength(200),
   );
 
-/**
- * Cooldown configuration for the pay command
- *
- * - duration: 3 seconds
- * - type: "user" - Each user has their own cooldown
- * - message: Custom message shown when the user is on cooldown
- */
 export const cooldown = {
   duration: 3,
   type: CooldownType.USER,
   message: "Please wait before sending money again!",
 };
 
-/**
- * Executes the pay command to transfer money between users
- *
- * Process:
- * 1. Extract the sender's Discord user ID from the interaction
- * 2. Extract the recipient user and amount from command options
- * 3. Validate that sender and recipient are different users
- * 4. Validate that both users are registered in the system
- * 5. Check if sender has sufficient balance
- * 6. Execute the transfer using the balance repository
- * 7. Display success message with transaction details
- * 8. Handle and report any errors that occur during the process
- *
- * @param interaction - The chat input command interaction
- * @returns Promise resolving when the command execution is completed
- */
 export async function execute(interaction: ChatInputCommandInteraction) {
   const sender = interaction.user;
   const recipient = interaction.options.getUser("recipient", true);

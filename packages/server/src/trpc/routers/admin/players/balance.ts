@@ -10,7 +10,6 @@ const MAX_ADJUSTMENT = 1_000_000_000;
 const hasAtMostCents = (value: number) =>
   Math.abs(value * 100 - Math.round(value * 100)) < 1e-6;
 
-/** Admin balance router: view balance info, adjust individual or bulk balances. */
 export const balanceRouter = router({
   get: adminProcedure
     .meta({

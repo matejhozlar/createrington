@@ -1,6 +1,3 @@
-/**
- * Base error class for database-related errors
- */
 export class DatabaseError extends Error {
   constructor(
     message: string,
@@ -15,9 +12,6 @@ export class DatabaseError extends Error {
   }
 }
 
-/**
- * Error thrown when a database entry is not found
- */
 export class NotFoundError extends DatabaseError {
   constructor(
     public readonly entityName: string,
@@ -29,14 +23,8 @@ export class NotFoundError extends DatabaseError {
   }
 }
 
-/**
- * Error thrown when a database constraint is violated.
- * Subclasses identify the kind of constraint; catch this class to handle any of them.
- */
 export class ConstraintViolationError extends DatabaseError {
-  /** Postgres error code copied from the cause, so duck-typed `code === "23505"` checks keep working */
   public readonly code?: string;
-  /** Column named by the cause, set for NOT NULL violations */
   public readonly column?: string;
 
   constructor(
@@ -55,7 +43,6 @@ export class ConstraintViolationError extends DatabaseError {
   }
 }
 
-/** Unique index or primary key violation (pg 23505) */
 export class UniqueViolationError extends ConstraintViolationError {
   constructor(message: string, constraint?: string, cause?: unknown) {
     super(message, constraint, cause);
@@ -63,7 +50,6 @@ export class UniqueViolationError extends ConstraintViolationError {
   }
 }
 
-/** Foreign key violation (pg 23503), on insert, update, or delete */
 export class ForeignKeyViolationError extends ConstraintViolationError {
   constructor(message: string, constraint?: string, cause?: unknown) {
     super(message, constraint, cause);
@@ -71,7 +57,6 @@ export class ForeignKeyViolationError extends ConstraintViolationError {
   }
 }
 
-/** NOT NULL violation (pg 23502); the offending column is in `column` */
 export class NotNullViolationError extends ConstraintViolationError {
   constructor(message: string, constraint?: string, cause?: unknown) {
     super(message, constraint, cause);
@@ -79,7 +64,6 @@ export class NotNullViolationError extends ConstraintViolationError {
   }
 }
 
-/** CHECK constraint violation (pg 23514) */
 export class CheckViolationError extends ConstraintViolationError {
   constructor(message: string, constraint?: string, cause?: unknown) {
     super(message, constraint, cause);
@@ -100,10 +84,6 @@ const VIOLATION_CLASSES = new Map<string, ViolationClass>([
   ["23514", CheckViolationError],
 ]);
 
-/**
- * Wraps pg constraint errors (unique, foreign key, not null, check) in the
- * matching ConstraintViolationError subclass; returns every other error unchanged.
- */
 export function translateDbError(error: unknown): unknown {
   if (typeof error !== "object" || error === null || !("code" in error)) {
     return error;
@@ -118,9 +98,6 @@ export function translateDbError(error: unknown): unknown {
   );
 }
 
-/**
- * Error thrown when a database query fails
- */
 export class QueryError extends DatabaseError {
   constructor(
     message: string,
@@ -132,9 +109,6 @@ export class QueryError extends DatabaseError {
   }
 }
 
-/**
- * Formats criteria object into readable string for error messages
- */
 function formatCriteria(criteria: Record<string, unknown>): string {
   return Object.entries(criteria)
     .map(([k, v]) => `${k}: ${v}`)

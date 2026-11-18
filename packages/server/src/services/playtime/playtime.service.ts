@@ -18,8 +18,6 @@ import {
   MessageSource,
 } from "../discord/message/cache";
 
-// Minecraft's placeholder UUID, emitted by fakeplayers / CommandBlocks.
-// Never belongs in session tracking: rejected at every ingress point below.
 const NIL_UUID = "00000000-0000-0000-0000-000000000000";
 
 const DEFAULT_STALE_AFTER_MS = 15 * 60 * 1000;

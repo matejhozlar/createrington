@@ -16,11 +16,8 @@ export type PlayerIdentifier =
   | string;
 
 export interface BalanceMutationOptions {
-  /** Free-form context stored on the ledger row. */
   metadata?: Record<string, unknown>;
-  /** Client-generated request key, persisted on the ledger row for reconciliation. */
   idempotencyKey?: string;
-  /** Join an existing outer transaction instead of starting a new one. */
   tx?: DatabaseQueries;
 }
 
@@ -618,8 +615,6 @@ export class BalanceRepository {
       {
         limit,
         offset,
-        // Order by the serial id, not created_at: it is the insertion order and
-        // is unique, so rows written in the same tick still sort deterministically.
         orderBy: DatabaseTable.PLAYER_BALANCE_TRANSACTION.CAMEL_FIELDS.ID,
         orderDirection: "desc",
       },

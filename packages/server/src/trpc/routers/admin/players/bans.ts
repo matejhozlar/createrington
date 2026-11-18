@@ -53,7 +53,6 @@ async function recordWithInGame<T>(
   }
 }
 
-/** Admin bans router: issue temporary/permanent bans, unban, and list recent bans. */
 export const bansRouter = router({
   list: adminProcedure
     .meta({

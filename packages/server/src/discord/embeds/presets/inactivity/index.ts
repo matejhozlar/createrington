@@ -9,10 +9,6 @@ export interface InactivePlayerInfo {
 }
 
 export const InactivityEmbedPresets = {
-  /**
-   * Warning embed sent to announcements when inactive players are detected.
-   * Lists all warned players with their Discord mentions and last-seen timestamps.
-   */
   warning(data: { players: InactivePlayerInfo[]; deadlineDate: Date }) {
     const playerLines = data.players.map((p) => {
       return `- <@${p.discordId}> (\`${p.minecraftUsername}\`) - last seen ${discordTimestamp(p.lastSeen, "R")}`;
@@ -24,7 +20,6 @@ export const InactivityEmbedPresets = {
       ...playerLines,
     ].join("\n");
 
-    // Discord embed description limit is 4096 characters
     const truncatedDescription =
       description.length > 4096
         ? `${description.slice(0, 4050)}\n\n...and ${data.players.length} players total`
@@ -38,12 +33,6 @@ export const InactivityEmbedPresets = {
       .timestamp();
   },
 
-  /**
-   * Admin-facing embed posted to #admin-notifications after an inactivity
-   * removal run. Mirrors the public `removed` embed's player list but
-   * additionally names who triggered the run (admin mention or
-   * "Automated" for the scheduled cycle / startup sweep).
-   */
   adminRemoval(data: {
     players: string[];
     triggeredBy: { discordId: string; username: string | null } | null;
@@ -76,9 +65,6 @@ export const InactivityEmbedPresets = {
       .timestamp();
   },
 
-  /**
-   * Announcement embed when inactive players are removed after their grace period expired.
-   */
   removed(data: { players: string[]; removedAt: Date }) {
     const playerLines = data.players
       .map((username) => `- \`${username}\``)

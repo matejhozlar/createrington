@@ -3,20 +3,7 @@ import config from "@/config";
 import { getService } from "@/services";
 import { Services } from "@/services/container";
 
-/**
- * Donation controller
- *
- * Handles inbound Stripe webhook events.
- * The raw request body must be preserved as a Buffer so Stripe can verify
- * the signature, do NOT use express.json() middleware on this route.
- */
 export class DonationController {
-  /**
-   * POST /api/donations/webhook
-   *
-   * Stripe sends signed webhook events here.
-   * Verifies the signature, then delegates to DonationService.
-   */
   static async handleWebhook(req: Request, res: Response): Promise<void> {
     if (!config.stripe.enabled) {
       res.status(503).json({ error: "Donation service not configured" });

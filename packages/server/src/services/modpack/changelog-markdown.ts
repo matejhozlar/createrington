@@ -28,13 +28,11 @@ const DATE_FORMAT = new Intl.DateTimeFormat("en-GB", {
 
 export interface ChangelogMarkdownSection {
   changelog: ChangelogInput;
-  /** Absolute URL the section's entry rows are served under, as `<url>/<projectId>.png` */
   rowImageBaseUrl: string;
 }
 
 export interface ChangelogMarkdownInput {
   latest: ChangelogMarkdownSection;
-  /** The player's release, only when it is older than the newest one */
   installed: ChangelogMarkdownSection | null;
 }
 

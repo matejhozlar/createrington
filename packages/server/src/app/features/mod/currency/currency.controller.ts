@@ -17,9 +17,6 @@ import {
 } from "./currency.idempotency";
 import { formatMoney } from "@createrington/shared/format";
 
-// Upper bound for any single mod-side money input. Below Number.MAX_SAFE_INTEGER
-// (~9e15) and below BalanceUtils.MAX_BALANCE (~9.2e15) by enough margin that
-// downstream amount * 1000 storage conversion can't lose precision or overflow.
 const MAX_MOD_AMOUNT = 1_000_000_000_000;
 const MAX_REASON_LENGTH = 200;
 
@@ -54,20 +51,7 @@ function parseReason(value: unknown): string | undefined {
   return value;
 }
 
-/**
- * Currency Controller
- *
- * Handles in-game economy operations from the Minecraft mod:
- * balance checks, payments, deposits, withdrawals, daily rewards, leaderboard
- *
- * All responses use the standard envelope: { success, message, playerMessage?, data? }
- */
 export class CurrencyController {
-  /**
-   * GET /api/currency/balance
-   *
-   * Returns the player's current balance.
-   */
   static async getBalance(req: Request, res: Response): Promise<void> {
     const { uuid, name } = getAuthedPlayer(req);
 
@@ -80,14 +64,6 @@ export class CurrencyController {
     });
   }
 
-  /**
-   * POST /api/currency/pay
-   * Body: { toUuid: string, amount: number }
-   *
-   * Transfers currency from the authenticated player to `toUuid`. The sender
-   * is always the JWT subject, any `fromUuid` in the body is ignored so a
-   * caller cannot transfer from an account they don't own.
-   */
   static async pay(req: Request, res: Response): Promise<void> {
     const { toUuid: rawToUuid, amount: rawAmount } = req.body as {
       toUuid?: unknown;
@@ -137,14 +113,6 @@ export class CurrencyController {
     }
   }
 
-  /**
-   * POST /api/currency/deposit
-   * Body: { amount: number, reason?: string, idempotencyKey?: string }
-   *
-   * Adds currency to the authenticated player's balance. With an
-   * idempotencyKey, a replay of the same request returns the stored response
-   * without crediting again.
-   */
   static async deposit(req: Request, res: Response): Promise<void> {
     const { uuid, name } = getAuthedPlayer(req);
     const {
@@ -207,14 +175,6 @@ export class CurrencyController {
     sendOutcome(res, outcome);
   }
 
-  /**
-   * POST /api/currency/withdraw
-   * Body: { denomination: number, count: number, idempotencyKey?: string }
-   *
-   * Withdraws currency from the authenticated player's balance.
-   * Total withdrawn = denomination * count. With an idempotencyKey, a replay
-   * of the same request returns the stored response without debiting again.
-   */
   static async withdraw(req: Request, res: Response): Promise<void> {
     const { uuid, name } = getAuthedPlayer(req);
     const {
@@ -297,11 +257,6 @@ export class CurrencyController {
     sendOutcome(res, outcome);
   }
 
-  /**
-   * GET /api/currency/top
-   *
-   * Returns top 10 players by balance.
-   */
   static async getTop(_req: Request, res: Response): Promise<void> {
     const top = await Q.player.balance.getTop(10);
 
@@ -311,11 +266,6 @@ export class CurrencyController {
     });
   }
 
-  /**
-   * POST /api/currency/daily
-   *
-   * Claims the daily reward for the authenticated player.
-   */
   static async claimDaily(req: Request, res: Response): Promise<void> {
     const { uuid, name } = getAuthedPlayer(req);
 
@@ -340,11 +290,6 @@ export class CurrencyController {
     });
   }
 
-  /**
-   * GET /api/currency/history?page=1
-   *
-   * Returns paginated transaction history for the authenticated player.
-   */
   static async getHistory(req: Request, res: Response): Promise<void> {
     const { uuid, name } = getAuthedPlayer(req);
     const page = Math.max(1, parseInt(req.query.page as string) || 1);

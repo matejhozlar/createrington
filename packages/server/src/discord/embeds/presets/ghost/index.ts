@@ -3,11 +3,6 @@ import { createEmbed } from "../../embed-builder";
 import { discordTimestamp } from "@/utils/format";
 
 export const GhostEmbedPresets = {
-  /**
-   * Admin-facing embed posted to #admin-notifications after a ghost-member
-   * removal. Mirrors the inactivity admin-removal embed: target username,
-   * removal timestamp, and who triggered the action.
-   */
   adminRemoval(data: {
     target: { discordId: string; minecraftUsername: string };
     triggeredBy: { discordId: string; username: string | null };

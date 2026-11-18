@@ -24,9 +24,6 @@ export function createRateLimit(opts: RateLimitOptions) {
 
     bucket.count++;
 
-    // Prune before the limit check so cleanup happens on every request,
-    // not just non-rate-limited ones. Without this, a sustained attack
-    // from many unique IPs would never trigger pruning.
     if (buckets.size > opts.limit * 4) {
       for (const [k, b] of buckets) {
         if (b.resetAt <= now) {

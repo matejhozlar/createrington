@@ -16,26 +16,7 @@ import { resolveServerId } from "../shared/resolve-server-id";
 import type { Request, Response } from "express";
 import type { HeartbeatBody, PresenceBody } from "./presence.schemas";
 
-/**
- * Presence Controller
- *
- * Handles Minecraft player join/leave events reported by the presenceAPI mod:
- * - Validates and parses incoming presence payloads
- * - Resolves the originating server by IP or explicit serverId
- * - Delegates session tracking to the appropriate PlaytimeService instance
- */
 export class PresenceController {
-  /**
-   * Records a player join or leave event from a Minecraft server.
-   *
-   * Resolves the target server from either the `serverId` field in the request
-   * body or the verified server IP attached by the middleware. Dispatches to the
-   * correct PlaytimeService instance and responds with the echoed event details.
-   *
-   * @param req - Express request containing presence payload in the body
-   * @param res - Express response
-   * @returns Promise that resolves when the event has been processed
-   */
   static async updatePresence(req: Request, res: Response): Promise<void> {
     const { body } = getValidated<{ body: PresenceBody }>(res);
     const { minecraftUsername, uuid, state, timestamp, playTimeTicks } = body;
@@ -115,13 +96,6 @@ export class PresenceController {
     }
   }
 
-  /**
-   * Receives a heartbeat from the mod containing the full online player list.
-   * Reconciles tracked sessions against reality to clean up stale sessions.
-   *
-   * @param req - Express request with heartbeat payload
-   * @param res - Express response
-   */
   static async heartbeat(req: Request, res: Response): Promise<void> {
     if (req.modAuth?.uuid) {
       logger.warn(

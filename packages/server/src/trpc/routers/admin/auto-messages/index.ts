@@ -18,7 +18,6 @@ const followupInputSchema = z.object({
   enabled: z.boolean().default(true),
 });
 
-/** Helper to log auto-message admin actions */
 async function logAutoMessageAction(
   ctx: { user: { discordId: string; minecraftUsername: string } },
   actionType: string,
@@ -33,7 +32,6 @@ async function logAutoMessageAction(
   });
 }
 
-/** Admin auto-messages router: channel listing, config CRUD, and message management (add/update/delete/reorder). */
 export const autoMessagesRouter = router({
   channels: adminProcedure
     .meta({ description: "Get all text channels grouped by category" })

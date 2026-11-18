@@ -40,11 +40,7 @@ export class WebSocketDataProvider {
     return statuses;
   }
 
-  /**
-   * Get current status for a specific server
-   *
-   * @param serverId - Server ID
-   */
+  /** Get current status for a specific server */
   getServerStatus(serverId: number): ServerStatus {
     const config = MINECRAFT_SERVERS[serverId];
     if (!config) {
@@ -93,11 +89,7 @@ export class WebSocketDataProvider {
     return players;
   }
 
-  /**
-   * Get online players for a specific server
-   *
-   * @param serverId - Server ID
-   */
+  /** Get online players for a specific server */
   getServerPlayers(serverId: number): PlayerData[] {
     const playtimeService = this.playtimeManagerService.getService(serverId);
 
@@ -116,11 +108,7 @@ export class WebSocketDataProvider {
     }));
   }
 
-  /**
-   * Get recent messages for all servers
-   *
-   * @param limit - Maximum messages per server
-   */
+  /** Get recent messages for all servers */
   getAllMessages(limit: number = 50): Record<number, CachedMessage[]> {
     const messages: Record<number, CachedMessage[]> = {};
 
@@ -133,22 +121,12 @@ export class WebSocketDataProvider {
     return messages;
   }
 
-  /**
-   * Get recent messages for a specific server
-   *
-   * @param serverId - Server ID
-   * @param limit - Maximum messages to return
-   */
+  /** Get recent messages for a specific server */
   getServerMessages(serverId: number, limit: number = 50): CachedMessage[] {
     return this.messageCacheService.getRecentMessages(serverId, limit);
   }
 
-  /**
-   * Get complete initial data for all servers
-   *
-   * @param includeMessages - Whether to include message history
-   * @param messageLimit - Maximum messages per server
-   */
+  /** Get complete initial data for all servers */
   getInitialData(
     includeMessages: boolean = true,
     messageLimit: number = 50,
@@ -165,13 +143,7 @@ export class WebSocketDataProvider {
     };
   }
 
-  /**
-   * Get initial data for a specific server
-   *
-   * @param serverId - Server ID
-   * @param includeMessages - Whether to include message history
-   * @param messageLimit - Maximum messages to return
-   */
+  /** Get initial data for a specific server */
   getServerInitialData(
     serverId: number,
     includeMessages: boolean = true,

@@ -63,7 +63,6 @@ import { VoteIntake, VoteRewardService, VotifierService } from "./votifier";
  */
 export function registerServices(): void {
   container.register(Services.DATABASE, async () => {
-    // Database pool is already initialized, just verify connection
     logger.debug("Verifying database connection...");
     await pool.query("SELECT 1");
     return pool;
@@ -228,7 +227,6 @@ export function registerServices(): void {
     { dependencies: [Services.DISCORD_MAIN_BOT, Services.DATABASE] },
   );
 
-  // Production-only: never run on local dev or the dev deployment.
   if (config.envMode.isProductionDeployment) {
     container.register(
       Services.INACTIVITY_CLEANUP_SERVICE,
@@ -586,7 +584,6 @@ export function registerServices(): void {
 }
 
 async function wireReadyService(serviceName: string): Promise<void> {
-  // Wire message cache into playtime manager for server shutdown detection
   if (serviceName === Services.MESSAGE_CACHE) {
     const playtimeManager = await container.get(
       Services.PLAYTIME_MANAGER_SERVICE,
@@ -596,7 +593,6 @@ async function wireReadyService(serviceName: string): Promise<void> {
     playtimeManager.setupMessageCacheIntegration(messageCache);
   }
 
-  // Wire real-time role checks to playtime events on each server
   if (serviceName === Services.PLAYTIME_MANAGER_SERVICE) {
     const playtimeManager = await container.get(
       Services.PLAYTIME_MANAGER_SERVICE,
@@ -618,8 +614,6 @@ async function wireReadyService(serviceName: string): Promise<void> {
  * Calls `registerServices()` to populate the container, then triggers
  * parallel initialisation of all non-lazy services. Logs a summary of
  * ready vs total services on completion.
- *
- * @returns Promise that resolves once all services have settled
  */
 export async function initializeServices(): Promise<void> {
   logger.info("Starting service initialization...");
@@ -649,8 +643,6 @@ export async function initializeServices(): Promise<void> {
  *
  * Delegates to `container.shutdown()`, which calls each service's `shutdown()`
  * method where available and clears the registry.
- *
- * @returns Promise that resolves once all shutdown hooks have settled
  */
 export async function shutdownServices(): Promise<void> {
   await container.shutdown();

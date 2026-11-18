@@ -116,14 +116,6 @@ function flattenClaims(
   return [...rows.values()];
 }
 
-/**
- * Stores the claim snapshot core sent for a server. Snapshot writes of a
- * server are serialized with an advisory lock, so overlapping sends apply
- * one after the other. A snapshot whose hash equals the last stored one only
- * moves synced_at; otherwise the server's chunk rows are replaced and the
- * new hash stored, all in one transaction. Returns the chunk count now
- * stored and whether the rows changed.
- */
 export async function replacePartyClaims(
   payload: PartyClaimsPayload,
 ): Promise<PartyClaimsResult> {
@@ -177,15 +169,6 @@ function uniqueByUuid<T extends { uuid: string }>(entries: T[]): T[] {
   });
 }
 
-/**
- * Replaces the stored party state of a server with the snapshot core sent.
- *
- * Parties are upserted by (server, team) so their ids and first_seen_at
- * survive syncs while synced_at moves to the current sync, parties missing
- * from the snapshot are deleted (members and allies cascade), then every
- * party's member and ally sets are rewritten. All of it runs in one
- * transaction.
- */
 export async function replacePartyState(
   payload: PartySyncPayload,
 ): Promise<void> {

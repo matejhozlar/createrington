@@ -12,13 +12,6 @@ export interface WorkshopDependencyGroup {
   optionalByCount: number;
 }
 
-/**
- * Custom queries for workshop_project_dependency table
- *
- * Extends the auto-generated base class with custom methods.
- * This file is scaffolded once and never overwritten - add your custom
- * query methods here while inheriting all generated CRUD operations.
- */
 export class WorkshopProjectDependencyQueries extends WorkshopProjectDependencyBaseQueries {
   constructor(db: Pool | PoolClient) {
     super(db);

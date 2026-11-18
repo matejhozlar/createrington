@@ -5,7 +5,6 @@ import { getService, Services } from "@/services";
 import config from "@/config";
 import { paginateQuery, paginationInput } from "@/trpc/utils";
 
-/** Owner donations router: paginated list and aggregate stats. */
 export const ownerDonationsRouter = router({
   stats: ownerProcedure
     .meta({

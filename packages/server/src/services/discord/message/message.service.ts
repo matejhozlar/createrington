@@ -67,7 +67,6 @@ export class DiscordMessageService {
         };
       }
 
-      // Default `{ parse: [] }`: arbitrary content cannot trigger @everyone / role / user pings unless the caller opts in.
       const messageOptions: MessageCreateOptions = {
         content: options.content,
         embeds: options.embeds ? [options.embeds] : undefined,
@@ -122,8 +121,6 @@ export class DiscordMessageService {
         };
       }
 
-      // null → explicit clear ([] for arrays, null passes through for content);
-      // undefined → omit from edit payload so Discord.js keeps existing value
       const editOptions: MessageEditOptions = {
         content: options.content,
         embeds:

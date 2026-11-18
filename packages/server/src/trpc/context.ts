@@ -5,10 +5,8 @@ import type { JWTPayload } from "@createrington/shared/auth";
 import { extractBearerToken } from "@/utils/bearer-token";
 import { timingSafeEqualStrings } from "@/utils/timing-safe-equal";
 
-/** Per-request context injected into every tRPC procedure. */
 export interface Context {
   user: JWTPayload | null;
-  /** Set when the bearer token is a consumer's service secret instead of a user JWT. */
   service: "sandbox" | null;
   ip: string;
 }
@@ -18,15 +16,6 @@ function isSandboxServiceToken(token: string): boolean {
   return expected !== null && timingSafeEqualStrings(token, expected);
 }
 
-/**
- * Creates the tRPC context from an Express request.
- *
- * Accepts only `Authorization: Bearer <jwt>`: the `crt_access` cookie path
- * used by the Express `authenticate` middleware is intentionally NOT honored
- * here. tRPC is hit cross-origin by other apps (panel server-to-server),
- * so adding cookie auth would need a matching CSRF guard (see
- * `requireTrustedOrigin` in auth.middleware) before it's safe.
- */
 export function createContext({ req }: CreateExpressContextOptions): Context {
   const token = extractBearerToken(req);
 
@@ -38,9 +27,7 @@ export function createContext({ req }: CreateExpressContextOptions): Context {
   } else if (token) {
     try {
       user = jwtService.verify(token);
-    } catch {
-      // Invalid/expired token, treat as unauthenticated
-    }
+    } catch {}
   }
 
   return { user, service, ip: req.ip ?? "" };

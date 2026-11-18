@@ -8,37 +8,14 @@ import { RoleManager } from "@/discord/utils/roles/role-manager";
 import { EmbedPresets } from "@/discord/embeds";
 import { replyError } from "@/discord/utils/interaction-reply";
 
-/**
- * Handles server selection buttons
- * Pattern: server-select:*
- */
 export const pattern = "server-select:*";
 
-/**
- * Parses the server selection button customId (format: server-select:serverId)
- *
- * @param customId - The button's customId string
- * @returns Parsed server ID, or null if invalid
- * @private
- */
 function parseCustomId(customId: string): { serverId: string } | null {
   const [, serverId] = customId.split(":");
   if (!serverId) return null;
   return { serverId };
 }
 
-/**
- * Main execution handler for server selection button interactions
- *
- * Workflow:
- * 1. Parse server ID from button customId
- * 2. Get server configuration
- * 3. Check if user already has the role
- * 4. Toggle role (add if missing, remove if present)
- * 5. Send confirmation message
- *
- * @param interaction - The button interaction to handle
- */
 export async function execute(interaction: ButtonInteraction): Promise<void> {
   const parsed = parseCustomId(interaction.customId);
 

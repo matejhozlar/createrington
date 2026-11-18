@@ -112,8 +112,6 @@ export class WorkshopReviewService {
       );
     }
 
-    // Keyed on the action, not the target: send_back from next_update also
-    // lands on testing and must stay open as an escape hatch
     if (action === "start_testing") {
       await this.assertNoRuledOutRequiredDependency(workshop, mod);
     }
@@ -171,8 +169,6 @@ export class WorkshopReviewService {
     });
     void announceReview(updated, target);
     if (target === "rejected") await pruneStaleDependencyEdges(workshop);
-    // Rejecting pruned this mod's own edges; un-rejecting has to bring them
-    // back itself, since the daily sweep skips closed workshops
     if (mod.status === "rejected" && target !== "rejected") {
       void tryResolveProjectDependencies(workshop, [updated]);
     }
@@ -187,8 +183,6 @@ export class WorkshopReviewService {
       workshopId: workshop.id,
       curseforgeProjectId: mod.curseforgeProjectId,
     });
-    // An empty cache can mean resolution silently failed, so re-resolve
-    // before trusting it; mods without a chosen file have nothing to resolve
     if (edges.length === 0 && mod.fileId !== null) {
       try {
         await resolveProjectDependencies(workshop, [mod]);

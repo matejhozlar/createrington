@@ -26,9 +26,7 @@ export interface MessageCacheEvents {
   messageUpdate: (serverId: number, message: CachedMessage) => void;
   messageDelete: (serverId: number, messageId: string) => void;
   cacheReady: () => void;
-  /** Emitted when a "server started" embed is detected from the relay bot. */
   serverStarted: (serverId: number) => void;
-  /** Emitted when a "server closed" embed is detected from the relay bot. */
   serverClosed: (serverId: number) => void;
 }
 
@@ -458,17 +456,14 @@ export class MessageCacheService extends (EventEmitter as new () => TypedEventEm
   }
 
   private resolveMentions(text: string): string {
-    // User mentions: <@123456> or <@!123456>
     text = text.replace(/<@!?(\d+)>/g, (match, id: string) => {
       const name = this.userMap.get(id);
       return name ? `@${name}` : match;
     });
-    // Role mentions: <@&123456>
     text = text.replace(/<@&(\d+)>/g, (match, id: string) => {
       const name = this.roleMap.get(id);
       return name ? `@${name}` : match;
     });
-    // Channel mentions: <#123456> → markdown link to Discord channel
     const guildId = config.discord.guild.id;
     text = text.replace(/<#(\d+)>/g, (match, id: string) => {
       const name = this.channelMap.get(id);

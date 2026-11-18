@@ -66,7 +66,6 @@ export interface LauncherUpdate {
   pub_date: string;
   url: string;
   signature: string;
-  /** True when the launcher that asked is older than a released version marked as required. */
   required: boolean;
 }
 

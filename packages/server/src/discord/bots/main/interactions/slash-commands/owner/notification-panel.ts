@@ -12,10 +12,6 @@ import {
 } from "discord.js";
 import { getEnabledNotifications } from "../../../config/notification-selection";
 
-/**
- * Slash command definition for the notification-panel command
- * Admin-only command to create or update the notification selection panel
- */
 export const data = new SlashCommandBuilder()
   .setName("notification-panel")
   .setDescription("Create or update the notification selection panel")
@@ -29,25 +25,10 @@ export const data = new SlashCommandBuilder()
       .setRequired(false),
   );
 
-/**
- * Permission configuration for the notification-panel command
- * Requires owner privileges to execute
- */
 export const permissions = {
   requireOwner: true,
 };
 
-/**
- * Executes the notification-panel command to create a notification selection panel
- *
- * Process:
- * 1. Validates that command is used in a sendable text channel
- * 2. Gets all enabled notifications from configuration
- * 3. Creates an embed with notification information
- * 4. Generates buttons for each enabled notification
- * 5. Sends the panel to the channel
- * 6. Sends ephemeral confirmation to the admin
- */
 export async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {

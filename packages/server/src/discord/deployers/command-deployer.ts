@@ -14,22 +14,11 @@ const BOT_TOKEN = config.discord.bots.main.token;
 const BOT_ID = config.discord.bots.main.id;
 const GUILD_ID = config.discord.guild.id;
 
-/**
- * Discord REST API client configured with bot token
- */
 const rest = new REST({ version: "10" }).setToken(BOT_TOKEN);
 
-/**
- * Recursively collects all command files from a directory tree
- *
- * @param dir - The directory path to scan
- * @returns Array of absolute file paths to command files
- * @private
- */
 function collectCommandFiles(dir: string): string[] {
   if (!fs.existsSync(dir)) return [];
 
-  // Always scan .ts files: this script runs via tsx even in CI
   const ext = ".ts";
   const files: string[] = [];
 
@@ -45,14 +34,6 @@ function collectCommandFiles(dir: string): string[] {
   return files;
 }
 
-/**
- * Dynamically loads command data from slash command files
- *
- * Scans the slash-commands directory and its subdirectories, extracts the
- * `data` export from each command module for deployment
- *
- * @returns Promise resolving to an array of command JSON data
- */
 async function loadCommandData(): Promise<
   RESTPostAPIApplicationCommandsJSONBody[]
 > {
@@ -102,14 +83,6 @@ async function loadCommandData(): Promise<
   return commands;
 }
 
-/**
- * Registers all defined slash commands to the configured guild
- *
- * This function submits the commands array to Discord's API, replacing
- * any existing guild commands. Registration is guild-specific
- *
- * @returns Promise resolving when registration is completed
- */
 export async function registerCommands(): Promise<void> {
   try {
     logger.info("Loading command definitions...");

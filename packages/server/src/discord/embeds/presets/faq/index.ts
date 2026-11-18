@@ -2,9 +2,7 @@ import { createEmbed } from "@/discord/embeds/embed-builder";
 import { EmbedColors } from "@/discord/embeds/colors";
 import { Discord } from "@/discord/constants";
 
-/** Embed presets for the FAQ channel (welcome header and auto-response answers) */
 export const FaqEmbedPresets = {
-  /** Pinned welcome embed with useful channel links for the questions channel */
   welcomeMessage() {
     const ch = Discord.Channels;
     const m = ch.mention.bind(ch);
@@ -27,7 +25,6 @@ export const FaqEmbedPresets = {
       .color(EmbedColors.Info);
   },
 
-  /** Auto-response embed shown when a user's question matches a known FAQ entry */
   faqReply(title: string, response: string) {
     return createEmbed()
       .title(title)

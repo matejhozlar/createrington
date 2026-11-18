@@ -13,13 +13,10 @@ import { ComponentColors } from "../../colors";
 import type { TopLevelComponent } from "../../component-builder";
 import { discordTimestamp } from "@/utils/format";
 
-/** Custom ID of the button that puts the member in the waitlist queue */
 export const WAITLIST_JOIN_BUTTON_ID = "waitlist:join";
 
-/** Custom ID of the button that re-renders the member's queue position */
 export const WAITLIST_REFRESH_BUTTON_ID = "waitlist:refresh";
 
-/** Custom ID of the button that removes the member from the queue */
 export const WAITLIST_LEAVE_BUTTON_ID = "waitlist:leave";
 
 export interface WaitlistMessage {
@@ -56,15 +53,7 @@ function websiteButton(): ButtonBuilder {
     .setURL(config.meta.links.website);
 }
 
-/**
- * Components V2 renderings of the waitlist flow inside a member's
- * verification channel while the server is at capacity: the join offer, the
- * live waiting card with queue position (refreshed on demand), and the
- * left-the-queue card. Every method returns the top-level components plus
- * the `IS_COMPONENTS_V2` flag.
- */
 export const WaitlistComponentPresets = {
-  /** The at-capacity welcome card offering a spot in the queue. */
   queueOffer(params: { memberMention: string }): WaitlistMessage {
     const container = new ContainerBuilder()
       .setAccentColor(ComponentColors.Warning)
@@ -86,7 +75,6 @@ export const WaitlistComponentPresets = {
     return message(container);
   },
 
-  /** The waiting card: queue position, queued date, refresh and leave buttons. */
   waiting(params: {
     memberMention: string;
     position: number;
@@ -122,7 +110,6 @@ export const WaitlistComponentPresets = {
     return message(container);
   },
 
-  /** The card shown after leaving the queue, with the option to rejoin. */
   left(params: { memberMention: string }): WaitlistMessage {
     const container = new ContainerBuilder()
       .setAccentColor(ComponentColors.Neutral)

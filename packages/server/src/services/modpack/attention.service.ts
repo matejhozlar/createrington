@@ -112,8 +112,6 @@ export class ModpackAttentionService {
       }
     }
 
-    // A dependency is only a problem for something that ships, so the gaps are
-    // read off the mods staged for the next update and the ones already in
     const context = await loadDependencyContext(workshop);
     const edges = await Q.workshop.project.dependency.findAll({
       workshopId: workshop.id,
@@ -122,8 +120,6 @@ export class ModpackAttentionService {
     const suggestionByProject = new Map(
       suggestions.map((mod) => [mod.curseforgeProjectId, mod]),
     );
-    // A project can be both a pack member and a live suggestion; the
-    // suggestion wins so the item can link through to the mod
     const unclassifiedTargets = new Map<number, number | null>();
     for (const row of active) {
       unclassifiedTargets.set(row.curseforgeProjectId, null);
@@ -142,9 +138,6 @@ export class ModpackAttentionService {
       if (coverage === "published" || coverage === "staged") continue;
       const subject = context.coverage.get(edge.curseforgeProjectId);
       const shipping = subject === "staged" || subject === "published";
-      // A ruled-out dependency also blocks mods still walking review, so
-      // approved and testing subjects surface for that case; other gap kinds
-      // only matter for shipping mods
       const status = suggestionByProject.get(edge.curseforgeProjectId)?.status;
       const qualifies =
         coverage === "rejected"

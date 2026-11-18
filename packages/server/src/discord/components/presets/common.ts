@@ -12,14 +12,7 @@ function stripe(accentColor: number, accent?: boolean) {
 
 type AccentOptions = { accent?: boolean };
 
-/**
- * Reusable Components V2 presets for common response patterns. Each returns a
- * `ComponentsData` tree; pass it to `buildComponentsMessage` before sending.
- * Containers are stripeless by default; pass `{ accent: true }` to add the
- * semantic colored stripe.
- */
 export const CommonComponentPresets = {
-  /** A success container, optionally green-accented */
   success(
     title: string,
     description?: string,
@@ -36,7 +29,6 @@ export const CommonComponentPresets = {
     };
   },
 
-  /** An error container, optionally red-accented */
   error(
     title: string,
     description?: string,
@@ -53,7 +45,6 @@ export const CommonComponentPresets = {
     };
   },
 
-  /** An error container with an admin contact prompt appended */
   errorWithAdmin(
     title: string,
     description?: string,
@@ -74,7 +65,6 @@ export const CommonComponentPresets = {
     };
   },
 
-  /** An info container, optionally blue-accented */
   info(
     title: string,
     description?: string,
@@ -91,7 +81,6 @@ export const CommonComponentPresets = {
     };
   },
 
-  /** A bare container with a title and/or description and an optional stripe */
   plain(
     data: { accentColor?: number } & (
       | { title: string; description?: string }
@@ -113,7 +102,6 @@ export const CommonComponentPresets = {
     };
   },
 
-  /** A loading/processing container, optionally gray-accented */
   loading(
     message: string = "Processing...",
     options: AccentOptions = {},

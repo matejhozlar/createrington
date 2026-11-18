@@ -2,10 +2,6 @@ import { type Client, type GuildBasedChannel, ChannelType } from "discord.js";
 import config from "@/config";
 import { getService, Services } from "@/services";
 
-/**
- * Converts a Discord name to camelCase.
- * Matches the same logic as the scrape-entities script.
- */
 function toCamelCase(str: string): string {
   return str
     .toLowerCase()
@@ -21,7 +17,6 @@ function toCamelCase(str: string): string {
     .join("");
 }
 
-/** Strips dynamic content from serverStats channel names */
 function cleanChannelName(name: string, categoryKey: string): string {
   if (categoryKey === "serverStats") {
     return name.split(":")[0].replace(/\d+/g, "").trim();
@@ -35,8 +30,6 @@ function cleanChannelName(name: string, categoryKey: string): string {
  *
  * No server restart required: admin tools that read from config.discord.guild
  * will immediately see the new data.
- *
- * @returns Summary of what was fetched
  */
 export async function refetchDiscordEntities(): Promise<{
   roles: number;
@@ -49,7 +42,6 @@ export async function refetchDiscordEntities(): Promise<{
   await guild.channels.fetch();
   await guild.roles.fetch();
 
-  // Scrape roles
   const roles: Record<string, string> = {};
   const guildRoles = guild.roles.cache
     .filter((role) => !role.managed && role.name !== "@everyone")
@@ -59,7 +51,6 @@ export async function refetchDiscordEntities(): Promise<{
     roles[toCamelCase(role.name)] = role.id;
   }
 
-  // Scrape categories
   const categories: Record<string, string> = {};
   const guildCategories = guild.channels.cache.filter(
     (ch): ch is GuildBasedChannel & { type: ChannelType.GuildCategory } =>
@@ -70,7 +61,6 @@ export async function refetchDiscordEntities(): Promise<{
     categories[toCamelCase(category.name)] = category.id;
   }
 
-  // Scrape channels grouped by category
   const channels: Record<string, Record<string, string>> = {};
   const guildChannels = guild.channels.cache.filter(
     (ch): ch is GuildBasedChannel =>
