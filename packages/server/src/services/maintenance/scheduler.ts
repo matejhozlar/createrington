@@ -271,18 +271,13 @@ export class MaintenanceScheduler {
         ? ` Estimated duration: ${formatEta(schedule.estimatedMinutes)}.`
         : "";
 
-    const result = await this.messageService.send({
+    await this.messageService.send({
       channelId: Discord.Channels.railsNSails.MINECRAFT_CHAT,
       content: `Server maintenance in ${label}.${duration} Players will be kicked when maintenance begins.`,
     });
-
-    if (result.success) {
-      logger.info(
-        `Sent ${minutesBefore}min maintenance warning for schedule #${schedule.id}`,
-      );
-    } else {
-      logger.error(`Failed to send maintenance warning: ${result.error}`);
-    }
+    logger.info(
+      `Sent ${minutesBefore}min maintenance warning for schedule #${schedule.id}`,
+    );
   }
 
   private async activateMaintenance(

@@ -12,18 +12,16 @@ export async function notifyAdmins(entry: WaitlistEntry): Promise<void> {
       status: entry.status,
     });
 
-    const result = await Discord.Messages.send({
+    const message = await Discord.Messages.send({
       channelId: Discord.Channels.administration.NOTIFICATIONS,
       embeds: embed.setTimestamp(),
       components,
     });
 
-    if (result.messageId) {
-      await Q.waitlist.entry.update(
-        { id: entry.id },
-        { adminMessageId: result.messageId },
-      );
-    }
+    await Q.waitlist.entry.update(
+      { id: entry.id },
+      { adminMessageId: message.id },
+    );
   } catch (error) {
     logger.error("Failed to notify admins about waitlist entry:", error);
   }

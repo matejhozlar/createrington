@@ -145,19 +145,20 @@ async function run({
       break;
     }
     const pings = row.part === 1 && !pingedButUnrecorded.has(row.id);
-    const result = await Discord.Messages.send({
+    const posted = await Discord.Messages.send({
       channelId: row.channelId,
       components: built.components,
       flags: built.flags,
       allowedMentions: pings ? { roles: [MENTION_ROLE_ID] } : undefined,
-    });
-    const messageId = result.messageId;
-    if (!result.success || !messageId) {
+    }).catch((error: unknown) => {
       logger.warn(
-        `${partLabel} failed to send, the next reconcile retries: ${result.error ?? "unknown error"}`,
+        `${partLabel} failed to send, the next reconcile retries:`,
+        error,
       );
-      break;
-    }
+      return null;
+    });
+    if (!posted) break;
+    const messageId = posted.id;
     try {
       await db.inTransaction(async (tx) => {
         await tx.modpack.release.announcement.updateAll(

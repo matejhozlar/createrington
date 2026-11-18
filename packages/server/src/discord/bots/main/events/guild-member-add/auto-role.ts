@@ -45,23 +45,18 @@ export async function execute(
 
         if (activeDeparture.notificationMessageId) {
           try {
-            const result = await Discord.Messages.fetchMessage({
-              channelId: Discord.Channels.administration.NOTIFICATIONS,
-              messageId: activeDeparture.notificationMessageId,
+            const returnedEmbed = EmbedPresets.departed.returned({
+              minecraftUsername: activeDeparture.minecraftUsername,
+              departedAt: activeDeparture.departedAt,
+              returnedAt: new Date(),
             });
 
-            if (result.success) {
-              const returnedEmbed = EmbedPresets.departed.returned({
-                minecraftUsername: activeDeparture.minecraftUsername,
-                departedAt: activeDeparture.departedAt,
-                returnedAt: new Date(),
-              });
-
-              await result.message.edit({
-                embeds: [returnedEmbed.build()],
-                components: [],
-              });
-            }
+            await Discord.Messages.edit({
+              channelId: Discord.Channels.administration.NOTIFICATIONS,
+              messageId: activeDeparture.notificationMessageId,
+              embeds: returnedEmbed.build(),
+              components: null,
+            });
           } catch (error) {
             logger.warn(
               `Could not update departure notification for ${activeDeparture.minecraftUsername}:`,

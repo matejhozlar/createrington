@@ -127,21 +127,14 @@ export class AutoMessageService {
       message.content,
     );
 
-    const result = await this.messageService.send({
+    await this.messageService.send({
       channelId: config.channelId,
       content: resolvedContent,
     });
-
-    if (result.success) {
-      logger.debug(
-        `Sent auto-message to channel ${config.channelId} (config ${configId})`,
-      );
-      await this.scheduleFollowups(message.id, config.channelId);
-    } else {
-      logger.warn(
-        `Failed to send auto-message to channel ${config.channelId}: ${result.error}`,
-      );
-    }
+    logger.debug(
+      `Sent auto-message to channel ${config.channelId} (config ${configId})`,
+    );
+    await this.scheduleFollowups(message.id, config.channelId);
   }
 
   private async scheduleFollowups(
@@ -183,20 +176,10 @@ export class AutoMessageService {
       followup.content,
     );
 
-    const result = await this.messageService.send({
-      channelId,
-      content: resolvedContent,
-    });
-
-    if (result.success) {
-      logger.debug(
-        `Sent auto-message follow-up ${followupId} to channel ${channelId}`,
-      );
-    } else {
-      logger.warn(
-        `Failed to send auto-message follow-up ${followupId} to channel ${channelId}: ${result.error}`,
-      );
-    }
+    await this.messageService.send({ channelId, content: resolvedContent });
+    logger.debug(
+      `Sent auto-message follow-up ${followupId} to channel ${channelId}`,
+    );
   }
 
   private async resolveTemplateVariables(content: string): Promise<string> {

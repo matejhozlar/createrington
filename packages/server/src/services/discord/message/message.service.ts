@@ -1,25 +1,37 @@
 import config from "@/config";
-import { isSendableChannel } from "@/discord/utils/channel-guard";
-import type {
-  Client,
-  Message,
-  MessageCreateOptions,
-  MessageEditOptions,
-  TextChannel,
+import {
+  isSendableChannel,
+  type SendableChannel,
+} from "@/discord/utils/channel-guard";
+import {
+  type Client,
+  DiscordAPIError,
+  type Message,
+  type MessageCreateOptions,
+  type MessageEditOptions,
+  RESTJSONErrorCodes,
 } from "discord.js";
+import { ChannelUnavailableError, MessageGoneError } from "./errors";
 import type {
   DeleteMessageOptions,
   EditMessageOptions,
-  SendMessageOptions,
-  SendMessageResult,
   FetchMessageOptions,
+  SendMessageOptions,
 } from "./types";
+
+function isDiscordError(error: unknown, code: RESTJSONErrorCodes): boolean {
+  return error instanceof DiscordAPIError && error.code === code;
+}
 
 /**
  * Unified Discord messaging surface for the bot client.
  *
  * Wraps send/edit/delete/fetch for messages in the configured guild. Created
- * once in bootstrap and reached through `Discord.Messages`. `allowedMentions`
+ * once in bootstrap and reached through `Discord.Messages`. Every method throws
+ * on failure: `ChannelUnavailableError` when the channel is gone or not
+ * sendable, `MessageGoneError` when the message was deleted, and Discord's own
+ * error for anything else (missing permissions, 5xx). A caller that treats the
+ * message as best effort says so with an explicit `.catch`. `allowedMentions`
  * defaults to `{ parse: [] }` so arbitrary content cannot ping @everyone,
  * roles, or users unless the caller opts in.
  */
@@ -30,206 +42,100 @@ export class DiscordMessageService {
     this.guildId = config.discord.guild.id;
   }
 
-  private async fetchSendableChannel(
-    channelId: string,
-  ): Promise<TextChannel | null> {
-    try {
-      const guild = await this.client.guilds.fetch(this.guildId);
-      const channel = await guild.channels.fetch(channelId);
-
-      if (!channel || !isSendableChannel(channel)) {
-        logger.warn(
-          `Channel ${channelId} not found or not sendable in guild ${this.guildId}`,
-        );
-        return null;
+  private async resolveChannel(channelId: string): Promise<SendableChannel> {
+    const guild = await this.client.guilds.fetch(this.guildId);
+    const channel = await guild.channels.fetch(channelId).catch((error) => {
+      if (isDiscordError(error, RESTJSONErrorCodes.UnknownChannel)) {
+        throw new ChannelUnavailableError(channelId, { cause: error });
       }
+      throw error;
+    });
 
-      return channel as TextChannel;
-    } catch (error) {
-      logger.error(`Failed to fetch channel ${channelId}:`, error);
-      return null;
+    if (!channel || !isSendableChannel(channel)) {
+      throw new ChannelUnavailableError(channelId);
     }
+    return channel;
   }
 
-  /**
-   * Post a message to a channel. Never throws: failures (unknown channel,
-   * permission errors, Discord 5xx) are returned as `{ success: false, error }`.
-   * Suppresses all mentions unless `allowedMentions` is supplied.
-   */
-  async send(options: SendMessageOptions): Promise<SendMessageResult> {
-    try {
-      const channel = await this.fetchSendableChannel(options.channelId);
-
-      if (!channel) {
-        return {
-          success: false,
-          error: "Channel not found or not sendable",
-        };
+  private async resolveMessage(
+    channelId: string,
+    messageId: string,
+  ): Promise<Message> {
+    const channel = await this.resolveChannel(channelId);
+    return channel.messages.fetch(messageId).catch((error) => {
+      if (isDiscordError(error, RESTJSONErrorCodes.UnknownMessage)) {
+        throw new MessageGoneError(channelId, messageId, { cause: error });
       }
+      throw error;
+    });
+  }
 
-      const messageOptions: MessageCreateOptions = {
-        content: options.content,
-        embeds: options.embeds ? [options.embeds] : undefined,
-        components: options.components,
-        files: options.files,
-        flags: options.flags,
-        allowedMentions: options.allowedMentions ?? { parse: [] },
-      };
+  /** Post a message to a channel. Suppresses all mentions unless `allowedMentions` is supplied. */
+  async send(options: SendMessageOptions): Promise<Message> {
+    const channel = await this.resolveChannel(options.channelId);
 
-      const message = await channel.send(messageOptions);
+    const messageOptions: MessageCreateOptions = {
+      content: options.content,
+      embeds: options.embeds ? [options.embeds] : undefined,
+      components: options.components,
+      files: options.files,
+      flags: options.flags,
+      allowedMentions: options.allowedMentions ?? { parse: [] },
+    };
 
-      logger.info(
-        `Message sent to ${options.channelId} - Message ID: ${message.id}`,
-      );
-
-      return {
-        success: true,
-        messageId: message.id,
-        message,
-      };
-    } catch (error) {
-      logger.error("Failed to send message:", error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
-      };
-    }
+    const message = await channel.send(messageOptions);
+    logger.info(
+      `Message sent to ${options.channelId} - Message ID: ${message.id}`,
+    );
+    return message;
   }
 
   /**
    * Edit an existing message. Pass `null` for `embeds` or `components` to
-   * clear them, `undefined` (or omit) to leave them untouched. Returns
-   * `{ success: false, error }` on failure rather than throwing.
+   * clear them, `undefined` (or omit) to leave them untouched.
    */
-  async edit(options: EditMessageOptions): Promise<SendMessageResult> {
-    try {
-      const channel = await this.fetchSendableChannel(options.channelId);
+  async edit(options: EditMessageOptions): Promise<Message> {
+    const message = await this.resolveMessage(
+      options.channelId,
+      options.messageId,
+    );
 
-      if (!channel) {
-        return {
-          success: false,
-          error: "Channel not found or not sendable",
-        };
-      }
+    const editOptions: MessageEditOptions = {
+      content: options.content,
+      embeds:
+        options.embeds === null
+          ? []
+          : options.embeds
+            ? [options.embeds]
+            : undefined,
+      components:
+        options.components === null ? [] : (options.components ?? undefined),
+      files: options.files,
+      flags: options.flags,
+      allowedMentions: { parse: [] },
+    };
 
-      const message = await channel.messages.fetch(options.messageId);
-
-      if (!message) {
-        return {
-          success: false,
-          error: "Message not found",
-        };
-      }
-
-      const editOptions: MessageEditOptions = {
-        content: options.content,
-        embeds:
-          options.embeds === null
-            ? []
-            : options.embeds
-              ? [options.embeds]
-              : undefined,
-        components:
-          options.components === null ? [] : (options.components ?? undefined),
-        files: options.files,
-        flags: options.flags,
-        allowedMentions: { parse: [] },
-      };
-
-      const editedMessage = await message.edit(editOptions);
-
-      logger.info(
-        `Message ${options.messageId} edited in channel ${options.channelId}`,
-      );
-
-      return {
-        success: true,
-        messageId: editedMessage.id,
-        message: editedMessage,
-      };
-    } catch (error) {
-      logger.error("Failed to edit message:", error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
-      };
-    }
+    const edited = await message.edit(editOptions);
+    logger.info(
+      `Message ${options.messageId} edited in channel ${options.channelId}`,
+    );
+    return edited;
   }
 
-  /** Delete a message. Returns `{ success: false, error }` on failure rather than throwing. */
-  async delete(
-    options: DeleteMessageOptions,
-  ): Promise<{ success: boolean; error?: string }> {
-    try {
-      const channel = await this.fetchSendableChannel(options.channelId);
-
-      if (!channel) {
-        return {
-          success: false,
-          error: "Channel not found or not sendable",
-        };
-      }
-
-      const message = await channel.messages.fetch(options.messageId);
-
-      if (!message) {
-        return {
-          success: false,
-          error: "Message not found",
-        };
-      }
-
-      await message.delete();
-
-      logger.info(
-        `Message ${options.messageId} deleted from channel ${options.channelId}`,
-      );
-
-      return { success: true };
-    } catch (error) {
-      logger.error("Failed to delete message:", error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
-      };
-    }
+  /** Delete a message. Throws `MessageGoneError` when it was already deleted. */
+  async delete(options: DeleteMessageOptions): Promise<void> {
+    const message = await this.resolveMessage(
+      options.channelId,
+      options.messageId,
+    );
+    await message.delete();
+    logger.info(
+      `Message ${options.messageId} deleted from channel ${options.channelId}`,
+    );
   }
 
-  /** Fetch a message by id. Returns `{ success: false, error }` if the channel or message is gone. */
-  async fetchMessage(
-    options: FetchMessageOptions,
-  ): Promise<
-    { success: true; message: Message } | { success: false; error: string }
-  > {
-    try {
-      const channel = await this.fetchSendableChannel(options.channelId);
-
-      if (!channel) {
-        return {
-          success: false,
-          error: "Channel not found or not sendable",
-        };
-      }
-
-      const message = await channel.messages.fetch(options.messageId);
-
-      if (!message) {
-        return {
-          success: false,
-          error: "Message not found",
-        };
-      }
-
-      return {
-        success: true,
-        message,
-      };
-    } catch (error) {
-      logger.error("Failed to fetch message:", error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
-      };
-    }
+  /** Fetch a message by id. */
+  async fetchMessage(options: FetchMessageOptions): Promise<Message> {
+    return this.resolveMessage(options.channelId, options.messageId);
   }
 }

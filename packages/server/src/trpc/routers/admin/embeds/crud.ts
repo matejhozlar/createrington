@@ -4,6 +4,7 @@ import { adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
 import { getServiceSync, isServiceReady, Services } from "@/services";
 import { trpcError, auditActor } from "@/trpc/utils";
+import { isMessageGone } from "@/services/discord/message/errors";
 import config from "@/config";
 import {
   embedBotSchema,
@@ -99,19 +100,13 @@ export const embedCrudProcedures = {
         throw trpcError.badRequest(built.error);
       }
 
-      const result = await Discord.Messages.send(
-        toSendOptions(built, channelId),
-      );
+      const sent = await Discord.Messages.send(toSendOptions(built, channelId));
 
-      if (!result.success) {
-        throw trpcError.internal(result.error ?? "Failed to send message");
-      }
-
-      if (input.presetId && result.messageId) {
+      if (input.presetId) {
         await Q.discord.embed.preset.message.create({
           presetId: input.presetId,
           channelId: input.channelId,
-          messageId: result.messageId,
+          messageId: sent.id,
         });
       }
 
@@ -127,11 +122,11 @@ export const embedCrudProcedures = {
           channelId,
           kind: input.kind,
           presetId: input.presetId,
-          messageId: result.messageId,
+          messageId: sent.id,
         },
       });
 
-      return { messageId: result.messageId };
+      return { messageId: sent.id };
     }),
 
   edit: adminProcedure
@@ -154,13 +149,9 @@ export const embedCrudProcedures = {
         throw trpcError.badRequest(built.error);
       }
 
-      const result = await Discord.Messages.edit(
+      const edited = await Discord.Messages.edit(
         toEditOptions(built, channelId, messageId),
       );
-
-      if (!result.success) {
-        throw trpcError.internal(result.error ?? "Failed to edit message");
-      }
 
       if (input.presetId) {
         await Q.discord.embed.preset.update(
@@ -181,7 +172,7 @@ export const embedCrudProcedures = {
         },
       });
 
-      return { messageId: result.messageId };
+      return { messageId: edited.id };
     }),
 
   fetchMessage: adminProcedure
@@ -194,17 +185,16 @@ export const embedCrudProcedures = {
       }),
     )
     .query(async ({ input }) => {
-      const result = await Discord.Messages.fetchMessage({
+      const message = await Discord.Messages.fetchMessage({
         channelId: input.channelId,
         messageId: input.messageId,
+      }).catch((error: unknown) => {
+        if (isMessageGone(error)) throw trpcError.notFound(error.message);
+        throw error;
       });
 
-      if (!result.success) {
-        throw trpcError.notFound(result.error);
-      }
-
-      const embed = result.message.embeds[0];
-      const content = result.message.content || undefined;
+      const embed = message.embeds[0];
+      const content = message.content || undefined;
 
       if (!embed && !content) {
         throw trpcError.notFound("Message has no content or embeds");

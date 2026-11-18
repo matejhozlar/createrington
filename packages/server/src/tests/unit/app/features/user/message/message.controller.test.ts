@@ -45,7 +45,7 @@ function sentContent(): string | undefined {
 describe("MessageController.sendMessage", () => {
   beforeEach(() => {
     sendMock.mockReset();
-    sendMock.mockResolvedValue({ success: true, messageId: "m1" });
+    sendMock.mockResolvedValue({ id: "m1" });
   });
 
   it("prefixes text messages with the sender's name", async () => {
@@ -77,10 +77,7 @@ describe("MessageController.sendMessage", () => {
   });
 
   it("answers a failed Discord send with a generic error", async () => {
-    sendMock.mockResolvedValue({
-      success: false,
-      error: "Missing Permissions",
-    });
+    sendMock.mockRejectedValue(new Error("Missing Permissions"));
 
     await expect(
       MessageController.sendMessage(makeReq({ content: "hi" }), fakeRes()),

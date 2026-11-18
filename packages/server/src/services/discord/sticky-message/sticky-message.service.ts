@@ -1,6 +1,7 @@
 import { Q } from "@/db";
 import { Discord } from "@/discord/constants";
 import type { DiscordEmbedBuilder } from "@/discord/embeds/embed-builder";
+import { isMessageGone } from "@/services/discord/message/errors";
 import { MessageFlags, type Client } from "discord.js";
 
 export interface StickyMessageSpec {
@@ -69,33 +70,28 @@ export class DiscordStickyMessageService {
         await Discord.Messages.delete({
           channelId: spec.channelId,
           messageId: existing.messageId,
+        }).catch((error: unknown) => {
+          if (!isMessageGone(error)) throw error;
         });
       }
 
-      const result = await Discord.Messages.send({
+      const message = await Discord.Messages.send({
         channelId: spec.channelId,
         embeds: (await spec.build()).build(),
         flags: MessageFlags.SuppressNotifications,
       });
 
-      if (!result.success || !result.messageId) {
-        logger.error(`Failed to send sticky message to ${spec.channelId}`);
-        return;
-      }
-
       await Q.discord.sticky.message.upsert(
         {
           channelId: spec.channelId,
-          messageId: result.messageId,
+          messageId: message.id,
           updatedAt: new Date(),
         },
         "channelId",
         ["messageId", "updatedAt"],
       );
 
-      logger.info(
-        `Sticky message posted in ${spec.channelId}: ${result.messageId}`,
-      );
+      logger.info(`Sticky message posted in ${spec.channelId}: ${message.id}`);
     } catch (error) {
       logger.error(
         `Failed to repost sticky message in ${spec.channelId}:`,

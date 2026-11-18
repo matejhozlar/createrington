@@ -301,6 +301,11 @@ export async function runRegistration(params: {
       channelId: Discord.Channels.administration.NOTIFICATIONS,
       embeds: adminEmbed.build(),
       content: Discord.Roles.mention(Discord.Roles.ADMIN),
+    }).catch((error: unknown) => {
+      logger.error(
+        "Could not alert admins about the failed registration:",
+        error,
+      );
     });
 
     await render(

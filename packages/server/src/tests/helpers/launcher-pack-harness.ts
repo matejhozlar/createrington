@@ -420,7 +420,7 @@ export function useLauncherPackTestHooks(): void {
     resolveThroughGateway();
     vi.mocked(findSandboxFileUrls).mockResolvedValue(new Map());
     vi.mocked(getMinecraftJavaMajorVersion).mockResolvedValue(21);
-    sendMock.mockResolvedValue({ success: true });
+    sendMock.mockResolvedValue({ id: "message-1" });
     vi.spyOn(Discord, "Messages", "get").mockReturnValue({
       send: sendMock,
     } as unknown as typeof Discord.Messages);

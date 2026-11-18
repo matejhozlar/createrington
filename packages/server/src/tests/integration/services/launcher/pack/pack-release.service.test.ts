@@ -606,6 +606,34 @@ describe("LauncherPackReleaseService.prepareRelease", () => {
     );
   });
 
+  it("posts a release-not-offered notice again on the next attempt when the first post failed", async () => {
+    const modpack = await seedPack();
+    const file = await seedFile();
+    serveFromCurseForge([file]);
+    const { release, manifest } = await seedRelease(modpack, "1.0.0", [file]);
+    const clientRead = { ...manifest, fileId: manifest.fileId + 100_000 };
+    sendMock.mockRejectedValueOnce(new Error("Missing Access"));
+    vi.spyOn(logger, "error").mockImplementation(() => logger);
+
+    await launcherPackReleaseService.prepareRelease(
+      modpack,
+      release.id,
+      clientRead,
+    );
+    await launcherPackReleaseService.prepareRelease(
+      modpack,
+      release.id,
+      clientRead,
+    );
+    await launcherPackReleaseService.prepareRelease(
+      modpack,
+      release.id,
+      clientRead,
+    );
+
+    expect(sendMock).toHaveBeenCalledTimes(2);
+  });
+
   it.each([
     ["no download link", { downloadUrl: null }],
     ["no SHA-1", { sha1: null }],

@@ -73,23 +73,18 @@ export class MemberCleanupService {
 
           if (member.notificationMessageId) {
             try {
-              const result = await Discord.Messages.fetchMessage({
-                channelId: Discord.Channels.administration.NOTIFICATIONS,
-                messageId: member.notificationMessageId,
+              const autoDeleted = EmbedPresets.departed.autoDeleted({
+                minecraftUsername: member.minecraftUsername,
+                departedAt: member.departedAt,
+                deletedAt: new Date(),
               });
 
-              if (result.success) {
-                const autoDeleted = EmbedPresets.departed.autoDeleted({
-                  minecraftUsername: member.minecraftUsername,
-                  departedAt: member.departedAt,
-                  deletedAt: new Date(),
-                });
-
-                await result.message.edit({
-                  embeds: [autoDeleted.build()],
-                  components: [],
-                });
-              }
+              await Discord.Messages.edit({
+                channelId: Discord.Channels.administration.NOTIFICATIONS,
+                messageId: member.notificationMessageId,
+                embeds: autoDeleted.build(),
+                components: null,
+              });
             } catch (error) {
               logger.warn(
                 `Could not update notification message for ${member.minecraftUsername}:`,
