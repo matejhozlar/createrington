@@ -1,7 +1,6 @@
 import type {
   AttachmentBuilder,
   EmbedBuilder,
-  Message,
   MessageCreateOptions,
   MessageEditOptions,
 } from "discord.js";
@@ -34,11 +33,4 @@ export interface DeleteMessageOptions {
 export interface FetchMessageOptions {
   channelId: string;
   messageId: string;
-}
-
-export interface SendMessageResult {
-  success: boolean;
-  messageId?: string;
-  message?: Message;
-  error?: string;
 }

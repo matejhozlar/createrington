@@ -76,25 +76,24 @@ export class MessageController {
 
     const messageService = await getService(Services.MESSAGE_SERVICE);
 
-    const result = await messageService.send({
-      channelId,
-      content: messageContent,
-      files: attachment ? [attachment] : undefined,
-    });
-
-    if (!result.success) {
-      logger.error(
-        `Failed to send web message to channel ${channelId}:`,
-        result.error,
-      );
-
-      throw new BadRequestError("Failed to send message");
-    }
+    const message = await messageService
+      .send({
+        channelId,
+        content: messageContent,
+        files: attachment ? [attachment] : undefined,
+      })
+      .catch((error: unknown) => {
+        logger.error(
+          `Failed to send web message to channel ${channelId}:`,
+          error,
+        );
+        throw new BadRequestError("Failed to send message");
+      });
 
     const response: SendMessageResponse = {
       success: true,
       data: {
-        messageId: result.messageId!,
+        messageId: message.id,
         serverId,
         channelId,
       },

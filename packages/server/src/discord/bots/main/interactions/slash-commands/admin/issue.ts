@@ -191,10 +191,10 @@ async function reportOutcome(
       edited.reason,
     );
   }
-  if (posted.status === "rejected" || !posted.value.success) {
+  if (posted.status === "rejected") {
     logger.warn(
       `/issue session #${sessionId} could not post to admin notifications:`,
-      posted.status === "rejected" ? posted.reason : posted.value.error,
+      posted.reason,
     );
   }
   logger.info(

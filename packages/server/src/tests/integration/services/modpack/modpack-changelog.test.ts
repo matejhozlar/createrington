@@ -10,17 +10,11 @@ import {
 } from "vitest";
 import { ComponentType } from "discord.js";
 
-type SendResult = {
-  success: boolean;
-  messageId: string | undefined;
-  error: string | undefined;
-};
+type SendResult = { id: string };
 
 const sendMock = vi.hoisted(() =>
   vi.fn(async (_options: unknown): Promise<SendResult> => ({
-    success: true,
-    messageId: "message-1",
-    error: undefined,
+    id: "message-1",
   })),
 );
 
@@ -216,11 +210,7 @@ beforeAll(async () => {
 beforeEach(() => {
   sendMock.mockReset();
   let seq = 0;
-  sendMock.mockImplementation(async () => ({
-    success: true,
-    messageId: `message-${++seq}`,
-    error: undefined,
-  }));
+  sendMock.mockImplementation(async () => ({ id: `message-${++seq}` }));
 });
 
 afterEach(async () => {
@@ -350,16 +340,10 @@ describe("announceReleaseChangelog", () => {
     );
 
     sendMock
-      .mockImplementationOnce(async () => ({
-        success: true,
-        messageId: "first",
-        error: undefined,
-      }))
-      .mockImplementationOnce(async () => ({
-        success: false,
-        messageId: undefined,
-        error: "rate limited",
-      }));
+      .mockImplementationOnce(async () => ({ id: "first" }))
+      .mockImplementationOnce(async () => {
+        throw new Error("rate limited");
+      });
 
     await announce(modpack, release, true);
 
@@ -423,11 +407,9 @@ describe("announceReleaseChangelog", () => {
     const release = await seedRelease(modpack, "2.6.0", [
       fileRow(project, "1.0.0"),
     ]);
-    sendMock.mockImplementationOnce(async () => ({
-      success: false,
-      messageId: undefined,
-      error: "boom",
-    }));
+    sendMock.mockImplementationOnce(async () => {
+      throw new Error("boom");
+    });
     await announce(modpack, release, true);
 
     sendMock.mockClear();
@@ -460,11 +442,9 @@ describe("announceReleaseChangelog", () => {
     const release = await seedRelease(modpack, "3.1.0", [
       fileRow(project, "1.0.0"),
     ]);
-    sendMock.mockImplementationOnce(async () => ({
-      success: false,
-      messageId: undefined,
-      error: "boom",
-    }));
+    sendMock.mockImplementationOnce(async () => {
+      throw new Error("boom");
+    });
     await announce(modpack, release, true);
     const [row] = await Q.modpack.release.announcement.findAll({
       releaseId: release.id,

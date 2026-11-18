@@ -431,7 +431,7 @@ export class LauncherPackReleaseService {
     if (this.reportedBlocked.has(release.id)) return reason;
     this.reportedBlocked.add(release.id);
 
-    await this.notifyOwner(
+    const posted = await this.notifyOwner(
       EmbedPresets.plain({
         title: "⛔ Launcher: release not offered",
         description: [
@@ -442,6 +442,7 @@ export class LauncherPackReleaseService {
         color: EmbedColors.Error,
       }),
     );
+    if (!posted) this.reportedBlocked.delete(release.id);
     return reason;
   }
 
@@ -488,7 +489,7 @@ export class LauncherPackReleaseService {
 
   private async notifyOwner(
     embed: ReturnType<typeof EmbedPresets.plain>,
-  ): Promise<void> {
+  ): Promise<boolean> {
     const ownerId = config.app.auth.owner.discordId;
     try {
       await Discord.Messages.send({
@@ -497,8 +498,10 @@ export class LauncherPackReleaseService {
         embeds: embed.build(),
         allowedMentions: { users: [ownerId] },
       });
+      return true;
     } catch (error) {
       logger.error("Failed to post the launcher pack notice:", error);
+      return false;
     }
   }
 }

@@ -110,7 +110,7 @@ beforeEach(() => {
   Discord._setMessageService({
     send: async (options: SendMessageOptions) => {
       sent.push(options);
-      return { success: true, messageId: "1" };
+      return { id: "1" };
     },
   } as unknown as Parameters<typeof Discord._setMessageService>[0]);
 });

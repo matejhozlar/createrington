@@ -7,6 +7,7 @@ import {
   embedBotSchema,
   messagePayloadSchema,
 } from "@createrington/shared/api/embed";
+import { isMessageGone } from "@/services/discord/message/errors";
 import { buildMessage, payloadToStorage, toEditOptions } from "./helpers";
 
 export const embedLinkedMessageProcedures = {
@@ -41,14 +42,19 @@ export const embedLinkedMessageProcedures = {
       const errors: string[] = [];
 
       for (const link of links) {
-        const result = await Discord.Messages.edit(
-          toEditOptions(built, link.channelId, link.messageId),
-        );
-
-        if (result.success) {
+        try {
+          await Discord.Messages.edit(
+            toEditOptions(built, link.channelId, link.messageId),
+          );
           updated++;
-        } else {
-          errors.push(`${link.messageId}: ${result.error ?? "Unknown error"}`);
+        } catch (error) {
+          logger.warn(
+            `Could not update linked message ${link.messageId}:`,
+            error,
+          );
+          errors.push(
+            `${link.messageId}: ${isMessageGone(error) ? "message no longer exists" : "update failed"}`,
+          );
         }
       }
 
@@ -85,16 +91,10 @@ export const embedLinkedMessageProcedures = {
         throw trpcError.badRequest(built.error);
       }
 
-      const result = await Discord.Messages.edit(
+      const edited = await Discord.Messages.edit(
         toEditOptions(built, link.channelId, link.messageId),
       );
 
-      if (!result.success) {
-        throw trpcError.internal(
-          result.error ?? "Failed to update linked message",
-        );
-      }
-
-      return { messageId: result.messageId };
+      return { messageId: edited.id };
     }),
 };

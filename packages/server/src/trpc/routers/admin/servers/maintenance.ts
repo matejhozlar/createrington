@@ -89,11 +89,10 @@ export const serverMaintenanceProcedures = {
           if (input.announce) {
             try {
               const embed = EmbedPresets.announcements.maintenanceEnded();
-              const result = await Discord.Messages.send({
+              await Discord.Messages.send({
                 channelId: Discord.Channels.createringtonOfficial.ANNOUNCEMENTS,
                 embeds: embed.build(),
               });
-              if (!result.success) throw new Error(result.error);
             } catch (error) {
               logger.warn(
                 `Failed to send maintenance ended announcement: ${error}`,
@@ -101,12 +100,11 @@ export const serverMaintenanceProcedures = {
             }
 
             try {
-              const result = await Discord.Messages.send({
+              await Discord.Messages.send({
                 channelId: Discord.Channels.railsNSails.MINECRAFT_CHAT,
                 content:
                   "Server maintenance is over, the server is back online.",
               });
-              if (!result.success) throw new Error(result.error);
             } catch (error) {
               logger.warn(
                 `Failed to send maintenance ended message to Minecraft chat: ${error}`,

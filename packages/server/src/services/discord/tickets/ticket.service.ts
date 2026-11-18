@@ -190,11 +190,7 @@ export class TicketService {
       closedBy,
     );
 
-    if (closeMessageId) {
-      await ticketRepo.updateMetadata(ticketId, {
-        closeMessageId,
-      });
-    }
+    await ticketRepo.updateMetadata(ticketId, { closeMessageId });
 
     return updatedTicket;
   }
@@ -248,7 +244,7 @@ export class TicketService {
     channelId: string,
     ticket: Ticket,
     closedBy: string,
-  ): Promise<string | null> {
+  ): Promise<string> {
     const embed = EmbedPresets.ticket.close(closedBy);
 
     const message = await Discord.Messages.send({
@@ -257,7 +253,7 @@ export class TicketService {
       components: this.getClosedTicketButtons(ticket.id),
     });
 
-    return message.messageId || null;
+    return message.id;
   }
 
   private getClosedTicketButtons(
@@ -574,16 +570,12 @@ export class TicketService {
       files: [attachment],
     });
 
-    if (!message.success || !message.messageId) {
-      throw new Error(message.error ?? "Failed to send transcript");
-    }
-
     await Q.ticket.action.create({
       ticketId,
       actionType: TicketUserAction.TRANSCRIPT_GENERATED,
       performedByDiscordId: generatedBy,
       metadata: {
-        transcriptMessageId: message.messageId,
+        transcriptMessageId: message.id,
         transcriptChannelId: TicketSystemIds.TRANSCRIPT_CHANNEL,
       },
     });
@@ -592,7 +584,7 @@ export class TicketService {
       `Sent transcript for ticket #${ticket.ticketNumber} to transcript channel`,
     );
 
-    return message.messageId;
+    return message.id;
   }
 
   /** True if the user currently has any non-closed ticket. */

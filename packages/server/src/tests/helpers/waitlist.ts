@@ -104,7 +104,7 @@ export function resetWaitlistState(): void {
     send: async () => ({ id: "sent-1" }),
   }));
   state.adminSend.mockReset();
-  state.adminSend.mockResolvedValue({ success: true, messageId: "admin-1" });
+  state.adminSend.mockResolvedValue({ id: "admin-1" });
   state.progressEmbed.mockReset();
   state.progressEmbed.mockResolvedValue(undefined);
 }

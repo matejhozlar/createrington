@@ -84,12 +84,10 @@ export async function execute(
       content: `${Discord.Roles.mention(Discord.Roles.ADMIN)} 👋 Member left`,
     });
 
-    if (message) {
-      await Q.discord.guild.member.leave.update(
-        { id: leftEntry.id },
-        { notificationMessageId: message.messageId },
-      );
-    }
+    await Q.discord.guild.member.leave.update(
+      { id: leftEntry.id },
+      { notificationMessageId: message.id },
+    );
 
     logger.info(
       `Sent departure notification for ${player.minecraftUsername} (auto-delete in 30 days)`,

@@ -152,19 +152,12 @@ export class WaitlistRepository {
         ButtonPresets.links.adminPanel(),
       );
 
-      const result = await Discord.Messages.edit({
+      await Discord.Messages.edit({
         channelId: Discord.Channels.administration.NOTIFICATIONS,
         messageId: entry.adminMessageId,
         embeds: progressEmbed.build(),
         components: [linkRow],
       });
-
-      if (!result.success) {
-        logger.warn(
-          `Could not update progress embed for entry ${entryId}: ${result.error}`,
-        );
-        return;
-      }
 
       logger.debug(`Updated progress embed for entry ${entryId}`);
     } catch (error) {

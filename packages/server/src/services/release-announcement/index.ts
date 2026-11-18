@@ -39,19 +39,12 @@ export class ReleaseAnnouncementService {
         }),
       );
 
-      const result = await Discord.Messages.send({
+      await Discord.Messages.send({
         channelId: Discord.Channels.administration.NOTIFICATIONS,
         components: message.components,
         flags: message.flags,
         allowedMentions: { parse: [] },
       });
-
-      if (!result.success) {
-        logger.error(
-          `Failed to announce app release v${version}: ${result.error}`,
-        );
-        return;
-      }
 
       await settings.setAnnouncedAppVersion(version);
       logger.info(`Announced app release v${version}`);

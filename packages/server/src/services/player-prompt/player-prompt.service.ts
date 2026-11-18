@@ -119,25 +119,24 @@ export class PlayerPromptService {
       cooldownSeconds: isMulti ? (opts.cooldownSeconds ?? null) : null,
     });
 
-    const post = await this.postAnnouncement(prompt);
-    if (!post.success || !post.messageId) {
-      await Q.player.prompt.delete({ id: prompt.id });
-      throw new Error(
-        `Failed to post prompt to Discord: ${post.error ?? "unknown"}`,
-      );
-    }
+    const post = await this.postAnnouncement(prompt).catch(
+      async (error: unknown) => {
+        await Q.player.prompt.delete({ id: prompt.id });
+        throw new Error("Failed to post prompt to Discord", { cause: error });
+      },
+    );
 
     try {
-      await this.persistMessageId(prompt.id, post.messageId);
+      await this.persistMessageId(prompt.id, post.id);
     } catch (error) {
       logger.error(
-        `Posted prompt #${prompt.id} to Discord (message ${post.messageId}) but failed to persist messageId. Close-time message edit will be skipped.`,
+        `Posted prompt #${prompt.id} to Discord (message ${post.id}) but failed to persist messageId. Close-time message edit will be skipped.`,
         error,
       );
     }
 
     this.armClosureTimer(prompt.id, opts.durationMs);
-    return { ...prompt, messageId: post.messageId };
+    return { ...prompt, messageId: post.id };
   }
 
   /**
@@ -259,19 +258,21 @@ export class PlayerPromptService {
 
     if (prompt.messageId) {
       const closed = PlayerPromptComponentPresets.closed(prompt, totals);
-      const result = await this.messageService.edit({
-        channelId: prompt.channelId,
-        messageId: prompt.messageId,
-        content: null,
-        embeds: null,
-        components: closed.components,
-        flags: closed.flags,
-      });
-      if (!result.success) {
-        logger.warn(
-          `Closed prompt #${promptId} in DB but failed to edit Discord message: ${result.error}`,
-        );
-      }
+      await this.messageService
+        .edit({
+          channelId: prompt.channelId,
+          messageId: prompt.messageId,
+          content: null,
+          embeds: null,
+          components: closed.components,
+          flags: closed.flags,
+        })
+        .catch((error: unknown) => {
+          logger.warn(
+            `Closed prompt #${promptId} in DB but failed to edit Discord message:`,
+            error,
+          );
+        });
     }
 
     logger.info(
@@ -285,15 +286,14 @@ export class PlayerPromptService {
     if (!prompt) return null;
 
     if (prompt.messageId) {
-      const result = await this.messageService.delete({
-        channelId: prompt.channelId,
-        messageId: prompt.messageId,
-      });
-      if (!result.success) {
-        logger.warn(
-          `Deleting prompt #${promptId} but failed to delete its Discord message: ${result.error}`,
-        );
-      }
+      await this.messageService
+        .delete({ channelId: prompt.channelId, messageId: prompt.messageId })
+        .catch((error: unknown) => {
+          logger.warn(
+            `Deleting prompt #${promptId} but failed to delete its Discord message:`,
+            error,
+          );
+        });
     }
 
     await Q.player.prompt.delete({ id: promptId });

@@ -86,14 +86,16 @@ export class VoteIntake {
       );
       return;
     }
-    const result = await messageService.send({
-      channelId: this.channelId,
-      content: `**${minecraftUsername}** voted for the server on ${serviceName}!`,
-    });
-    if (!result.success) {
-      logger.warn(
-        `Votifier: could not announce the vote of ${minecraftUsername}: ${result.error}`,
-      );
-    }
+    await messageService
+      .send({
+        channelId: this.channelId,
+        content: `**${minecraftUsername}** voted for the server on ${serviceName}!`,
+      })
+      .catch((error: unknown) => {
+        logger.warn(
+          `Votifier: could not announce the vote of ${minecraftUsername}:`,
+          error,
+        );
+      });
   }
 }

@@ -103,21 +103,16 @@ export class RoleNotificationService {
         }),
       );
 
-      const result = await Discord.Messages.send({
+      await Discord.Messages.send({
         channelId,
         components: message.components,
         flags: message.flags,
         files: figure.files,
         allowedMentions: { users: [notification.discordId] },
       });
-
-      if (result.success) {
-        logger.info(
-          `Sent role notification for ${notification.username} -> ${notification.role.label}`,
-        );
-      } else {
-        logger.error(`Failed to send role notification: ${result.error}`);
-      }
+      logger.info(
+        `Sent role notification for ${notification.username} -> ${notification.role.label}`,
+      );
     } catch (error) {
       logger.error("Failed to send role notification:", error);
     }

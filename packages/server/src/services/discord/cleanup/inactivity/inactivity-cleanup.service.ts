@@ -132,24 +132,16 @@ export class InactivityCleanupService {
         deadlineDate,
       });
 
-      const result = await Discord.Messages.send({
+      const message = await Discord.Messages.send({
         channelId: Discord.Channels.createringtonOfficial.ANNOUNCEMENTS,
         embeds: embed.build(),
       });
 
-      if (result.success && result.messageId) {
-        await Q.player.inactivity.warning.setMessageIdOnPending(
-          result.messageId,
-        );
+      await Q.player.inactivity.warning.setMessageIdOnPending(message.id);
 
-        logger.info(
-          `Sent inactivity warning announcement (messageId: ${result.messageId}) for ${inactivePlayers.length} player(s)`,
-        );
-      } else {
-        logger.warn(
-          `Failed to send inactivity warning announcement: ${result.error ?? "unknown error"}`,
-        );
-      }
+      logger.info(
+        `Sent inactivity warning announcement (messageId: ${message.id}) for ${inactivePlayers.length} player(s)`,
+      );
     } catch (error) {
       logger.error("Failed to send inactivity warning embed:", error);
     }
