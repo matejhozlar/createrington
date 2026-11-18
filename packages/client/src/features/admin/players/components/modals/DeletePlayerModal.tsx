@@ -36,10 +36,6 @@ export function DeletePlayerModal({
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
   const handleDeleteClick = () => {
-    if (!reason.trim()) {
-      toast.error("Reason is required for deletion");
-      return;
-    }
     setShowConfirmDialog(true);
   };
 

@@ -1,8 +1,12 @@
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
-import { UserMinus } from "lucide-react";
+import { Search, UserMinus, Users } from "lucide-react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { LoadingState } from "@/components/query-states";
+import {
+  EmptyState,
+  ErrorState,
+  LoadingState,
+} from "@/components/query-states";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -180,6 +184,12 @@ export function AdminParties() {
             text="Loading party totals..."
             className="flex-none p-0"
           />
+        ) : statsQuery.isError ? (
+          <ErrorState
+            message={`Failed to load the party totals: ${statsQuery.error.message}`}
+            onRetry={() => statsQuery.refetch()}
+            className="flex-none py-8"
+          />
         ) : statsQuery.data ? (
           <PartiesStatsCards
             stats={statsQuery.data}
@@ -204,17 +214,23 @@ export function AdminParties() {
           </CardHeader>
           <CardContent className="p-0">
             {listQuery.isError ? (
-              <p className="py-8 text-center text-destructive">
-                Failed to load the parties: {listQuery.error.message}
-              </p>
+              <ErrorState
+                message={`Failed to load the parties: ${listQuery.error.message}`}
+                onRetry={() => listQuery.refetch()}
+                compact
+              />
             ) : !listQuery.isLoading && parties.length === 0 ? (
-              <p className="px-6 py-8 text-center text-muted-foreground">
-                {PAGE_COPY.empty}
-              </p>
+              <EmptyState
+                icon={Users}
+                message={PAGE_COPY.empty}
+                className="py-8"
+              />
             ) : !listQuery.isLoading && shown.length === 0 ? (
-              <p className="px-6 py-8 text-center text-muted-foreground">
-                {PAGE_COPY.noMatch}
-              </p>
+              <EmptyState
+                icon={Search}
+                message={PAGE_COPY.noMatch}
+                className="py-8"
+              />
             ) : (
               <PartiesTable
                 parties={shown}

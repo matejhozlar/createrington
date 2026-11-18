@@ -4,7 +4,6 @@ import { Input } from "@/components/ui/input";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { FormDialog } from "@/components/form-dialog";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { useToastActions } from "@/hooks/use-toast";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
 import { useMutation } from "@tanstack/react-query";
@@ -21,8 +20,6 @@ export function DeleteWaitlistModal({
   entry,
   onClose,
 }: DeleteWaitlistModalProps) {
-  const toast = useToastActions();
-
   const [reason, setReason] = useState("");
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
@@ -47,10 +44,6 @@ export function DeleteWaitlistModal({
   };
 
   const handleDeleteClick = () => {
-    if (!reason.trim()) {
-      toast.error("Reason is required for deletion");
-      return;
-    }
     setShowConfirmDialog(true);
   };
 

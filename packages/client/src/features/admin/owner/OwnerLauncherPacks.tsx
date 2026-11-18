@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { CellDate, CellText } from "@/components/cell-text";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { EmptyState, ErrorState } from "@/components/query-states";
 import {
   BadgeCellSkeleton,
   DataTable,
@@ -238,13 +239,17 @@ export function OwnerLauncherPacks() {
           </CardHeader>
           <CardContent className="p-0">
             {packsQuery.isError ? (
-              <p className="py-8 text-center text-destructive">
-                Failed to load the launcher packs: {packsQuery.error.message}
-              </p>
+              <ErrorState
+                message={`Failed to load the launcher packs: ${packsQuery.error.message}`}
+                onRetry={() => packsQuery.refetch()}
+                compact
+              />
             ) : !packsQuery.isLoading && packs.length === 0 ? (
-              <p className="px-6 py-8 text-center text-muted-foreground">
-                {PAGE_COPY.empty}
-              </p>
+              <EmptyState
+                icon={Package}
+                message={PAGE_COPY.empty}
+                className="py-8"
+              />
             ) : (
               <DataTable
                 columns={columns}

@@ -1,6 +1,11 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router";
-import { LoadingState } from "@/components/query-states";
+import { Package } from "lucide-react";
+import {
+  EmptyState,
+  ErrorState,
+  LoadingState,
+} from "@/components/query-states";
 import { trpc, queryClient } from "@/lib/trpc";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
@@ -68,11 +73,23 @@ export function StructurePackDetail() {
     );
   }
 
+  if (packQuery.isError && packQuery.error.data?.code !== "NOT_FOUND") {
+    return (
+      <ErrorState
+        message={packQuery.error.message}
+        onRetry={() => packQuery.refetch()}
+        className="h-screen flex-none py-0"
+      />
+    );
+  }
+
   if (!pack) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <p className="text-destructive">Pack not found</p>
-      </div>
+      <EmptyState
+        icon={Package}
+        message="Pack not found"
+        className="h-screen flex-none py-0"
+      />
     );
   }
 

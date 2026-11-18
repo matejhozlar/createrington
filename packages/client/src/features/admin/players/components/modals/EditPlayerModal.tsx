@@ -8,7 +8,6 @@ import {
   FieldError,
 } from "@/components/ui/field";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { useToastActions } from "@/hooks/use-toast";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
 import { FormDialog } from "@/components/form-dialog";
@@ -28,17 +27,6 @@ export function EditPlayerModal({
   onClose,
   player,
 }: EditPlayerModalProps) {
-  const toast = useToastActions();
-  const updatePlayer = useMutation(
-    trpc.admin.players.players.update.mutationOptions(
-      useMutationToast({
-        error: (err) => err.message || "Failed to update player",
-        onSuccess: () =>
-          void queryClient.invalidateQueries(trpc.admin.players.pathFilter()),
-      }),
-    ),
-  );
-
   const [minecraftUsername, setMinecraftUsername] = useState(
     player.minecraftUsername,
   );
@@ -50,6 +38,20 @@ export function EditPlayerModal({
     discordId?: string;
     reason?: string;
   }>({});
+
+  const updatePlayer = useMutation(
+    trpc.admin.players.players.update.mutationOptions(
+      useMutationToast({
+        success: "Player updated",
+        error: (err) => err.message || "Failed to update player",
+        onSuccess: () => {
+          void queryClient.invalidateQueries(trpc.admin.players.pathFilter());
+          setReason("");
+          onClose();
+        },
+      }),
+    ),
+  );
 
   const validateForm = (): boolean => {
     const newErrors: typeof errors = {};
@@ -115,16 +117,7 @@ export function EditPlayerModal({
       input.discordId = discordId.trim();
     }
 
-    if (!input.minecraftUsername && !input.discordId) {
-      toast.error("No changes to save");
-      return;
-    }
-
     await updatePlayer.mutateAsync(input);
-
-    toast.success("Player updated");
-    setReason("");
-    onClose();
   };
 
   const handleCancel = () => {

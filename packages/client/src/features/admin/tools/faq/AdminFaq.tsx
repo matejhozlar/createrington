@@ -42,7 +42,7 @@ import { CreateFaqModal } from "./components/modals/CreateFaqModal";
 import { EditFaqModal } from "./components/modals/EditFaqModal";
 import { DeleteFaqModal } from "./components/modals/DeleteFaqModal";
 import { trpc, type RouterOutput } from "@/lib/trpc";
-import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { EmptyState, ErrorState } from "@/components/query-states";
 
 type FaqEntry = RouterOutput["admin"]["faq"]["list"]["entries"][number];
@@ -51,8 +51,6 @@ type SortField = "priority" | "title" | "createdAt";
 type EnabledFilter = "all" | "enabled" | "disabled";
 
 export function AdminFaq() {
-  const toast = useToastActions();
-
   const [page, setPage] = useState(0);
   const [limit] = useState(10);
 
@@ -72,7 +70,9 @@ export function AdminFaq() {
   const debouncedSearch = useDebouncedValue(searchQuery);
 
   const repostWelcome = useMutation(
-    trpc.admin.faq.repostWelcome.mutationOptions(),
+    trpc.admin.faq.repostWelcome.mutationOptions(
+      useMutationToast({ success: "Welcome message reposted" }),
+    ),
   );
 
   const entriesQuery = useQuery(
@@ -114,14 +114,7 @@ export function AdminFaq() {
     [orderBy],
   );
 
-  const handleRepostWelcome = useCallback(async () => {
-    try {
-      await repostWelcome.mutateAsync();
-      toast.success("Welcome message reposted");
-    } catch {
-      toast.error("Failed to repost welcome message");
-    }
-  }, [repostWelcome, toast]);
+  const handleRepostWelcome = () => repostWelcome.mutate();
 
   const columns: DataTableColumn<FaqEntry>[] = [
     {

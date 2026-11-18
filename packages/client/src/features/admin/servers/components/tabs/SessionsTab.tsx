@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Link } from "react-router";
+import { Clock } from "lucide-react";
 import { formatCompactDuration } from "@createrington/shared/format";
 import { Badge } from "@/components/ui/badge";
 import { CellDate, CellText } from "@/components/cell-text";
@@ -10,6 +11,7 @@ import {
   type DataTableColumn,
 } from "@/components/data-table";
 import { Paginator } from "@/components/paginator";
+import { EmptyState, ErrorState } from "@/components/query-states";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { trpc, type RouterOutput } from "@/lib/trpc";
@@ -100,11 +102,18 @@ export function SessionsTab({ serverId }: SessionsTabProps) {
   const loading = sessionsQuery.isLoading || sessionsQuery.isPlaceholderData;
   const loadingRows = loadingRowCount(page, limit, total);
 
+  if (sessionsQuery.isError) {
+    return (
+      <ErrorState
+        message={sessionsQuery.error.message}
+        onRetry={() => sessionsQuery.refetch()}
+      />
+    );
+  }
+
   if (!loading && sessions.length === 0) {
     return (
-      <p className="text-center text-sm text-muted-foreground py-8">
-        No sessions found for this server
-      </p>
+      <EmptyState icon={Clock} message="No sessions found for this server" />
     );
   }
 

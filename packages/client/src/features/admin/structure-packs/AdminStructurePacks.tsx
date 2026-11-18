@@ -15,7 +15,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { EmptyState } from "@/components/query-states";
+import { EmptyState, ErrorState } from "@/components/query-states";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CellDate, CellText } from "@/components/cell-text";
@@ -381,7 +381,12 @@ export function AdminStructurePacks() {
             </CardTitle>
           </CardHeader>
 
-          {!packsQuery.isLoading && filteredPacks.length === 0 ? (
+          {packsQuery.isError ? (
+            <ErrorState
+              message={packsQuery.error.message}
+              onRetry={() => packsQuery.refetch()}
+            />
+          ) : !packsQuery.isLoading && filteredPacks.length === 0 ? (
             <EmptyState
               icon={Package}
               message={

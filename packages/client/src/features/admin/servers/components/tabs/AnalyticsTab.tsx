@@ -17,7 +17,12 @@ import { trpc } from "@/lib/trpc";
 import { ActivityChart } from "../charts/ActivityChart";
 import { HeatmapChart } from "../charts/HeatmapChart";
 import { useQuery } from "@tanstack/react-query";
-import { LoadingState } from "@/components/query-states";
+import { Activity, CalendarClock } from "lucide-react";
+import {
+  EmptyState,
+  ErrorState,
+  LoadingState,
+} from "@/components/query-states";
 
 interface AnalyticsTabProps {
   serverId: number;
@@ -117,10 +122,18 @@ export function AnalyticsTab({ serverId }: AnalyticsTabProps) {
         <CardContent>
           {activityLoading ? (
             <LoadingState text="Loading activity..." />
+          ) : activityQuery.isError ? (
+            <ErrorState
+              message={activityQuery.error.message}
+              onRetry={() => activityQuery.refetch()}
+              compact
+            />
           ) : activity.length === 0 ? (
-            <p className="text-center text-sm text-muted-foreground py-8">
-              No activity data for this period
-            </p>
+            <EmptyState
+              icon={Activity}
+              message="No activity data for this period"
+              className="py-8"
+            />
           ) : (
             <ActivityChart data={activity} />
           )}
@@ -137,10 +150,18 @@ export function AnalyticsTab({ serverId }: AnalyticsTabProps) {
         <CardContent>
           {heatmapLoading ? (
             <LoadingState text="Loading heatmap..." />
+          ) : heatmapQuery.isError ? (
+            <ErrorState
+              message={heatmapQuery.error.message}
+              onRetry={() => heatmapQuery.refetch()}
+              compact
+            />
           ) : heatmap.length === 0 ? (
-            <p className="text-center text-sm text-muted-foreground py-8">
-              No heatmap data for this period
-            </p>
+            <EmptyState
+              icon={CalendarClock}
+              message="No heatmap data for this period"
+              className="py-8"
+            />
           ) : (
             <HeatmapChart data={heatmap} />
           )}

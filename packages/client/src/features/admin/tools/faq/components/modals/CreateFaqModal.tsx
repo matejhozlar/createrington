@@ -5,6 +5,7 @@ import { Field, FieldLabel, FieldDescription } from "@/components/ui/field";
 import { Checkbox } from "@/components/ui/checkbox";
 import { FormDialog } from "@/components/form-dialog";
 import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { trpc, queryClient } from "@/lib/trpc";
 import { InsertMenu } from "@/features/admin/components/InsertMenu";
 import { CharCount } from "@/features/admin/components/CharCount";
@@ -22,12 +23,6 @@ interface CreateFaqModalProps {
 
 export function CreateFaqModal({ open, onClose }: CreateFaqModalProps) {
   const toast = useToastActions();
-  const createEntry = useMutation(
-    trpc.admin.faq.create.mutationOptions({
-      onSuccess: () =>
-        void queryClient.invalidateQueries(trpc.admin.faq.pathFilter()),
-    }),
-  );
 
   const mentionResolver = useMentionResolver();
   const responseRef = useRef<HTMLTextAreaElement>(null);
@@ -47,7 +42,20 @@ export function CreateFaqModal({ open, onClose }: CreateFaqModalProps) {
     setEnabled(true);
   };
 
-  const handleSubmit = async () => {
+  const createEntry = useMutation(
+    trpc.admin.faq.create.mutationOptions(
+      useMutationToast({
+        success: "FAQ entry created",
+        onSuccess: () => {
+          void queryClient.invalidateQueries(trpc.admin.faq.pathFilter());
+          resetForm();
+          onClose();
+        },
+      }),
+    ),
+  );
+
+  const handleSubmit = () => {
     if (!title.trim() || !pattern.trim() || !response.trim()) {
       toast.error("All fields are required");
       return;
@@ -62,22 +70,14 @@ export function CreateFaqModal({ open, onClose }: CreateFaqModalProps) {
       }
     }
 
-    try {
-      await createEntry.mutateAsync({
-        title: title.trim(),
-        matchMode,
-        pattern: pattern.trim(),
-        response: response.trim(),
-        priority,
-        enabled,
-      });
-
-      toast.success("FAQ entry created");
-      resetForm();
-      onClose();
-    } catch {
-      toast.error("Failed to create FAQ entry");
-    }
+    createEntry.mutate({
+      title: title.trim(),
+      matchMode,
+      pattern: pattern.trim(),
+      response: response.trim(),
+      priority,
+      enabled,
+    });
   };
 
   return (
@@ -85,7 +85,7 @@ export function CreateFaqModal({ open, onClose }: CreateFaqModalProps) {
       open={open}
       onClose={onClose}
       title="Create FAQ Entry"
-      onConfirm={() => void handleSubmit()}
+      onConfirm={handleSubmit}
       confirmLabel="Create"
       loading={createEntry.isPending}
       contentClassName="sm:max-w-lg"

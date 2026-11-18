@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ADMIN_REASON_MAX_LENGTH } from "@createrington/shared/admin-reason";
 import { Field, FieldLabel } from "@/components/ui/field";
-import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { trpc, queryClient } from "@/lib/trpc";
 import { FormDialog } from "@/components/form-dialog";
 import { useMutation } from "@tanstack/react-query";
@@ -20,32 +20,29 @@ export function RemoveStrikeModal({
   playerId,
   strikeId,
 }: RemoveStrikeModalProps) {
-  const toast = useToastActions();
-  const removeStrike = useMutation(
-    trpc.admin.players.strikes.remove.mutationOptions({
-      onSuccess: () =>
-        void queryClient.invalidateQueries(trpc.admin.players.pathFilter()),
-    }),
-  );
-
   const [reason, setReason] = useState("");
 
-  const handleSubmit = async () => {
+  const removeStrike = useMutation(
+    trpc.admin.players.strikes.remove.mutationOptions(
+      useMutationToast({
+        success: "Strike removed",
+        onSuccess: () => {
+          void queryClient.invalidateQueries(trpc.admin.players.pathFilter());
+          setReason("");
+          onClose();
+        },
+      }),
+    ),
+  );
+
+  const handleSubmit = () => {
     if (!reason.trim()) return;
 
-    try {
-      await removeStrike.mutateAsync({
-        id: playerId,
-        strikeId,
-        reason: reason.trim(),
-      });
-
-      toast.success("Strike removed");
-      setReason("");
-      onClose();
-    } catch {
-      toast.error("Failed to remove strike");
-    }
+    removeStrike.mutate({
+      id: playerId,
+      strikeId,
+      reason: reason.trim(),
+    });
   };
 
   return (

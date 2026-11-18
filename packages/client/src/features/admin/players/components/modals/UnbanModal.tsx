@@ -2,7 +2,7 @@ import { useState } from "react";
 import { ADMIN_REASON_MAX_LENGTH } from "@createrington/shared/admin-reason";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { trpc, queryClient } from "@/lib/trpc";
-import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { FormDialog } from "@/components/form-dialog";
 import { useMutation } from "@tanstack/react-query";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,38 +14,30 @@ interface UnbanModalProps {
 }
 
 export function UnbanModal({ open, onClose, banId }: UnbanModalProps) {
-  const toast = useToastActions();
-  const unbanPlayer = useMutation(
-    trpc.admin.players.bans.unban.mutationOptions({
-      onSuccess: () =>
-        void queryClient.invalidateQueries(trpc.admin.players.pathFilter()),
-    }),
-  );
-
   const [reason, setReason] = useState("");
 
-  const handleSubmit = async () => {
-    if (!reason.trim()) {
-      toast.error("Reason is required");
-      return;
-    }
+  const unbanPlayer = useMutation(
+    trpc.admin.players.bans.unban.mutationOptions(
+      useMutationToast({
+        success: "Ban lifted",
+        error: (err) => ({
+          title: "Failed to unban player",
+          description: err.message,
+        }),
+        onSuccess: () => {
+          void queryClient.invalidateQueries(trpc.admin.players.pathFilter());
+          setReason("");
+          onClose();
+        },
+      }),
+    ),
+  );
 
-    try {
-      await unbanPlayer.mutateAsync({
-        banId,
-        reason: reason.trim(),
-      });
-
-      toast.success("Ban lifted");
-
-      setReason("");
-      onClose();
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Something went wrong",
-        "Failed to unban player",
-      );
-    }
+  const handleSubmit = () => {
+    unbanPlayer.mutate({
+      banId,
+      reason: reason.trim(),
+    });
   };
 
   const handleClose = () => {

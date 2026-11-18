@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
-import { PackagePlus, Settings2 } from "lucide-react";
+import { Hammer, PackagePlus, Settings2 } from "lucide-react";
 import { trpc, queryClient } from "@/lib/trpc";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { LoadingState } from "@/components/query-states";
+import {
+  EmptyState,
+  ErrorState,
+  LoadingState,
+} from "@/components/query-states";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
@@ -420,19 +424,17 @@ export function AdminWorkshopDetail() {
     return <LoadingState text="Loading workshop..." />;
   }
 
-  if (workshopsQuery.error || !workshop) {
+  if (workshopsQuery.error) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-4">
-        <p className="text-destructive">
-          {workshopsQuery.error?.message ?? "Workshop not found"}
-        </p>
-        {workshopsQuery.error && (
-          <Button variant="outline" onClick={() => workshopsQuery.refetch()}>
-            Try Again
-          </Button>
-        )}
-      </div>
+      <ErrorState
+        message={workshopsQuery.error.message}
+        onRetry={() => workshopsQuery.refetch()}
+      />
     );
+  }
+
+  if (!workshop) {
+    return <EmptyState icon={Hammer} message="Workshop not found" />;
   }
 
   return (

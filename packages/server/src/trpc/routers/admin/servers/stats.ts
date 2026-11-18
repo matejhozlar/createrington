@@ -70,7 +70,7 @@ export const serverStatsProcedures = {
     .query(async ({ input }) => {
       const serverConfig = getServerById(input.id);
       if (!serverConfig) {
-        throw trpcError.badRequest(`Server with id ${input.id} not found`);
+        throw trpcError.notFound(`Server with id ${input.id} not found`);
       }
 
       const manager = await getService(Services.PLAYTIME_MANAGER_SERVICE);

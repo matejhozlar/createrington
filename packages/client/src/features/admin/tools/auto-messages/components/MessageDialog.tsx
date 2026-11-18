@@ -6,6 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { FormDialog } from "@/components/form-dialog";
 import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
 import { InsertMenu } from "@/features/admin/components/InsertMenu";
 import { CharCount } from "@/features/admin/components/CharCount";
@@ -42,21 +43,22 @@ export function MessageDialog({
   const toast = useToastActions();
   const isEdit = !!message;
 
+  const handleSaved = () => {
+    void queryClient.invalidateQueries(
+      trpc.admin.autoMessages.configs.pathFilter(),
+    );
+    onClose();
+  };
+
   const createMutation = useMutation(
-    trpc.admin.autoMessages.messages.create.mutationOptions({
-      onSuccess: () =>
-        void queryClient.invalidateQueries(
-          trpc.admin.autoMessages.configs.pathFilter(),
-        ),
-    }),
+    trpc.admin.autoMessages.messages.create.mutationOptions(
+      useMutationToast({ success: "Message added", onSuccess: handleSaved }),
+    ),
   );
   const updateMutation = useMutation(
-    trpc.admin.autoMessages.messages.update.mutationOptions({
-      onSuccess: () =>
-        void queryClient.invalidateQueries(
-          trpc.admin.autoMessages.configs.pathFilter(),
-        ),
-    }),
+    trpc.admin.autoMessages.messages.update.mutationOptions(
+      useMutationToast({ success: "Message updated", onSuccess: handleSaved }),
+    ),
   );
 
   const mentionResolver = useMentionResolver();
@@ -91,7 +93,7 @@ export function MessageDialog({
     setFollowups((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (!content.trim()) {
       toast.error("Message content is required");
       return;
@@ -121,27 +123,20 @@ export function MessageDialog({
       enabled: f.enabled,
     }));
 
-    try {
-      if (isEdit) {
-        await updateMutation.mutateAsync({
-          id: message.id,
-          content: content.trim(),
-          enabled,
-          followups: followupsPayload,
-        });
-        toast.success("Message updated");
-      } else {
-        await createMutation.mutateAsync({
-          configId,
-          content: content.trim(),
-          enabled,
-          followups: followupsPayload,
-        });
-        toast.success("Message added");
-      }
-      onClose();
-    } catch {
-      toast.error(`Failed to ${isEdit ? "update" : "add"} message`);
+    if (isEdit) {
+      updateMutation.mutate({
+        id: message.id,
+        content: content.trim(),
+        enabled,
+        followups: followupsPayload,
+      });
+    } else {
+      createMutation.mutate({
+        configId,
+        content: content.trim(),
+        enabled,
+        followups: followupsPayload,
+      });
     }
   };
 
@@ -150,7 +145,7 @@ export function MessageDialog({
       open={open}
       onClose={onClose}
       title={isEdit ? "Edit Message" : "Add Message"}
-      onConfirm={() => void handleSubmit()}
+      onConfirm={handleSubmit}
       confirmLabel={isEdit ? "Save" : "Add"}
       loading={isPending}
       contentClassName="max-h-[90vh] overflow-y-auto sm:max-w-2xl"

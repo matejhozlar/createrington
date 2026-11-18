@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Clock, Globe, MessageSquareOff } from "lucide-react";
-import { LoadingState } from "@/components/query-states";
+import { ErrorState, LoadingState } from "@/components/query-states";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { IssueWorkshopBanModal } from "./modals/IssueWorkshopBanModal";
 import { LiftWorkshopBanModal } from "./modals/LiftWorkshopBanModal";
@@ -61,9 +61,12 @@ export function WorkshopBansSection({
           className="flex-none px-0 py-4"
         />
       ) : bans.error ? (
-        <p className="py-4 text-sm text-destructive">
-          Could not load suggestion blocks: {bans.error.message}
-        </p>
+        <ErrorState
+          message={`Could not load suggestion blocks: ${bans.error.message}`}
+          onRetry={() => bans.refetch()}
+          compact
+          className="flex-none py-4"
+        />
       ) : active.length === 0 ? (
         <p className="py-4 text-sm text-muted-foreground">
           Not blocked from suggesting.

@@ -1,6 +1,11 @@
 import { useState } from "react";
 import { useParams } from "react-router";
-import { LoadingState } from "@/components/query-states";
+import { Server } from "lucide-react";
+import {
+  EmptyState,
+  ErrorState,
+  LoadingState,
+} from "@/components/query-states";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { trpc } from "@/lib/trpc";
 import { useServerData } from "@/contexts/server-data";
@@ -32,6 +37,7 @@ export function AdminServerDetail() {
   const serverData = serverQuery.data;
   const loading = serverQuery.isLoading;
   const error = serverQuery.error?.message ?? null;
+  const notFound = serverQuery.error?.data?.code === "NOT_FOUND";
 
   if (loading) {
     return (
@@ -43,11 +49,23 @@ export function AdminServerDetail() {
     );
   }
 
-  if (error || !serverData) {
+  if (error && !notFound) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <p className="text-destructive">{error || "Server not found"}</p>
-      </div>
+      <ErrorState
+        message={error}
+        onRetry={() => serverQuery.refetch()}
+        className="h-screen flex-none py-0"
+      />
+    );
+  }
+
+  if (!serverData) {
+    return (
+      <EmptyState
+        icon={Server}
+        message="Server not found"
+        className="h-screen flex-none py-0"
+      />
     );
   }
 
