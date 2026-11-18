@@ -59,52 +59,39 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
   const member = interaction.member;
   const hasRole = RoleManager.has(member, role.id);
 
-  try {
-    if (hasRole) {
-      const removed = await RoleManager.remove(
-        member,
-        role.id,
-        "Role panel: removed by member",
-      );
+  if (hasRole) {
+    const removed = await RoleManager.remove(
+      member,
+      role.id,
+      "Role panel: removed by member",
+    );
 
-      if (!removed) {
-        throw new Error("Failed to remove role");
-      }
-
-      const embed = EmbedPresets.success(
-        "Role Removed",
-        `You no longer have ${role}. Click the button again to get it back.`,
-      );
-
-      await interaction.editReply({ embeds: [embed.build()] });
-    } else {
-      const added = await RoleManager.assign(
-        member,
-        role.id,
-        "Role panel: chosen by member",
-      );
-
-      if (!added) {
-        throw new Error("Failed to assign role");
-      }
-
-      const embed = EmbedPresets.success(
-        "Role Added",
-        `You now have ${role}. Click the button again to remove it.`,
-      );
-
-      await interaction.editReply({ embeds: [embed.build()] });
+    if (!removed) {
+      throw new Error("Failed to remove role");
     }
-  } catch (error) {
-    logger.error(
-      `Failed to toggle role ${role.name} for ${member.user.tag}:`,
-      error,
+
+    const embed = EmbedPresets.success(
+      "Role Removed",
+      `You no longer have ${role}. Click the button again to get it back.`,
     );
 
-    await replyError(
-      interaction,
-      "Action Failed",
-      "Something went wrong while updating your roles. Please try again or contact an administrator.",
+    await interaction.editReply({ embeds: [embed.build()] });
+  } else {
+    const added = await RoleManager.assign(
+      member,
+      role.id,
+      "Role panel: chosen by member",
     );
+
+    if (!added) {
+      throw new Error("Failed to assign role");
+    }
+
+    const embed = EmbedPresets.success(
+      "Role Added",
+      `You now have ${role}. Click the button again to remove it.`,
+    );
+
+    await interaction.editReply({ embeds: [embed.build()] });
   }
 }

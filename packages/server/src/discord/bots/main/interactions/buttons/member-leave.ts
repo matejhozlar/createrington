@@ -68,75 +68,65 @@ async function handleDeleteNow(
 ): Promise<void> {
   await interaction.deferUpdate();
 
-  try {
-    const departed = await Q.discord.guild.member.leave.find({
-      id: departedId,
-    });
+  const departed = await Q.discord.guild.member.leave.find({
+    id: departedId,
+  });
 
-    if (!departed) {
-      await replyError(
-        interaction,
-        "Not Found",
-        "This member has already been deleted or the record doesn't exist.",
-      );
-
-      return;
-    }
-
-    const admin = await Q.player.find({ discordId: interaction.user.id });
-    const adminUsername = admin?.minecraftUsername ?? null;
-
-    await playerDeletionService.delete(
-      { minecraftUuid: departed.minecraftUuid },
-      {
-        actor: {
-          type: "admin",
-          discordId: interaction.user.id,
-          username: adminUsername ?? "Unknown",
-        },
-        reason: "Departed member deleted via admin button",
-      },
-    );
-
-    await Q.discord.guild.member.leave.update(
-      { id: departedId },
-      { deletedAt: new Date() },
-    );
-
-    const deletedEmbed = EmbedPresets.departed.deleted({
-      minecraftUsername: departed.minecraftUsername,
-      deletedBy: {
-        discordId: interaction.user.id,
-        username: adminUsername,
-      },
-      deletedAt: new Date(),
-    });
-
-    await interaction.message.edit({
-      embeds: [deletedEmbed.build()],
-      components: [],
-    });
-
-    logger.info(
-      `Admin ${interaction.user.tag} deleted departed member ${departed.minecraftUsername}`,
-    );
-
-    const confirmEmbed = EmbedPresets.success(
-      "Member Deleted",
-      `Successfully removed **${departed.minecraftUsername}** from the system.`,
-    );
-
-    await interaction.followUp({
-      embeds: [confirmEmbed.build()],
-      flags: MessageFlags.Ephemeral,
-    });
-  } catch (error) {
-    logger.error("Failed to delete departed member:", error);
-
+  if (!departed) {
     await replyError(
       interaction,
-      "Deletion Failed",
-      error instanceof Error ? error.message : "Unknown error",
+      "Not Found",
+      "This member has already been deleted or the record doesn't exist.",
     );
+
+    return;
   }
+
+  const admin = await Q.player.find({ discordId: interaction.user.id });
+  const adminUsername = admin?.minecraftUsername ?? null;
+
+  await playerDeletionService.delete(
+    { minecraftUuid: departed.minecraftUuid },
+    {
+      actor: {
+        type: "admin",
+        discordId: interaction.user.id,
+        username: adminUsername ?? "Unknown",
+      },
+      reason: "Departed member deleted via admin button",
+    },
+  );
+
+  await Q.discord.guild.member.leave.update(
+    { id: departedId },
+    { deletedAt: new Date() },
+  );
+
+  const deletedEmbed = EmbedPresets.departed.deleted({
+    minecraftUsername: departed.minecraftUsername,
+    deletedBy: {
+      discordId: interaction.user.id,
+      username: adminUsername,
+    },
+    deletedAt: new Date(),
+  });
+
+  await interaction.message.edit({
+    embeds: [deletedEmbed.build()],
+    components: [],
+  });
+
+  logger.info(
+    `Admin ${interaction.user.tag} deleted departed member ${departed.minecraftUsername}`,
+  );
+
+  const confirmEmbed = EmbedPresets.success(
+    "Member Deleted",
+    `Successfully removed **${departed.minecraftUsername}** from the system.`,
+  );
+
+  await interaction.followUp({
+    embeds: [confirmEmbed.build()],
+    flags: MessageFlags.Ephemeral,
+  });
 }

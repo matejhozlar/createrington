@@ -25,55 +25,21 @@ export async function execute(
 ): Promise<void> {
   const discordId = interaction.user.id;
 
-  try {
-    const eligibility = await dailyRewardService.checkEligibility({
-      discordId,
-    });
+  const eligibility = await dailyRewardService.checkEligibility({
+    discordId,
+  });
 
-    if (!eligibility.eligible) {
-      const embed = EmbedPresets.error(
-        "Already Claimed",
-        "You have already claimed your daily reward. Please try again later.",
-      );
+  if (!eligibility.eligible) {
+    const embed = EmbedPresets.error(
+      "Already Claimed",
+      "You have already claimed your daily reward. Please try again later.",
+    );
 
-      if (eligibility.nextClaimTime) {
-        embed.field(
-          "Next Claim",
-          `${discordTimestamp(eligibility.nextClaimTime, "F")} (${discordTimestamp(eligibility.nextClaimTime, "R")})`,
-          false,
-        );
-      }
-
-      await interaction.reply({
-        embeds: [embed.build()],
-        flags: MessageFlags.Ephemeral,
-      });
-      return;
-    }
-
-    const result = await dailyRewardService.claim({ discordId });
-
-    if (!result.success) {
-      await replyError(
-        interaction,
-        "Claim Failed",
-        "Failed to claim your daily reward. Please try again.",
-      );
-      return;
-    }
-
-    const embed = EmbedPresets.success(
-      "💰 Daily Reward Claimed!",
-      `You received **${formatMoney(result.amount ?? 0)}**`,
-    )
-      .field("New Balance", formatMoney(result.newBalance ?? 0), true)
-      .timestamp();
-
-    if (result.nextClaimTime) {
+    if (eligibility.nextClaimTime) {
       embed.field(
         "Next Claim",
-        discordTimestamp(result.nextClaimTime, "R"),
-        true,
+        `${discordTimestamp(eligibility.nextClaimTime, "F")} (${discordTimestamp(eligibility.nextClaimTime, "R")})`,
+        false,
       );
     }
 
@@ -81,17 +47,41 @@ export async function execute(
       embeds: [embed.build()],
       flags: MessageFlags.Ephemeral,
     });
+    return;
+  }
 
-    logger.info(
-      `User ${interaction.user.tag} (${discordId}) claimd daily reward: ${result.amount}`,
-    );
-  } catch (error) {
-    logger.error("/daily failed:", error);
+  const result = await dailyRewardService.claim({ discordId });
 
+  if (!result.success) {
     await replyError(
       interaction,
-      "Daily Reward Error",
-      "Something went wrong while claiming your reward. Please try again later.",
+      "Claim Failed",
+      "Failed to claim your daily reward. Please try again.",
+    );
+    return;
+  }
+
+  const embed = EmbedPresets.success(
+    "💰 Daily Reward Claimed!",
+    `You received **${formatMoney(result.amount ?? 0)}**`,
+  )
+    .field("New Balance", formatMoney(result.newBalance ?? 0), true)
+    .timestamp();
+
+  if (result.nextClaimTime) {
+    embed.field(
+      "Next Claim",
+      discordTimestamp(result.nextClaimTime, "R"),
+      true,
     );
   }
+
+  await interaction.reply({
+    embeds: [embed.build()],
+    flags: MessageFlags.Ephemeral,
+  });
+
+  logger.info(
+    `User ${interaction.user.tag} (${discordId}) claimd daily reward: ${result.amount}`,
+  );
 }

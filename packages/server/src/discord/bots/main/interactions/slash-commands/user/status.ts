@@ -1,5 +1,4 @@
 import { EmbedPresets } from "@/discord/embeds";
-import { replyError } from "@/discord/utils/interaction-reply";
 import { CooldownType } from "@/discord/utils/cooldown";
 import { getService, Services } from "@/services";
 import { getAllServerIds, getServerById } from "@/services/playtime/config";
@@ -19,55 +18,40 @@ export const cooldown = {
 export async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
-  try {
-    const playtimeManager = await getService(Services.PLAYTIME_MANAGER_SERVICE);
+  const playtimeManager = await getService(Services.PLAYTIME_MANAGER_SERVICE);
 
-    const serverIds = getAllServerIds();
-    let totalOnline = 0;
-    const serverLines: string[] = [];
+  const serverIds = getAllServerIds();
+  let totalOnline = 0;
+  const serverLines: string[] = [];
 
-    for (const serverId of serverIds) {
-      const serverConfig = getServerById(serverId);
-      const playtimeService = playtimeManager.getService(serverId);
+  for (const serverId of serverIds) {
+    const serverConfig = getServerById(serverId);
+    const playtimeService = playtimeManager.getService(serverId);
 
-      if (!serverConfig || !playtimeService) continue;
+    if (!serverConfig || !playtimeService) continue;
 
-      const state = playtimeService.getServerState();
-      const onlineCount = playtimeService.getOnlineCount();
-      totalOnline += onlineCount;
+    const state = playtimeService.getServerState();
+    const onlineCount = playtimeService.getOnlineCount();
+    totalOnline += onlineCount;
 
-      const statusIcon = state === ServerState.ONLINE ? "🟢" : "🔴";
-      const playerText =
-        state === ServerState.ONLINE
-          ? `${onlineCount}/${serverConfig.maxPlayers} players`
-          : "Offline";
+    const statusIcon = state === ServerState.ONLINE ? "🟢" : "🔴";
+    const playerText =
+      state === ServerState.ONLINE
+        ? `${onlineCount}/${serverConfig.maxPlayers} players`
+        : "Offline";
 
-      serverLines.push(
-        `${statusIcon} **${serverConfig.name}** - ${playerText}`,
-      );
-    }
-
-    const description =
-      serverLines.length > 0
-        ? serverLines.join("\n")
-        : "No servers configured.";
-
-    const embed = EmbedPresets.info("Server Status", description)
-      .field(
-        "Total Online",
-        `${totalOnline} player${totalOnline !== 1 ? "s" : ""}`,
-      )
-      .timestamp();
-
-    await interaction.reply({ embeds: [embed.build()] });
-  } catch (error) {
-    logger.error("/status failed:", error);
-
-    await replyError(
-      interaction,
-      "Status Error",
-      "Failed to fetch server status. Please try again.",
-      { ephemeral: false },
-    );
+    serverLines.push(`${statusIcon} **${serverConfig.name}** - ${playerText}`);
   }
+
+  const description =
+    serverLines.length > 0 ? serverLines.join("\n") : "No servers configured.";
+
+  const embed = EmbedPresets.info("Server Status", description)
+    .field(
+      "Total Online",
+      `${totalOnline} player${totalOnline !== 1 ? "s" : ""}`,
+    )
+    .timestamp();
+
+  await interaction.reply({ embeds: [embed.build()] });
 }

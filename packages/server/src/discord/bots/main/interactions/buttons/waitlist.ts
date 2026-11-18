@@ -60,64 +60,46 @@ async function renderCurrentState(
 export async function execute(interaction: ButtonInteraction): Promise<void> {
   const discordId = interaction.user.id;
 
-  try {
-    if (await denyForeignVerificationChannel(interaction)) return;
+  if (await denyForeignVerificationChannel(interaction)) return;
 
-    switch (interaction.customId) {
-      case WAITLIST_JOIN_BUTTON_ID: {
-        await interaction.deferUpdate();
+  switch (interaction.customId) {
+    case WAITLIST_JOIN_BUTTON_ID: {
+      await interaction.deferUpdate();
 
-        const hasCapacity = await waitlistRepo.hasCapacity();
-        if (!hasCapacity) {
-          await waitlistService.joinQueue({
-            discordId,
-            discordUsername: interaction.user.username,
-            verifyChannelId: interaction.channelId,
-            waitingMessageId: interaction.message.id,
-          });
-        }
-
-        await renderCurrentState(interaction);
-        return;
-      }
-
-      case WAITLIST_REFRESH_BUTTON_ID: {
-        await interaction.deferUpdate();
-        await renderCurrentState(interaction);
-        return;
-      }
-
-      case WAITLIST_LEAVE_BUTTON_ID: {
-        await interaction.deferUpdate();
-        await waitlistService.leaveQueue(discordId);
-        await renderCurrentState(interaction);
-        return;
-      }
-
-      default: {
-        await interaction.reply({
-          content:
-            "This action has moved to the admin panel and is no longer available here.",
-          flags: MessageFlags.Ephemeral,
+      const hasCapacity = await waitlistRepo.hasCapacity();
+      if (!hasCapacity) {
+        await waitlistService.joinQueue({
+          discordId,
+          discordUsername: interaction.user.username,
+          verifyChannelId: interaction.channelId,
+          waitingMessageId: interaction.message.id,
         });
-        return;
       }
+
+      await renderCurrentState(interaction);
+      return;
     }
-  } catch (error) {
-    logger.error(
-      `Error handling waitlist button (${interaction.customId}) for ${interaction.user.tag}:`,
-      error,
-    );
 
-    try {
-      if (interaction.deferred && !interaction.replied) {
-        await interaction.followUp({
-          content: "There was an error handling that action. Please try again.",
-          flags: MessageFlags.Ephemeral,
-        });
-      }
-    } catch (followUpError) {
-      logger.error("Failed to send error response:", followUpError);
+    case WAITLIST_REFRESH_BUTTON_ID: {
+      await interaction.deferUpdate();
+      await renderCurrentState(interaction);
+      return;
+    }
+
+    case WAITLIST_LEAVE_BUTTON_ID: {
+      await interaction.deferUpdate();
+      await waitlistService.leaveQueue(discordId);
+      await renderCurrentState(interaction);
+      return;
+    }
+
+    default: {
+      await interaction.reply({
+        content:
+          "This action has moved to the admin panel and is no longer available here.",
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
     }
   }
 }

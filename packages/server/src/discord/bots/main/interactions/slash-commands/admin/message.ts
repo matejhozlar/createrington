@@ -1,6 +1,5 @@
 import { EmbedPresets } from "@/discord/embeds";
 import { isSendableChannel } from "@/discord/utils/channel-guard";
-import { replyError } from "@/discord/utils/interaction-reply";
 import {
   type ChatInputCommandInteraction,
   MessageFlags,
@@ -28,22 +27,12 @@ export async function execute(
 ): Promise<void> {
   const content = interaction.options.getString("content", true);
 
-  try {
-    if (isSendableChannel(interaction.channel)) {
-      await interaction.channel.send(content);
-    }
-    const embed = EmbedPresets.success("Message Sent");
-    await interaction.reply({
-      embeds: [embed.build()],
-      flags: MessageFlags.Ephemeral,
-    });
-  } catch (error) {
-    logger.error("/message failed:", error);
-
-    await replyError(
-      interaction,
-      "Message Error",
-      "Failed to send message to the channel. Please try again later.",
-    );
+  if (isSendableChannel(interaction.channel)) {
+    await interaction.channel.send(content);
   }
+  const embed = EmbedPresets.success("Message Sent");
+  await interaction.reply({
+    embeds: [embed.build()],
+    flags: MessageFlags.Ephemeral,
+  });
 }

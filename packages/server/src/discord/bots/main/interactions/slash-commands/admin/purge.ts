@@ -45,44 +45,34 @@ export async function execute(
     return;
   }
 
-  try {
-    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-    let deletedMessages;
+  let deletedMessages;
 
-    if (targetUser) {
-      const fetched = await interaction.channel.messages.fetch({
-        limit: count,
-      });
-      const filtered = fetched.filter((m) => m.author.id === targetUser.id);
-      deletedMessages = await interaction.channel.bulkDelete(filtered, true);
-    } else {
-      deletedMessages = await interaction.channel.bulkDelete(count, true);
-    }
-
-    const userSuffix = targetUser ? ` from ${targetUser.tag}` : "";
-
-    const embed = EmbedPresets.success(
-      "Messages purged",
-      `Successfully purged **${deletedMessages.size}** message${
-        deletedMessages.size === 1 ? "" : "s"
-      }${userSuffix}.`,
-    );
-
-    await interaction.editReply({
-      embeds: [embed.build()],
+  if (targetUser) {
+    const fetched = await interaction.channel.messages.fetch({
+      limit: count,
     });
-
-    logger.info(
-      `${interaction.user.tag} purged ${deletedMessages.size} messages${userSuffix} in ${interaction.channel.name}`,
-    );
-  } catch (error) {
-    logger.error("/purge failed:", error);
-
-    await replyError(
-      interaction,
-      "Purge Failed",
-      "Failed to purge messages. Make sure they are not older than 14 days.",
-    );
+    const filtered = fetched.filter((m) => m.author.id === targetUser.id);
+    deletedMessages = await interaction.channel.bulkDelete(filtered, true);
+  } else {
+    deletedMessages = await interaction.channel.bulkDelete(count, true);
   }
+
+  const userSuffix = targetUser ? ` from ${targetUser.tag}` : "";
+
+  const embed = EmbedPresets.success(
+    "Messages purged",
+    `Successfully purged **${deletedMessages.size}** message${
+      deletedMessages.size === 1 ? "" : "s"
+    }${userSuffix}.`,
+  );
+
+  await interaction.editReply({
+    embeds: [embed.build()],
+  });
+
+  logger.info(
+    `${interaction.user.tag} purged ${deletedMessages.size} messages${userSuffix} in ${interaction.channel.name}`,
+  );
 }

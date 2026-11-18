@@ -63,21 +63,11 @@ async function handleRefresh(
 
   await interaction.deferUpdate();
 
-  try {
-    const result = await leaderboardService.refresh(type, true);
+  const result = await leaderboardService.refresh(type, true);
 
-    if (!result.success) {
-      throw new Error(result.error || "Unknown error");
-    }
-
-    logger.info(`${interaction.user.tag} refreshed ${type} leaderboard`);
-  } catch (error) {
-    logger.error("Failed to refresh leaderboard:", error);
-
-    await replyError(
-      interaction,
-      "Refresh Failed",
-      "Failed to refresh the leaderboard. Please try again later.",
-    );
+  if (!result.success) {
+    throw new Error(result.error || "Unknown error");
   }
+
+  logger.info(`${interaction.user.tag} refreshed ${type} leaderboard`);
 }

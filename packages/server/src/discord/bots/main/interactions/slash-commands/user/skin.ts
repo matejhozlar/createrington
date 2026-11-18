@@ -1,7 +1,11 @@
 import { Q } from "@/db";
 import { EmbedPresets } from "@/discord/embeds";
-import { replyError } from "@/discord/utils/interaction-reply";
+import {
+  replyError,
+  replyNotRegistered,
+} from "@/discord/utils/interaction-reply";
 import { CooldownType } from "@/discord/utils/cooldown";
+import { InteractionError } from "@/discord/utils/interaction-error";
 import { getSkinApiClient, MAX_QUALITY_RENDER } from "@/services/skin-api";
 import {
   KNOWN_POSES,
@@ -107,51 +111,40 @@ export async function execute(
       : "default";
   const pose = (poseInput as KnownPose | undefined) ?? DEFAULT_POSE;
 
-  let player: Awaited<ReturnType<typeof Q.player.get>>;
-  try {
-    player = await Q.player.get({ discordId: targetUser.id });
-  } catch {
-    await replyError(
-      interaction,
-      "Lookup Error",
-      `Could not find player data for ${targetUser.displayName}. They may not be registered.`,
-      { ephemeral: false },
-    );
+  const player = await Q.player.find({ discordId: targetUser.id });
+  if (!player) {
+    await replyNotRegistered(interaction, targetUser, { ephemeral: false });
     return;
   }
 
   await interaction.deferReply();
 
-  try {
-    const png = await getSkinApiClient().render({
+  const png = await getSkinApiClient()
+    .render({
       pose,
       source: { uuid: player.minecraftUuid },
       options: { ...MAX_QUALITY_RENDER, style },
+    })
+    .catch((error: unknown) => {
+      throw new InteractionError(
+        "Render Error",
+        `Could not render the **${titleCasePose(pose)}** pose for ${player.minecraftUsername}. Please try again later.`,
+        { cause: error },
+      );
     });
 
-    const styleSuffix = style === "default" ? "" : `_${style}`;
-    const fileName = `${player.minecraftUsername}_${pose}${styleSuffix}.png`;
-    const attachment = new AttachmentBuilder(Buffer.from(png), {
-      name: fileName,
-    });
+  const styleSuffix = style === "default" ? "" : `_${style}`;
+  const fileName = `${player.minecraftUsername}_${pose}${styleSuffix}.png`;
+  const attachment = new AttachmentBuilder(Buffer.from(png), {
+    name: fileName,
+  });
 
-    const styleLabel = style === "default" ? "" : ` (${STYLE_LABELS[style]})`;
-    const embed = EmbedPresets.info(
-      `${player.minecraftUsername} — ${titleCasePose(pose)}${styleLabel}`,
-    )
-      .image(`attachment://${fileName}`)
-      .build();
+  const styleLabel = style === "default" ? "" : ` (${STYLE_LABELS[style]})`;
+  const embed = EmbedPresets.info(
+    `${player.minecraftUsername} — ${titleCasePose(pose)}${styleLabel}`,
+  )
+    .image(`attachment://${fileName}`)
+    .build();
 
-    await interaction.editReply({ embeds: [embed], files: [attachment] });
-  } catch (error) {
-    logger.warn(
-      `Skin-api render failed for pose "${pose}" (style "${style}"):`,
-      error,
-    );
-    await replyError(
-      interaction,
-      "Render Error",
-      `Could not render the **${titleCasePose(pose)}** pose for ${player.minecraftUsername}. Please try again later.`,
-    );
-  }
+  await interaction.editReply({ embeds: [embed], files: [attachment] });
 }

@@ -77,49 +77,25 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
 
   const { action, ticketId, type } = parsed;
 
-  try {
-    if (action === "create" && type) {
-      await handleCreate(interaction, type);
-    } else if (action === "close" && ticketId) {
-      await handleClose(interaction, ticketId);
-    } else if (action === "confirm-close" && ticketId) {
-      await handleConfirmClose(interaction, ticketId);
-    } else if (action === "cancel-close" && ticketId) {
-      await handleCancelClose(interaction, ticketId);
-    } else if (action === "reopen" && ticketId) {
-      await handleReopen(interaction, ticketId);
-    } else if (action === "delete" && ticketId) {
-      await handleDelete(interaction, ticketId);
-    } else if (action === "transcript" && ticketId) {
-      await handleTranscript(interaction, ticketId);
-    } else {
-      await interaction.reply({
-        content: "Unknown action",
-        flags: MessageFlags.Ephemeral,
-      });
-    }
-  } catch (error) {
-    logger.error(`Error handling ticket button (${action}):`, error);
-
-    const errorEmbed = EmbedPresets.error(
-      "Action Failed",
-      error instanceof Error ? error.message : "An unknown error occurred",
-    );
-
-    if (!interaction.replied && !interaction.deferred) {
-      await interaction.reply({
-        embeds: [errorEmbed.build()],
-        flags: MessageFlags.Ephemeral,
-      });
-    } else if (interaction.deferred) {
-      try {
-        await interaction.editReply({
-          embeds: [errorEmbed.build()],
-        });
-      } catch (editError) {
-        logger.error("Failed to edit reply:", editError);
-      }
-    }
+  if (action === "create" && type) {
+    await handleCreate(interaction, type);
+  } else if (action === "close" && ticketId) {
+    await handleClose(interaction, ticketId);
+  } else if (action === "confirm-close" && ticketId) {
+    await handleConfirmClose(interaction, ticketId);
+  } else if (action === "cancel-close" && ticketId) {
+    await handleCancelClose(interaction, ticketId);
+  } else if (action === "reopen" && ticketId) {
+    await handleReopen(interaction, ticketId);
+  } else if (action === "delete" && ticketId) {
+    await handleDelete(interaction, ticketId);
+  } else if (action === "transcript" && ticketId) {
+    await handleTranscript(interaction, ticketId);
+  } else {
+    await interaction.reply({
+      content: "Unknown action",
+      flags: MessageFlags.Ephemeral,
+    });
   }
 }
 
@@ -132,38 +108,24 @@ async function handleTranscript(
   const ticketService = await getService(Services.TICKET_SERVICE);
   await interaction.deferUpdate();
 
-  try {
-    const { generated } = await ticketService.ensureTranscript(ticketId);
-    await ticketService.sendTranscript(ticketId, interaction.user.id);
+  const { generated } = await ticketService.ensureTranscript(ticketId);
+  await ticketService.sendTranscript(ticketId, interaction.user.id);
 
-    const channel = Discord.Channels.mention(
-      TicketSystemIds.TRANSCRIPT_CHANNEL,
-    );
-    const embed = generated
-      ? EmbedPresets.success(
-          "Transcript generated",
-          `Transcript has been generated and sent to ${channel}`,
-        )
-      : EmbedPresets.success(
-          "Transcript sent",
-          `Transcript has been sent to ${channel}`,
-        );
+  const channel = Discord.Channels.mention(TicketSystemIds.TRANSCRIPT_CHANNEL);
+  const embed = generated
+    ? EmbedPresets.success(
+        "Transcript generated",
+        `Transcript has been generated and sent to ${channel}`,
+      )
+    : EmbedPresets.success(
+        "Transcript sent",
+        `Transcript has been sent to ${channel}`,
+      );
 
-    await interaction.followUp({
-      embeds: [embed.build()],
-      flags: MessageFlags.Ephemeral,
-    });
-  } catch (error) {
-    logger.error("Failed to handle transcript:", error);
-
-    await replyError(
-      interaction,
-      "Transcript Failed",
-      error instanceof Error
-        ? error.message
-        : "Failed to generate or send transcript",
-    );
-  }
+  await interaction.followUp({
+    embeds: [embed.build()],
+    flags: MessageFlags.Ephemeral,
+  });
 }
 
 async function handleCreate(
@@ -291,46 +253,27 @@ async function handleDelete(
   )
     return;
 
-  try {
-    const ticketService = await getService(Services.TICKET_SERVICE);
-    const channel = interaction.channel;
+  const ticketService = await getService(Services.TICKET_SERVICE);
+  const channel = interaction.channel;
 
-    if (!channel || !isSendableChannel(channel)) {
-      throw new Error(`Channel not found or is not a text channel`);
-    }
-
-    await interaction.deferUpdate();
-
-    const embed = EmbedPresets.plain({
-      description: "Ticket will be deleted in a few seconds...",
-      color: EmbedColors.Error,
-    });
-
-    await channel.send({ embeds: [embed.build()] });
-
-    await ticketService.deleteTicket(ticketId, interaction.user.id);
-
-    setTimeout(() => {
-      channel.delete("Ticket deleted").catch((error) => {
-        logger.error("Failed to delete ticket channel:", error);
-      });
-    }, 5000);
-  } catch (error) {
-    logger.error("Failed to handle ticket deletion:", error);
-
-    if (interaction.channel && isSendableChannel(interaction.channel)) {
-      try {
-        const errorEmbed = EmbedPresets.error(
-          "Deletion Failed",
-          error instanceof Error ? error.message : "Failed to delete ticket",
-        );
-
-        await interaction.channel.send({
-          embeds: [errorEmbed.build()],
-        });
-      } catch (sendError) {
-        logger.error("Failed to send error message to channel:", sendError);
-      }
-    }
+  if (!channel || !isSendableChannel(channel)) {
+    throw new Error(`Channel not found or is not a text channel`);
   }
+
+  await interaction.deferUpdate();
+
+  const embed = EmbedPresets.plain({
+    description: "Ticket will be deleted in a few seconds...",
+    color: EmbedColors.Error,
+  });
+
+  await channel.send({ embeds: [embed.build()] });
+
+  await ticketService.deleteTicket(ticketId, interaction.user.id);
+
+  setTimeout(() => {
+    channel.delete("Ticket deleted").catch((error) => {
+      logger.error("Failed to delete ticket channel:", error);
+    });
+  }, 5000);
 }

@@ -5,10 +5,12 @@ import type {
   Collection,
   Interaction,
   ModalSubmitInteraction,
+  RepliableInteraction,
 } from "discord.js";
 import { MessageFlags } from "discord.js";
 import { cooldownManager } from "@/discord/utils/cooldown";
 import { EmbedPresets } from "@/discord/embeds";
+import { InteractionError } from "@/discord/utils/interaction-error";
 import { Q } from "@/db";
 
 import { requireAdmin, requireOwner } from "@/discord/utils/admin-guard";
@@ -38,6 +40,39 @@ function modalHandlerMatches(handler: ModalHandler, customId: string): boolean {
     return customId.startsWith(prefix);
   }
   return handler.customId === customId;
+}
+
+const FAILURE_TITLE = "Something Went Wrong";
+const FAILURE_DESCRIPTION =
+  "Please try again in a moment, and contact staff if it keeps happening.";
+
+async function reportFailure(
+  interaction: RepliableInteraction,
+  label: string,
+  error: unknown,
+): Promise<void> {
+  const specific = error instanceof InteractionError ? error : null;
+  logger.error(`${label} failed:`, specific?.cause ?? error);
+
+  const message = {
+    embeds: [
+      EmbedPresets.error(
+        specific?.title ?? FAILURE_TITLE,
+        specific?.description ?? FAILURE_DESCRIPTION,
+      ).build(),
+    ],
+    flags: MessageFlags.Ephemeral,
+  } as const;
+
+  try {
+    if (interaction.replied || interaction.deferred) {
+      await interaction.followUp(message);
+    } else {
+      await interaction.reply(message);
+    }
+  } catch (replyFailure) {
+    logger.error(`Could not report that ${label} failed:`, replyFailure);
+  }
 }
 
 function formatCooldown(seconds: number): string {
@@ -151,21 +186,7 @@ async function handleChatCommands(
     await command.execute(interaction);
   } catch (error) {
     success = false;
-    logger.error(`Error executing command ${interaction.commandName}:`, error);
-
-    try {
-      const replyMethod =
-        interaction.replied || interaction.deferred
-          ? interaction.followUp
-          : interaction.reply;
-
-      await replyMethod.call(interaction, {
-        content: "❌ Command failed",
-        flags: MessageFlags.Ephemeral,
-      });
-    } catch (replyError) {
-      logger.error("Failed to send command error response:", error, replyError);
-    }
+    await reportFailure(interaction, `/${interaction.commandName}`, error);
   }
 
   Q.discord.command.usage
@@ -212,15 +233,11 @@ async function handleButtonInteractions(
         return;
       }
     } catch (error) {
-      logger.error(
-        `Error checking permissions for button ${interaction.customId}:`,
+      await reportFailure(
+        interaction,
+        `Permission check for button ${interaction.customId}`,
         error,
       );
-
-      await interaction.reply({
-        content: "❌ Error checking permissions",
-        flags: MessageFlags.Ephemeral,
-      });
       return;
     }
   }
@@ -228,24 +245,7 @@ async function handleButtonInteractions(
   try {
     await handler.execute(interaction);
   } catch (error) {
-    logger.error(
-      `Error executing button handler ${interaction.customId}:`,
-      error,
-    );
-
-    try {
-      const replyMethod =
-        interaction.replied || interaction.deferred
-          ? interaction.followUp
-          : interaction.reply;
-
-      await replyMethod.call(interaction, {
-        content: "❌ Something went wrong",
-        flags: MessageFlags.Ephemeral,
-      });
-    } catch (replyError) {
-      logger.error("Failed to send error response:", error, replyError);
-    }
+    await reportFailure(interaction, `Button ${interaction.customId}`, error);
   }
 }
 
@@ -318,23 +318,6 @@ async function handleModalSubmit(
   try {
     await handler.execute(interaction);
   } catch (error) {
-    logger.error(
-      `Error executing modal handler ${interaction.customId}:`,
-      error,
-    );
-
-    try {
-      const replyMethod =
-        interaction.replied || interaction.deferred
-          ? interaction.followUp
-          : interaction.reply;
-
-      await replyMethod.call(interaction, {
-        content: "❌ Something went wrong",
-        flags: MessageFlags.Ephemeral,
-      });
-    } catch (replyError) {
-      logger.error("Failed to send modal error response:", error, replyError);
-    }
+    await reportFailure(interaction, `Modal ${interaction.customId}`, error);
   }
 }

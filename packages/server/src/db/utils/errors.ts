@@ -23,6 +23,11 @@ export class NotFoundError extends DatabaseError {
   }
 }
 
+export function nullIfNotFound(error: unknown): null {
+  if (error instanceof NotFoundError) return null;
+  throw error;
+}
+
 export class ConstraintViolationError extends DatabaseError {
   public readonly code?: string;
   public readonly column?: string;

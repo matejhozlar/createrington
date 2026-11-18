@@ -95,79 +95,71 @@ async function handleCreateThread(
 ): Promise<void> {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-  try {
-    const guild = interaction.guild;
-    if (!guild) {
-      await interaction.editReply({
-        content: "This button only works in a server.",
-      });
-      return;
-    }
-
-    const targetChannel = await guild.channels
-      .fetch(config.channelId)
-      .catch(() => null);
-
-    if (!targetChannel) {
-      await interaction.editReply({
-        content: "The target channel for this action no longer exists.",
-      });
-      return;
-    }
-
-    const userId = interaction.user.id;
-    const member = interaction.member as { displayName?: string } | null;
-    const username = member?.displayName ?? interaction.user.displayName;
-
-    const threadName = applyTemplate(config.threadName, userId, username).slice(
-      0,
-      100,
-    );
-    const threadMessage = applyTemplate(config.threadMessage, userId, username);
-
-    if (
-      targetChannel.type === ChannelType.GuildText ||
-      targetChannel.type === ChannelType.GuildAnnouncement
-    ) {
-      const textChannel = targetChannel;
-      const thread = await textChannel.threads.create({
-        name: threadName,
-        reason: `Created by embed action button (user: ${interaction.user.tag})`,
-      });
-
-      await thread.send(threadMessage);
-
-      await interaction.editReply({
-        content: `Thread created: <#${thread.id}>`,
-      });
-
-      logger.info(
-        `Embed action: created thread "${threadName}" in #${textChannel.name} for ${interaction.user.tag}`,
-      );
-    } else if (targetChannel.type === ChannelType.GuildForum) {
-      const thread = await targetChannel.threads.create({
-        name: threadName,
-        message: { content: threadMessage },
-        reason: `Created by embed action button (user: ${interaction.user.tag})`,
-      });
-
-      await interaction.editReply({
-        content: `Post created: <#${thread.id}>`,
-      });
-
-      logger.info(
-        `Embed action: created forum post "${threadName}" in #${targetChannel.name} for ${interaction.user.tag}`,
-      );
-    } else {
-      await interaction.editReply({
-        content: "The target channel doesn't support threads.",
-      });
-    }
-  } catch (error) {
-    logger.error("Failed to handle create_thread action:", error);
+  const guild = interaction.guild;
+  if (!guild) {
     await interaction.editReply({
-      content:
-        "Something went wrong while creating the thread. Please try again.",
+      content: "This button only works in a server.",
+    });
+    return;
+  }
+
+  const targetChannel = await guild.channels
+    .fetch(config.channelId)
+    .catch(() => null);
+
+  if (!targetChannel) {
+    await interaction.editReply({
+      content: "The target channel for this action no longer exists.",
+    });
+    return;
+  }
+
+  const userId = interaction.user.id;
+  const member = interaction.member as { displayName?: string } | null;
+  const username = member?.displayName ?? interaction.user.displayName;
+
+  const threadName = applyTemplate(config.threadName, userId, username).slice(
+    0,
+    100,
+  );
+  const threadMessage = applyTemplate(config.threadMessage, userId, username);
+
+  if (
+    targetChannel.type === ChannelType.GuildText ||
+    targetChannel.type === ChannelType.GuildAnnouncement
+  ) {
+    const textChannel = targetChannel;
+    const thread = await textChannel.threads.create({
+      name: threadName,
+      reason: `Created by embed action button (user: ${interaction.user.tag})`,
+    });
+
+    await thread.send(threadMessage);
+
+    await interaction.editReply({
+      content: `Thread created: <#${thread.id}>`,
+    });
+
+    logger.info(
+      `Embed action: created thread "${threadName}" in #${textChannel.name} for ${interaction.user.tag}`,
+    );
+  } else if (targetChannel.type === ChannelType.GuildForum) {
+    const thread = await targetChannel.threads.create({
+      name: threadName,
+      message: { content: threadMessage },
+      reason: `Created by embed action button (user: ${interaction.user.tag})`,
+    });
+
+    await interaction.editReply({
+      content: `Post created: <#${thread.id}>`,
+    });
+
+    logger.info(
+      `Embed action: created forum post "${threadName}" in #${targetChannel.name} for ${interaction.user.tag}`,
+    );
+  } else {
+    await interaction.editReply({
+      content: "The target channel doesn't support threads.",
     });
   }
 }

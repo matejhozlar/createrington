@@ -1,8 +1,12 @@
 import { playerRepo } from "@/db";
+import { nullIfNotFound } from "@/db/utils";
 import { BalanceUtils } from "@/db/repositories/balance/utils";
 import { EmbedPresets } from "@/discord/embeds";
 import { ButtonPresets } from "@/discord/embeds/presets/buttons";
-import { replyError } from "@/discord/utils/interaction-reply";
+import {
+  replyError,
+  replyNotRegistered,
+} from "@/discord/utils/interaction-reply";
 import { CooldownType } from "@/discord/utils/cooldown";
 import { formatPlaytime } from "@createrington/shared/format";
 import { discordTimestamp } from "@/utils/format";
@@ -53,75 +57,67 @@ export async function execute(
 
   await interaction.deferReply();
 
-  try {
-    const [details1, details2] = await Promise.all([
-      playerRepo.getDetailed({ discordId: user1.id }),
-      playerRepo.getDetailed({ discordId: user2.id }),
-    ]);
+  const [details1, details2] = await Promise.all([
+    playerRepo.getDetailed({ discordId: user1.id }).catch(nullIfNotFound),
+    playerRepo.getDetailed({ discordId: user2.id }).catch(nullIfNotFound),
+  ]);
+  if (!details1 || !details2) {
+    await replyNotRegistered(interaction, details1 ? user2 : user1);
+    return;
+  }
 
-    const name1 = details1.player.minecraftUsername;
-    const name2 = details2.player.minecraftUsername;
-    const links = new ActionRowBuilder<ButtonBuilder>().addComponents(
-      ButtonPresets.links.compare(name1, name2),
-    );
+  const name1 = details1.player.minecraftUsername;
+  const name2 = details2.player.minecraftUsername;
+  const links = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    ButtonPresets.links.compare(name1, name2),
+  );
 
-    const screenshotBuffer = await renderScreenshot("compare", {
-      player1: user1.id,
-      player2: user2.id,
+  const screenshotBuffer = await renderScreenshot("compare", {
+    player1: user1.id,
+    player2: user2.id,
+  });
+
+  if (screenshotBuffer) {
+    const attachment = new AttachmentBuilder(screenshotBuffer, {
+      name: `compare_${name1}_vs_${name2}.png`,
     });
 
-    if (screenshotBuffer) {
-      const attachment = new AttachmentBuilder(screenshotBuffer, {
-        name: `compare_${name1}_vs_${name2}.png`,
-      });
+    const embed = EmbedPresets.info(`${name1} vs ${name2}`).image(
+      `attachment://compare_${name1}_vs_${name2}.png`,
+    );
 
-      const embed = EmbedPresets.info(`${name1} vs ${name2}`).image(
-        `attachment://compare_${name1}_vs_${name2}.png`,
+    await interaction.editReply({
+      embeds: [embed.build()],
+      files: [attachment],
+      components: [links],
+    });
+  } else {
+    const computeNetworth = (details: typeof details1): string =>
+      BalanceUtils.formatMoney(details.balance?.balance ?? 0n);
+
+    const nw1 = computeNetworth(details1);
+    const nw2 = computeNetworth(details2);
+
+    const pt1 = formatPlaytime(details1.playtime.totalSeconds);
+    const pt2 = formatPlaytime(details2.playtime.totalSeconds);
+
+    const sessions1 = details1.playtime.totalSessions.toLocaleString();
+    const sessions2 = details2.playtime.totalSessions.toLocaleString();
+
+    const embed = EmbedPresets.info(`${name1} vs ${name2}`)
+      .field("Networth", `${name1}: ${nw1}\n${name2}: ${nw2}`, true)
+      .field("Playtime", `${name1}: ${pt1}\n${name2}: ${pt2}`, true)
+      .field("\u200b", "\u200b")
+      .field("Sessions", `${name1}: ${sessions1}\n${name2}: ${sessions2}`, true)
+      .field(
+        "Member Since",
+        `${name1}: ${discordTimestamp(details1.player.createdAt, "D")}\n${name2}: ${discordTimestamp(details2.player.createdAt, "D")}`,
+        true,
       );
 
-      await interaction.editReply({
-        embeds: [embed.build()],
-        files: [attachment],
-        components: [links],
-      });
-    } else {
-      const computeNetworth = (details: typeof details1): string =>
-        BalanceUtils.formatMoney(details.balance?.balance ?? 0n);
-
-      const nw1 = computeNetworth(details1);
-      const nw2 = computeNetworth(details2);
-
-      const pt1 = formatPlaytime(details1.playtime.totalSeconds);
-      const pt2 = formatPlaytime(details2.playtime.totalSeconds);
-
-      const sessions1 = details1.playtime.totalSessions.toLocaleString();
-      const sessions2 = details2.playtime.totalSessions.toLocaleString();
-
-      const embed = EmbedPresets.info(`${name1} vs ${name2}`)
-        .field("Networth", `${name1}: ${nw1}\n${name2}: ${nw2}`, true)
-        .field("Playtime", `${name1}: ${pt1}\n${name2}: ${pt2}`, true)
-        .field("\u200b", "\u200b")
-        .field(
-          "Sessions",
-          `${name1}: ${sessions1}\n${name2}: ${sessions2}`,
-          true,
-        )
-        .field(
-          "Member Since",
-          `${name1}: ${discordTimestamp(details1.player.createdAt, "D")}\n${name2}: ${discordTimestamp(details2.player.createdAt, "D")}`,
-          true,
-        );
-
-      await interaction.editReply({
-        embeds: [embed.build()],
-        components: [links],
-      });
-    }
-  } catch {
-    await replyError(
-      interaction,
-      "Comparison Error",
-      "Could not fetch data for one or both players. They may not be registered.",
-    );
+    await interaction.editReply({
+      embeds: [embed.build()],
+      components: [links],
+    });
   }
 }

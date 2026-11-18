@@ -1,6 +1,5 @@
 import { Q } from "@/db";
 import { EmbedPresets } from "@/discord/embeds";
-import { replyError } from "@/discord/utils/interaction-reply";
 import {
   type ChatInputCommandInteraction,
   MessageFlags,
@@ -28,26 +27,16 @@ export async function execute(
 ): Promise<void> {
   const user = interaction.options.getUser("user", true);
 
-  try {
-    const username = await Q.player.select.minecraftUsername({
-      discordId: user.id,
-    });
+  const username = await Q.player.select.minecraftUsername({
+    discordId: user.id,
+  });
 
-    const embed = EmbedPresets.plain({
-      description: `${username}`,
-    });
+  const embed = EmbedPresets.plain({
+    description: `${username}`,
+  });
 
-    await interaction.reply({
-      embeds: [embed.build()],
-      flags: MessageFlags.Ephemeral,
-    });
-  } catch (error) {
-    logger.error("/username failed:", error);
-
-    await replyError(
-      interaction,
-      "Username Error",
-      "Something went wrong while fetching username. Please try again.",
-    );
-  }
+  await interaction.reply({
+    embeds: [embed.build()],
+    flags: MessageFlags.Ephemeral,
+  });
 }

@@ -63,60 +63,50 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
 
   const hasRole = RoleManager.has(member, serverConfig.roleId);
 
-  try {
-    if (hasRole) {
-      const removed = await RoleManager.remove(
-        member,
-        serverConfig.roleId,
-        `User left ${serverConfig.label} server`,
-      );
+  if (hasRole) {
+    const removed = await RoleManager.remove(
+      member,
+      serverConfig.roleId,
+      `User left ${serverConfig.label} server`,
+    );
 
-      if (!removed) {
-        throw new Error("Failed to remove role");
-      }
-
-      await replyError(
-        interaction,
-        "Server Access Removed",
-        `You no longer have access to **${serverConfig.label}** channels.\n\n` +
-          `Click the button again to rejoin.`,
-      );
-
-      logger.info(
-        `${member.user.tag} removed access to ${serverConfig.label} (${serverId})`,
-      );
-    } else {
-      const added = await RoleManager.assign(
-        member,
-        serverConfig.roleId,
-        `User Joined ${serverConfig.label} server`,
-      );
-
-      if (!added) {
-        throw new Error("Failed to assign role");
-      }
-
-      const embed = EmbedPresets.success(
-        "Server Access Granted",
-        `You now have access to **${serverConfig.label}** channels!`,
-      );
-
-      await interaction.reply({
-        embeds: [embed.build()],
-        flags: MessageFlags.Ephemeral,
-      });
-
-      logger.info(
-        `${member.user.tag} gained access to ${serverConfig.label} (${serverId})`,
-      );
+    if (!removed) {
+      throw new Error("Failed to remove role");
     }
-  } catch (error) {
-    logger.error(`Failed to toggle server role for ${member.user.tag}:`, error);
 
     await replyError(
       interaction,
-      "Action Failed",
-      "Something went wrong while updating your roles. Please try again or contact an administrator.",
+      "Server Access Removed",
+      `You no longer have access to **${serverConfig.label}** channels.\n\n` +
+        `Click the button again to rejoin.`,
+    );
+
+    logger.info(
+      `${member.user.tag} removed access to ${serverConfig.label} (${serverId})`,
+    );
+  } else {
+    const added = await RoleManager.assign(
+      member,
+      serverConfig.roleId,
+      `User Joined ${serverConfig.label} server`,
+    );
+
+    if (!added) {
+      throw new Error("Failed to assign role");
+    }
+
+    const embed = EmbedPresets.success(
+      "Server Access Granted",
+      `You now have access to **${serverConfig.label}** channels!`,
+    );
+
+    await interaction.reply({
+      embeds: [embed.build()],
+      flags: MessageFlags.Ephemeral,
+    });
+
+    logger.info(
+      `${member.user.tag} gained access to ${serverConfig.label} (${serverId})`,
     );
   }
 }

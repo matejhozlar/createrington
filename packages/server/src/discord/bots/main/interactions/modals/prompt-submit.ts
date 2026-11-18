@@ -35,25 +35,14 @@ export async function execute(
 
   const service = getServiceSync(Services.PLAYER_PROMPT_SERVICE);
 
-  try {
-    const message = await service.submitResponse({
-      promptId: parsed.promptId,
-      discordId: interaction.user.id,
-      responseText,
-    });
+  const message = await service.submitResponse({
+    promptId: parsed.promptId,
+    discordId: interaction.user.id,
+    responseText,
+  });
 
-    await interaction.reply({
-      content: message,
-      flags: MessageFlags.Ephemeral,
-    });
-  } catch (error) {
-    logger.error(
-      `Failed to record response for prompt #${parsed.promptId}:`,
-      error,
-    );
-    await interaction.reply({
-      content: "Couldn't record your response. Please try again in a moment.",
-      flags: MessageFlags.Ephemeral,
-    });
-  }
+  await interaction.reply({
+    content: message,
+    flags: MessageFlags.Ephemeral,
+  });
 }

@@ -6,7 +6,6 @@ import {
 import { getNotificationConfig } from "../../config/notification-selection";
 import { RoleManager } from "@/discord/utils/roles/role-manager";
 import { EmbedPresets } from "@/discord/embeds";
-import { replyError } from "@/discord/utils/interaction-reply";
 
 export const pattern = "notification-select:*";
 
@@ -61,67 +60,54 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
 
   const hasRole = RoleManager.has(member, notificationConfig.roleId);
 
-  try {
-    if (hasRole) {
-      const removed = await RoleManager.remove(
-        member,
-        notificationConfig.roleId,
-        `User disabled ${notificationConfig.label} notifications`,
-      );
-
-      if (!removed) {
-        throw new Error("Failed to remove role");
-      }
-
-      const embed = EmbedPresets.success(
-        "Notifications Disabled",
-        `You will no longer be pinged for **${notificationConfig.label}** notifications.\n\n` +
-          `Click the button again to re-enable.`,
-      );
-
-      await interaction.reply({
-        embeds: [embed.build()],
-        flags: MessageFlags.Ephemeral,
-      });
-
-      logger.info(
-        `${member.user.tag} disabled ${notificationConfig.label} notifications`,
-      );
-    } else {
-      const added = await RoleManager.assign(
-        member,
-        notificationConfig.roleId,
-        `User enabled ${notificationConfig.label} notifications`,
-      );
-
-      if (!added) {
-        throw new Error("Failed to assign role");
-      }
-
-      const embed = EmbedPresets.success(
-        "Notifications Enabled",
-        `You will now be pinged for **${notificationConfig.label}** notifications!`,
-      );
-
-      await interaction.reply({
-        embeds: [embed.build()],
-        flags: MessageFlags.Ephemeral,
-      });
-
-      logger.info(
-        `${member.user.tag} enabled ${notificationConfig.label} notifications`,
-      );
-    }
-  } catch (error) {
-    logger.error(
-      `Failed to toggle notification role for ${member.user.tag}:`,
-      error,
+  if (hasRole) {
+    const removed = await RoleManager.remove(
+      member,
+      notificationConfig.roleId,
+      `User disabled ${notificationConfig.label} notifications`,
     );
 
-    await replyError(
-      interaction,
-      "Action Failed",
-      "Something went wrong while updating your roles. Please try again or contact an administrator.",
+    if (!removed) {
+      throw new Error("Failed to remove role");
+    }
+
+    const embed = EmbedPresets.success(
+      "Notifications Disabled",
+      `You will no longer be pinged for **${notificationConfig.label}** notifications.\n\n` +
+        `Click the button again to re-enable.`,
+    );
+
+    await interaction.reply({
+      embeds: [embed.build()],
+      flags: MessageFlags.Ephemeral,
+    });
+
+    logger.info(
+      `${member.user.tag} disabled ${notificationConfig.label} notifications`,
+    );
+  } else {
+    const added = await RoleManager.assign(
+      member,
+      notificationConfig.roleId,
+      `User enabled ${notificationConfig.label} notifications`,
+    );
+
+    if (!added) {
+      throw new Error("Failed to assign role");
+    }
+
+    const embed = EmbedPresets.success(
+      "Notifications Enabled",
+      `You will now be pinged for **${notificationConfig.label}** notifications!`,
+    );
+
+    await interaction.reply({
+      embeds: [embed.build()],
+      flags: MessageFlags.Ephemeral,
+    });
+
+    logger.info(
+      `${member.user.tag} enabled ${notificationConfig.label} notifications`,
     );
   }
 }

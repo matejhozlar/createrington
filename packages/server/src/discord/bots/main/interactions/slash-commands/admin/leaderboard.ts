@@ -1,6 +1,5 @@
 import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
-import { replyError } from "@/discord/utils/interaction-reply";
 import { getService, Services } from "@/services";
 import {
   getAllLeaderboardTypes,
@@ -67,22 +66,12 @@ export async function execute(
 
   const leaderboardService = await getService(Services.LEADERBOARD_SERVICE);
 
-  try {
-    if (subcommand === "create") {
-      await handleCreate(interaction, leaderboardService);
-    } else if (subcommand === "refresh") {
-      await handleRefresh(interaction, leaderboardService);
-    } else if (subcommand === "refresh-all") {
-      await handleRefreshAll(interaction, leaderboardService);
-    }
-  } catch (error) {
-    logger.error("/leaderboard failed:", error);
-
-    await replyError(
-      interaction,
-      "Command Failed",
-      error instanceof Error ? error.message : "An unknown error occurred",
-    );
+  if (subcommand === "create") {
+    await handleCreate(interaction, leaderboardService);
+  } else if (subcommand === "refresh") {
+    await handleRefresh(interaction, leaderboardService);
+  } else if (subcommand === "refresh-all") {
+    await handleRefreshAll(interaction, leaderboardService);
   }
 }
 
