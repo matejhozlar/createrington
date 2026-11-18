@@ -130,7 +130,6 @@ function buildContainer(node: ComponentContainer): ContainerBuilder {
   return builder;
 }
 
-/** Translate a validated Components V2 tree into top-level discord.js builders. */
 export function buildComponentsV2(data: ComponentsData): TopLevelComponent[] {
   return data.components.map((node) => {
     switch (node.type) {
@@ -168,7 +167,6 @@ function measure(node: AnyComponentNode): { count: number; text: number } {
         (sum, t) => sum + t.content.length,
         0,
       );
-      // Each text display + the accessory each count as a component.
       return { count: 1 + node.components.length + 1, text: textLength };
     }
     case "container": {
@@ -184,7 +182,6 @@ function measure(node: AnyComponentNode): { count: number; text: number } {
   }
 }
 
-/** Aggregate component count and text length of a tree, as Discord counts them. */
 export function measureComponentsV2(nodes: AnyComponentNode[]): {
   count: number;
   text: number;
@@ -199,7 +196,6 @@ export function measureComponentsV2(nodes: AnyComponentNode[]): {
   return { count, text };
 }
 
-/** Enforce Discord's aggregate component/text ceilings; returns an error string or null. */
 export function validateComponentsV2(data: ComponentsData): string | null {
   if (data.components.length === 0) {
     return "Add at least one component";
@@ -303,12 +299,6 @@ export function container(
   };
 }
 
-/**
- * Validate a data-first Components V2 tree and produce send-ready pieces.
- * Applies schema defaults, enforces the aggregate limits, and returns the
- * top-level builders plus the `IS_COMPONENTS_V2` flag for `messageService.send`.
- * Throws if the tree is invalid (a programming error for in-code callers).
- */
 export function buildComponentsMessage(data: ComponentsData): {
   components: TopLevelComponent[];
   flags: number;

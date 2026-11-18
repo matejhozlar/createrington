@@ -7,13 +7,6 @@ export interface WorkshopParticipantSummary {
   sample: Array<{ minecraftUuid: string; minecraftUsername: string }>;
 }
 
-/**
- * Custom queries for workshop table
- *
- * Extends the auto-generated base class with custom methods.
- * This file is scaffolded once and never overwritten - add your custom
- * query methods here while inheriting all generated CRUD operations.
- */
 export class WorkshopQueries extends WorkshopBaseQueries {
   constructor(db: Pool | PoolClient) {
     super(db);

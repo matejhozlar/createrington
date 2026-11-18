@@ -16,15 +16,8 @@ import type { Request, Response } from "express";
 const TEST_SERVER_NAME = "Rails 'n Sails (Test)";
 const TEST_SERVER_IDENTIFIER = "rails-test";
 
-/** Cached test server ID to avoid repeated DB lookups */
 let testServerIdCache: number | null = null;
 
-/**
- * Ensures the test server entry exists in the database and returns its ID.
- *
- * On first call, looks up or creates a server row with identifier "rails-test".
- * The result is cached for the lifetime of the process.
- */
 async function ensureTestServer(): Promise<number> {
   if (testServerIdCache !== null) return testServerIdCache;
 
@@ -57,21 +50,7 @@ async function testServerPlaytime(): Promise<{
   return { serverId, service };
 }
 
-/**
- * Internal Presence Controller
- *
- * Handles forwarded player join/leave events and heartbeats from the dev
- * environment. They are fed to the test server's PlaytimeService, the same
- * tracker the mod endpoints use, so sessions are recorded under the test
- * server entry and appear separately from production playtime while still
- * contributing to totals.
- */
 export class InternalPresenceController {
-  /**
-   * Processes a forwarded presence event from the dev server.
-   *
-   * @param res - Express response carrying the validated presence data
-   */
   static async handleSyncedPresence(
     _req: Request,
     res: Response,
@@ -137,10 +116,6 @@ export class InternalPresenceController {
     }
   }
 
-  /**
-   * Processes a forwarded heartbeat from the dev server: reconciles the test
-   * server's tracked sessions against the reported online roster.
-   */
   static async handleSyncedHeartbeat(
     _req: Request,
     res: Response,

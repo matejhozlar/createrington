@@ -7,20 +7,6 @@ import { AuthRole } from "@createrington/shared/auth";
 import config from "@/config";
 import { extractBearerToken } from "@/utils/bearer-token";
 
-/**
- * Resolve the access token from either the `Authorization: Bearer <token>`
- * header (existing first-party clients) or the `crt_access` cookie set by
- * the SSO flow for cross-subdomain consumers.
- *
- * The header wins when both are present so explicit clients (mod API,
- * scripts) can override the ambient browser cookie.
- *
- * The cookie fallback is skipped entirely when the cookie service is
- * disabled (no COOKIE_DOMAIN configured): without that the server never
- * sets a crt_access cookie, so accepting an attacker-supplied one would
- * just waste a JWT verify call. This keeps the disabled path strictly
- * equivalent to the pre-SSO behavior.
- */
 function extractAccessToken(req: Request): string | undefined {
   const headerToken = extractBearerToken(req);
   if (headerToken) return headerToken;
@@ -28,12 +14,6 @@ function extractAccessToken(req: Request): string | undefined {
   return accessCookieService.extractFromRequest(req);
 }
 
-/**
- * Extracts and verifies JWT token from request
- * Attaches user data to req.user if valid
- *
- * @throws UnauthorizedError if token is missing or invalid
- */
 export const authenticate = (
   req: Request,
   res: Response,
@@ -59,10 +39,6 @@ export const authenticate = (
   }
 };
 
-/**
- * Optional authentication - doesn't fail if no token present
- * Useful for endpoints that behave differently for authenticated users
- */
 export const optionalAuth = (
   req: Request,
   res: Response,
@@ -82,12 +58,6 @@ export const optionalAuth = (
   }
 };
 
-/**
- * Requires user to have admin role
- * Must be used AFTER authenticate middleware
- *
- * @throws ForbiddenError if user is not an admin
- */
 export const requireAdmin = async (
   req: Request,
   res: Response,
@@ -105,7 +75,6 @@ export const requireAdmin = async (
       throw new ForbiddenError("Admin access required");
     }
 
-    // JWT isAdmin can be stale up to the access-token lifetime; confirm against DB.
     const stillAdmin = await adminStatusService.isAdmin(req.user.discordId);
     if (!stillAdmin) {
       logger.warn(
@@ -120,12 +89,6 @@ export const requireAdmin = async (
   }
 };
 
-/**
- * Requires user to have at least USER role
- * Must be used after authenticate middleware
- *
- * @throws ForbiddenError if user is unverified
- */
 export const requireUser = (
   req: Request,
   res: Response,
@@ -145,7 +108,6 @@ export const requireUser = (
   next();
 };
 
-// Parse an origin URL safely; returns only the `scheme://host[:port]` portion.
 function safeOrigin(raw: string | undefined): string | undefined {
   if (!raw) return undefined;
   try {
@@ -155,7 +117,6 @@ function safeOrigin(raw: string | undefined): string | undefined {
   }
 }
 
-// Config is immutable at runtime, cache after first call.
 let cachedAllowedAuthOrigins: string[] | undefined;
 function allowedAuthOrigins(): string[] {
   if (cachedAllowedAuthOrigins) return cachedAllowedAuthOrigins;
@@ -165,14 +126,6 @@ function allowedAuthOrigins(): string[] {
   return cachedAllowedAuthOrigins;
 }
 
-/**
- * CSRF guard for cookie-authenticated auth endpoints (refresh, logout).
- *
- * The refresh cookie is scoped to `.createrington.com`, so any subdomain
- * shares it. SameSite=Lax only blocks *cross-site* POSTs, same-site
- * subdomains can still fetch cross-origin-with-credentials. This middleware
- * rejects any request whose Origin (or Referer) isn't in the CORS allowlist.
- */
 export const requireTrustedOrigin = (
   req: Request,
   _res: Response,

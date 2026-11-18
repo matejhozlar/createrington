@@ -115,7 +115,6 @@ export class FaqService {
   }
 
   private matchPattern(content: string): CompiledPattern | null {
-    // Cap input so a pathological pattern can't burn unbounded CPU.
     const haystack =
       content.length > FAQ_MAX_MATCH_LENGTH
         ? content.slice(0, FAQ_MAX_MATCH_LENGTH)

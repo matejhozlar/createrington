@@ -4,41 +4,18 @@ import { Semaphore } from "@/utils/semaphore";
 import { setSameOriginHeaders } from "./same-origin-headers";
 
 export interface ScreenshotOptions {
-  /** URL to navigate to */
   url: string;
-  /**
-   * Extra HTTP headers attached only to requests for the origin of `url`. Cross-origin
-   * subresources and redirect hops that leave the origin are sent without them.
-   */
   extraHeaders?: Record<string, string>;
-  /** CSS selector to wait for before capturing (optional, defaults to full page) */
   waitForSelector?: string;
-  /**
-   * CSS selector the page renders when it cannot produce its content. If it appears
-   * before `waitForSelector`, the screenshot rejects at once instead of waiting out
-   * the timeout. Ignored without `waitForSelector`.
-   */
   abortSelector?: string;
-  /** CSS selector of the element to screenshot (optional, defaults to full page) */
   elementSelector?: string;
-  /**
-   * Wait for `document.fonts.ready` and all `<img>` elements to finish loading
-   * before capturing. Defaults to true.
-   */
   waitForAssets?: boolean;
-  /** Extra delay in ms after selector is found, to let animations/charts settle */
   settleDelay?: number;
-  /** Navigation timeout in ms (default: 30000) */
   timeout?: number;
-  /** Viewport width (default: 1280) */
   viewportWidth?: number;
-  /** Viewport height (default: 720) */
   viewportHeight?: number;
-  /** Image format (default: "png") */
   format?: "png" | "jpeg" | "webp";
-  /** JPEG/WebP quality 0-100 (ignored for png) */
   quality?: number;
-  /** Capture with a transparent background where the page paints none (png/webp only) */
   omitBackground?: boolean;
 }
 
@@ -216,7 +193,6 @@ export class PuppeteerService {
       return this.browser;
     }
 
-    // Avoid launching multiple browsers concurrently
     if (this.launching) {
       return this.launching;
     }

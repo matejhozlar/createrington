@@ -6,27 +6,14 @@ import { pathToFileURL } from "node:url";
 
 const isDev = config.envMode.isDev;
 
-/**
- * Discord event module structure
- */
 export interface EventModule<
   K extends keyof ClientEvents = keyof ClientEvents,
 > {
-  /** The Discord event name */
   eventName: K;
-  /** Whether this event should only be registered in production */
   prodOnly?: boolean;
-  /** The event handler function */
   execute: (client: Client, ...args: ClientEvents[K]) => Promise<void> | void;
 }
 
-/**
- * Type guard to check if a module is a valid EventModule
- *
- * @param module - The imported module to validate
- * @returns True if the module has the required eventName and execute exports
- * @private
- */
 function isEventModule(module: unknown): module is EventModule {
   return (
     typeof module === "object" &&
@@ -38,15 +25,6 @@ function isEventModule(module: unknown): module is EventModule {
   );
 }
 
-/**
- * Loads Discord event handlers from a directory
- *
- * Recursively scans the events directory and registers all event handlers.
- *
- * @param client - The Discord client instance
- * @param eventsPath - Absolute path to the events directory
- * @returns Promise resolving to the number of loaded events
- */
 export async function loadEventHandlers(
   client: Client,
   eventsPath: string,
@@ -100,16 +78,6 @@ export async function loadEventHandlers(
   return loadedCount;
 }
 
-/**
- * Recursively scans a directory and collects all valid event files
- *
- * This function walks through the directory tree starting from the given path,
- * collecting all TypeScript (.ts) or JavaScript (.js) files depending on the
- * environment mode. It ignores non-file items and only returns actual event files.
- *
- * @param dir - The absolute path to the directory to scan
- * @returns An array of absolute file paths to all discovered event files
- */
 function getAllEventFiles(dir: string): string[] {
   const files: string[] = [];
   const items = fs.readdirSync(dir, { withFileTypes: true });

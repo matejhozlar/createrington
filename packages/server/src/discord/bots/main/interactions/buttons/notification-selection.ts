@@ -8,31 +8,14 @@ import { RoleManager } from "@/discord/utils/roles/role-manager";
 import { EmbedPresets } from "@/discord/embeds";
 import { replyError } from "@/discord/utils/interaction-reply";
 
-/**
- * Handles notification selection buttons
- * Pattern: notification-select:*
- */
 export const pattern = "notification-select:*";
 
-/**
- * Parses the notification selection button customId (format: notification-select:notificationId)
- */
 function parseCustomId(customId: string): { notificationId: string } | null {
   const [, notificationId] = customId.split(":");
   if (!notificationId) return null;
   return { notificationId };
 }
 
-/**
- * Main execution handler for notification selection button interactions
- *
- * Workflow:
- * 1. Parse notification ID from button customId
- * 2. Get notification configuration
- * 3. Check if user already has the role
- * 4. Toggle role (add if missing, remove if present)
- * 5. Send confirmation message
- */
 export async function execute(interaction: ButtonInteraction): Promise<void> {
   const parsed = parseCustomId(interaction.customId);
 

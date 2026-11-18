@@ -58,7 +58,6 @@ export interface AnnounceReleaseOptions {
   modpack: Modpack;
   releaseId: number;
   loadDiff: () => Promise<ModpackReleaseDiff>;
-  /** Begin a new announcement when the release has none; off, only an unfinished one is resumed */
   start: boolean;
 }
 

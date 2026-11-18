@@ -42,21 +42,7 @@ const trainCrashSchema = z.object({
     .optional(),
 });
 
-/**
- * Trains Controller
- *
- * Handles train crash events reported by the Create: Trains Minecraft mod:
- * - Validates the incoming crash payload
- * - Resolves player display names (with Discord mentions where available)
- * - Sends a formatted notification embed to the Rails 'n Sails notifications channel
- */
 export class TrainsController {
-  /**
-   * POST /api/trains/crash
-   *
-   * Receives train crash data from the Minecraft mod and sends
-   * a notification embed to the Rails 'n Sails notifications channel.
-   */
   static async reportCrash(req: Request, res: Response): Promise<void> {
     const parsed = trainCrashSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -76,7 +62,6 @@ export class TrainsController {
       backwardsDriver,
     } = parsed.data;
 
-    // Collect all UUIDs and resolve to usernames in a single query
     const allUuids = new Set<string>();
     if (owner) allUuids.add(owner);
     if (driverUuid) allUuids.add(driverUuid);

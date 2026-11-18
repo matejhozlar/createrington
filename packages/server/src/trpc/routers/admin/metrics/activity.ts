@@ -2,7 +2,6 @@ import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
 import { dateRangeWithMonthGranularity, optionalDateRange } from "./schemas";
 
-/** Admin activity metrics: active players and session length */
 export const activityMetricsRouter = router({
   getActivePlayers: adminProcedure
     .meta({

@@ -12,16 +12,12 @@ import type {
 } from "./types";
 import { RoleConditionType, RoleCheckInterval } from "./types";
 
-/**
- * Playtime-based role hierarchy configuration
- *
- * Roles are assigned based on cumulative playtime across all servers
- * When a player qualifies for a higher role, lower roles are automatically removed
- */
+const HOUR_SECONDS = 60 * 60;
+
 export const PLAYTIME_ROLE_HIERARCHY: PlaytimeRoleRule[] = [
   {
     roleId: Discord.Roles.SHAFT_SCRAPER,
-    requiredSeconds: 0, // Starting role - everyone gets this
+    requiredSeconds: 0,
     checkInterval: RoleCheckInterval.REALTIME,
     label: "Shaft Scraper",
     conditionType: RoleConditionType.PLAYTIME,
@@ -30,7 +26,7 @@ export const PLAYTIME_ROLE_HIERARCHY: PlaytimeRoleRule[] = [
   },
   {
     roleId: Discord.Roles.COG_CARRIER,
-    requiredSeconds: 72000, // 20 hours
+    requiredSeconds: 20 * HOUR_SECONDS,
     checkInterval: RoleCheckInterval.REALTIME,
     label: "Cog Carrier",
     conditionType: RoleConditionType.PLAYTIME,
@@ -39,7 +35,7 @@ export const PLAYTIME_ROLE_HIERARCHY: PlaytimeRoleRule[] = [
   },
   {
     roleId: Discord.Roles.KINETIC_OPERATOR,
-    requiredSeconds: 144000, // 40 hours
+    requiredSeconds: 40 * HOUR_SECONDS,
     checkInterval: RoleCheckInterval.REALTIME,
     label: "Kinetic Operator",
     conditionType: RoleConditionType.PLAYTIME,
@@ -48,7 +44,7 @@ export const PLAYTIME_ROLE_HIERARCHY: PlaytimeRoleRule[] = [
   },
   {
     roleId: Discord.Roles.MECHANICAL_ASSEMBLER,
-    requiredSeconds: 216000, // 60 hours
+    requiredSeconds: 60 * HOUR_SECONDS,
     checkInterval: RoleCheckInterval.REALTIME,
     label: "Mechanical Assembler",
     conditionType: RoleConditionType.PLAYTIME,
@@ -57,7 +53,7 @@ export const PLAYTIME_ROLE_HIERARCHY: PlaytimeRoleRule[] = [
   },
   {
     roleId: Discord.Roles.BRASS_TECHNICIAN,
-    requiredSeconds: 360000, // 100 hours
+    requiredSeconds: 100 * HOUR_SECONDS,
     checkInterval: RoleCheckInterval.REALTIME,
     label: "Brass Technician",
     conditionType: RoleConditionType.PLAYTIME,
@@ -66,7 +62,7 @@ export const PLAYTIME_ROLE_HIERARCHY: PlaytimeRoleRule[] = [
   },
   {
     roleId: Discord.Roles.STEAM_ENGINEER,
-    requiredSeconds: 720000, // 200 hours
+    requiredSeconds: 200 * HOUR_SECONDS,
     checkInterval: RoleCheckInterval.REALTIME,
     label: "Steam Engineer",
     conditionType: RoleConditionType.PLAYTIME,
@@ -75,7 +71,7 @@ export const PLAYTIME_ROLE_HIERARCHY: PlaytimeRoleRule[] = [
   },
   {
     roleId: Discord.Roles.FACTORY_OVERSEER,
-    requiredSeconds: 1080000, // 300 hours
+    requiredSeconds: 300 * HOUR_SECONDS,
     checkInterval: RoleCheckInterval.REALTIME,
     label: "Factory Overseer",
     conditionType: RoleConditionType.PLAYTIME,
@@ -84,7 +80,7 @@ export const PLAYTIME_ROLE_HIERARCHY: PlaytimeRoleRule[] = [
   },
   {
     roleId: Discord.Roles.MASTER_AUTOMATON,
-    requiredSeconds: 1440000, // 400 hours
+    requiredSeconds: 400 * HOUR_SECONDS,
     checkInterval: RoleCheckInterval.REALTIME,
     label: "Master Automaton",
     conditionType: RoleConditionType.PLAYTIME,
@@ -93,7 +89,7 @@ export const PLAYTIME_ROLE_HIERARCHY: PlaytimeRoleRule[] = [
   },
   {
     roleId: Discord.Roles.CLOCKWORK_ARCHITECT,
-    requiredSeconds: 3600000, // 1000 hours
+    requiredSeconds: 1000 * HOUR_SECONDS,
     checkInterval: RoleCheckInterval.REALTIME,
     label: "Clockwork Architect",
     conditionType: RoleConditionType.PLAYTIME,
@@ -102,12 +98,6 @@ export const PLAYTIME_ROLE_HIERARCHY: PlaytimeRoleRule[] = [
   },
 ];
 
-/**
- * Server age-based role hierarchy configuration
- *
- * Roles are assigned based on how long a member has been in the Discord server
- * When a player qualifies for a higher role, lower roles are automatically removed
- */
 export const SERVER_AGE_ROLE_HIERARCHY: ServerAgeRoleRule[] = [
   {
     roleId: Discord.Roles.NEWCOMER,
@@ -156,12 +146,6 @@ export const SERVER_AGE_ROLE_HIERARCHY: ServerAgeRoleRule[] = [
   },
 ];
 
-/**
- * Top playtime role configuration (competitive, rank-based)
- *
- * Only one player holds this role at a time: the player with the most
- * total playtime across all servers. Checked daily.
- */
 export const TOP_PLAYTIME_ROLES: TopPlaytimeRoleRule[] = [
   {
     roleId: Discord.Roles.THE_SLEEPLESS,
@@ -174,12 +158,6 @@ export const TOP_PLAYTIME_ROLES: TopPlaytimeRoleRule[] = [
   },
 ];
 
-/**
- * Top balance role configuration (competitive, rank-based)
- *
- * Only one player holds this role at a time: the player with the highest
- * in-game balance. Checked daily.
- */
 export const TOP_BALANCE_ROLES: TopBalanceRoleRule[] = [
   {
     roleId: Discord.Roles.CAPITALIST,
@@ -192,12 +170,6 @@ export const TOP_BALANCE_ROLES: TopBalanceRoleRule[] = [
   },
 ];
 
-/**
- * Top stat records role configuration (competitive, rank-based)
- *
- * Only one player holds this role at a time: the player who places #1 across
- * the most contested Minecraft stats. Checked daily.
- */
 export const TOP_RECORD_ROLES: TopStatRecordsRoleRule[] = [
   {
     roleId: Discord.Roles.THE_UNRIVALED,
@@ -210,11 +182,7 @@ export const TOP_RECORD_ROLES: TopStatRecordsRoleRule[] = [
   },
 ];
 
-/**
- * Gets every competitive top-1 role rule (playtime, balance, stat records)
- *
- * @returns Array of enabled top role rules
- */
+/** Gets every competitive top-1 role rule (playtime, balance, stat records) */
 export function getTopRoleRules(): TopRoleRule[] {
   return [
     ...TOP_PLAYTIME_ROLES,
@@ -223,11 +191,6 @@ export function getTopRoleRules(): TopRoleRule[] {
   ].filter((rule) => rule.enabled !== false);
 }
 
-/**
- * Gets all role assignment rules
- *
- * @returns Array of all configured role rules
- */
 function getAllRoleRules(): (PlaytimeRoleRule | ServerAgeRoleRule)[] {
   return [
     ...PLAYTIME_ROLE_HIERARCHY.filter((rule) => rule.enabled !== false),
@@ -235,41 +198,26 @@ function getAllRoleRules(): (PlaytimeRoleRule | ServerAgeRoleRule)[] {
   ];
 }
 
-/**
- * Gets role rules that should be checked in realtime
- *
- * @returns Array of realtime role rules
- */
+/** Gets role rules that should be checked in realtime */
 export function getRealtimeRoleRules(): AnyRoleRule[] {
   return getAllRoleRules().filter(
     (rule) => rule.checkInterval === RoleCheckInterval.REALTIME,
   );
 }
 
-/**
- * Gets role rules that should be checked daily
- *
- * @returns Array of daily role rules
- */
+/** Gets role rules that should be checked daily */
 export function getDailyRoleRules(): AnyRoleRule[] {
   return getAllRoleRules().filter(
     (rule) => rule.checkInterval === RoleCheckInterval.DAILY,
   );
 }
 
-/**
- * Default notification configuration
- */
 export const DEFAULT_NOTIFICATION_CONFIG: RoleNotificationConfig = {
   enabled: true,
   channelId: Discord.Channels.general.HALL_OF_FAME,
   pose: Poses.victory,
 };
 
-/**
- * Notification configuration for specific roles
- * Override defaults here for special roles
- */
 export const SERVER_AGE_NOTIFICATION_CONFIGS: Record<
   string,
   Partial<RoleNotificationConfig>
@@ -291,10 +239,6 @@ export const SERVER_AGE_NOTIFICATION_CONFIGS: Record<
   },
 };
 
-/**
- * Notification configuration for specific roles
- * Override defaults here for special roles
- */
 export const ROLE_NOTIFICATION_CONFIGS: Record<
   string,
   Partial<RoleNotificationConfig>
@@ -345,12 +289,7 @@ export const ROLE_NOTIFICATION_CONFIGS: Record<
   ...SERVER_AGE_NOTIFICATION_CONFIGS,
 };
 
-/**
- * Gets notification configuration for a specific role
- *
- * @param roleId - Discord role ID
- * @returns Merged notification configuration
- */
+/** Gets notification configuration for a specific role */
 export function getNotificationConfig(roleId: string): RoleNotificationConfig {
   return {
     ...DEFAULT_NOTIFICATION_CONFIG,

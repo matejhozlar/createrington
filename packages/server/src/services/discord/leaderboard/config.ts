@@ -14,17 +14,6 @@ function formatRecords(records: number): string {
   return `${records.toLocaleString("en-US")} ${pluralize(records, "record")}`;
 }
 
-/**
- * Configuration registry for all leaderboard types
- *
- * Each leaderboard type must be defined here with:
- * - Display properties (title, description, emoji)
- * - Target channel and server IDs
- * - Data fetching logic
- * - Value formatting function
- *
- * Add new leaderboard types by adding entries to this record.
- */
 export const LEADERBOARD_CONFIGS: Record<LeaderboardType, LeaderboardConfig> = {
   [LeaderboardType.PLAYTIME]: {
     type: LeaderboardType.PLAYTIME,
@@ -35,13 +24,6 @@ export const LEADERBOARD_CONFIGS: Record<LeaderboardType, LeaderboardConfig> = {
     channelId: Discord.Channels.general.LEADERBOARDS,
     serverId: config.servers.rails.id,
     limit: LEADERBOARD_ENTRY_LIMIT,
-    /**
-     * Fetches playtime leaderboard data from the database
-     *
-     * @param serverId - The Minecraft server ID to fetch data for
-     * @param limit - Maximum number of entries to return
-     * @returns Promise resolving to array of leaderboard entries
-     */
     fetchData: async (serverId: number, limit: number) => {
       const leaderboard = await Q.player.playtime.summary.getLeaderboard(
         serverId,
@@ -116,8 +98,6 @@ export const LEADERBOARD_CONFIGS: Record<LeaderboardType, LeaderboardConfig> = {
 /**
  * Retrieves the configuration for a specific leaderboard type
  *
- * @param type - The leaderboard type to get configuration for
- * @returns The leaderboard configuration object
  * @throws Error if no configuration exists for the given type
  */
 export function getLeaderboardConfig(type: LeaderboardType): LeaderboardConfig {
@@ -128,21 +108,12 @@ export function getLeaderboardConfig(type: LeaderboardType): LeaderboardConfig {
   return config;
 }
 
-/**
- * Gets all available leaderboard types
- *
- * @returns Array of all registered leaderboard types
- */
+/** Gets all available leaderboard types */
 export function getAllLeaderboardTypes(): LeaderboardType[] {
   return Object.keys(LEADERBOARD_CONFIGS) as LeaderboardType[];
 }
 
-/**
- * Type guard to check if a string is a valid leaderboard type
- *
- * @param type - The string to check
- * @returns True if the string is a registered leaderboard type
- */
+/** Type guard to check if a string is a valid leaderboard type */
 export function isValidLeaderboardType(type: string): type is LeaderboardType {
   return type in LEADERBOARD_CONFIGS;
 }

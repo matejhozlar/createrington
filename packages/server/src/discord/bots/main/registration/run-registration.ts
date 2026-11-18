@@ -23,8 +23,6 @@ import { isVerificationChannel } from "./verification-channel";
 const GENERIC_FAILURE_MESSAGE =
   "Something went wrong on our side. An admin has been notified; please try again in a few minutes.";
 
-/** Minimal shape each entry point (slash command, modal submit) supplies so the
- * core flow can render the Components V2 card without caring where it lands. */
 export type RegistrationRenderer = (
   payload: RegistrationMessage,
 ) => Promise<void>;
@@ -55,9 +53,6 @@ export interface RegistrationResult {
   errorMessage?: string;
 }
 
-/** Runs the full registration flow, calling `render` at each step to update
- * whichever anchor message the caller manages (slash-command reply or the
- * welcome channel message). */
 export async function runRegistration(params: {
   member: GuildMember;
   discordId: string;
@@ -102,8 +97,6 @@ export async function runRegistration(params: {
     RegistrationComponentPresets.progress(mcName, steps, currentStep),
   );
 
-  // Minecraft usernames are 3-16 chars of [a-zA-Z0-9_]. Reject anything else
-  // up-front so we don't leak arbitrary input into downstream services.
   if (!/^[a-zA-Z0-9_]{3,16}$/.test(mcName)) {
     await render(
       RegistrationComponentPresets.idle({
@@ -237,7 +230,6 @@ export async function runRegistration(params: {
     try {
       await member.setNickname(correctName, "Registration: sync to MC name");
     } catch (error) {
-      // Non-fatal: server owner nicknames can't be set by bots.
       logger.warn(
         `Could not set nickname for ${userTag}: ${error instanceof Error ? error.message : error}`,
       );

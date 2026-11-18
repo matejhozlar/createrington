@@ -37,9 +37,6 @@ import type { MaintenanceService } from "./maintenance/maintenance.service";
 import type { VotifierService } from "./votifier/votifier.service";
 import type { VoteRewardService } from "./votifier/vote-reward.service";
 
-/**
- * Service lifecycle states
- */
 export enum ServiceState {
   UNINITIALIZED = "uninitialized",
   INITIALIZING = "initializing",
@@ -47,9 +44,6 @@ export enum ServiceState {
   FAILED = "failed",
 }
 
-/**
- * Service definition with dependencies
- */
 interface ServiceDefinition<T = unknown> {
   name: string;
   factory: (container: ServiceContainer) => T | Promise<T>;
@@ -60,9 +54,6 @@ interface ServiceDefinition<T = unknown> {
   error?: Error;
 }
 
-/**
- * Container events
- */
 interface ContainerEvents {
   serviceReady: (serviceName: string) => void;
   serviceFailed: (serviceName: string, error: Error) => void;
@@ -101,10 +92,6 @@ export class ServiceContainer extends (EventEmitter as new () => TypedEventEmitt
    * The factory receives the container so it can resolve its own dependencies
    * at init time. Duplicate registrations throw immediately to catch wiring
    * mistakes early.
-   *
-   * @param name - Unique service key (use the `Services` constants)
-   * @param factory - Factory that creates or initialises the service instance
-   * @param options - Optional dependency names and lazy flag
    */
   register<T>(
     name: string,
@@ -136,11 +123,6 @@ export class ServiceContainer extends (EventEmitter as new () => TypedEventEmitt
    * If it is currently initialising the existing promise is awaited to avoid
    * duplicate factory invocations. A previously-failed service re-throws its
    * original error.
-   *
-   * @param name - Service key to retrieve
-   * @returns Promise resolving to the typed service instance
-   * @example
-   * const bot = await container.get(Services.DISCORD_MAIN_BOT);
    */
   async get<K extends ServiceKey>(name: K): Promise<ServiceTypeMap[K]>;
   async get<T>(name: string): Promise<T>;
@@ -169,17 +151,6 @@ export class ServiceContainer extends (EventEmitter as new () => TypedEventEmitt
     return this.initializeService(name);
   }
 
-  /**
-   * Initialises a service and all of its declared dependencies
-   *
-   * Dependencies are awaited in parallel before the service's own factory runs.
-   * The resulting promise is stored while in-flight so concurrent callers share
-   * the same initialisation work rather than invoking the factory twice.
-   *
-   * @param name - Name of the service to initialise
-   * @returns Promise resolving to the initialised service instance
-   * @private
-   */
   private async initializeService<T>(name: string): Promise<T> {
     const service = this.services.get(name);
     if (!service) {
@@ -233,8 +204,6 @@ export class ServiceContainer extends (EventEmitter as new () => TypedEventEmitt
    * Uses `Promise.allSettled` so a failure in one service does not block the
    * rest. All failures are logged and the `allReady` event is still emitted
    * afterward so downstream listeners can proceed.
-   *
-   * @returns Promise that resolves once every non-lazy service has settled
    */
   async initializeAll(): Promise<void> {
     const nonLazyServices = Array.from(this.services.values())
@@ -266,17 +235,6 @@ export class ServiceContainer extends (EventEmitter as new () => TypedEventEmitt
     this.emit("allReady");
   }
 
-  /**
-   * Throws if the given service is part of a circular dependency chain
-   *
-   * Performs a depth-first walk of the dependency graph, tracking the current
-   * path so the cycle can be reported in the error message.
-   *
-   * @param serviceName - Root service to check from
-   * @param visited - Set of names already on the current DFS path
-   * @param path - Ordered list of names on the current DFS path (for error messages)
-   * @private
-   */
   private checkCircularDependency(
     serviceName: string,
     visited: Set<string>,
@@ -305,11 +263,6 @@ export class ServiceContainer extends (EventEmitter as new () => TypedEventEmitt
    * Throws if the service has not yet been initialised. Use this only in
    * contexts where you are certain the service is already ready (e.g. inside
    * a request handler after startup has completed).
-   *
-   * @param name - Service key to retrieve
-   * @returns The typed service instance
-   * @example
-   * const ws = container.getSync(Services.WEBSOCKET_SERVICE);
    */
   getSync<K extends ServiceKey>(name: K): ServiceTypeMap[K];
   getSync<T>(name: string): T;
@@ -331,21 +284,12 @@ export class ServiceContainer extends (EventEmitter as new () => TypedEventEmitt
     return this.services.size;
   }
 
-  /**
-   * Returns the current lifecycle state of a service
-   *
-   * @param name - Service key to inspect
-   * @returns The service's `ServiceState`, or `undefined` if not registered
-   */
+  /** Returns the current lifecycle state of a service */
   getState(name: string): ServiceState | undefined {
     return this.services.get(name)?.state;
   }
 
-  /**
-   * Returns a snapshot of every registered service's lifecycle state
-   *
-   * @returns Plain object mapping service name to its `ServiceState`
-   */
+  /** Returns a snapshot of every registered service's lifecycle state */
   getAllStates(): Record<string, ServiceState> {
     const states: Record<string, ServiceState> = {};
     for (const [name, service] of this.services) {
@@ -360,8 +304,6 @@ export class ServiceContainer extends (EventEmitter as new () => TypedEventEmitt
    * Calls `shutdown()` on every service instance that implements it, tolerating
    * individual failures so that all services get a chance to clean up. Clears
    * both the service registry and any pending initialisation promises.
-   *
-   * @returns Promise that resolves once all shutdown hooks have settled
    */
   async shutdown(): Promise<void> {
     logger.info("Shutting down services...");
@@ -398,9 +340,6 @@ export class ServiceContainer extends (EventEmitter as new () => TypedEventEmitt
 
 export const container = new ServiceContainer();
 
-/**
- * Type-safe service keys
- */
 export const Services = {
   DATABASE: "database",
   HTTP_SERVER: "http.Server",
@@ -443,9 +382,6 @@ export const Services = {
 
 export type ServiceKey = (typeof Services)[keyof typeof Services];
 
-/**
- * Maps each service key to its concrete type for type-safe access
- */
 export interface ServiceTypeMap {
   [Services.DATABASE]: Pool;
   [Services.HTTP_SERVER]: Server;

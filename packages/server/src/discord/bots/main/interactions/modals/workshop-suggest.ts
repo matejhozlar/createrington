@@ -73,7 +73,6 @@ function noteField(): LabelBuilder {
     );
 }
 
-/** Builds the suggestion modal for a specific workshop. */
 export function buildWorkshopSuggestModal(
   workshop: Workshop,
   slotsUsed: number,
@@ -89,7 +88,6 @@ export function buildWorkshopSuggestModal(
     .addLabelComponents(linkField(), noteField());
 }
 
-/** Builds the suggestion modal with a required workshop picker on top. */
 export function buildWorkshopPickerSuggestModal(
   workshops: Workshop[],
 ): ModalBuilder {

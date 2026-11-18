@@ -1,16 +1,8 @@
-/**
- * Application entry point
- *
- * Initializes the global logger, bootstraps all services via the DI
- * container, starts the HTTP server, and wires up graceful shutdown.
- */
-
 import "./logger.global";
 import config from "@/config";
 import { initializeServices, shutdownServices } from "@/services/bootstrap";
 import { container, Services } from "@/services";
 
-/** Bootstraps services and starts listening for HTTP requests */
 async function start() {
   try {
     await initializeServices();
@@ -26,7 +18,6 @@ async function start() {
   }
 }
 
-/** Gracefully tears down all services and exits */
 async function shutdown() {
   logger.info("Shutting down...");
   try {
@@ -37,9 +28,6 @@ async function shutdown() {
   process.exit(0);
 }
 
-/**
- * Sets up process event handlers for graceful shutdown and error handling
- */
 function setupProcessHandlers(): void {
   process.on("SIGINT", () => void shutdown());
   process.on("SIGTERM", () => void shutdown());

@@ -49,9 +49,6 @@ type Socket = SocketIOSocket<
 const MAX_CONNECTIONS_PER_IP = 20;
 const EVENTS_PER_SOCKET_PER_MIN = 60;
 
-// Mirrors the HTTP gate in server-ip.middleware: nginx terminates on
-// loopback and sets X-Real-IP to the real client. Without this the per-IP
-// cap would see every proxied socket as 127.0.0.1 and cap the server at 20.
 function getSocketClientIp(socket: Socket): string {
   const raw = socket.handshake.address ?? "";
   const peer = raw.startsWith("::ffff:") ? raw.slice(7) : raw;
@@ -115,9 +112,6 @@ export class WebSocketService {
         return next(new Error("Too many connections"));
       }
 
-      // Optional auth: unauthenticated sockets are allowed (public data),
-      // but when the client passes a Bearer-style token via handshake.auth,
-      // verify it so the connection handler can join the per-user room.
       const token =
         typeof socket.handshake.auth?.token === "string"
           ? socket.handshake.auth.token
@@ -125,18 +119,13 @@ export class WebSocketService {
       if (token) {
         try {
           socket.data.user = jwtService.verify(token);
-        } catch {
-          // Invalid/expired token: treat as unauthenticated, don't reject.
-        }
+        } catch {}
       }
 
       next();
     });
   }
 
-  // Returns true if the socket is within its per-minute event budget.
-  // Per-socket (not per-IP) so one noisy socket can't starve other tabs from
-  // the same client.
   private allowSocketEvent(socketId: string): boolean {
     const now = Date.now();
     const bucket = this.eventBuckets.get(socketId);
@@ -510,7 +499,6 @@ export class WebSocketService {
 
     const socketRooms = this.io.sockets.adapter.rooms;
     for (const [roomName, socketIds] of socketRooms.entries()) {
-      // Skip individual socket rooms (created by Socket.IO automatically)
       if (socketIds.size === 1 && socketIds.has(roomName)) {
         continue;
       }

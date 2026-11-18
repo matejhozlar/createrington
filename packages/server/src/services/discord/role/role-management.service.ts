@@ -165,7 +165,7 @@ export class RoleManagementService {
 
       this.dailyCheckIntervalId = setInterval(
         () => void this.runDailyCheck(),
-        24 * 60 * 60 * 1000, // 24 hours
+        24 * 60 * 60 * 1000,
       );
     }, msUntilNextCheck);
   }

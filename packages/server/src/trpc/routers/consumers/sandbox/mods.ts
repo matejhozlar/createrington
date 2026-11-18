@@ -121,7 +121,6 @@ function toSandboxMod(item: WorkshopModListItem): SandboxWorkshopMod {
   };
 }
 
-/** Sandbox consumer mods router: the testing queue of a workshop and the review actions a tester needs on it. */
 export const sandboxModsRouter = router({
   list: adminProcedure
     .meta({

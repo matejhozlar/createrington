@@ -14,7 +14,7 @@ import { playerDeletionService } from "@/services/player/deletion";
  */
 export class MemberCleanupService {
   private intervalId?: NodeJS.Timeout;
-  private readonly CHECK_INTERVAL = 6 * 60 * 60 * 1000; // 6 hours
+  private readonly CHECK_INTERVAL = 6 * 60 * 60 * 1000;
 
   /** Run an immediate cleanup pass and arm the 6-hour interval. */
   initialize(): void {

@@ -12,37 +12,23 @@ import { pathToFileURL } from "node:url";
 
 const isDev = config.envMode.isDev;
 
-/**
- * Discord command module structure
- */
 export interface CommandModule {
   data: SlashCommandBuilder;
   execute: (interaction: ChatInputCommandInteraction) => Promise<void>;
   autocomplete?: (interaction: AutocompleteInteraction) => Promise<void>;
 
-  // Permission configurations
   permissions?: {
-    /** Requires admin role to execute */
     requireAdmin?: boolean;
-    /** Requires owner role to execute */
     requireOwner?: boolean;
   };
 
-  // Cooldown configuration
   cooldown?: {
-    duration: number; // in seconds
+    duration: number;
     type: CooldownType;
-    message?: string; // Custom cooldown message
+    message?: string;
   };
 }
 
-/**
- * Recursively collects all command files from a directory tree
- *
- * @param dir - The directory path to scan
- * @returns Array of absolute file paths to command files
- * @private
- */
 function collectCommandFiles(dir: string): string[] {
   if (!fs.existsSync(dir)) return [];
 
@@ -61,15 +47,6 @@ function collectCommandFiles(dir: string): string[] {
   return files;
 }
 
-/**
- * Loads Discord command handlers from a directory tree
- *
- * Scans all subdirectories for command files, validates each module,
- * and returns a collection of the valid ones.
- *
- * @param commandsPath - Absolute path to the slash-commands directory
- * @returns Promise resolving to a Collection of command handlers keyed by command name
- */
 export async function loadCommandHandlers(
   commandsPath: string,
 ): Promise<Collection<string, CommandModule>> {

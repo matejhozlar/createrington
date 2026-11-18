@@ -31,24 +31,8 @@ async function partyTagCodes(
 
 const router = Router();
 
-// PuppeteerService runs in-process and connects via loopback. Reject any
-// off-host traffic at the router level so a leaked PUPPETEER_SECRET still
-// cannot exfiltrate per-player PII over the public interface.
 router.use(requireLoopback);
 
-/**
- * Render routes
- * Base path: /api/render
- *
- * Internal endpoints consumed by PuppeteerService to generate
- * server-rendered HTML snapshots (e.g. player comparison images).
- * Protected by a shared secret, not accessible to regular users.
- */
-
-/**
- * Validates the puppeteer secret query param.
- * Only the internal PuppeteerService should know this secret.
- */
 function requirePuppeteerSecret(
   req: Request,
   _res: Response,
@@ -66,12 +50,6 @@ function requirePuppeteerSecret(
   next();
 }
 
-/**
- * GET /api/render/compare?secret=...&player1=...&player2=...
- *
- * Returns comparison data for two players identified by Discord ID.
- * Protected by puppeteer secret, not accessible to regular users.
- */
 router.get(
   "/compare",
   asyncHandler(requirePuppeteerSecret),
@@ -123,12 +101,6 @@ router.get(
   }),
 );
 
-/**
- * GET /api/render/profile?secret=...&player=...
- *
- * Returns profile data for a single player identified by Discord ID.
- * Protected by puppeteer secret, not accessible to regular users.
- */
 router.get(
   "/profile",
   asyncHandler(requirePuppeteerSecret),
@@ -175,12 +147,6 @@ router.get(
   }),
 );
 
-/**
- * GET /api/render/activity?secret=...&player=...
- *
- * Returns daily playtime data for the last 365 days, aggregated across servers.
- * Protected by puppeteer secret, not accessible to regular users.
- */
 router.get(
   "/activity",
   asyncHandler(requirePuppeteerSecret),
@@ -208,12 +174,6 @@ router.get(
   }),
 );
 
-/**
- * GET /api/render/top?secret=...&category=...&item=...
- *
- * Returns top 3 players for a given Minecraft stat category + item.
- * Protected by puppeteer secret, not accessible to regular users.
- */
 router.get(
   "/top",
   asyncHandler(requirePuppeteerSecret),

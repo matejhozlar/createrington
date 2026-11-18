@@ -10,10 +10,6 @@ import {
   SlashCommandBuilder,
 } from "discord.js";
 
-/**
- * Slash command definition for the playtime command
- * Displays the users playtime
- */
 export const data = new SlashCommandBuilder()
   .setName("playtime")
   .setDescription("Check playtime of a user")
@@ -24,29 +20,12 @@ export const data = new SlashCommandBuilder()
       .setRequired(false),
   );
 
-/**
- * Cooldown configuration for the playtime command
- *
- * - duration: 5 seconds
- * - type: "user" - Each user has their own cooldown
- * - message: Custom message shown when the user is on cooldown
- */
 export const cooldown = {
   duration: 5,
   type: CooldownType.USER,
   message: "Please wait before checking playtime again!",
 };
 
-/**
- * Executes the playtime command to display the users playtime
- *
- * Process:
- * 1. Get the target user (from option or command initiator)
- * 2. Fetch playtime data from the database
- * 3. Reply with the playtime information
- *
- * @param interaction - The chat input command interaction
- */
 export async function execute(interaction: ChatInputCommandInteraction) {
   const userOption = interaction.options.getUser("user", false);
   const targetUser = userOption || interaction.user;

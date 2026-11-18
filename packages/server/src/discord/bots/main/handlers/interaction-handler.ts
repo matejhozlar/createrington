@@ -22,37 +22,24 @@ import * as promptSubmitModal from "../interactions/modals/prompt-submit";
 import * as workshopSuggestModal from "../interactions/modals/workshop-suggest";
 
 type ModalHandler = {
-  /** Exact customId OR a wildcard prefix ending in `:*` (e.g. `prompt:submit:*`). */
   customId: string;
   execute: (interaction: ModalSubmitInteraction) => Promise<void>;
 };
 
-/** Registry of modal-submit handlers keyed by the modal's customId. */
 const MODAL_HANDLERS: ModalHandler[] = [
   registrationModal,
   promptSubmitModal,
   workshopSuggestModal,
 ];
 
-/**
- * True if `handler` owns the given customId. Supports wildcard suffixes
- * so dynamic customIds like `prompt:submit:123` can route to a single
- * handler declared as `prompt:submit:*`.
- */
 function modalHandlerMatches(handler: ModalHandler, customId: string): boolean {
   if (handler.customId.endsWith(":*")) {
-    const prefix = handler.customId.slice(0, -1); // keep the trailing ":"
+    const prefix = handler.customId.slice(0, -1);
     return customId.startsWith(prefix);
   }
   return handler.customId === customId;
 }
 
-/**
- * Formats a cooldown duration in seconds into a human-readable string
- *
- * @param seconds - The cooldown duration in seconds
- * @returns Formatted string (e.g., "5.0 second(s)", "2 minute(s) and 30 second(s)", "1 hour(s)")
- */
 function formatCooldown(seconds: number): string {
   if (seconds < 60) {
     return `${seconds.toFixed(1)} second(s)`;
@@ -75,13 +62,6 @@ function formatCooldown(seconds: number): string {
     : `${hours} hour(s)`;
 }
 
-/**
- * Checks command permissions before execution
- *
- * @param interaction - The chat input interaction
- * @param command - The command module being executed
- * @returns True if the user has permission, false otherwise (and sends error message)
- */
 async function checkPermission(
   interaction: ChatInputCommandInteraction,
   command: CommandModule,
@@ -91,21 +71,6 @@ async function checkPermission(
   return true;
 }
 
-/**
- * Handles execution of slash commands with cooldown management
- *
- * Process:
- * 1. Retrieves the command handler
- * 2. Checks permissions (admin, owner)
- * 3. Checks if the command is on cooldown
- * 4. Starts the cooldown before executing, so a slow command cannot be re-run while it is still running
- * 5. Executes the command
- * 6. Handles errors with ephemeral error messages
- *
- * @param interaction - The chat input command interaction
- * @param commandHandlers - Collection of registered command handlers
- * @returns Promise resolving when the command handling is completed
- */
 async function handleChatCommands(
   interaction: ChatInputCommandInteraction,
   commandHandlers: Collection<string, CommandModule>,
@@ -212,19 +177,6 @@ async function handleChatCommands(
     .catch((err) => logger.error("Failed to log command usage:", err));
 }
 
-/**
- * Handles button interactions
- *
- * Process:
- * 1. Finds matching button handler based on customId pattern
- * 2. Checks permissions if handler has permission check
- * 3. Executes the button handler
- * 4. Handles errors with ephemeral error messages
- *
- * @param interaction - The button interaction
- * @param buttonHandlers - Collection of registered button handlers
- * @returns Promise resolving when the button handling is completed
- */
 async function handleButtonInteractions(
   interaction: ButtonInteraction,
   buttonHandlers: Collection<string, ButtonModule>,
@@ -297,16 +249,6 @@ async function handleButtonInteractions(
   }
 }
 
-/**
- * Registers the interaction event handler for the Discord client
- *
- * Sets up a listener for the 'interactionCreate' event that routes
- * chat input commands and button interactions to appropriate handlers
- *
- * @param discordClient - The Discord client instance
- * @param commandHandlers - Collection of slash command handlers keyed by command name
- * @param buttonHandlers - Collection of button handlers with pattern matching
- */
 export function registerInteractionHandler(
   discordClient: Client,
   commandHandlers: Collection<string, CommandModule>,
@@ -357,10 +299,6 @@ async function routeInteraction(
   }
 }
 
-/**
- * Routes a modal-submit interaction to its matching handler by exact customId.
- * Errors are logged and surfaced to the user as an ephemeral message.
- */
 async function handleModalSubmit(
   interaction: ModalSubmitInteraction,
 ): Promise<void> {

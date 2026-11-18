@@ -53,17 +53,6 @@ async function getPlaytimeManager(): Promise<
 }
 
 export class ServersController {
-  /**
-   * GET /api/servers/status
-   *
-   * Current status and player counts of every configured server. `?server=<slug>` narrows the list to one server (404 when the slug is unknown; an empty value is ignored).
-   *
-   * Response is a flat JSON body, not enveloped:
-   * `{ servers: [{ id, slug, name, status: "online" | "offline" | "unknown", maintenance, playerCount, maxPlayers }], totalPlayers, generatedAt }`
-   * Errors use the standard `{ success: false, message, error }` envelope.
-   *
-   * `status` mirrors the tracked server state (relay messages, heartbeats, join events). `playerCount` is the number of tracked sessions and may lag `status` by a few seconds during a transition. `generatedAt` is the response time, not a poll time. Cacheable for 10 seconds.
-   */
   static async getStatus(req: Request, res: Response): Promise<void> {
     const slug = parseServerSlug(req.query.server);
 

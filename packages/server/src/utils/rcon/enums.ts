@@ -1,6 +1,3 @@
-/**
- * Whitelist actions
- */
 export enum WhitelistAction {
   ADD = "add",
   REMOVE = "remove",

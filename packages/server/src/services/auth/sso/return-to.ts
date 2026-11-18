@@ -1,19 +1,5 @@
 import config from "@/config";
 
-/**
- * Return-to URL allowlist enforcement for the server-driven SSO flow.
- *
- * The /api/auth/sso/start endpoint accepts a `return_to` query param and,
- * after a successful Discord OAuth round-trip, redirects the user back to
- * that URL with the access + refresh cookies set. Without strict validation
- * this is an open redirect that lets an attacker phish credentials.
- *
- * The allowlist is built from `config.meta.links.website` +
- * `SSO_CORS_ORIGINS`, parsed as URL origins. Matching is exact-origin (host
- * + port + scheme): no regex, so it can't be misconfigured via a forgotten
- * anchor or unescaped dot.
- */
-
 const MAX_RETURN_TO_LENGTH = 2048;
 
 function buildAllowedOrigins(): Set<string> {

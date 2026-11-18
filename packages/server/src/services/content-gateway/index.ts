@@ -2,7 +2,6 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { ContentGateway } from "@createrington/content-gateway-client";
 import config from "@/config";
 
-/** The pools this app's gateway token draws from: `launcher` for lookups the launcher's players trigger, `app` for everything else. */
 export const ContentGatewayPool = {
   app: "app",
   launcher: "launcher",

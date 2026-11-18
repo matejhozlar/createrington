@@ -17,7 +17,6 @@ import { discordId } from "@/utils/zod-schemas";
 import type { Player, PlayerFilters } from "@createrington/shared/db";
 import { violationFilterInput, violationRequirement } from "./violation-filter";
 
-/** Admin players CRUD router: stats, list, get, update, and delete players. */
 export const playersRouter = router({
   stats: adminProcedure
     .meta({

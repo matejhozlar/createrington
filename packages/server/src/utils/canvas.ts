@@ -8,9 +8,6 @@ export interface BBox {
 }
 
 export function computeBBox(img: Image): BBox | null {
-  // width/height are native getters, so reading them per iteration dominates
-  // the scan: hoisting them (and walking the alpha byte with a running index)
-  // takes a 895x1343 figure from ~156ms to ~5ms.
   const width = img.width;
   const height = img.height;
   const probe = createCanvas(width, height);

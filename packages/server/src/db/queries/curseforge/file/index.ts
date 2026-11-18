@@ -32,13 +32,6 @@ export interface CurseforgeFileWithProject extends CurseforgeFileUpsert {
   project: CurseforgeFileProject;
 }
 
-/**
- * Custom queries for curseforge_file table
- *
- * Extends the auto-generated base class with custom methods.
- * This file is scaffolded once and never overwritten - add your custom
- * query methods here while inheriting all generated CRUD operations.
- */
 export class CurseforgeFileQueries extends CurseforgeFileBaseQueries {
   constructor(db: Pool | PoolClient) {
     super(db);

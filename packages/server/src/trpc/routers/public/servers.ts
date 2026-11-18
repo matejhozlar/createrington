@@ -6,7 +6,6 @@ import type { ServerStatus } from "@/services/playtime/server-status";
 import { z } from "zod";
 import { trpcError } from "@/trpc/utils";
 
-/** Public servers router: server list with status and individual server lookup. */
 export const serversRouter = router({
   list: publicProcedure
     .meta({

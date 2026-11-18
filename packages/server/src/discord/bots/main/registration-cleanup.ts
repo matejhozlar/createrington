@@ -8,17 +8,10 @@ import { Discord } from "@/discord/constants";
 import { RegistrationComponentPresets } from "@/discord/components/presets/registration";
 import config from "@/config";
 
-/** Duration before a completed registration channel is auto-deleted (ms) */
 export const AUTO_CLOSE_MS = 24 * 60 * 60 * 1000;
 
-/** How long the closing card stays up before the channel goes away (ms) */
 export const CLOSE_GRACE_MS = 5000;
 
-/**
- * Schedules a registration channel for deletion.
- * If `delayMs <= 0` the channel is deleted immediately (with a short grace period
- * so the closing card is visible).
- */
 export function scheduleChannelClose(
   channel: GuildTextBasedChannel,
   delayMs: number,
@@ -39,9 +32,7 @@ async function announceAndDelete(
       components: closing.components,
       flags: closing.flags,
     });
-  } catch {
-    // Channel may already be gone, proceed to delete
-  }
+  } catch {}
 
   setTimeout(
     () => void deleteRegistrationChannel(channel, reason),
@@ -61,16 +52,6 @@ async function deleteRegistrationChannel(
   }
 }
 
-/**
- * Scans every channel in the VERIFICATION category and deletes any that
- * belong to a user who already has the VERIFIED role, meaning they
- * completed registration but the channel was never closed (e.g. bot restart).
- *
- * Channel ownership is determined by the member-type permission overwrite
- * set when the channel was created.
- *
- * Call once after the main bot is ready.
- */
 export async function sweepRegistrationChannels(bot: Client): Promise<void> {
   const guild = bot.guilds.cache.get(config.discord.guild.id);
   if (!guild) {
@@ -90,7 +71,6 @@ export async function sweepRegistrationChannels(bot: Client): Promise<void> {
   for (const [, channel] of channels) {
     if (channel.type !== ChannelType.GuildText) continue;
 
-    // Find the member this channel belongs to via the permission overwrites
     const memberOverwrite = channel.permissionOverwrites.cache.find(
       (ow) => ow.type === OverwriteType.Member,
     );
@@ -109,7 +89,6 @@ export async function sweepRegistrationChannels(bot: Client): Promise<void> {
         cleaned++;
       }
     } catch {
-      // Member may have left the server, clean up the orphaned channel
       scheduleChannelClose(
         channel,
         0,

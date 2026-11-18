@@ -1,8 +1,5 @@
 import config from "@/config";
 
-/**
- * Server information for IP-based detection
- */
 export interface ServerInfo {
   serverId: number;
   serverName: string;
@@ -10,14 +7,6 @@ export interface ServerInfo {
   port: number;
 }
 
-/**
- * IP-to-Server mapping for automatic server detection
- *
- * Format: Record<ipAddress, ServerInfo>
- *
- * When a request comes from a specific IP, we automatically
- * know which server it's from.
- */
 export const MINECRAFT_SERVER_MAPPING: Record<string, ServerInfo> = {
   [config.servers.rails.ip]: {
     serverId: config.servers.rails.id,
@@ -27,14 +16,6 @@ export const MINECRAFT_SERVER_MAPPING: Record<string, ServerInfo> = {
   },
 };
 
-/**
- * Alternative: List all servers by ID (for explicit serverId in payload)
- *
- * Format: Record<serverId, ServerConfig>
- *
- * This is used when the mod sends an explicit serverId,
- * or for initializing services.
- */
 export interface ServerConfig {
   id: number;
   name: string;

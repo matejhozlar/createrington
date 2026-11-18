@@ -80,7 +80,6 @@ async function serialize(rows: GallerySubmission[]) {
   });
 }
 
-/** Public gallery router: approved screenshots with their credits, newest published first. */
 export const publicGalleryRouter = router({
   isEnabled: publicProcedure
     .meta({ description: "Whether the public gallery is enabled" })

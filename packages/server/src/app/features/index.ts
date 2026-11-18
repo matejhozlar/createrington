@@ -18,7 +18,6 @@ import internalSsoExchangeRoutes from "./internal/sso-exchange/sso-exchange.rout
 import adminChatRoutes from "./admin-chat/admin-chat.routes";
 import { registerLauncherRoutes } from "./launcher";
 
-/** Mounts all feature route modules onto the Express app under the /api prefix */
 export function registerRoutes(app: Express): void {
   const API_PREFIX = "/api";
 
@@ -36,13 +35,11 @@ export function registerRoutes(app: Express): void {
   app.use(`${API_PREFIX}/og`, ogRoutes);
   app.use(`${API_PREFIX}/trains`, trainRoutes);
 
-  // Internal cross-environment routes (only active when sync secret is set)
   if (config.sync.secret) {
     app.use(`${API_PREFIX}/internal/presence`, internalPresenceRoutes);
     logger.info("Internal sync routes registered");
   }
 
-  // Internal skin-api routes (only active when the shared secret is set)
   if (config.internal.secret) {
     app.use(`${API_PREFIX}/internal/sso-exchange`, internalSsoExchangeRoutes);
     logger.info("Internal skin-api routes registered");
@@ -50,9 +47,6 @@ export function registerRoutes(app: Express): void {
 
   registerLauncherRoutes(app, API_PREFIX);
 
-  // Admin chat proxy, only active when the upstream URL is configured.
-  // Routes gate on requireAdmin internally; the secret (if set) is injected
-  // into outbound calls so it never touches the browser.
   if (config.adminChat.url) {
     app.use(`${API_PREFIX}/claude-chat`, adminChatRoutes);
     logger.info("Admin chat proxy routes registered");

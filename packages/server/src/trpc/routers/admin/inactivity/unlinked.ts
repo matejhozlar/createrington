@@ -18,14 +18,6 @@ async function getUnlinkedService(): Promise<UnlinkedMemberService> {
   }
 }
 
-/**
- * Admin sub-router for the "Members Missing from Database" tool.
- *
- * The inverse of the ghosts tool: onboarded Discord members with no matching
- * player record. The list is an in-memory cache populated only by explicit
- * refresh (no auto-runs, no persistence). Read-only: there is no player record
- * to remove, so no destructive action is exposed.
- */
 export const unlinkedRouter = router({
   list: adminProcedure
     .meta({

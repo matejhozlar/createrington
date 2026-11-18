@@ -27,7 +27,6 @@ function toSessionView(session: AuthSessionRow) {
   };
 }
 
-/** User account router: profile info, session management, data export, and account deletion. */
 export const accountRouter = router({
   me: userProcedure
     .meta({
@@ -193,7 +192,6 @@ export const accountRouter = router({
         ),
       };
 
-      // BigInt values can't be JSON-serialized, convert them to strings
       return JSON.parse(
         JSON.stringify(data, (_key, value: unknown) =>
           typeof value === "bigint" ? value.toString() : value,
@@ -236,7 +234,6 @@ export const accountRouter = router({
         },
       );
 
-      // Kick from Discord after successful deletion
       try {
         const mainBot = await getService(Services.DISCORD_MAIN_BOT);
         const guild = mainBot.guilds.cache.first();

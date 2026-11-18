@@ -11,6 +11,11 @@ interface BringUpOptions {
   forward: boolean;
 }
 
+export type ServiceListener = (
+  serverId: number,
+  service: PlaytimeService,
+) => void;
+
 /**
  * Coordinates one PlaytimeService per Minecraft server: spins up each entry
  * of MINECRAFT_SERVERS at boot, restores the sessions the previous process
@@ -27,11 +32,6 @@ interface BringUpOptions {
  * `initialize()` to enable server start/shutdown detection from the Discord
  * relay.
  */
-export type ServiceListener = (
-  serverId: number,
-  service: PlaytimeService,
-) => void;
-
 export class PlaytimeManagerService {
   private playtimeServices: Map<number, PlaytimeService> = new Map();
   private pendingServices: Map<number, Promise<PlaytimeService>> = new Map();

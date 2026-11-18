@@ -104,7 +104,6 @@ export function buildButtons(
     }
   }
 
-  // Action buttons (require a preset to reference)
   if (hasActionButtons && presetId) {
     for (let i = 0; i < data.actionButtons.length; i++) {
       const btn = data.actionButtons[i];
@@ -137,11 +136,6 @@ export type BuiltMessage =
     }
   | { ok: false; error: string };
 
-/**
- * Validate a builder payload and produce the discord.js pieces to send/edit.
- * Components V2 messages carry the IS_COMPONENTS_V2 flag and never set
- * content or embeds; classic embeds never set that flag.
- */
 export function buildMessage(
   payload: MessagePayload,
   presetId?: number,
@@ -177,7 +171,6 @@ export function buildMessage(
 
 type BuiltOk = Extract<BuiltMessage, { ok: true }>;
 
-/** Translate a built message into `messageService.send` arguments. */
 export function toSendOptions(
   built: BuiltOk,
   channelId: string,
@@ -192,11 +185,6 @@ export function toSendOptions(
       };
 }
 
-/**
- * Translate a built message into `messageService.edit` arguments. Classic
- * embeds explicitly clear absent fields; Components V2 omits content/embeds
- * entirely since they cannot coexist with the IS_COMPONENTS_V2 flag.
- */
 export function toEditOptions(
   built: BuiltOk,
   channelId: string,
@@ -213,7 +201,6 @@ export function toEditOptions(
       };
 }
 
-/** Map a builder payload to the `kind` + `data` columns persisted on a preset. */
 export function payloadToStorage(payload: MessagePayload): {
   kind: PresetKind;
   data: Record<string, unknown>;

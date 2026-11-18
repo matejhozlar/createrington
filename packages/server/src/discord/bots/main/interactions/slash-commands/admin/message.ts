@@ -8,10 +8,6 @@ import {
   SlashCommandBuilder,
 } from "discord.js";
 
-/**
- * Slash command definition for the message command
- * Sends the user input as a message through the bot
- */
 export const data = new SlashCommandBuilder()
   .setName("message")
   .setDescription("Send a custom message to this channel")
@@ -23,23 +19,10 @@ export const data = new SlashCommandBuilder()
       .setRequired(true),
   );
 
-/**
- * Permission configuration for the message command
- * Requires admin privileges to execute
- */
 export const permissions = {
   requireAdmin: true,
 };
 
-/**
- * Executes the message command to send a bot message to the channel
- *
- * Process:
- * 1. Send the provided content as a bot message in the current channel
- * 2. Reply with an ephemeral confirmation
- *
- * @param interaction - The chat input command interaction
- */
 export async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {

@@ -3,13 +3,6 @@ import type { NextFunction, Request, Response } from "express";
 import { UnauthorizedError } from "./error-handler";
 import { timingSafeEqualStrings } from "@/utils/timing-safe-equal";
 
-/**
- * Verify the X-Sync-Secret header matches the configured playtime sync secret.
- *
- * Used to authenticate cross-environment playtime forwarding requests.
- *
- * @throws {UnauthorizedError} if the secret is missing or invalid
- */
 export const verifySyncSecret = (
   req: Request,
   _res: Response,

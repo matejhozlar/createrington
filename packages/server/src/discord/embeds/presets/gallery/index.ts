@@ -9,9 +9,7 @@ const RULES = [
   "One build per message, with a short caption saying what we are looking at.",
 ];
 
-/** Embed presets for the screenshot gallery submission channel */
 export const GalleryEmbedPresets = {
-  /** Sticky notice kept at the bottom of the gallery submissions channel, showing the rules and the current reward */
   intakeNotice(rewardAmount: number) {
     const reward =
       rewardAmount > 0

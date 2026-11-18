@@ -21,17 +21,12 @@ import cors from "cors";
 import helmet from "helmet";
 import { registerHealthRoute } from "./health";
 
-/** Creates and configures the Express application with routes, tRPC, static files, and error handling */
 export function createApp(): Express {
   const app = express();
   if (config.envMode.isProd) {
-    // One hop: the front proxy (Cloudflare -> Caddy/nginx) must replace any
-    // client-supplied X-Forwarded-For before forwarding, otherwise req.ip
-    // and rate-limit keys can be spoofed.
     app.set("trust proxy", 1);
   }
 
-  // Stripe webhook requires raw body for signature verification, mount before express.json()
   app.use("/api/donations/webhook", express.raw({ type: "application/json" }));
 
   app.use(helmet({ contentSecurityPolicy: false }));
@@ -55,17 +50,6 @@ export function createApp(): Express {
 
   registerRoutes(app);
 
-  // Dedicated mount for the consumer-panel router. External consumer apps
-  // (the admin panel) type their tRPC client against `PanelRouter` from
-  // `@createrington/api-types`, which is a standalone router type: its
-  // procedures resolve relative to its own root. Mounting panelRouter at
-  // its own URL lets consumers use the natural procedure paths
-  // (`presence.onlineByServer` etc) without knowing they're nested under
-  // `consumers.panel.*` inside the main appRouter.
-  //
-  // MUST be registered BEFORE the generic `/trpc` mount: Express matches
-  // handlers in order, so the more specific path has to come first to
-  // avoid being swallowed by the appRouter mount.
   app.use(
     "/trpc/consumers/panel",
     createExpressMiddleware({
@@ -104,7 +88,6 @@ export function createApp(): Express {
     }),
   );
 
-  // Mount tRPC adapter: logs internal errors at error level, client errors at warn
   app.use(
     "/trpc",
     createExpressMiddleware({
@@ -124,12 +107,10 @@ export function createApp(): Express {
     }),
   );
 
-  // Serve client static files in production
   const clientDir = path.join(import.meta.dirname, "../../../public");
   const indexHtml = path.join(clientDir, "index.html");
 
   if (fs.existsSync(indexHtml)) {
-    // Hashed assets are immutable, cache forever
     app.use(
       "/assets",
       express.static(path.join(clientDir, "assets"), {
@@ -138,11 +119,8 @@ export function createApp(): Express {
       }),
     );
 
-    // Everything else (favicon, etc.): short cache
     app.use(express.static(clientDir, { maxAge: "1h" }));
 
-    // SPA catch-all: serve index.html with no-cache so the browser
-    // always fetches the latest version after deployments
     app.get("/{*splat}", (_req, res) => {
       res.setHeader("Cache-Control", "no-cache");
       res.sendFile(indexHtml);

@@ -191,7 +191,6 @@ async function fetchModpackManifest(
     (fileId) => getModpackFile(packProjectId, fileId, { fresh }),
   );
 
-  // Sequential so only one zip is ever buffered at a time
   const client = await downloadPackManifest(packProjectId, file.id);
   const server =
     serverPackFileId === null

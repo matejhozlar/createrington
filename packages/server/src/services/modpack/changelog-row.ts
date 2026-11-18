@@ -18,7 +18,6 @@ import type {
 
 export interface ChangelogRowImage {
   png: Buffer;
-  /** False when the icon could not be fetched and a placeholder stands in */
   complete: boolean;
 }
 

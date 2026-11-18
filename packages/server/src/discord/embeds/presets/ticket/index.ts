@@ -5,9 +5,6 @@ import { Discord } from "@/discord/constants";
 import { discordTimestamp } from "@/utils/format";
 
 export const TicketEmbedPresets = {
-  /**
-   * Creates a Ticket panel embed
-   */
   panel() {
     const embed = createEmbed()
       .title("🎟️ Support Ticket")
@@ -29,9 +26,6 @@ export const TicketEmbedPresets = {
     return embed;
   },
 
-  /**
-   * Creates a Ticket welcome embed
-   */
   welcome(userId: string, minecraftUsername: string | null) {
     const identity = minecraftUsername
       ? `(Minecraft: **${minecraftUsername}**)`
@@ -54,9 +48,6 @@ export const TicketEmbedPresets = {
     return embed;
   },
 
-  /**
-   * Creates a Ticket closure embed
-   */
   close(closedBy: string) {
     const embed = createEmbed()
       .title("🔒 Ticket Closed")
@@ -72,9 +63,6 @@ export const TicketEmbedPresets = {
     return embed;
   },
 
-  /**
-   * Creates a Ticket reopened embed
-   */
   reopen(reopenedBy: string, creatorDiscordId: string) {
     return createEmbed()
       .title("🔓 Ticket Reopened")
@@ -86,9 +74,6 @@ export const TicketEmbedPresets = {
       .timestamp();
   },
 
-  /**
-   * Creates a Ticket transcript embed
-   */
   transcript(data: {
     ticketNumber: number;
     type: string;

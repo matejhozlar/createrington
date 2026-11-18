@@ -4,9 +4,7 @@ import { EmbedColors } from "../../colors";
 import { type ActiveSession, PlaytimeService } from "@/services/playtime";
 import { formatPlaytime } from "@createrington/shared/format";
 
-/** Embed presets for bot slash-command responses (cooldown stats, online player list) */
 export const CommandEmbedPresets = {
-  /** Displays active cooldown counts grouped by command */
   cooldownStats(stats: CooldownStats): DiscordEmbedBuilder {
     const embed = createEmbed()
       .title("📊 Cooldown Statistics")
@@ -25,7 +23,6 @@ export const CommandEmbedPresets = {
     return embed;
   },
 
-  /** Displays currently online players sorted alphabetically with session durations */
   list(
     activeSessions: ActiveSession[],
     playtimeService: PlaytimeService,

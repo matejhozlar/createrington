@@ -18,22 +18,11 @@ import {
   withQuery,
 } from "@/utils/http";
 
-/**
- * Admin chat proxy routes. Forwards to claude-automation's chat endpoints
- * with the shared secret so the widget never ships the secret to browsers.
- *
- * Identity is taken from the authenticated JWT (requireAdmin enforces admin),
- * so widget payloads don't need to carry `username` / `repo` / `environment`.
- */
 const router = Router();
 
 const REPO = "Createrington/app";
-// Both deployments run with NODE_ENV=production. Dev vs prod is determined
-// by the WEBSITE_URL (dev.* subdomain or localhost) via envMode.isDevDeployment.
 const ENVIRONMENT = config.envMode.isDevDeployment ? "dev" : "prod";
 
-// Upstream LLM calls can hang on network glitches, cap every outbound
-// request so a stuck claude-automation can't pile up Express connections.
 const UPSTREAM_TIMEOUT_MS = 30000;
 
 const pageContextValueSchema = z.union([
@@ -48,8 +37,6 @@ const pageContextSchema = z
     message: "pageContext may contain at most 50 keys",
   });
 
-// Models the admin can pin a chat session to, must stay in sync with the
-// claude-automation allowlist in `chat.routes.ts`.
 const ADMIN_CHAT_MODELS = ["claude-opus-5-5"] as const;
 
 const startBodySchema = z.object({
@@ -102,15 +89,9 @@ function requireUpstream(res: Response): string | null {
 }
 
 function adminUsername(req: Request): string {
-  // requireAdmin guarantees req.user exists and is admin.
   return req.user!.minecraftUsername;
 }
 
-/**
- * Forward an upstream error response verbatim so the widget sees the real
- * status + body (e.g. 403 when the kill switch is off). Anything else
- * (network failure, timeout) bubbles up to the app-wide error handler.
- */
 function forwardUpstreamError(err: unknown, res: Response): void {
   if (err instanceof HttpStatusError) {
     res.status(err.status).json(err.body ?? { error: err.message });
@@ -308,13 +289,6 @@ router.post(
   }),
 );
 
-/**
- * SSE passthrough to claude-automation's /api/chat/stream. The upstream
- * body is piped through so the widget sees events frame-by-frame.
- * The 30s UPSTREAM_TIMEOUT_MS of the other routes does not apply here: the
- * stream is long-lived, bounded by the upstream's 20s ping keeping it alive
- * plus the admin eventually closing the drawer.
- */
 router.get(
   "/stream",
   asyncHandler(authenticate),
@@ -327,10 +301,6 @@ router.get(
       throw new BadRequestError("sessionId is required");
     }
 
-    // Hold off on sending SSE headers until the upstream connects: if
-    // the upstream rejects (404 session not found, 401 bad secret, etc.)
-    // we want to surface the real status to the browser, not a 200 with
-    // no body.
     const disconnect = new AbortController();
     res.on("close", () => disconnect.abort());
 
@@ -366,8 +336,6 @@ router.get(
     const stream = Readable.fromWeb(
       upstream.body as NodeReadableStream<Uint8Array>,
     );
-    // If the upstream drops (restart, network blip) mid-stream, close our
-    // side cleanly instead of leaving Express in an undefined state.
     stream.on("error", (err) => {
       if (disconnect.signal.aborted) return;
       logger.error(

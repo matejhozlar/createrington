@@ -113,7 +113,6 @@ async function resolveSandboxWorkshops(
   });
 }
 
-/** Sandbox consumer workshops router: the workshops a sandbox instance can attach itself to, each with its modpack. */
 export const sandboxWorkshopsRouter = router({
   list: adminProcedure
     .meta({

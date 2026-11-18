@@ -11,10 +11,6 @@ import {
   SlashCommandBuilder,
 } from "discord.js";
 
-/**
- * Slash command definition for the activity command
- * Displays a GitHub-style playtime heatmap for a player
- */
 export const data = new SlashCommandBuilder()
   .setName("activity")
   .setDescription("View a player's activity heatmap")
@@ -25,18 +21,12 @@ export const data = new SlashCommandBuilder()
       .setRequired(false),
   );
 
-/**
- * Cooldown configuration for the activity command
- */
 export const cooldown = {
   duration: 5,
   type: CooldownType.USER,
   message: "Please wait before viewing activity again!",
 };
 
-/**
- * Executes the activity command to generate a playtime heatmap
- */
 export async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
@@ -67,7 +57,6 @@ export async function execute(
         files: [attachment],
       });
     } else {
-      // Text fallback
       const pt = formatPlaytime(details.playtime.totalSeconds);
       const sessions = details.playtime.totalSessions.toLocaleString();
 

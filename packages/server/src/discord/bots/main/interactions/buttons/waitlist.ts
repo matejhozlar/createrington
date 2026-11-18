@@ -10,12 +10,6 @@ import {
 } from "@/discord/components/presets/waitlist";
 import { MessageFlags, type ButtonInteraction } from "discord.js";
 
-/**
- * Waitlist button handler for the member-facing queue cards inside
- * verification channels: join the queue, refresh the position, leave the
- * queue. Legacy admin accept/decline buttons answer with a pointer to the
- * admin panel.
- */
 export const pattern = "waitlist:*";
 
 async function renderCurrentState(

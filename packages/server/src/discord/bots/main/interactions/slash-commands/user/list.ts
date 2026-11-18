@@ -7,11 +7,6 @@ import {
   SlashCommandBuilder,
 } from "discord.js";
 
-/**
- * Slash command definition for the list command
- *
- * Displays a list of users currently online on the server
- */
 export const data = new SlashCommandBuilder()
   .setName("list")
   .setDescription("List players on a server")
@@ -23,18 +18,6 @@ export const data = new SlashCommandBuilder()
       .addChoices({ name: "Rails 'n Sails", value: "1" }),
   );
 
-/**
- * Executes the list command
- *
- * Process:
- * - Extracts the server option
- * - Maps the option to a server
- * - Fetches the player list from the PlaytimeService
- * - Displays an embed with the player list
- *
- * @param interaction - The chat input command interaction
- * @returns Promise resolving when the command execution is completed
- */
 export async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {

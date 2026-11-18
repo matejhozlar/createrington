@@ -1,26 +1,14 @@
 import { Discord } from "@/discord/constants";
 
-/**
- * Notification configuration for role assignment
- */
 export interface NotificationConfig {
-  /** Unique identifier for this notification type */
   id: string;
-  /** Display name for the notification */
   label: string;
-  /** Description of what the notification covers */
   description: string;
-  /** Discord role ID to assign */
   roleId: string;
-  /** Emoji to display on button */
   emoji: string;
-  /** Whether this notification is currently active */
   enabled: boolean;
 }
 
-/**
- * Notification selection configuration
- */
 export const NOTIFICATION_CONFIGS: NotificationConfig[] = [
   {
     id: "rails-n-sails-notifications",
@@ -40,16 +28,10 @@ export const NOTIFICATION_CONFIGS: NotificationConfig[] = [
   },
 ];
 
-/**
- * Gets all enabled notification configurations
- */
 export function getEnabledNotifications(): NotificationConfig[] {
   return NOTIFICATION_CONFIGS.filter((n) => n.enabled);
 }
 
-/**
- * Gets a notification config by its ID
- */
 export function getNotificationConfig(
   id: string,
 ): NotificationConfig | undefined {

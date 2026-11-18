@@ -27,11 +27,7 @@ class RefreshTokenService {
     return RefreshTokenService.instance;
   }
 
-  /**
-   * Generates a fresh opaque refresh token.
-   *
-   * @returns An 80-character lowercase hex string (40 random bytes).
-   */
+  /** Generates a fresh opaque refresh token. */
   generate(): string {
     return crypto.randomBytes(40).toString("hex");
   }
@@ -53,13 +49,6 @@ class RefreshTokenService {
    * and trip the rotation system's theft detection.
    */
   setCookie(res: Response, token: string): void {
-    // Defensive clear of any leftover host-only cookie from before the
-    // COOKIE_DOMAIN migration. Without this the browser can hold both a
-    // host-only and a domain-scoped cookie under the same name; cookie-parser
-    // picks one non-deterministically, and if it grabs the stale host-only
-    // value the rotation system flags it as token theft and revokes the
-    // user's whole token family. Once each user has logged in once after
-    // this fix ships the legacy cookie is gone forever.
     if (this.cookieDomain) {
       res.clearCookie(this.cookieName, {
         httpOnly: true,

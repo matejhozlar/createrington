@@ -17,9 +17,6 @@ export class WhitelistService {
   /**
    * Regenerate whitelist.json from non-banned registered players, overwriting
    * the old file in one write, then reload it via RCON.
-   *
-   * @param serverId - Server to resync
-   * @returns The number of players written to the whitelist
    */
   async resync(serverId: number): Promise<{ count: number }> {
     if (!isFileOpsAllowed()) {

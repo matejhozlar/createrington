@@ -157,7 +157,6 @@ const settingsRouter = router({
     }),
 });
 
-/** Admin gallery router: review queue, approval with reward and credits, rejection, removal, and reward settings. */
 export const adminGalleryRouter = router({
   list: adminProcedure
     .meta({

@@ -3,7 +3,6 @@ import { router, adminProcedure } from "@/trpc/trpc";
 import { playerTicketRepo } from "@/db";
 import { parsePlayerId, paginationInput, buildPagination } from "@/trpc/utils";
 
-/** Admin tickets router: paginated ticket list for a player. */
 export const ticketsRouter = router({
   list: adminProcedure
     .meta({ description: "Get paginated tickets for a player" })

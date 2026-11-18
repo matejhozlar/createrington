@@ -4,19 +4,8 @@ import { isValidLeaderboardType } from "@/services/discord/leaderboard/config";
 import type { LeaderboardType } from "@/services/discord/leaderboard/types";
 import { type ButtonInteraction, MessageFlags } from "discord.js";
 
-/**
- * Handles leaderboard-related buttons
- * Pattern: leaderboard:*
- */
 export const pattern = "leaderboard:*";
 
-/**
- * Parses the leaderboard button customId (format: leaderboard:action:type)
- *
- * @param customId - The button's customId string
- * @returns Parsed action and leaderboard type, or null if invalid
- * @private
- */
 function parseCustomId(customId: string): {
   action: string;
   type: LeaderboardType;
@@ -30,21 +19,6 @@ function parseCustomId(customId: string): {
   return { action, type };
 }
 
-/**
- * Main execution handler for leaderboard button interactions
- *
- * Routes button clicks to the appropriate handler based on the action.
- * Currently supports:
- * - refresh: Manually refresh leaderboard data
- *
- * @param interaction - The button interaction to handle
- * Button interaction flow:
- * 1. User clicks "Refresh" button on leaderboard
- * 2. Custom ID is parsed (e.g., "leaderboard:refresh:playtime")
- * 3. Routed to handleRefresh()
- * 4. Cooldown check performed
- * 5. Leaderboard data refreshed if allowed
- */
 export async function execute(interaction: ButtonInteraction): Promise<void> {
   const parsed = parseCustomId(interaction.customId);
 
@@ -68,25 +42,6 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
   }
 }
 
-/**
- * Handles manual leaderboard refresh requests from users
- *
- * Workflow:
- * 1. Checks if refresh is allowed (1-hour cooldown)
- * 2. If on cooldown, shows remaining time
- * 3. If allowed, defers update and refreshes data
- * 4. Updates the leaderboard message with fresh data
- * 5. Updates lastManualRefresh timestamp for cooldown tracking
- *
- * @param interaction - The button interaction
- * @param type - The leaderboard type to refresh
- *
- * @remarks
- * - Manual refreshes have a 1-hour cooldown per leaderboard type
- * - Automatic scheduled refreshes do not trigger this cooldown
- * - Uses deferUpdate() to keep the original message intact
- * - Errors are shown as ephemeral follow-up messages
- */
 async function handleRefresh(
   interaction: ButtonInteraction,
   type: LeaderboardType,

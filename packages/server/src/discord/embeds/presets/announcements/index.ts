@@ -27,7 +27,6 @@ const MAINTENANCE_CONFIG: Record<
 };
 
 export const AnnouncementEmbedPresets = {
-  /** Creates a maintenance/update announcement embed with start time, duration, and expected end */
   maintenance(data: MaintenanceData) {
     const cfg = MAINTENANCE_CONFIG[data.type];
     const endTime = new Date(
@@ -56,7 +55,6 @@ export const AnnouncementEmbedPresets = {
       .timestamp();
   },
 
-  /** Creates an embed announcing that maintenance has ended and the server is back online */
   maintenanceEnded() {
     return createEmbed()
       .title("✅ Maintenance Complete")

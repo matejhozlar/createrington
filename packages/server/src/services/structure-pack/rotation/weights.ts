@@ -11,12 +11,6 @@ import type { WeightEntry } from "./types";
  * where `timeFactor` is the number of reference weeks (7 days) since the pack was
  * last active. Packs that have never been active default to 4 elapsed weeks so they
  * are reasonably competitive on their first rotation.
- *
- * @param packs - Eligible packs to weight
- * @param boosts - Map of packId → total boost units purchased this cycle
- * @param timeWeightMultiplier - Scalar applied to the time component
- * @param boostWeightPerUnit - Scalar applied to each boost unit
- * @returns Array of weight entries, one per pack, in the same order as `packs`
  */
 export function computeWeights(
   packs: StructurePack[],
@@ -46,12 +40,7 @@ export function computeWeights(
   });
 }
 
-/**
- * Selects a pack ID from the weight entries using weighted-random sampling.
- *
- * @param weights - Non-empty array of weight entries produced by `computeWeights`
- * @returns The packId of the selected entry
- */
+/** Selects a pack ID from the weight entries using weighted-random sampling. */
 export function selectWeightedRandom(weights: WeightEntry[]): number {
   const totalWeight = weights.reduce((sum, w) => sum + w.weight, 0);
   let random = Math.random() * totalWeight;
@@ -61,6 +50,5 @@ export function selectWeightedRandom(weights: WeightEntry[]): number {
     if (random <= 0) return entry.packId;
   }
 
-  // Fallback (shouldn't happen)
   return weights[weights.length - 1].packId;
 }

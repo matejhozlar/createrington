@@ -6,13 +6,6 @@ export interface ReleaseAnnouncementRow extends ModpackReleaseAnnouncement {
   presetName: string | null;
 }
 
-/**
- * Custom queries for modpack_release_announcement table
- *
- * Extends the auto-generated base class with custom methods.
- * This file is scaffolded once and never overwritten - add your custom
- * query methods here while inheriting all generated CRUD operations.
- */
 export class ModpackReleaseAnnouncementQueries extends ModpackReleaseAnnouncementBaseQueries {
   constructor(db: Pool | PoolClient) {
     super(db);

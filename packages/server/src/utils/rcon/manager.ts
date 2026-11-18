@@ -13,12 +13,6 @@ function requirePlayerName(playerName: string): void {
   }
 }
 
-/**
- * Multi-server Minecraft RCON manager.
- *
- * Singleton holding one lazily opened RCON connection per configured server.
- * Connections idle for five minutes are closed by a background interval.
- */
 export class MinecraftRconManager {
   private static instance: MinecraftRconManager | null = null;
   private readonly connections = new Map<ServerId, ServerRconConnection>();
@@ -30,7 +24,6 @@ export class MinecraftRconManager {
     this.startCleanupInterval();
   }
 
-  /** Returns the singleton, creating it on first use. */
   public static getInstance(): MinecraftRconManager {
     if (!MinecraftRconManager.instance) {
       MinecraftRconManager.instance = new MinecraftRconManager();
@@ -100,7 +93,6 @@ export class MinecraftRconManager {
     }, CLEANUP_INTERVAL_MS);
   }
 
-  /** Stops the idle cleanup, disconnects every server, and resets the singleton. */
   public async shutdown(): Promise<void> {
     if (this.cleanupInterval) {
       clearInterval(this.cleanupInterval);
@@ -113,17 +105,14 @@ export class MinecraftRconManager {
     MinecraftRconManager.instance = null;
   }
 
-  /** Returns the IDs of every configured server. */
   public getServerIds(): ServerId[] {
     return Array.from(this.serverConfigs.keys());
   }
 
-  /** Sends a raw command to one server and resolves to its response. */
   public async send(serverId: ServerId, command: string): Promise<string> {
     return this.getConnection(serverId).send(command);
   }
 
-  /** Sends a raw command to every configured server in parallel; never throws, failures are in the result map. */
   public async sendAll(
     command: string,
   ): Promise<Map<ServerId, MultiServerResult>> {
@@ -146,7 +135,6 @@ export class MinecraftRconManager {
     return results;
   }
 
-  /** Runs a whitelist action on one server; ADD and REMOVE require a player name. */
   public async whitelist(
     serverId: ServerId,
     action: WhitelistAction,
@@ -166,7 +154,6 @@ export class MinecraftRconManager {
     return this.send(serverId, `whitelist ${action}${playerArg}`);
   }
 
-  /** Bans a player on every server; throws if any server fails. */
   public async banAll(
     playerName: string,
     reason?: string,
@@ -178,7 +165,6 @@ export class MinecraftRconManager {
     return results;
   }
 
-  /** Pardons a player on every server; throws if any server fails. */
   public async pardonAll(
     playerName: string,
   ): Promise<Map<ServerId, MultiServerResult>> {
@@ -188,7 +174,6 @@ export class MinecraftRconManager {
     return results;
   }
 
-  /** Adds or removes a player on every server's whitelist; throws if any server fails. */
   public async whitelistAll(
     action: WhitelistAction.ADD | WhitelistAction.REMOVE,
     playerName: string,

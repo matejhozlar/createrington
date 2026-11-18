@@ -12,10 +12,6 @@ import {
 } from "discord.js";
 import { getEnabledServers } from "../../../config/server-selection";
 
-/**
- * Slash command definition for the server-panel command
- * Admin-only command to create or update the server selection panel
- */
 export const data = new SlashCommandBuilder()
   .setName("server-panel")
   .setDescription("Create or update the server selection panel")
@@ -29,28 +25,10 @@ export const data = new SlashCommandBuilder()
       .setRequired(false),
   );
 
-/**
- * Permission configuration for the server-panel command
- * Requires owner privileges to execute
- */
 export const permissions = {
   requireOwner: true,
 };
 
-/**
- * Executes the server-panel command to create a server selection panel
- *
- * Process:
- * 1. Validates that command is used in a sendable text channel
- * 2. Gets all enabled servers from configuration
- * 3. Creates an embed with server information
- * 4. Generates buttons for each enabled server
- * 5. Sends the panel to the channel
- * 6. Sends ephemeral confirmation to the admin
- *
- * @param interaction - The chat input command interaction
- * @returns Promise resolving when the command execution is completed
- */
 export async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {

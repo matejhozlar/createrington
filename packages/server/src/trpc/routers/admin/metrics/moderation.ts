@@ -3,7 +3,6 @@ import { Q } from "@/db";
 import { z } from "zod";
 import { dateRangeWithGranularity } from "./schemas";
 
-/** Admin moderation metrics: bans, strikes, tickets, moderator leaderboard */
 export const moderationMetricsRouter = router({
   getBansByPeriod: adminProcedure
     .meta({ description: "Get ban counts grouped by time period" })

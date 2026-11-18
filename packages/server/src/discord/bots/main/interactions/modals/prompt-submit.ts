@@ -1,15 +1,6 @@
 import { type ModalSubmitInteraction, MessageFlags } from "discord.js";
 import { getServiceSync, Services } from "@/services";
 
-/**
- * Modal handler for player-prompt response submissions.
- *
- * customId shape: `prompt:submit:<promptId>`. The interaction-handler
- * registry matches wildcard-ending strings via `startsWith`, so we declare
- * the shared prefix here; the numeric id is parsed at execute time.
- * PlayerPromptService re-checks the entry rules and hands back the exact
- * ephemeral copy to echo, so a stale modal can't outrun a cap or cooldown.
- */
 export const customId = "prompt:submit:*";
 
 function parseCustomId(raw: string): { promptId: number } | null {

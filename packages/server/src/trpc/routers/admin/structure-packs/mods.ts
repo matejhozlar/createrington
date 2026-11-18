@@ -28,7 +28,6 @@ export const structurePackModProcedures = {
       }),
     )
     .mutation(async ({ input, ctx }) => {
-      // Validate the download URL is resolvable before persisting
       const rotationService = await getRotationService();
       await rotationService.validateModDownloadable(
         input.curseforgeModId,
@@ -110,11 +109,9 @@ export const structurePackModProcedures = {
       const targetMod = pack.mods.find((m) => m.id === input.modId);
       if (!targetMod) return { deps: [], dependents: [] };
 
-      // Fetch dependency info for all pack mods
       const fileIds = pack.mods.map((m) => m.curseforgeFileId);
       const allFileDeps = await getFilesDependencies(fileIds);
 
-      // Find which other pack mods depend on the target mod
       const dependents: Array<{ modName: string; relationType: number }> = [];
       for (const fileDep of allFileDeps) {
         if (fileDep.modId === targetMod.curseforgeModId) continue;
@@ -133,7 +130,6 @@ export const structurePackModProcedures = {
         }
       }
 
-      // Find target mod's own dependencies
       const targetFileDeps = allFileDeps.find(
         (f) => f.fileId === targetMod.curseforgeFileId,
       );
@@ -143,7 +139,6 @@ export const structurePackModProcedures = {
 
       if (targetDepModIds.size === 0) return { deps: [], dependents };
 
-      // Build reverse dep map: depModId → set of pack curseforgeModIds that need it
       const reverseDeps = new Map<number, Set<number>>();
       for (const fileDep of allFileDeps) {
         for (const dep of fileDep.dependencies) {
@@ -154,7 +149,6 @@ export const structurePackModProcedures = {
         }
       }
 
-      // Filter to deps that are actually in the pack
       const packModIdSet = new Set(pack.mods.map((m) => m.curseforgeModId));
       const inPackDepIds = [...targetDepModIds].filter((id) =>
         packModIdSet.has(id),
@@ -162,10 +156,8 @@ export const structurePackModProcedures = {
 
       if (inPackDepIds.length === 0) return { deps: [], dependents };
 
-      // Resolve names for the deps
       const resolved = await resolveDependencies(inPackDepIds, packModIdSet);
 
-      // Determine safety: a dep is safe to remove if no OTHER pack mod needs it
       return {
         dependents,
         deps: resolved.map((dep) => {

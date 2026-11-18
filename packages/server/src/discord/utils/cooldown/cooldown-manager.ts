@@ -13,10 +13,6 @@ export interface CooldownStats {
   byCommand: Record<string, number>;
 }
 
-/**
- * Per-user command cooldowns held in process memory. Each entry removes
- * itself with a timer when it expires, so nothing survives a restart.
- */
 export class CooldownManager {
   private cooldowns = new Map<string, Map<string, CooldownEntry>>();
 
@@ -24,7 +20,6 @@ export class CooldownManager {
     return `${commandName}:user:${userId}`;
   }
 
-  /** Expiry of the user's active cooldown as a ms timestamp, or null when none is active. */
   public getExpiry(commandName: string, userId: string): number | null {
     const entry = this.cooldowns
       .get(commandName)
@@ -36,7 +31,6 @@ export class CooldownManager {
     return entry.expiresAt;
   }
 
-  /** Remaining whole seconds of the user's cooldown, or null when the command is not on cooldown. */
   public check(commandName: string, userId: string): number | null {
     const key = this.getKey(commandName, userId);
     const timestamps = this.cooldowns.get(commandName);
@@ -52,7 +46,6 @@ export class CooldownManager {
     return null;
   }
 
-  /** Starts a cooldown of `durationSeconds` for the user on the command. */
   public set(
     commandName: string,
     userId: string,
@@ -83,12 +76,10 @@ export class CooldownManager {
     }, durationSeconds * 1000);
   }
 
-  /** Clears every cooldown of the command; false when it had none. */
   public resetCommand(commandName: string): boolean {
     return this.cooldowns.delete(commandName);
   }
 
-  /** Clears every cooldown of the user across commands and returns how many were cleared. */
   public resetUser(userId: string): number {
     let count = 0;
 
@@ -108,7 +99,6 @@ export class CooldownManager {
     return count;
   }
 
-  /** Counts of active cooldowns, in total and per command. */
   public getStats(): CooldownStats {
     let totalCooldowns = 0;
     const byCommand: Record<string, number> = {};

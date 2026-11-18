@@ -2,13 +2,6 @@ import type { Pool, PoolClient } from "pg";
 import type { DiscordTopRoleReign } from "@createrington/shared/db";
 import { DiscordTopRoleReignBaseQueries } from "@/generated/db/discord_top_role_reign.queries";
 
-/**
- * Custom queries for discord_top_role_reign table
- *
- * Extends the auto-generated base class with custom methods.
- * This file is scaffolded once and never overwritten - add your custom
- * query methods here while inheriting all generated CRUD operations.
- */
 export class DiscordTopRoleReignQueries extends DiscordTopRoleReignBaseQueries {
   constructor(db: Pool | PoolClient) {
     super(db);

@@ -17,13 +17,11 @@ import {
   PLAYER_PROMPT_ENTRY_MODES,
 } from "@createrington/shared/player-prompt";
 
-const MAX_DURATION_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
-const MIN_DURATION_MS = 60 * 1000; // 1 minute, guards against accidental zero-duration prompts
+const MAX_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
+const MIN_DURATION_MS = 60 * 1000;
 
 const createInput = z
   .object({
-    // Collapsed to one line: the question renders as a markdown heading on
-    // the Discord card, which a newline would break out of.
     question: z
       .string()
       .max(256)
@@ -32,11 +30,8 @@ const createInput = z
     description: z.string().max(2000).optional(),
     durationMs: z.number().int().min(MIN_DURATION_MS).max(MAX_DURATION_MS),
     rolePingId: discordId.optional(),
-    // Optional, defaults to the announcements channel. Admins can target
-    // any configured channel via the client picker.
     channelId: discordId.optional(),
     entryMode: z.enum(PLAYER_PROMPT_ENTRY_MODES).default("single"),
-    // Multi mode only. Omit for unlimited entries / no cooldown.
     maxEntries: z
       .number()
       .int()
@@ -60,13 +55,6 @@ const createInput = z
     },
   );
 
-/**
- * Admin Player Prompt router.
- *
- * Owns the admin-facing surface for creating, listing, and inspecting
- * player prompts. The actual Discord post + timer scheduling lives in
- * PlayerPromptService, this router is only a thin validation layer.
- */
 export const adminPromptsRouter = router({
   list: adminProcedure
     .meta({
@@ -104,8 +92,6 @@ export const adminPromptsRouter = router({
       const responses = await Q.player.prompt.response.findByPromptIdWithPlayer(
         input.id,
       );
-      // Resolve the creator's Minecraft username so the detail page can
-      // show a human-readable author instead of a raw Discord snowflake.
       const creator = await Q.player.find({ discordId: prompt.createdBy });
       return {
         prompt,

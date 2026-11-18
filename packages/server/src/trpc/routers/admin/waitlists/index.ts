@@ -12,7 +12,6 @@ import {
 } from "@/trpc/utils";
 import type { WaitlistEntryFilters } from "@createrington/shared/db";
 
-/** Admin waitlists router: stats, list, detail, promote, and delete waitlist entries. */
 export const waitlistsRouter = router({
   stats: adminProcedure
     .meta({

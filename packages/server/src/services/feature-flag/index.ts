@@ -11,7 +11,6 @@ export const FeatureFlags = {
 
 export type FeatureFlagName = (typeof FeatureFlags)[keyof typeof FeatureFlags];
 
-/** Flags only the owner may change. Admins can still read them. */
 export const OWNER_FEATURE_FLAGS: ReadonlySet<FeatureFlagName> = new Set([
   FeatureFlags.launcherCurseforgeCdn,
 ]);

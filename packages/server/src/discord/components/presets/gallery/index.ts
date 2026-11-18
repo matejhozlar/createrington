@@ -58,9 +58,7 @@ function details(input: GalleryApprovalAnnouncementInput): string {
   return lines.join("\n");
 }
 
-/** Components V2 renderings for the screenshot gallery channel. */
 export const GalleryComponentPresets = {
-  /** The approval announcement: the published image, author mention, caption, credits, reward, and a link to the website gallery. */
   approvalAnnouncement(
     input: GalleryApprovalAnnouncementInput,
   ): ComponentsData {

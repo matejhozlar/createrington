@@ -1,18 +1,6 @@
 import type { GuildMember } from "discord.js";
 
-/**
- * Role manager utility for handling role assignments throughout the bot
- * Provides consistent error handling and logging for role operations
- */
 export class RoleManager {
-  /**
-   * Assigns a role to a guild member
-   *
-   * @param member - The guild member to assign the role to
-   * @param roleId - The ID of the role to assign
-   * @param reason - Optional reason for the role assignment
-   * @returns Promise resolving to true if successful, false otherwise
-   */
   static async assign(
     member: GuildMember,
     roleId: string,
@@ -47,14 +35,6 @@ export class RoleManager {
     }
   }
 
-  /**
-   * Removes a role from a guild member
-   *
-   * @param member - The guild member to remove the role from
-   * @param roleId - The ID of the role to remove
-   * @param reason - Optional reason for the role removal
-   * @returns Promise resolving to true if successful, false otherwise
-   */
   static async remove(
     member: GuildMember,
     roleId: string,
@@ -91,24 +71,10 @@ export class RoleManager {
     }
   }
 
-  /**
-   * Checks if a member has a specific role
-   *
-   * @param member - The guild member to check
-   * @param roleId - The ID of the role to check for
-   * @returns True if the member has the role, false otherwise
-   */
   static has(member: GuildMember, roleId: string): boolean {
     return member.roles.cache.has(roleId);
   }
 
-  /**
-   * Reads a role's own color from the member's guild
-   *
-   * @param member - The guild member whose guild holds the role
-   * @param roleId - The ID of the role to read
-   * @returns The role color, or 0 when the role is uncolored or missing
-   */
   static colorOf(member: GuildMember, roleId: string): number {
     return member.guild.roles.cache.get(roleId)?.color ?? 0;
   }

@@ -1,26 +1,14 @@
 import { Discord } from "@/discord/constants";
 
-/**
- * Server configuration for role assignment
- */
 export interface ServerConfig {
-  /** Internal server ID */
   id: number;
-  /** Display name for the server */
   label: string;
-  /** Description of the server */
   description: string;
-  /** Discord role ID to assign */
   roleId: string;
-  /** Emoji to display on button */
   emoji: string;
-  /** Whether this server is currently active */
   enabled: boolean;
 }
 
-/**
- * Server selection configuration
- */
 export const SERVER_CONFIGS: ServerConfig[] = [
   {
     id: 99,
@@ -32,21 +20,10 @@ export const SERVER_CONFIGS: ServerConfig[] = [
   },
 ];
 
-/**
- * Gets all enabled server configurations
- *
- * @returns Array of server configs where enabled is true
- */
 export function getEnabledServers(): ServerConfig[] {
   return SERVER_CONFIGS.filter((server) => server.enabled);
 }
 
-/**
- * Gets a server config by its internal ID
- *
- * @param serverId - The internal server ID
- * @returns The matching server config, or undefined if not found
- */
 export function getServerConfig(serverId: number): ServerConfig | undefined {
   return SERVER_CONFIGS.find((server) => server.id === serverId);
 }

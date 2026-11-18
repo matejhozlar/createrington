@@ -15,10 +15,6 @@ import {
   SlashCommandBuilder,
 } from "discord.js";
 
-/**
- * Slash command definition for the compare command
- * Displays a side-by-side comparison of two players' stats
- */
 export const data = new SlashCommandBuilder()
   .setName("compare")
   .setDescription("Compare stats between two players")
@@ -32,28 +28,12 @@ export const data = new SlashCommandBuilder()
       .setRequired(false),
   );
 
-/**
- * Cooldown configuration for the compare command
- *
- * - duration: 5 seconds
- * - type: "user" - Each user has their own cooldown
- * - message: Custom message shown when the user is on cooldown
- */
 export const cooldown = {
   duration: 5,
   type: CooldownType.USER,
   message: "Please wait before comparing again!",
 };
 
-/**
- * Executes the compare command to show a side-by-side player comparison
- *
- * Process:
- * 1. Get both target users (player2 defaults to command initiator)
- * 2. Validate they are not the same user
- * 3. Screenshot the comparison render page via PuppeteerService
- * 4. Reply with the screenshot embedded in an embed, with text fallback
- */
 export async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
@@ -105,7 +85,6 @@ export async function execute(
         components: [links],
       });
     } else {
-      // Text fallback if Puppeteer is unavailable
       const computeNetworth = (details: typeof details1): string =>
         BalanceUtils.formatMoney(details.balance?.balance ?? 0n);
 
@@ -121,7 +100,7 @@ export async function execute(
       const embed = EmbedPresets.info(`${name1} vs ${name2}`)
         .field("Networth", `${name1}: ${nw1}\n${name2}: ${nw2}`, true)
         .field("Playtime", `${name1}: ${pt1}\n${name2}: ${pt2}`, true)
-        .field("\u200b", "\u200b") // line break
+        .field("\u200b", "\u200b")
         .field(
           "Sessions",
           `${name1}: ${sessions1}\n${name2}: ${sessions2}`,

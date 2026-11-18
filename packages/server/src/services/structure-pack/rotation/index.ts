@@ -110,15 +110,6 @@ export class StructurePackRotationService {
     }
   }
 
-  /**
-   * Schedules the next rotation timer using the given config.
-   *
-   * If the computed next time is already in the past (e.g. due to clock skew),
-   * it advances by one full period before scheduling.
-   *
-   * @private
-   * @param rotationConfig - The current rotation configuration
-   */
   private scheduleNextRotation(
     rotationConfig: StructurePackRotationConfig,
   ): void {
@@ -189,9 +180,6 @@ export class StructurePackRotationService {
    * and no history row is recorded. Manual triggers rethrow failures to the
    * caller; expected ones (empty pool, file ops) are raised as BadRequestError
    * at their handling site and bypass the generic recovery catch.
-   *
-   * @param manual - Whether this rotation was triggered manually by an admin
-   * @returns Promise that resolves when the rotation (or its failure path) is complete
    */
   async executeRotation(manual = false): Promise<void> {
     if (this.rotationInProgress) {
@@ -249,7 +237,6 @@ export class StructurePackRotationService {
             incomingPack.mods.map((m) => m.fileName),
           );
 
-          // Remove outgoing pack's mods (skip files shared with the incoming pack)
           if (activePack) {
             for (const mod of activePack.mods) {
               if (incomingFileNames.has(mod.fileName)) continue;
@@ -261,7 +248,6 @@ export class StructurePackRotationService {
             }
           }
 
-          // Copy incoming pack's mods (skip if already present)
           for (const mod of incomingPack.mods) {
             const modPath = `${MODS_DIR}/${mod.fileName}`;
             if (await fileExists(modPath)) {
@@ -327,7 +313,6 @@ export class StructurePackRotationService {
         throw error;
       }
       logger.error("Rotation failed:", error);
-      // Try to reschedule even on failure
       try {
         const cfg = await Q.structure.pack.rotation.config.getOrCreateDefault();
         this.scheduleNextRotation(cfg);
@@ -348,11 +333,6 @@ export class StructurePackRotationService {
    * Validates that the target pack is available and not currently active, then
    * deducts the cost from the player's balance and creates the boost record in
    * one transaction, so a failed insert never leaves the player charged.
-   *
-   * @param discordId - Discord ID of the purchasing player
-   * @param packId - ID of the pack to boost
-   * @param units - Number of boost units to purchase
-   * @returns The created boost record
    */
   async purchaseBoost(
     discordId: string,
@@ -394,12 +374,7 @@ export class StructurePackRotationService {
     });
   }
 
-  /**
-   * Returns all boost records placed by a player during the current rotation cycle.
-   *
-   * @param discordId - Discord ID of the player
-   * @returns List of boost records for the current cycle
-   */
+  /** Returns all boost records placed by a player during the current rotation cycle. */
   async getPlayerBoosts(discordId: string): Promise<StructurePackBoost[]> {
     const rotationConfig =
       await Q.structure.pack.rotation.config.getOrCreateDefault();
@@ -416,8 +391,6 @@ export class StructurePackRotationService {
    * full mod list so the UI can display mod counts and a detailed inspect view.
    *
    * Intended for UI display so players can see how their boosts affect selection odds.
-   *
-   * @returns Array of objects containing the pack (with mods), its total weight, and boost unit count
    */
   async getPoolWithWeights(): Promise<
     Array<{ pack: StructurePackWithMods; weight: number; boostUnits: number }>
@@ -499,9 +472,6 @@ export class StructurePackRotationService {
    * reschedules the next rotation to reflect the new settings. Disabling
    * rotation refunds and removes all open boosts in the same transaction, so
    * players never pay for a rotation that will not happen.
-   *
-   * @param data - Fields to update; unspecified fields retain their current values
-   * @returns The updated rotation configuration
    */
   async updateConfig(
     data: Partial<
@@ -566,13 +536,7 @@ export class StructurePackRotationService {
     return updated;
   }
 
-  /**
-   * Returns a paginated list of past rotation records, ordered most-recent first.
-   *
-   * @param limit - Maximum number of records to return (default 20)
-   * @param offset - Number of records to skip for pagination (default 0)
-   * @returns Object containing the result rows and the total count of all rotations
-   */
+  /** Returns a paginated list of past rotation records, ordered most-recent first. */
   async getRotationHistory(
     limit = 20,
     offset = 0,
@@ -640,7 +604,6 @@ export class StructurePackRotationService {
     }
   }
 
-  /** Returns the most recent rotation record, or null if no rotations have occurred. */
   private async getLastRotation() {
     const rotations = await Q.structure.pack.rotation.findAll(
       {},
@@ -649,15 +612,6 @@ export class StructurePackRotationService {
     return rotations[0] ?? null;
   }
 
-  /**
-   * Persists a rotation attempt to the database.
-   *
-   * @param outgoingPackId - ID of the pack that was active before this rotation, or null if none
-   * @param incomingPackId - ID of the pack selected for this rotation
-   * @param success - Whether the rotation completed without errors
-   * @param failureReason - Human-readable error message when `success` is false, otherwise null
-   * @param weights - Optional weight snapshot taken at selection time, stored for auditing
-   */
   private async recordRotation(
     outgoingPackId: number | null,
     incomingPackId: number,

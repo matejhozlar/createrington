@@ -31,12 +31,9 @@ export async function getModFileDownloadUrl(
   ).data;
 }
 
-/** Where a file can be downloaded from, as the gateway resolved it. */
 export interface CurseForgeFileDownload {
-  /** CurseForge's own link, Modrinth's copy, the built CDN address, or null when no source has the file. */
   source: FileSource | null;
   url: string | null;
-  /** True when a source could not be asked this time, so a null `source` is worth asking again rather than remembering. */
   retry: boolean;
 }
 

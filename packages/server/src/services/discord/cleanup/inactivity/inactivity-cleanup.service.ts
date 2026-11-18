@@ -10,10 +10,6 @@ import {
   INACTIVITY_RETENTION_DAYS,
 } from "./constants";
 
-/**
- * Who triggered a cleanup run. `null` means the scheduled tick or the
- * startup sweep. The admin-notification embed renders it as "Automated".
- */
 export type InactivityTriggerContext = {
   discordId: string;
   username: string | null;
@@ -55,8 +51,6 @@ export class InactivityCleanupService {
   initialize(): void {
     logger.info("Initializing InactivityCleanupService...");
 
-    // Run resolve/remove on startup (safe and idempotent), but skip
-    // sending new warnings to avoid duplicate announcements on frequent deploys.
     this.resolveAndRemoveOnly().catch((error) => {
       logger.error("Initial inactivity resolve/remove failed:", error);
     });
@@ -81,11 +75,6 @@ export class InactivityCleanupService {
     }
   }
 
-  /**
-   * Run the full cleanup cycle: resolve → warn → remove → prune.
-   * Order matters: resolve first so players who just returned aren't
-   * accidentally included in the removal phase.
-   */
   private async runCycle(
     triggeredBy: InactivityTriggerContext = null,
   ): Promise<void> {
@@ -100,10 +89,6 @@ export class InactivityCleanupService {
     }
   }
 
-  /**
-   * Check active warnings and resolve any where the player has logged in
-   * since being warned (lastSeen > warnedAt).
-   */
   private async resolveReturned(): Promise<void> {
     const resolved = await Q.player.inactivity.warning.resolveReturned();
     for (const warning of resolved) {
@@ -118,10 +103,6 @@ export class InactivityCleanupService {
     }
   }
 
-  /**
-   * Find newly inactive players (no active warning yet) and issue warnings.
-   * Sends a single announcement embed mentioning all warned players.
-   */
   private async warnInactive(): Promise<void> {
     const inactivePlayers =
       await Q.player.inactivity.warning.findInactivePlayers(
@@ -157,7 +138,6 @@ export class InactivityCleanupService {
       });
 
       if (result.success && result.messageId) {
-        // Store message ID on all warning records from this batch
         await Q.player.inactivity.warning.setMessageIdOnPending(
           result.messageId,
         );
@@ -175,10 +155,6 @@ export class InactivityCleanupService {
     }
   }
 
-  /**
-   * Remove players whose grace period has expired without them returning.
-   * Kicks from Discord, removes from whitelist, deletes player record.
-   */
   private async removeExpired(
     triggeredBy: InactivityTriggerContext = null,
   ): Promise<void> {
@@ -200,7 +176,6 @@ export class InactivityCleanupService {
 
     for (const warning of expiredWarnings) {
       try {
-        // Double-check the player hasn't logged in since (defensive)
         if (warning.lastSeen > warning.warnedAt) {
           await Q.player.inactivity.warning.resolveWarning(warning.id);
           logger.info(
@@ -275,10 +250,6 @@ export class InactivityCleanupService {
     }
   }
 
-  /**
-   * Delete warnings that were resolved or removed longer ago than the
-   * retention window.
-   */
   private async pruneClosed(): Promise<void> {
     const pruned = await Q.player.inactivity.warning.pruneClosed(
       INACTIVITY_RETENTION_DAYS,

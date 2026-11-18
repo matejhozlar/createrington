@@ -22,13 +22,12 @@ const PROMOTION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 export class WaitlistCleanupService {
   private intervalId?: NodeJS.Timeout;
   private maintenanceRunning = false;
-  private readonly CHECK_INTERVAL = 60 * 60 * 1000; // 1 hour
+  private readonly CHECK_INTERVAL = 60 * 60 * 1000;
 
   /** Runs an immediate maintenance pass and schedules the hourly interval. */
   initialize(): void {
     logger.info("Initializing WaitlistCleanupService...");
 
-    // Run once on startup to clear anything stale from downtime.
     this.runCycle().catch((error) => {
       logger.error("Initial waitlist maintenance failed:", error);
     });

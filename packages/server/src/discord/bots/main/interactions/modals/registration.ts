@@ -5,8 +5,6 @@ import {
   REGISTER_MODAL_INPUT_ID,
 } from "@/discord/bots/main/registration/constants";
 
-/** Modal submit handler: runs the shared registration flow and mutates the
- * original welcome message (the one with the "Register" button) in place. */
 export const customId = REGISTER_MODAL_ID;
 
 export async function execute(
@@ -26,9 +24,6 @@ export async function execute(
 
   const member = await interaction.guild.members.fetch(interaction.user.id);
 
-  // `update()` on a modal that was opened from a component interaction edits
-  // the original message (the welcome message that had the button). After
-  // this, `editReply()` continues to edit that same message.
   await interaction.deferUpdate();
 
   const channel = interaction.channel ?? null;

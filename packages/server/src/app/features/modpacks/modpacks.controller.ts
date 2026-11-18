@@ -34,14 +34,6 @@ function parseVersion(value: unknown): string | undefined {
 }
 
 export class ModpacksController {
-  /**
-   * GET /api/modpacks/:project/changelog.md
-   * GET /api/modpacks/:project/changelog/:version.md
-   *
-   * Changelog of the newest recorded release of the modpack published as CurseForge project `:project`, as Markdown (`text/plain`) in the dialect FancyMenu's text element renders: header, then one clickable row image per added / updated / removed entry (see the rows endpoint), then the publish notes. Kept under 16,000 characters (FancyMenu refuses 17,000+) by dropping the CurseForge links, then capping each change group with an "…and N more" line.
-   *
-   * `:version` is the pack `manifest.json` version the player runs. When it names an older recorded release, that release's changelog follows under a label and the player is flagged as outdated; an unknown or current version renders the newest release only. Errors use the standard `{ success: false, message, error }` envelope: 400 for a malformed project id, 404 when no modpack is published under it or it has no recorded release. Cacheable for 5 minutes.
-   */
   static async getChangelog(req: Request, res: Response): Promise<void> {
     const markdown = await modpackReleaseService.getChangelogMarkdown({
       curseforgeProjectId: parseProjectId(req.params.project),
@@ -53,15 +45,6 @@ export class ModpacksController {
     res.send(markdown);
   }
 
-  /**
-   * GET /api/modpacks/:project/version/:version.json
-   *
-   * Whether the pack `manifest.json` version `:version` the player runs is behind the newest recorded release of the modpack published as CurseForge project `:project`. Built for in-game update notices that fetch the URL directly.
-   *
-   * Responds with the flat, non-enveloped body `{ latest, installed, outdated }`. Errors use the standard `{ success: false, message, error }` envelope: 400 for a malformed project id, 404 when no modpack is published under it, it has no recorded release, or its newest release carries no version string.
-   *
-   * `outdated` is true only when the installed version is recorded as an older release, or parses as a lower dot-separated number than `latest`. A version that is unknown, newer, or not comparable reads as current, so a player on a dev or pre-release build is never told to update. `installed` is null when `:version` is malformed or longer than 64 characters. Cacheable for 5 minutes.
-   */
   static async getVersionStatus(req: Request, res: Response): Promise<void> {
     const status = await modpackReleaseService.getVersionStatus({
       curseforgeProjectId: parseProjectId(req.params.project),
@@ -72,11 +55,6 @@ export class ModpacksController {
     res.json(status);
   }
 
-  /**
-   * GET /api/modpacks/:project/changelog/rows/:release/:mod.png
-   *
-   * One changelog entry drawn as a transparent 752x72 PNG row: the mod icon, then its name and version change in the Minecraft font. `:release` is the release's CurseForge file id and `:mod` the entry's CurseForge project id, as linked from the changelog Markdown. Sized for a 188 GUI unit wide FancyMenu text element, where it matches vanilla text. Cacheable for a day, or a minute when the icon could not be fetched. 400 for malformed ids, 404 when the pack, release or entry is unknown.
-   */
   static async getChangelogRow(req: Request, res: Response): Promise<void> {
     const row = await modpackReleaseService.getChangelogRow({
       curseforgeProjectId: parseProjectId(req.params.project),

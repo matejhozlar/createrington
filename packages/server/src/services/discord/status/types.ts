@@ -3,15 +3,10 @@ import { playtimeRepo } from "@/db";
 import { formatPlaytime } from "@createrington/shared/format";
 
 export interface StatusConfig {
-  /** Fallback text shown when the dynamic resolver throws or returns null */
   text: string;
   dynamic?: () => Promise<string | null> | string | null;
 }
 
-/**
- * Discord caps custom-status state at 128 characters. We truncate well below
- * that to leave room for any future suffix and avoid silent server-side trims.
- */
 export const MAX_STATUS_LENGTH = 120;
 
 /**

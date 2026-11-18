@@ -15,10 +15,6 @@ import { Q } from "@/db";
 
 const TICKET_PARTY_SERVER_ID = 1;
 
-/**
- * Slash command definition for the ticket command
- * Admin-only command to manually manage ticket operations
- */
 export const data = new SlashCommandBuilder()
   .setName("ticket")
   .setDescription("Manage tickets")

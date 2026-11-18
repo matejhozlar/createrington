@@ -7,7 +7,6 @@ import {
   type CurseForgeProjectData,
 } from "./mods";
 
-// CurseForge reports int64 counters; the column is int4
 const INT4_MAX = 2_147_483_647;
 
 function environmentHintFor(

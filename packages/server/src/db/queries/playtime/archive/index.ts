@@ -1,13 +1,6 @@
 import type { Pool, PoolClient } from "pg";
 import { PlaytimeArchiveBaseQueries } from "@/generated/db/playtime_archive.queries";
 
-/**
- * Custom queries for playtime_archive table
- *
- * Extends the auto-generated base class with custom methods.
- * This file is scaffolded once and never overwritten - add your custom
- * query methods here while inheriting all generated CRUD operations.
- */
 export class PlaytimeArchiveQueries extends PlaytimeArchiveBaseQueries {
   constructor(db: Pool | PoolClient) {
     super(db);

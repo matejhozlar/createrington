@@ -8,10 +8,6 @@ import {
   SlashCommandBuilder,
 } from "discord.js";
 
-/**
- * Slash command definition for the username command
- * Checks and returns Minecraft username of the user
- */
 export const data = new SlashCommandBuilder()
   .setName("username")
   .setDescription("Retrieve user's Minecraft username")
@@ -23,22 +19,10 @@ export const data = new SlashCommandBuilder()
       .setRequired(true),
   );
 
-/**
- * Permission configuration for the username command
- * Requires admin privileges to execute
- */
 export const permissions = {
   requireAdmin: true,
 };
 
-/**
- * Executes the username command to retrieve and display user's Minecraft username
- *
- * Process:
- * 1. Extract the user from the interaction options
- * 2. Retrieves username from the database
- * 3. Display the username in an embed
- */
 export async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {

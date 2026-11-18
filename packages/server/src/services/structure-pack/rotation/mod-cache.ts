@@ -16,16 +16,10 @@ export function getCacheDir(): string {
   if (localPath) {
     return path.join(localPath, CACHE_DIR);
   }
-  // Fallback to temp dir for SFTP mode
   return path.join(process.cwd(), ".structure-pack-cache");
 }
 
-/**
- * Returns the full path to a specific mod file within the cache directory.
- *
- * @param fileName - The mod's filename (e.g. `structurized-1.20.jar`)
- * @returns Absolute path to the cached file
- */
+/** Returns the full path to a specific mod file within the cache directory. */
 export function getCachePath(fileName: string): string {
   return path.join(getCacheDir(), fileName);
 }
@@ -36,9 +30,6 @@ export function getCachePath(fileName: string): string {
  * Creates the cache directory if it does not exist, then iterates the provided
  * mod list, skipping files that are already cached and downloading the rest
  * from CurseForge.
- *
- * @param mods - List of mods to ensure are cached
- * @returns Promise that resolves when all mods are available in the cache
  */
 export async function ensureModsCached(
   mods: StructurePackMod[],

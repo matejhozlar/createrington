@@ -31,8 +31,6 @@ export async function recordRelease(
   manifest: ModpackManifest,
 ): Promise<void> {
   if (manifest.entries.length === 0) return;
-  // Releases read before the server pack was fetched alongside the client
-  // file are keyed by the server pack id, so a re-read must match either
   const [recorded] = await Q.modpack.release.findAll(
     {
       modpackId: modpack.id,
@@ -65,8 +63,6 @@ export async function recordRelease(
   const rows = await buildReleaseRows(manifest);
   if (rows.length === 0) return;
 
-  // A half-written release would be permanent: the guard above sees the
-  // release row and never repairs the missing membership
   let releaseId: number;
   try {
     releaseId = await db.inTransaction(async (tx) => {
@@ -146,8 +142,6 @@ export async function buildReleaseRows(
       )
     ).map((project) => project.id),
   );
-  // A manifest can repeat a (project, file) pair, which the unique index
-  // would reject and take the whole release down with it
   const seen = new Set<string>();
   const entries = manifest.entries.filter((entry) => {
     if (!cached.has(entry.projectId)) return false;

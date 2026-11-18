@@ -10,7 +10,6 @@ import { RegistrationEmbedPresets } from "./registration";
 import { TicketEmbedPresets } from "./ticket";
 import { WaitlistEmbedPresets } from "./waitlist";
 
-/** Aggregated embed presets namespace: common presets are spread at the top level, domain presets are nested */
 export const EmbedPresets = {
   ...CommonEmbedPresets,
   announcements: AnnouncementEmbedPresets,

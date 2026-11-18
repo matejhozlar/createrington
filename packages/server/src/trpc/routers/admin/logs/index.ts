@@ -3,7 +3,6 @@ import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
 import { paginationInput, buildPagination, sortDirection } from "@/trpc/utils";
 
-/** Admin audit logs router: filterable, paginated admin action history. */
 export const logsRouter = router({
   admins: adminProcedure
     .meta({ description: "Get distinct admin usernames for filter dropdown" })

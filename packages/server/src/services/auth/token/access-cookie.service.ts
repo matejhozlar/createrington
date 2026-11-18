@@ -17,12 +17,6 @@ class AccessCookieService {
   private constructor() {
     this.cookieName = config.app.auth.cookie.accessName;
     this.cookieDomain = config.app.auth.cookie.domain;
-    // Cookie lifetime tracks the refresh token, not the JWT. The cookie is a
-    // transport for the JWT, the server still rejects expired JWTs inside
-    // (which surfaces as a 401 and triggers the client refresh round-trip).
-    // Matching the JWT's 15m expiry would mean the browser deletes the
-    // cookie before the refresh request can carry it, locking SSO consumers
-    // out of /auth/me even though their refresh token is still valid.
     this.maxAgeMs = config.app.auth.refreshToken.expiresInDays * 86_400_000;
   }
 

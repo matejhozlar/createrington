@@ -2,13 +2,6 @@ import type { Pool, PoolClient } from "pg";
 import { ModpackPublishBaseQueries } from "@/generated/db/modpack_publish.queries";
 import type { ModpackPublish } from "@createrington/shared/db";
 
-/**
- * Custom queries for modpack_publish table
- *
- * Extends the auto-generated base class with custom methods.
- * This file is scaffolded once and never overwritten - add your custom
- * query methods here while inheriting all generated CRUD operations.
- */
 export class ModpackPublishQueries extends ModpackPublishBaseQueries {
   constructor(db: Pool | PoolClient) {
     super(db);

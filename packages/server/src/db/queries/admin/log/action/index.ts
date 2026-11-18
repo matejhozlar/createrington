@@ -3,12 +3,6 @@ import { AdminLogActionBaseQueries } from "@/generated/db/admin_log_action.queri
 import { escapeLike } from "@/db/utils";
 import type { AdminLogAction } from "@createrington/shared/db/admin_log_action.types";
 
-/**
- * Custom queries for admin_log_action table
- *
- * - Provides structured admin action logging with full audit context
- * - All admin mutations (balance, bans, strikes, player edits) route through logAction()
- */
 export class AdminLogActionQueries extends AdminLogActionBaseQueries {
   constructor(db: Pool | PoolClient) {
     super(db);

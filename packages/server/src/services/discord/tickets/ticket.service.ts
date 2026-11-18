@@ -22,8 +22,6 @@ import { EmbedPresets } from "@/discord/embeds";
 import path from "node:path";
 import fs from "node:fs/promises";
 import { isSendableChannel } from "@/discord/utils/channel-guard";
-// Lazy-imported to avoid React 19/18 conflict at startup
-// discord-html-transcripts requires react-dom/static (React 19) but the workspace pins React 18
 const loadTranscripts = () => import("discord-html-transcripts");
 
 const PARTICIPANT_PERMISSIONS = [
@@ -539,11 +537,6 @@ export class TicketService {
       throw new Error("No transcript found for this ticket");
     }
 
-    // transcriptPath comes from ticket.metadata (JSONB) which is only written
-    // by generateTranscript today, but the column has no schema. If any
-    // future path writes user input into metadata.transcriptPath, this
-    // fs.readFile becomes an arbitrary-file-read primitive. Pin it to the
-    // transcripts dir.
     const resolvedPath = path.resolve(transcriptPath);
     const resolvedDir = path.resolve(this.transcriptDir);
     if (

@@ -30,14 +30,6 @@ const avatarSizeSchema = z.coerce
 
 const router = Router();
 
-/**
- * Skin routes
- * Base path: /api/skin
- *
- * Serves heads and posed figures of registered players, rendered through the
- * skin API.
- */
-
 async function registeredUuid(req: Request): Promise<string> {
   const id = req.params.player as string;
   const identifier = idToObject(MC_UUID_REGEX.test(id) ? id.toLowerCase() : id);
@@ -51,7 +43,6 @@ async function registeredUuid(req: Request): Promise<string> {
   return player.minecraftUuid;
 }
 
-// GET /api/skin/:player/avatar?size= - Flat 2D head of a registered player, by UUID or username
 router.get(
   "/:player/avatar",
   ...route("public", async (req: Request, res: Response) => {
@@ -81,7 +72,6 @@ router.get(
   }),
 );
 
-// GET /api/skin/:player/pose/:pose - Posed figure of a registered player, by UUID or username
 router.get(
   "/:player/pose/:pose",
   skinPoseLimiter,
