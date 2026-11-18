@@ -1,4 +1,4 @@
-import { AppError } from "@/app/middleware/error-handler";
+import { AppError } from "@/errors";
 import config from "@/config";
 import { Q } from "@/db";
 import { UniqueViolationError } from "@/db/utils";

@@ -1,5 +1,5 @@
 import { db, Q } from "@/db";
-import { BadRequestError, NotFoundError } from "@/app/middleware/error-handler";
+import { BadRequestError, NotFoundError } from "@/errors";
 import { UniqueViolationError } from "@/db/utils/errors";
 import type { Workshop, WorkshopMod } from "@createrington/shared/db";
 import { LOADERLESS_CLASSES, searchMods } from "@/services/curseforge/mods";

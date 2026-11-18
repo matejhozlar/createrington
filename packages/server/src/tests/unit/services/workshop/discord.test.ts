@@ -36,7 +36,7 @@ vi.mock("@/services", () => ({
   Services: { DISCORD_MAIN_BOT: "DISCORD_MAIN_BOT" },
   getService: async () => ({ channels: { fetch: state.channelFetch } }),
 }));
-vi.mock("@/app/middleware/error-handler", () => ({
+vi.mock("@/errors", () => ({
   BadRequestError: class extends Error {},
 }));
 vi.mock("@/discord/constants", () => ({

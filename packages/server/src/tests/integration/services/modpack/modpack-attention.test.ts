@@ -45,11 +45,7 @@ vi.mock("@/services/launcher/pack/sandbox-files", async () =>
 );
 
 import pool, { Q } from "@/db";
-import {
-  BadRequestError,
-  ConflictError,
-  NotFoundError,
-} from "@/app/middleware/error-handler";
+import { BadRequestError, ConflictError, NotFoundError } from "@/errors";
 import { modpackAttentionService } from "@/services/modpack/attention.service";
 import { getModpackManifest } from "@/services/curseforge/modpack-manifest";
 import { announceReview } from "@/services/workshop/discord";

@@ -15,7 +15,7 @@ import {
   designCode,
   parseDesignCode,
 } from "@createrington/shared/team-tag";
-import { UnauthorizedError } from "@/app/middleware";
+import { UnauthorizedError } from "@/errors";
 import { requireLoopback } from "@/app/middleware/server-ip.middleware";
 import { timingSafeEqualStrings } from "@/utils/timing-safe-equal";
 

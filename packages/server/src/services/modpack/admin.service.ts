@@ -1,5 +1,5 @@
 import { Q } from "@/db";
-import { BadRequestError, ConflictError } from "@/app/middleware/error-handler";
+import { BadRequestError, ConflictError } from "@/errors";
 import {
   ForeignKeyViolationError,
   UniqueViolationError,

@@ -38,7 +38,7 @@ vi.mock("@/services/auth/admin-status/admin-status.service", async () =>
 import { authenticate } from "@/app/middleware/auth.middleware";
 import { authenticateLauncher } from "@/app/middleware/launcher-auth.middleware";
 import { verifyModJWT } from "@/app/middleware/mod-jwt.middleware";
-import { UnauthorizedError } from "@/app/middleware/error-handler";
+import { UnauthorizedError } from "@/errors";
 import { jwtService } from "@/services/auth/jwt/jwt.service";
 import {
   JWT_AUDIENCE_LAUNCHER,

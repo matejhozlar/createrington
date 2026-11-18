@@ -1,5 +1,5 @@
 import { Q } from "@/db";
-import { BadRequestError } from "@/app/middleware/error-handler";
+import { BadRequestError } from "@/errors";
 import type {
   Modpack,
   Workshop,

@@ -3,7 +3,7 @@ import { TRPCError } from "@trpc/server";
 
 vi.mock("@/db", () => ({}));
 
-import { AppError } from "@/app/middleware/error-handler";
+import { AppError } from "@/errors";
 import {
   findOrThrow,
   paginateQuery,

@@ -20,7 +20,7 @@ vi.mock("@/services/auth/admin-status/admin-status.service", () => ({
 
 import { TRPCError } from "@trpc/server";
 import { balanceRouter } from "@/trpc/routers/admin/players/balance";
-import { NotFoundError } from "@/app/middleware/error-handler";
+import { NotFoundError } from "@/errors";
 import { adminContext, TEST_ADMIN } from "@/tests/helpers/trpc";
 
 const PLAYER_UUID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";

@@ -64,7 +64,8 @@ vi.mock("@/services/launcher/content/launcher-content.service", () => ({
 }));
 
 import express from "express";
-import { AppError, errorHandler } from "@/app/middleware/error-handler";
+import { errorHandler } from "@/app/middleware/error-handler";
+import { AppError } from "@/errors";
 import launcherContentRoutes from "@/app/features/launcher/content/launcher-content.routes";
 import { launcherJwtService } from "@/services/auth/launcher/launcher-jwt.service";
 

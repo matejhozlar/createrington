@@ -1,4 +1,4 @@
-import { InternalServerError } from "@/app/middleware";
+import { InternalServerError } from "@/errors";
 
 export async function runSync(
   label: string,

@@ -45,7 +45,7 @@ vi.mock("@/services/launcher/pack/sandbox-files", async () =>
 );
 
 import pool, { Q } from "@/db";
-import { BadRequestError } from "@/app/middleware/error-handler";
+import { BadRequestError } from "@/errors";
 import { modpackSyncService } from "@/services/modpack/sync.service";
 import { modpackReleaseService } from "@/services/modpack/release.service";
 import { getModpackManifest } from "@/services/curseforge/modpack-manifest";

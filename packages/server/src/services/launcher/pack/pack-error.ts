@@ -1,4 +1,4 @@
-import { AppError } from "@/app/middleware/error-handler";
+import { AppError } from "@/errors";
 import type { LauncherPackErrorCode } from "@createrington/shared/launcher";
 
 export function packError(

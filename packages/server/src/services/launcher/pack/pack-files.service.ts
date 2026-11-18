@@ -1,4 +1,4 @@
-import type { AppError } from "@/app/middleware/error-handler";
+import type { AppError } from "@/errors";
 import { Q } from "@/db";
 import type { CurseforgeFileWithProject } from "@/db/queries/curseforge/file";
 import { CURSEFORGE_MINECRAFT_GAME_ID } from "@createrington/content-gateway-client";

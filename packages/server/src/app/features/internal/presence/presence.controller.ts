@@ -1,8 +1,5 @@
-import {
-  BadRequestError,
-  getValidated,
-  InternalServerError,
-} from "@/app/middleware";
+import { getValidated } from "@/app/middleware";
+import { BadRequestError, InternalServerError } from "@/errors";
 import type {
   HeartbeatBody,
   PresenceBody,

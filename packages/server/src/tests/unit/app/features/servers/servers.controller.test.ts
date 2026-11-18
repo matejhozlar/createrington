@@ -1,9 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-vi.mock("@/app/middleware", () =>
-  vi.importActual("@/app/middleware/error-handler"),
-);
-
 const { getServiceMock, isInMaintenanceMock } = vi.hoisted(() => ({
   getServiceMock: vi.fn(),
   isInMaintenanceMock: vi.fn(),
@@ -39,7 +35,7 @@ vi.mock("@/services/playtime/config", () => ({
   },
 }));
 
-import { BadRequestError, NotFoundError } from "@/app/middleware/error-handler";
+import { BadRequestError, NotFoundError } from "@/errors";
 import {
   ServersController,
   type ServerStatusResponse,

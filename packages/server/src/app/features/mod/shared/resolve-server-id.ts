@@ -1,4 +1,4 @@
-import { BadRequestError, InternalServerError } from "@/app/middleware";
+import { BadRequestError, InternalServerError } from "@/errors";
 import { getServerByIp, isValidServerId } from "@/services/playtime/config";
 import type { Request } from "express";
 

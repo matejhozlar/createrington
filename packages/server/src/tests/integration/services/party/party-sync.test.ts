@@ -3,7 +3,7 @@ import { Q } from "@/db";
 import {
   replacePartyState,
   type PartyPayload,
-} from "@/app/features/mod/parties/parties.service";
+} from "@/services/party/party-state";
 import { cleanupTestPool } from "@/tests/helpers/db";
 
 const SERVER_IDENTIFIER = "party-sync-test";

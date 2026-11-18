@@ -1,5 +1,5 @@
 import { Q, type db } from "@/db";
-import { BadRequestError, ConflictError } from "@/app/middleware/error-handler";
+import { BadRequestError, ConflictError } from "@/errors";
 import { UniqueViolationError, DatabaseError } from "@/db/utils/errors";
 import type {
   Workshop,

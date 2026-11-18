@@ -7,7 +7,7 @@ import {
 } from "discord.js";
 import config from "@/config";
 import { getService, Services } from "@/services";
-import { BadRequestError } from "@/app/middleware/error-handler";
+import { BadRequestError } from "@/errors";
 import { Discord } from "@/discord/constants";
 import { Q } from "@/db";
 import type {

@@ -1,8 +1,5 @@
-import {
-  BadRequestError,
-  getAuthedPlayer,
-  respondSuccess,
-} from "@/app/middleware";
+import { getAuthedPlayer, respondSuccess } from "@/app/middleware";
+import { BadRequestError } from "@/errors";
 import { Q, balanceRepo } from "@/db";
 import { BalanceTransactionType } from "@/db/repositories/balance";
 import { dailyRewardService } from "@/services/reward/daily-reward.service";

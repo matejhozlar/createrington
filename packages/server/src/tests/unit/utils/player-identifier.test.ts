@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getIdType, idToObject } from "@/app/utils/helpers";
+import { getIdType, idToObject } from "@/utils/player-identifier";
 
 describe("getIdType", () => {
   describe("Minecraft UUID", () => {

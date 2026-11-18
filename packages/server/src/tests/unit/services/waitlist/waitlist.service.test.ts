@@ -31,8 +31,8 @@ vi.mock("@/discord/bots/main/registration/verification-channel", async () =>
     await import("@/tests/helpers/waitlist")
   ).waitlistMocks.verificationChannel(),
 );
-vi.mock("@/app/middleware/error-handler", async () =>
-  (await import("@/tests/helpers/waitlist")).waitlistMocks.errorHandler(),
+vi.mock("@/errors", async () =>
+  (await import("@/tests/helpers/waitlist")).waitlistMocks.appErrors(),
 );
 
 import { WaitlistService } from "@/services/waitlist/waitlist.service";

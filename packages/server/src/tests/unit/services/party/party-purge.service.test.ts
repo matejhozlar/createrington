@@ -34,7 +34,7 @@ vi.mock("@/services/auth/launcher/launcher-session.service", () => ({
   launcherSessionService: { revokeAllForPlayer: vi.fn() },
 }));
 
-vi.mock("@/app/features/mod/parties/parties.service", () => ({
+vi.mock("@/services/party/party-state", () => ({
   waitForPartySync: mocks.waitForPartySync,
 }));
 

@@ -1,9 +1,9 @@
 import crypto from "node:crypto";
 import type { NextFunction, Request, Response } from "express";
 import config from "@/config";
-import { extractBearerToken } from "@/utils/bearer-token";
+import { extractBearerToken } from "@/app/utils/bearer-token";
 import { timingSafeEqualStrings } from "@/utils/timing-safe-equal";
-import { NotFoundError, UnauthorizedError } from "./error-handler";
+import { NotFoundError, UnauthorizedError } from "@/errors";
 
 export const requireDirectRequest = (
   req: Request,

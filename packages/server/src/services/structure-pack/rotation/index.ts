@@ -1,7 +1,7 @@
 import config from "@/config";
 import { Q, db, balanceRepo } from "@/db";
 import { BalanceTransactionType } from "@/db/repositories/balance";
-import { BadRequestError } from "@/app/middleware/error-handler";
+import { BadRequestError } from "@/errors";
 import {
   isFileOpsAllowed,
   copyFileToServer,

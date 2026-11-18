@@ -29,7 +29,7 @@ vi.mock("@/services/curseforge/ingest", async () =>
 );
 
 import pool, { Q } from "@/db";
-import { BadRequestError, ConflictError } from "@/app/middleware/error-handler";
+import { BadRequestError, ConflictError } from "@/errors";
 import { workshopAdminService } from "@/services/workshop/admin.service";
 import { ingestProjects } from "@/services/curseforge/ingest";
 import {

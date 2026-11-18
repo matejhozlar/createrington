@@ -4,7 +4,7 @@ import {
   LAUNCHER_VERSION_HEADER,
   LauncherAuthErrorCode,
 } from "@createrington/shared/launcher";
-import { AppError, BadRequestError } from "./error-handler";
+import { AppError, BadRequestError } from "@/errors";
 import { launcherReleaseService } from "@/services/launcher/release/launcher-release.service";
 
 const HTTP_UPGRADE_REQUIRED = 426;

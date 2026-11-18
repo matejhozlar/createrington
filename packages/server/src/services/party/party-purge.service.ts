@@ -1,8 +1,8 @@
 import config from "@/config";
 import { Q } from "@/db";
 import { DatabaseTable } from "@/generated/db";
-import { AppError, ConflictError } from "@/app/middleware/error-handler";
-import { waitForPartySync } from "@/app/features/mod/parties/parties.service";
+import { ConflictError, ServiceUnavailableError } from "@/errors";
+import { waitForPartySync } from "@/services/party/party-state";
 import {
   PartyMembersClient,
   type PartyRemoval,
@@ -186,15 +186,13 @@ export class PartyPurgeService {
     try {
       await this.client.sync(serverId);
     } catch (error) {
-      throw new AppError(
+      throw new ServiceUnavailableError(
         `Could not ask the Minecraft server for its parties: ${error instanceof Error ? error.message : String(error)}`,
-        503,
       );
     }
     if (!(await synced)) {
-      throw new AppError(
+      throw new ServiceUnavailableError(
         `The Minecraft server did not send its parties within ${SYNC_TIMEOUT_MS / 1000} seconds, nothing was removed`,
-        503,
       );
     }
   }

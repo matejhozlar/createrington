@@ -1,9 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-vi.mock("@/app/middleware", () =>
-  vi.importActual("@/app/middleware/error-handler"),
-);
-
 const { sendMock } = vi.hoisted(() => ({ sendMock: vi.fn() }));
 
 vi.mock("@/services", () => ({

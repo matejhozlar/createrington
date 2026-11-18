@@ -1,9 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-vi.mock("@/app/middleware", () =>
-  vi.importActual("@/app/middleware/error-handler"),
-);
-
 const { getChangelogMarkdownMock, getChangelogRowMock, getVersionStatusMock } =
   vi.hoisted(() => ({
     getChangelogMarkdownMock: vi.fn(),
@@ -19,7 +15,7 @@ vi.mock("@/services/modpack/release.service", () => ({
   },
 }));
 
-import { BadRequestError, NotFoundError } from "@/app/middleware/error-handler";
+import { BadRequestError, NotFoundError } from "@/errors";
 import { ModpacksController } from "@/app/features/modpacks/modpacks.controller";
 import type { Request } from "express";
 import { fakeReq, fakeRes } from "@/tests/helpers/http";

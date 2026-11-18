@@ -1,6 +1,6 @@
 import config from "@/config";
 import type { NextFunction, Request, Response } from "express";
-import { ForbiddenError } from "./error-handler";
+import { ForbiddenError } from "@/errors";
 
 const ALLOWED_IPS = {
   development: () => ["127.0.0.1", "::1"],

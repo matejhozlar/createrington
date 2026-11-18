@@ -1,5 +1,5 @@
 import { Q } from "@/db";
-import { NotFoundError } from "@/app/middleware/error-handler";
+import { NotFoundError } from "@/errors";
 import type {
   CurseforgeProject,
   Modpack,

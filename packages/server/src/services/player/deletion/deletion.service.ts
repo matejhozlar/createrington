@@ -1,6 +1,6 @@
 import { db, Q } from "@/db";
 import { DatabaseTable, type DatabaseQueries } from "@/generated/db";
-import { NotFoundError } from "@/app/middleware/error-handler";
+import { NotFoundError } from "@/errors";
 import { AdminEdit } from "@/types";
 import { minecraftRcon, WhitelistAction } from "@/utils/rcon";
 import { launcherSessionService } from "@/services/auth/launcher/launcher-session.service";

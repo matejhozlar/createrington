@@ -1,9 +1,5 @@
 import { db, Q } from "@/db";
-import {
-  BadRequestError,
-  ConflictError,
-  NotFoundError,
-} from "@/app/middleware/error-handler";
+import { BadRequestError, ConflictError, NotFoundError } from "@/errors";
 import type {
   CurseforgeProject,
   ModEnvironment,

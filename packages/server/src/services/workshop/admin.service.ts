@@ -1,5 +1,5 @@
 import { db, Q } from "@/db";
-import { BadRequestError, ConflictError } from "@/app/middleware/error-handler";
+import { BadRequestError, ConflictError } from "@/errors";
 import { UniqueViolationError } from "@/db/utils/errors";
 import type { Workshop } from "@createrington/shared/db";
 import { WORKSHOP_STATUS_TRANSITIONS } from "@createrington/shared/workshop";

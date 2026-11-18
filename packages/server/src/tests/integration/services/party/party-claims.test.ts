@@ -4,7 +4,7 @@ import {
   replacePartyClaims,
   replacePartyState,
   type PartyClaimDimensionPayload,
-} from "@/app/features/mod/parties/parties.service";
+} from "@/services/party/party-state";
 import { cleanupTestPool } from "@/tests/helpers/db";
 
 const SERVER_IDENTIFIER = "party-claims-test";

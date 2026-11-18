@@ -1,6 +1,6 @@
 import { Q } from "@/db";
 import { loadAllGuildMembers } from "@/discord/utils/guild-members";
-import { ConflictError, NotFoundError } from "@/app/middleware/error-handler";
+import { ConflictError, NotFoundError } from "@/errors";
 import { getServiceSync, Services } from "@/services";
 import {
   playerDeletionService,

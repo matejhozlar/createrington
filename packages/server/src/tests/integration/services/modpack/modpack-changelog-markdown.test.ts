@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { loadImage } from "@napi-rs/canvas";
 import { Q } from "@/db";
 import config from "@/config";
-import { NotFoundError } from "@/app/middleware/error-handler";
+import { NotFoundError } from "@/errors";
 import { modpackReleaseService } from "@/services/modpack/release.service";
 import {
   CHANGELOG_ROW_HEIGHT,
