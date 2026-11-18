@@ -404,19 +404,6 @@ const envSchema = z
  */
 export type Env = z.infer<typeof envSchema>;
 
-type RequiredKey = {
-  [K in keyof Env]-?: undefined extends z.input<typeof envSchema>[K]
-    ? never
-    : K;
-}[keyof Env];
-
-/**
- * What VALIDATION_MODE=generation (codegen and tests) actually holds: every
- * variable with a default or marked optional is as typed, while the required
- * ones without a default may be missing.
- */
-type GenerationEnv = Omit<Env, RequiredKey> & Partial<Pick<Env, RequiredKey>>;
-
 /**
  * Flag for running only validation of env variables
  * Exits the process on success
@@ -428,7 +415,7 @@ const isValidateOnly = process.argv.includes("--validate-only");
  * or malformed value falls back to the field's default, or is left out when
  * the field has none.
  */
-function parseForGeneration(): GenerationEnv {
+function parseForGeneration(): Env {
   const parsed: Record<string, unknown> = {};
   for (const [key, schema] of Object.entries(envSchema.shape)) {
     const result = schema.safeParse(process.env[key]);
@@ -436,7 +423,7 @@ function parseForGeneration(): GenerationEnv {
       ? result.data
       : schema.safeParse(undefined).data;
   }
-  return parsed as GenerationEnv;
+  return parsed as Env;
 }
 
 /**
@@ -452,9 +439,7 @@ function parseForGeneration(): GenerationEnv {
  */
 function validateEnv(): Env {
   if (process.env.VALIDATION_MODE === "generation") {
-    // The cast only claims the required variables without a default: nothing
-    // that reads them runs in generation mode, every other field is as typed.
-    return parseForGeneration() as Env;
+    return parseForGeneration();
   }
 
   try {
