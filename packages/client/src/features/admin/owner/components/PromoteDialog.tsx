@@ -7,7 +7,7 @@ import { UserPlus } from "lucide-react";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
 import { trpc, queryClient } from "@/lib/trpc";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -25,7 +25,6 @@ export function PromoteDialog({
   onClose,
   onSuccess,
 }: PromoteDialogProps) {
-  const toast = useToastActions();
   const [query, setQuery] = useState("");
   const [reason, setReason] = useState("");
   const [selected, setSelected] = useState<{
@@ -43,10 +42,21 @@ export function PromoteDialog({
   );
 
   const promoteMutation = useMutation(
-    trpc.owner.admins.promote.mutationOptions({
-      onSuccess: () =>
-        void queryClient.invalidateQueries(trpc.owner.admins.pathFilter()),
-    }),
+    trpc.owner.admins.promote.mutationOptions(
+      useMutationToast({
+        onSuccess: (result) => {
+          void queryClient.invalidateQueries(trpc.owner.admins.pathFilter());
+          onSuccess({
+            discordRoleAdded: result.discordRoleAdded,
+            minecraftUsername:
+              result.minecraftUsername ?? selected?.minecraftUsername ?? null,
+          });
+          setQuery("");
+          setReason("");
+          setSelected(null);
+        },
+      }),
+    ),
   );
 
   const handleClose = () => {
@@ -56,24 +66,12 @@ export function PromoteDialog({
     onClose();
   };
 
-  const handlePromote = async () => {
+  const handlePromote = () => {
     if (!selected) return;
-    try {
-      const result = await promoteMutation.mutateAsync({
-        discordId: selected.discordId,
-        reason: reason.trim() || undefined,
-      });
-      onSuccess({
-        discordRoleAdded: result.discordRoleAdded,
-        minecraftUsername:
-          result.minecraftUsername ?? selected.minecraftUsername,
-      });
-      setQuery("");
-      setReason("");
-      setSelected(null);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to promote");
-    }
+    promoteMutation.mutate({
+      discordId: selected.discordId,
+      reason: reason.trim() || undefined,
+    });
   };
 
   const results = searchQuery.data?.players ?? [];
@@ -90,7 +88,7 @@ export function PromoteDialog({
       }
       description="Writes an entry to the DB admin table and adds the Discord ADMIN role. Minecraft OP is not granted — you do that manually per trust."
       confirmLabel="Promote"
-      onConfirm={() => void handlePromote()}
+      onConfirm={handlePromote}
       disabled={!selected}
       loading={promoteMutation.isPending}
       contentClassName="sm:max-w-lg"

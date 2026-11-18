@@ -8,7 +8,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { trpc, queryClient } from "@/lib/trpc";
-import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { FormDialog } from "@/components/form-dialog";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Textarea } from "@/components/ui/textarea";
@@ -32,15 +32,6 @@ export function IssueWorkshopBanModal({
   discordId,
   playerUsername,
 }: IssueWorkshopBanModalProps) {
-  const toast = useToastActions();
-  const issueBan = useMutation(
-    trpc.admin.workshops.bans.issue.mutationOptions({
-      onSuccess: () =>
-        void queryClient.invalidateQueries(
-          trpc.admin.workshops.bans.pathFilter(),
-        ),
-    }),
-  );
   const workshops = useQuery(
     trpc.admin.workshops.list.queryOptions(undefined, {
       enabled: open,
@@ -60,26 +51,27 @@ export function IssueWorkshopBanModal({
     onClose();
   };
 
-  const handleSubmit = async () => {
-    if (!reason.trim()) {
-      toast.error("Reason is required");
-      return;
-    }
+  const issueBan = useMutation(
+    trpc.admin.workshops.bans.issue.mutationOptions(
+      useMutationToast({
+        success: `${playerUsername} can no longer submit suggestions`,
+        onSuccess: () => {
+          void queryClient.invalidateQueries(
+            trpc.admin.workshops.bans.pathFilter(),
+          );
+          handleClose();
+        },
+      }),
+    ),
+  );
 
-    try {
-      await issueBan.mutateAsync({
-        discordId,
-        workshopId: scope === GLOBAL_SCOPE ? null : Number(scope),
-        reason: reason.trim(),
-        durationDays: banType === "temporary" ? durationDays : undefined,
-      });
-      toast.success(`${playerUsername} can no longer submit suggestions`);
-      handleClose();
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to issue the ban",
-      );
-    }
+  const handleSubmit = () => {
+    issueBan.mutate({
+      discordId,
+      workshopId: scope === GLOBAL_SCOPE ? null : Number(scope),
+      reason: reason.trim(),
+      durationDays: banType === "temporary" ? durationDays : undefined,
+    });
   };
 
   return (

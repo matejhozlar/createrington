@@ -10,7 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { StrikeClassification } from "@createrington/shared/db";
-import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { trpc, queryClient } from "@/lib/trpc";
 import { FormDialog } from "@/components/form-dialog";
 import { useMutation } from "@tanstack/react-query";
@@ -27,37 +27,34 @@ export function IssueStrikeModal({
   onClose,
   playerId,
 }: IssueStrikeModalProps) {
-  const toast = useToastActions();
-  const issueStrike = useMutation(
-    trpc.admin.players.strikes.issue.mutationOptions({
-      onSuccess: () =>
-        void queryClient.invalidateQueries(trpc.admin.players.pathFilter()),
-    }),
-  );
-
   const [classification, setClassification] =
     useState<StrikeClassification>("rule_violation");
   const [description, setDescription] = useState("");
   const [severity, setSeverity] = useState<1 | 2 | 3 | 4 | 5>(1);
 
-  const handleSubmit = async () => {
+  const issueStrike = useMutation(
+    trpc.admin.players.strikes.issue.mutationOptions(
+      useMutationToast({
+        success: "Strike issued",
+        onSuccess: () => {
+          void queryClient.invalidateQueries(trpc.admin.players.pathFilter());
+          setDescription("");
+          setSeverity(1);
+          onClose();
+        },
+      }),
+    ),
+  );
+
+  const handleSubmit = () => {
     if (!description) return;
 
-    try {
-      await issueStrike.mutateAsync({
-        id: playerId,
-        classification,
-        description,
-        severity,
-      });
-
-      toast.success("Strike issued");
-      setDescription("");
-      setSeverity(1);
-      onClose();
-    } catch {
-      toast.error("Failed to issue strike");
-    }
+    issueStrike.mutate({
+      id: playerId,
+      classification,
+      description,
+      severity,
+    });
   };
 
   return (

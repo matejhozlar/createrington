@@ -20,7 +20,7 @@ import { Ghost, RefreshCw, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { keepPreviousData, useQuery, useMutation } from "@tanstack/react-query";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { CellText } from "@/components/cell-text";
 import { formatFullDate, toIso } from "@/features/admin/format";
 import { formatRelativeDate } from "@/lib/format";
@@ -32,8 +32,6 @@ type GhostMember =
   RouterOutput["admin"]["inactivity"]["ghosts"]["list"]["items"][number];
 
 export function GhostsCard({ canMutate }: { canMutate: boolean }) {
-  const toast = useToastActions();
-
   const [page, setPage] = useState(0);
   const [limit] = useState(20);
   const [searchQuery, setSearchQuery] = useState("");
@@ -56,12 +54,15 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
   );
 
   const refreshGhosts = useMutation(
-    trpc.admin.inactivity.ghosts.refresh.mutationOptions({
-      onSuccess: () =>
-        void queryClient.invalidateQueries(
-          trpc.admin.inactivity.ghosts.pathFilter(),
-        ),
-    }),
+    trpc.admin.inactivity.ghosts.refresh.mutationOptions(
+      useMutationToast({
+        success: (result) => `Cache refreshed: ${result.count} ghost(s)`,
+        onSuccess: () =>
+          void queryClient.invalidateQueries(
+            trpc.admin.inactivity.ghosts.pathFilter(),
+          ),
+      }),
+    ),
   );
 
   const ghosts = listQuery.data?.items ?? [];
@@ -80,18 +81,7 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
     setPage(0);
   }, []);
 
-  const handleRefresh = useCallback(async () => {
-    try {
-      const result = await refreshGhosts.mutateAsync();
-      toast.success(`Cache refreshed: ${result.count} ghost(s)`);
-    } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Failed to refresh ghost cache",
-      );
-    }
-  }, [refreshGhosts, toast]);
+  const handleRefresh = () => refreshGhosts.mutate();
 
   const columns: DataTableColumn<GhostMember>[] = [
     {

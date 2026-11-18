@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { trpc, queryClient } from "@/lib/trpc";
-import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { FormDialog } from "@/components/form-dialog";
 import { useMutation } from "@tanstack/react-query";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,16 +17,6 @@ export function LiftWorkshopBanModal({
   onClose,
   banId,
 }: LiftWorkshopBanModalProps) {
-  const toast = useToastActions();
-  const liftBan = useMutation(
-    trpc.admin.workshops.bans.lift.mutationOptions({
-      onSuccess: () =>
-        void queryClient.invalidateQueries(
-          trpc.admin.workshops.bans.pathFilter(),
-        ),
-    }),
-  );
-
   const [reason, setReason] = useState("");
 
   const handleClose = () => {
@@ -34,21 +24,22 @@ export function LiftWorkshopBanModal({
     onClose();
   };
 
-  const handleSubmit = async () => {
-    if (!reason.trim()) {
-      toast.error("Reason is required");
-      return;
-    }
+  const liftBan = useMutation(
+    trpc.admin.workshops.bans.lift.mutationOptions(
+      useMutationToast({
+        success: "Suggestion block lifted",
+        onSuccess: () => {
+          void queryClient.invalidateQueries(
+            trpc.admin.workshops.bans.pathFilter(),
+          );
+          handleClose();
+        },
+      }),
+    ),
+  );
 
-    try {
-      await liftBan.mutateAsync({ banId, reason: reason.trim() });
-      toast.success("Suggestion block lifted");
-      handleClose();
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to lift the block",
-      );
-    }
+  const handleSubmit = () => {
+    liftBan.mutate({ banId, reason: reason.trim() });
   };
 
   return (

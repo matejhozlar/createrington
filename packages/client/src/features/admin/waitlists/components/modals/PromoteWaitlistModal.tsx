@@ -1,5 +1,6 @@
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
 import { useMutation } from "@tanstack/react-query";
 
@@ -19,32 +20,23 @@ export function PromoteWaitlistModal({
 }: PromoteWaitlistModalProps) {
   const toast = useToastActions();
   const promoteEntry = useMutation(
-    trpc.admin.waitlists.promote.mutationOptions({
-      onSuccess: () =>
-        void queryClient.invalidateQueries(trpc.admin.waitlists.pathFilter()),
-    }),
+    trpc.admin.waitlists.promote.mutationOptions(
+      useMutationToast({
+        onSuccess: (result) => {
+          void queryClient.invalidateQueries(trpc.admin.waitlists.pathFilter());
+          if (result.notified) {
+            toast.success("Waitlist entry promoted");
+          } else {
+            toast.warning(
+              "Spot reserved, but the member couldn't be pinged in Discord. They'll see the Register button when they refresh their card.",
+            );
+          }
+        },
+      }),
+    ),
   );
 
-  const handleSubmit = async () => {
-    try {
-      const result = await promoteEntry.mutateAsync({ id: entry.id });
-
-      if (result.notified) {
-        toast.success("Waitlist entry promoted");
-      } else {
-        toast.warning(
-          "Spot reserved, but the member couldn't be pinged in Discord. They'll see the Register button when they refresh their card.",
-        );
-      }
-    } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Failed to promote waitlist entry",
-      );
-      throw error;
-    }
-  };
+  const handleSubmit = () => promoteEntry.mutateAsync({ id: entry.id });
 
   return (
     <ConfirmDialog

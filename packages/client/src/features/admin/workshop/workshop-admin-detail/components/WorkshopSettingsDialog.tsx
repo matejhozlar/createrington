@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { trpc, queryClient } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -108,10 +109,10 @@ function SettingsForm({
   );
 
   const updateMutation = useMutation(
-    trpc.admin.workshops.update.mutationOptions(),
+    trpc.admin.workshops.update.mutationOptions(useMutationToast()),
   );
   const updateModpackMutation = useMutation(
-    trpc.admin.modpacks.update.mutationOptions(),
+    trpc.admin.modpacks.update.mutationOptions(useMutationToast()),
   );
   const pending = updateMutation.isPending || updateModpackMutation.isPending;
 
@@ -169,10 +170,7 @@ function SettingsForm({
           patch: { curseforgeProjectId: nextPublishedPackId },
         });
       }
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Could not save settings",
-      );
+    } catch {
       return;
     }
 

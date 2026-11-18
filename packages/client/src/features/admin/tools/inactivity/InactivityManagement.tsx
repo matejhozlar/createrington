@@ -44,7 +44,7 @@ import { cn } from "@/lib/utils";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { keepPreviousData, useQuery, useMutation } from "@tanstack/react-query";
 import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
-import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { formatFullDate, toIso } from "@/features/admin/format";
 import { formatRelativeDate } from "@/lib/format";
 import {
@@ -73,8 +73,6 @@ const invalidateAfterRemovalRun = () => {
 };
 
 export function InactivityManagement() {
-  const toast = useToastActions();
-
   const [page, setPage] = useState(0);
   const [limit] = useState(20);
 
@@ -103,14 +101,20 @@ export function InactivityManagement() {
   );
 
   const triggerCleanup = useMutation(
-    trpc.admin.inactivity.triggerCleanup.mutationOptions({
-      onSuccess: invalidateAfterRemovalRun,
-    }),
+    trpc.admin.inactivity.triggerCleanup.mutationOptions(
+      useMutationToast({
+        success: "Cleanup cycle completed",
+        onSuccess: invalidateAfterRemovalRun,
+      }),
+    ),
   );
   const triggerResolveRemove = useMutation(
-    trpc.admin.inactivity.triggerResolveRemove.mutationOptions({
-      onSuccess: invalidateAfterRemovalRun,
-    }),
+    trpc.admin.inactivity.triggerResolveRemove.mutationOptions(
+      useMutationToast({
+        success: "Overdue warnings processed",
+        onSuccess: invalidateAfterRemovalRun,
+      }),
+    ),
   );
 
   const warnings = listQuery.data?.warnings ?? [];
@@ -130,29 +134,9 @@ export function InactivityManagement() {
     setPage(0);
   }, []);
 
-  const handleTriggerCleanup = useCallback(async () => {
-    try {
-      await triggerCleanup.mutateAsync();
-      toast.success("Cleanup cycle completed");
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to run cleanup cycle",
-      );
-    }
-  }, [triggerCleanup, toast]);
+  const handleTriggerCleanup = () => triggerCleanup.mutate();
 
-  const handleProcessOverdue = useCallback(async () => {
-    try {
-      await triggerResolveRemove.mutateAsync();
-      toast.success("Overdue warnings processed");
-    } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Failed to process overdue warnings",
-      );
-    }
-  }, [triggerResolveRemove, toast]);
+  const handleProcessOverdue = () => triggerResolveRemove.mutate();
 
   const stats = useMemo(
     () => ({

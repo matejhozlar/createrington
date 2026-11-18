@@ -73,11 +73,6 @@ export function IssueBanModal({
   };
 
   const handleSubmit = async () => {
-    if (!reason.trim()) {
-      toast.error("Reason is required");
-      return;
-    }
-
     if (banType === "permanent") {
       setShowPermanentConfirm(true);
       return;

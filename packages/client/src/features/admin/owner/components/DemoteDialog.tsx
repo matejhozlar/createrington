@@ -4,7 +4,7 @@ import { Field, FieldLabel } from "@/components/ui/field";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Check, X } from "lucide-react";
 import { trpc, queryClient } from "@/lib/trpc";
-import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -23,7 +23,6 @@ interface DemoteDialogProps {
 }
 
 export function DemoteDialog({ admin, onClose, onSuccess }: DemoteDialogProps) {
-  const toast = useToastActions();
   const [reason, setReason] = useState("");
 
   const previewQuery = useQuery(
@@ -33,27 +32,26 @@ export function DemoteDialog({ admin, onClose, onSuccess }: DemoteDialogProps) {
     ),
   );
   const demoteMutation = useMutation(
-    trpc.owner.admins.demote.mutationOptions({
-      onSuccess: () =>
-        void queryClient.invalidateQueries(trpc.owner.admins.pathFilter()),
-    }),
+    trpc.owner.admins.demote.mutationOptions(
+      useMutationToast({
+        onSuccess: (result) => {
+          void queryClient.invalidateQueries(trpc.owner.admins.pathFilter());
+          onSuccess(result);
+          setReason("");
+        },
+      }),
+    ),
   );
 
   const preview = previewQuery.data;
   const displayName = admin?.minecraftUsername ?? admin?.discordId ?? "";
 
-  const handleDemote = async () => {
+  const handleDemote = () => {
     if (!admin) return;
-    try {
-      const result = await demoteMutation.mutateAsync({
-        discordId: admin.discordId,
-        reason: reason.trim() || undefined,
-      });
-      onSuccess(result);
-      setReason("");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to demote");
-    }
+    demoteMutation.mutate({
+      discordId: admin.discordId,
+      reason: reason.trim() || undefined,
+    });
   };
 
   const actionRow = (label: string, enabled: boolean, detail?: string) => (
@@ -86,7 +84,7 @@ export function DemoteDialog({ admin, onClose, onSuccess }: DemoteDialogProps) {
       title={<>Demote {displayName}</>}
       description="This is a scorched-earth revoke — all admin state across every system is removed."
       confirmLabel="Demote"
-      onConfirm={() => void handleDemote()}
+      onConfirm={handleDemote}
       loading={demoteMutation.isPending}
       destructive
       contentClassName="sm:max-w-lg"

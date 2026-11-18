@@ -20,7 +20,7 @@ import { RefreshCw, UserSearch } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { keepPreviousData, useQuery, useMutation } from "@tanstack/react-query";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { CellText } from "@/components/cell-text";
 import { formatFullDate, toIso } from "@/features/admin/format";
 import { formatRelativeDate } from "@/lib/format";
@@ -28,8 +28,6 @@ import { trpc, queryClient } from "@/lib/trpc";
 import { EmptyState, ErrorState } from "@/components/query-states";
 
 export function UnlinkedMembersCard() {
-  const toast = useToastActions();
-
   const [page, setPage] = useState(0);
   const [limit] = useState(20);
   const [searchQuery, setSearchQuery] = useState("");
@@ -47,12 +45,15 @@ export function UnlinkedMembersCard() {
   );
 
   const refreshMembers = useMutation(
-    trpc.admin.inactivity.unlinked.refresh.mutationOptions({
-      onSuccess: () =>
-        void queryClient.invalidateQueries(
-          trpc.admin.inactivity.unlinked.pathFilter(),
-        ),
-    }),
+    trpc.admin.inactivity.unlinked.refresh.mutationOptions(
+      useMutationToast({
+        success: (result) => `Cache refreshed: ${result.count} member(s)`,
+        onSuccess: () =>
+          void queryClient.invalidateQueries(
+            trpc.admin.inactivity.unlinked.pathFilter(),
+          ),
+      }),
+    ),
   );
 
   const members = listQuery.data?.items ?? [];
@@ -68,18 +69,7 @@ export function UnlinkedMembersCard() {
     setPage(0);
   }, []);
 
-  const handleRefresh = useCallback(async () => {
-    try {
-      const result = await refreshMembers.mutateAsync();
-      toast.success(`Cache refreshed: ${result.count} member(s)`);
-    } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Failed to refresh unlinked member cache",
-      );
-    }
-  }, [refreshMembers, toast]);
+  const handleRefresh = () => refreshMembers.mutate();
 
   type Member = (typeof members)[number];
 

@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { trpc, queryClient } from "@/lib/trpc";
 import { useQuery, useMutation } from "@tanstack/react-query";
 
@@ -26,11 +27,27 @@ const INTAKE_MODE_OPTIONS: { value: IntakeMode; label: string }[] = [
 export function IntakeSettingsCard() {
   const toast = useToastActions();
   const settingsQuery = useQuery(trpc.admin.settings.get.queryOptions());
-  const updateSettings = useMutation(
-    trpc.admin.settings.update.mutationOptions(),
-  );
-
   const [limitDraft, setLimitDraft] = useState<string | null>(null);
+
+  const updateSettings = useMutation(
+    trpc.admin.settings.update.mutationOptions(
+      useMutationToast({
+        success: (_, variables) =>
+          variables.playerLimit !== undefined
+            ? "Player limit updated"
+            : variables.intakeMode === "closed"
+              ? "Intake closed"
+              : "Intake set to auto",
+        onSuccess: (_, variables) => {
+          if (variables.playerLimit !== undefined) setLimitDraft(null);
+          return Promise.all([
+            queryClient.invalidateQueries(trpc.admin.settings.get.pathFilter()),
+            queryClient.invalidateQueries(trpc.admin.waitlists.pathFilter()),
+          ]);
+        },
+      }),
+    ),
+  );
 
   const data = settingsQuery.data;
   const limitValue = limitDraft ?? (data ? String(data.playerLimit) : "");
@@ -44,7 +61,7 @@ export function IntakeSettingsCard() {
     data.intakeMode === "auto" &&
     data.playerCount + data.reservedSlots < data.playerLimit;
 
-  const saveLimit = async () => {
+  const saveLimit = () => {
     const parsed = Number(limitValue);
     if (
       limitValue.trim() === "" ||
@@ -55,30 +72,11 @@ export function IntakeSettingsCard() {
       toast.error("Player limit must be a whole number between 0 and 1000");
       return;
     }
-    try {
-      await updateSettings.mutateAsync({ playerLimit: parsed });
-      setLimitDraft(null);
-      await Promise.all([
-        queryClient.invalidateQueries(trpc.admin.settings.get.pathFilter()),
-        queryClient.invalidateQueries(trpc.admin.waitlists.pathFilter()),
-      ]);
-      toast.success("Player limit updated");
-    } catch {
-      toast.error("Failed to update player limit");
-    }
+    updateSettings.mutate({ playerLimit: parsed });
   };
 
-  const changeMode = async (mode: IntakeMode) => {
-    try {
-      await updateSettings.mutateAsync({ intakeMode: mode });
-      await Promise.all([
-        queryClient.invalidateQueries(trpc.admin.settings.get.pathFilter()),
-        queryClient.invalidateQueries(trpc.admin.waitlists.pathFilter()),
-      ]);
-      toast.success(mode === "closed" ? "Intake closed" : "Intake set to auto");
-    } catch {
-      toast.error("Failed to update intake mode");
-    }
+  const changeMode = (mode: IntakeMode) => {
+    updateSettings.mutate({ intakeMode: mode });
   };
 
   return (

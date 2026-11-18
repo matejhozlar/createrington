@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
 import { useMutation } from "@tanstack/react-query";
 
@@ -34,21 +35,22 @@ export function UpsertConfigDialog({
   const toast = useToastActions();
   const isEdit = !!config;
 
+  const handleSaved = () => {
+    void queryClient.invalidateQueries(
+      trpc.admin.autoMessages.configs.pathFilter(),
+    );
+    onClose();
+  };
+
   const createMutation = useMutation(
-    trpc.admin.autoMessages.configs.create.mutationOptions({
-      onSuccess: () =>
-        void queryClient.invalidateQueries(
-          trpc.admin.autoMessages.configs.pathFilter(),
-        ),
-    }),
+    trpc.admin.autoMessages.configs.create.mutationOptions(
+      useMutationToast({ success: "Config created", onSuccess: handleSaved }),
+    ),
   );
   const updateMutation = useMutation(
-    trpc.admin.autoMessages.configs.update.mutationOptions({
-      onSuccess: () =>
-        void queryClient.invalidateQueries(
-          trpc.admin.autoMessages.configs.pathFilter(),
-        ),
-    }),
+    trpc.admin.autoMessages.configs.update.mutationOptions(
+      useMutationToast({ success: "Config updated", onSuccess: handleSaved }),
+    ),
   );
 
   const [name, setName] = useState(config?.name ?? "");
@@ -63,36 +65,29 @@ export function UpsertConfigDialog({
 
   const isPending = createMutation.isPending || updateMutation.isPending;
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (!name.trim() || !channelId) {
       toast.error("Name and channel are required");
       return;
     }
 
-    try {
-      if (isEdit) {
-        await updateMutation.mutateAsync({
-          id: config.id,
-          name: name.trim(),
-          channelId,
-          intervalMinutes,
-          rotationMode,
-          enabled,
-        });
-        toast.success("Config updated");
-      } else {
-        await createMutation.mutateAsync({
-          name: name.trim(),
-          channelId,
-          intervalMinutes,
-          rotationMode,
-          enabled,
-        });
-        toast.success("Config created");
-      }
-      onClose();
-    } catch {
-      toast.error(`Failed to ${isEdit ? "update" : "create"} config`);
+    if (isEdit) {
+      updateMutation.mutate({
+        id: config.id,
+        name: name.trim(),
+        channelId,
+        intervalMinutes,
+        rotationMode,
+        enabled,
+      });
+    } else {
+      createMutation.mutate({
+        name: name.trim(),
+        channelId,
+        intervalMinutes,
+        rotationMode,
+        enabled,
+      });
     }
   };
 
@@ -105,7 +100,7 @@ export function UpsertConfigDialog({
       open={open}
       onClose={onClose}
       title={isEdit ? "Edit Config" : "New Auto-Message Config"}
-      onConfirm={() => void handleSubmit()}
+      onConfirm={handleSubmit}
       confirmLabel={isEdit ? "Save" : "Create"}
       loading={isPending}
       contentClassName="sm:max-w-lg"

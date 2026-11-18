@@ -5,6 +5,7 @@ import { Field, FieldLabel, FieldDescription } from "@/components/ui/field";
 import { Checkbox } from "@/components/ui/checkbox";
 import { FormDialog } from "@/components/form-dialog";
 import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
 import { InsertMenu } from "@/features/admin/components/InsertMenu";
 import { CharCount } from "@/features/admin/components/CharCount";
@@ -25,10 +26,15 @@ interface EditFaqModalProps {
 export function EditFaqModal({ open, onClose, entry }: EditFaqModalProps) {
   const toast = useToastActions();
   const updateEntry = useMutation(
-    trpc.admin.faq.update.mutationOptions({
-      onSuccess: () =>
-        void queryClient.invalidateQueries(trpc.admin.faq.pathFilter()),
-    }),
+    trpc.admin.faq.update.mutationOptions(
+      useMutationToast({
+        success: "FAQ entry updated",
+        onSuccess: () => {
+          void queryClient.invalidateQueries(trpc.admin.faq.pathFilter());
+          onClose();
+        },
+      }),
+    ),
   );
 
   const mentionResolver = useMentionResolver();
@@ -42,7 +48,7 @@ export function EditFaqModal({ open, onClose, entry }: EditFaqModalProps) {
   const [priority, setPriority] = useState(entry.priority);
   const [enabled, setEnabled] = useState(entry.enabled);
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (!title.trim() || !pattern.trim() || !response.trim()) {
       toast.error("All fields are required");
       return;
@@ -57,22 +63,15 @@ export function EditFaqModal({ open, onClose, entry }: EditFaqModalProps) {
       }
     }
 
-    try {
-      await updateEntry.mutateAsync({
-        id: entry.id,
-        title: title.trim(),
-        matchMode,
-        pattern: pattern.trim(),
-        response: response.trim(),
-        priority,
-        enabled,
-      });
-
-      toast.success("FAQ entry updated");
-      onClose();
-    } catch {
-      toast.error("Failed to update FAQ entry");
-    }
+    updateEntry.mutate({
+      id: entry.id,
+      title: title.trim(),
+      matchMode,
+      pattern: pattern.trim(),
+      response: response.trim(),
+      priority,
+      enabled,
+    });
   };
 
   return (
@@ -80,7 +79,7 @@ export function EditFaqModal({ open, onClose, entry }: EditFaqModalProps) {
       open={open}
       onClose={onClose}
       title="Edit FAQ Entry"
-      onConfirm={() => void handleSubmit()}
+      onConfirm={handleSubmit}
       confirmLabel="Save Changes"
       loading={updateEntry.isPending}
       contentClassName="sm:max-w-lg"
