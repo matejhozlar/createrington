@@ -189,6 +189,34 @@ describe("errorHandler with request body errors", () => {
       }),
     );
   });
+
+  it("logs a raw body as its size instead of its bytes", async () => {
+    const app = express();
+    app.use(express.raw({ type: "application/json" }));
+    app.post("/boom", () => {
+      throw new Error("kaboom");
+    });
+    app.use(errorHandler);
+    const errorLog = vi.spyOn(logger, "error").mockImplementation(() => logger);
+    const local = app.listen(0);
+    await new Promise<void>((resolve) => local.once("listening", resolve));
+
+    const payload = JSON.stringify({ customer_email: "steve@example.com" });
+    await fetch(
+      `http://127.0.0.1:${(local.address() as AddressInfo).port}/boom`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: payload,
+      },
+    );
+    await new Promise<void>((resolve) => local.close(() => resolve()));
+
+    expect(errorLog).toHaveBeenCalledWith(
+      "Error Handler:",
+      expect.objectContaining({ body: `[${payload.length} bytes]` }),
+    );
+  });
 });
 
 describe("errorHandler with database errors", () => {
