@@ -1,4 +1,5 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { fetchRepos } from "../api";
 import type { MentionState, RepoSuggestion } from "../types";
 
@@ -33,27 +34,14 @@ interface UseMentionsResult {
 }
 
 export function useMentions(): UseMentionsResult {
-  const [repos, setRepos] = useState<RepoSuggestion[] | null>(null);
-  const reposRef = useRef<RepoSuggestion[] | null>(null);
-  const reposLoadingRef = useRef(false);
   const [mention, setMention] = useState<MentionState | null>(null);
   const [index, setIndex] = useState(0);
-
-  const loadRepos = useCallback(async (): Promise<void> => {
-    if (reposRef.current !== null || reposLoadingRef.current) return;
-    reposLoadingRef.current = true;
-    try {
-      const data = await fetchRepos();
-      const loaded = data.repos ?? [];
-      reposRef.current = loaded;
-      setRepos(loaded);
-    } catch {
-      reposRef.current = [];
-      setRepos([]);
-    } finally {
-      reposLoadingRef.current = false;
-    }
-  }, []);
+  const { data: repos } = useQuery({
+    queryKey: ["admin-chat", "repos"],
+    queryFn: async () => (await fetchRepos()).repos ?? [],
+    enabled: mention !== null,
+    staleTime: Infinity,
+  });
 
   const matches = useMemo<RepoSuggestion[]>(() => {
     if (!mention || !repos) return [];
@@ -61,17 +49,11 @@ export function useMentions(): UseMentionsResult {
     return repos.filter((r) => r.name.toLowerCase().includes(q)).slice(0, 8);
   }, [mention, repos]);
 
-  const onValueChange = useCallback(
-    (value: string, cursor: number): void => {
-      const next = detectMention(value, cursor);
-      setMention(next);
-      if (next) {
-        void loadRepos();
-        setIndex(0);
-      }
-    },
-    [loadRepos],
-  );
+  const onValueChange = useCallback((value: string, cursor: number): void => {
+    const next = detectMention(value, cursor);
+    setMention(next);
+    if (next) setIndex(0);
+  }, []);
 
   const clear = useCallback((): void => {
     setMention(null);
@@ -94,17 +76,10 @@ export function useMentions(): UseMentionsResult {
     [mention],
   );
 
-  const syncFromCursor = useCallback(
-    (ta: HTMLTextAreaElement): void => {
-      const next = detectMention(
-        ta.value,
-        ta.selectionStart ?? ta.value.length,
-      );
-      setMention(next);
-      if (next) void loadRepos();
-    },
-    [loadRepos],
-  );
+  const syncFromCursor = useCallback((ta: HTMLTextAreaElement): void => {
+    const next = detectMention(ta.value, ta.selectionStart ?? ta.value.length);
+    setMention(next);
+  }, []);
 
   return {
     mention,

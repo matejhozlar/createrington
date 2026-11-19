@@ -11,8 +11,6 @@ import {
   describeAction,
   type AdminChatAction,
   type HighlightAction,
-  type InsertEmbedAction,
-  type InsertComponentsAction,
 } from "../actions";
 import { EmbedActionPreview } from "./EmbedActionPreview";
 import { ComponentsActionPreview } from "./ComponentsActionPreview";
@@ -31,44 +29,37 @@ function applyHighlight(action: HighlightAction): boolean {
   }
 }
 
-function applyInsertEmbed(
-  action: InsertEmbedAction,
-  navigate: (to: string) => void,
-): void {
-  const serialized = JSON.stringify(action.embed);
-  const onBuilderPage = window.location.pathname.startsWith(
-    "/admin/tools/embed-builder",
-  );
-  if (onBuilderPage) {
-    window.dispatchEvent(
-      new CustomEvent(INSERT_EMBED_EVENT, { detail: action.embed }),
-    );
-    return;
-  }
-  try {
-    sessionStorage.setItem(PENDING_EMBED_KEY, serialized);
-  } catch {}
-  navigate("/admin/tools/embed-builder");
-}
+const EMBED_BUILDER_PATH = "/admin/tools/embed-builder";
 
-function applyInsertComponents(
-  action: InsertComponentsAction,
+const BUILDER_TARGETS = {
+  insert_embed: { event: INSERT_EMBED_EVENT, storageKey: PENDING_EMBED_KEY },
+  insert_components: {
+    event: INSERT_COMPONENTS_EVENT,
+    storageKey: PENDING_COMPONENTS_KEY,
+  },
+} as const;
+
+const TYPE_LABELS: Record<AdminChatAction["type"], string> = {
+  highlight: "Highlight",
+  navigate: "Navigate",
+  insert_embed: "Insert embed",
+  insert_components: "Insert components",
+};
+
+function sendToEmbedBuilder(
+  target: keyof typeof BUILDER_TARGETS,
+  payload: unknown,
   navigate: (to: string) => void,
 ): void {
-  const serialized = JSON.stringify(action.components);
-  const onBuilderPage = window.location.pathname.startsWith(
-    "/admin/tools/embed-builder",
-  );
-  if (onBuilderPage) {
-    window.dispatchEvent(
-      new CustomEvent(INSERT_COMPONENTS_EVENT, { detail: action.components }),
-    );
+  const { event, storageKey } = BUILDER_TARGETS[target];
+  if (window.location.pathname.startsWith(EMBED_BUILDER_PATH)) {
+    window.dispatchEvent(new CustomEvent(event, { detail: payload }));
     return;
   }
   try {
-    sessionStorage.setItem(PENDING_COMPONENTS_KEY, serialized);
+    sessionStorage.setItem(storageKey, JSON.stringify(payload));
   } catch {}
-  navigate("/admin/tools/embed-builder");
+  navigate(EMBED_BUILDER_PATH);
 }
 
 interface ActionCardProps {
@@ -118,23 +109,13 @@ export function ActionCard({
       setPersistent("applied");
       return;
     }
-    if (action.type === "insert_components") {
-      applyInsertComponents(action, navigate);
-      setPersistent("applied");
-      return;
-    }
-    applyInsertEmbed(action, navigate);
+    sendToEmbedBuilder(
+      action.type,
+      action.type === "insert_embed" ? action.embed : action.components,
+      navigate,
+    );
     setPersistent("applied");
   };
-
-  const typeLabel =
-    action.type === "highlight"
-      ? "Highlight"
-      : action.type === "navigate"
-        ? "Navigate"
-        : action.type === "insert_components"
-          ? "Insert components"
-          : "Insert embed";
 
   return (
     <div
@@ -147,7 +128,7 @@ export function ActionCard({
       <div className="flex items-center gap-1.5 text-muted-foreground">
         <Sparkles size={12} className="shrink-0 text-primary" />
         <span className="text-[0.625rem] font-semibold tracking-wider text-foreground uppercase">
-          {typeLabel}
+          {TYPE_LABELS[action.type]}
         </span>
         <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
           {describeAction(action)}

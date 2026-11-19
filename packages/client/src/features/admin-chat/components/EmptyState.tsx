@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ModelChip } from "./ModelChip";
 import { readingColumnClass, type ChatLayout } from "../layout";
-import type { AdminChatModel } from "../types";
+import { DEFAULT_ADMIN_CHAT_MODEL } from "../types";
 import { Spinner } from "@/components/ui/spinner";
 
 const QUICK_PROMPTS: string[] = [
@@ -16,16 +16,12 @@ interface EmptyStateProps {
   layout: ChatLayout;
   starting: boolean;
   onStart: (prefillMessage?: string) => void;
-  selectedModel: AdminChatModel;
-  onSelectModel: (model: AdminChatModel) => void;
 }
 
 export function EmptyState({
   layout,
   starting,
   onStart,
-  selectedModel,
-  onSelectModel,
 }: EmptyStateProps): React.JSX.Element {
   return (
     <div
@@ -60,11 +56,7 @@ export function EmptyState({
           {starting && <Spinner className="size-3.5" />}
           Start chat
         </Button>
-        <ModelChip
-          value={selectedModel}
-          onChange={onSelectModel}
-          disabled={starting}
-        />
+        <ModelChip value={DEFAULT_ADMIN_CHAT_MODEL} />
       </div>
       <div className="flex w-full flex-col gap-1.5 pt-2">
         <span className="text-[0.625rem] font-semibold tracking-wider text-muted-foreground uppercase">

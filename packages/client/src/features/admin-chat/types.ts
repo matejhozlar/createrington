@@ -1,17 +1,15 @@
 import type { ChatActionRecord } from "./actions";
 
-export const ADMIN_CHAT_MODELS = ["claude-opus-5-5"] as const;
-export type AdminChatModel = (typeof ADMIN_CHAT_MODELS)[number];
-export const DEFAULT_ADMIN_CHAT_MODEL: AdminChatModel = "claude-opus-5-5";
-
-export const ADMIN_CHAT_MODEL_LABELS: Record<AdminChatModel, string> = {
+export const ADMIN_CHAT_MODEL_LABELS = {
   "claude-opus-5-5": "Opus 5.5",
-};
+} as const;
+export type AdminChatModel = keyof typeof ADMIN_CHAT_MODEL_LABELS;
+export const DEFAULT_ADMIN_CHAT_MODEL: AdminChatModel = "claude-opus-5-5";
 
 export function isAdminChatModel(value: unknown): value is AdminChatModel {
   return (
     typeof value === "string" &&
-    (ADMIN_CHAT_MODELS as readonly string[]).includes(value)
+    Object.keys(ADMIN_CHAT_MODEL_LABELS).includes(value)
   );
 }
 

@@ -56,9 +56,9 @@ export function parseActionsFromMessage(raw: string): {
     (match, lang: string | undefined, body: string) => {
       const wasActionFence = lang === "action";
       try {
-        const parsed: unknown = JSON.parse(body);
-        if (isValidAction(parsed)) {
-          actions.push(parsed);
+        const action = coerceAction(JSON.parse(body));
+        if (action) {
+          actions.push(action);
           return "";
         }
       } catch {}
@@ -90,40 +90,51 @@ const EMBED_FIELDS = new Set([
 ]);
 
 export function coerceAction(raw: unknown): AdminChatAction | null {
-  if (isValidAction(raw)) return raw;
-  return null;
+  if (!raw || typeof raw !== "object") return null;
+  const rec = raw as Record<string, unknown>;
+  const label = typeof rec.label === "string" ? { label: rec.label } : {};
+  switch (rec.type) {
+    case "highlight":
+      if (typeof rec.selector !== "string" || rec.selector.length === 0) {
+        return null;
+      }
+      return {
+        type: "highlight",
+        selector: rec.selector,
+        ...(typeof rec.ttlMs === "number" && { ttlMs: rec.ttlMs }),
+        ...label,
+      };
+    case "navigate":
+      if (typeof rec.path !== "string" || !rec.path.startsWith("/")) {
+        return null;
+      }
+      return { type: "navigate", path: rec.path, ...label };
+    case "insert_components":
+      if (!Array.isArray(rec.components) || rec.components.length === 0) {
+        return null;
+      }
+      return {
+        type: "insert_components",
+        components: rec.components as ComponentNode[],
+        ...label,
+      };
+    case "insert_embed": {
+      const embed = coerceEmbed(rec);
+      return embed ? { type: "insert_embed", embed, ...label } : null;
+    }
+    default:
+      return null;
+  }
 }
 
-function isValidAction(a: unknown): a is AdminChatAction {
-  if (!a || typeof a !== "object") return false;
-  const rec = a as Record<string, unknown>;
-  if (rec.type === "highlight") {
-    return typeof rec.selector === "string" && rec.selector.length > 0;
+function coerceEmbed(rec: Record<string, unknown>): Partial<EmbedData> | null {
+  if (rec.embed && typeof rec.embed === "object") {
+    return rec.embed;
   }
-  if (rec.type === "navigate") {
-    return (
-      typeof rec.path === "string" &&
-      rec.path.length > 0 &&
-      rec.path.startsWith("/")
-    );
-  }
-  if (rec.type === "insert_components") {
-    return Array.isArray(rec.components) && rec.components.length > 0;
-  }
-  if (rec.type === "insert_embed") {
-    if (rec.embed && typeof rec.embed === "object") return true;
-    const flattened: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(rec)) {
-      if (EMBED_FIELDS.has(k)) flattened[k] = v;
-    }
-    if (Object.keys(flattened).length > 0) {
-      rec.embed = flattened;
-      for (const k of Object.keys(flattened)) delete rec[k];
-      return true;
-    }
-    return false;
-  }
-  return false;
+  const flattened = Object.fromEntries(
+    Object.entries(rec).filter(([key]) => EMBED_FIELDS.has(key)),
+  );
+  return Object.keys(flattened).length > 0 ? flattened : null;
 }
 
 export function describeAction(action: AdminChatAction): string {

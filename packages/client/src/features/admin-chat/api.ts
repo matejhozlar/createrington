@@ -1,11 +1,6 @@
 import { api } from "@/services/api/client";
 import { coerceAction, type ChatActionRecord } from "./actions";
-import type {
-  AdminChatModel,
-  ChatMessage,
-  PageContext,
-  RepoSuggestion,
-} from "./types";
+import type { ChatMessage, PageContext, RepoSuggestion } from "./types";
 
 const PREFIX = "api/claude-chat";
 
@@ -34,7 +29,6 @@ export interface SessionStatusResponse {
 
 export interface StartSessionResponse {
   sessionId?: number;
-  error?: string;
   model?: string | null;
 }
 
@@ -73,7 +67,6 @@ export function fetchRepos(): Promise<ReposResponse> {
 
 export function startSession(body: {
   pageContext: PageContext;
-  model?: AdminChatModel;
 }): Promise<StartSessionResponse> {
   return api.post<StartSessionResponse>(`${PREFIX}/start`, body);
 }
