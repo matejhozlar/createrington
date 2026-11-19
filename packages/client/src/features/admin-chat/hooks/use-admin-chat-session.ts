@@ -242,6 +242,7 @@ export function useAdminChatSession({
         const id = data.sessionId;
         const prefill = prefillMessage?.trim();
         const optimistic = prefill ? optimisticUserMessage(prefill) : null;
+        await queryClient.cancelQueries({ queryKey: SESSION_KEY });
         queryClient.setQueryData<ChatMessage[]>(
           messagesKey(id),
           optimistic ? [optimistic] : [],
