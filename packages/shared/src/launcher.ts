@@ -437,8 +437,3 @@ export interface LauncherSuccessResponse<T> {
   success: true;
   data: T;
 }
-
-export interface LauncherLogoutResponse {
-  success: true;
-  message: string;
-}
