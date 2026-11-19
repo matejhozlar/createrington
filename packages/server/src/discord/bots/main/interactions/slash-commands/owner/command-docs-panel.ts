@@ -2,7 +2,7 @@ import { createEmbed, EmbedColors, EmbedPresets } from "@/discord/embeds";
 import { isSendableChannel } from "@/discord/utils/channel-guard";
 import { replyError } from "@/discord/utils/interaction-reply";
 import { COMMAND_GROUPS, GROUP_ORDER } from "@/config/command-groups";
-import config from "@/config";
+import { siteUrl } from "@/config/site-url";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -109,7 +109,7 @@ export async function execute(
     grouped.set(group, list);
   }
 
-  const guideUrl = `${config.meta.links.website}/guides/discord-commands`;
+  const guideUrl = siteUrl("/guides/discord-commands");
 
   const embed = createEmbed()
     .title("Discord Commands")

@@ -1,4 +1,5 @@
 import config from "@/config";
+import { siteUrl } from "@/config/site-url";
 import { encodeStatParam } from "@createrington/shared/minecraft-stats";
 import { ButtonBuilder, ButtonStyle } from "discord.js";
 
@@ -21,7 +22,7 @@ export const ButtonPresets = {
     },
 
     leaderboard(stat?: { category: string; item: string }): ButtonBuilder {
-      const url = new URL(`${cfg.website.replace(/\/+$/, "")}/leaderboards`);
+      const url = new URL(siteUrl("/leaderboards"));
       if (stat) url.searchParams.set("stat", encodeStatParam(stat));
       url.hash = "boards";
       return new ButtonBuilder()
@@ -31,9 +32,7 @@ export const ButtonPresets = {
     },
 
     compare(firstUsername: string, secondUsername: string): ButtonBuilder {
-      const url = new URL(
-        `${cfg.website.replace(/\/+$/, "")}/leaderboards/compare`,
-      );
+      const url = new URL(siteUrl("/leaderboards/compare"));
       url.searchParams.set("a", firstUsername);
       url.searchParams.set("b", secondUsername);
       return new ButtonBuilder()
@@ -43,7 +42,7 @@ export const ButtonPresets = {
     },
 
     teamTag(code: string): ButtonBuilder {
-      const url = new URL(`${cfg.website.replace(/\/+$/, "")}/team-tag`);
+      const url = new URL(siteUrl("/team-tag"));
       url.searchParams.set("design", code);
       return new ButtonBuilder()
         .setLabel("Open in the editor")

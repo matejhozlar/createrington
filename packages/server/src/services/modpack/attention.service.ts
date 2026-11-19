@@ -16,6 +16,7 @@ import {
 import { announceReview } from "@/services/workshop/discord";
 import { recordModEvent } from "@/services/workshop/events";
 import { modpackService } from "./modpack.service";
+import { projectLabel } from "@/services/curseforge/project";
 
 interface AttentionSubject {
   curseforgeProjectId: number;
@@ -165,12 +166,12 @@ export class ModpackAttentionService {
         ? await Q.curseforge.project.findAll({ id: { $in: projectIds } })
         : [];
     const projectById = new Map(projects.map((p) => [p.id, p]));
-    const label = (id: number) => projectById.get(id)?.name ?? `#${id}`;
+    const label = (id: number) => projectLabel(projectById.get(id)?.name, id);
     const attentionSubject = (id: number): AttentionSubject => {
       const project = projectById.get(id);
       return {
         curseforgeProjectId: id,
-        name: project?.name ?? `#${id}`,
+        name: projectLabel(project?.name, id),
         websiteUrl: project?.websiteUrl ?? null,
       };
     };
@@ -317,7 +318,7 @@ export class ModpackAttentionService {
     await Promise.all(workshops.map((row) => pruneStaleDependencyEdges(row)));
     return {
       member,
-      projectName: project?.name ?? `#${member.curseforgeProjectId}`,
+      projectName: projectLabel(project?.name, member.curseforgeProjectId),
       mod: updated,
     };
   }

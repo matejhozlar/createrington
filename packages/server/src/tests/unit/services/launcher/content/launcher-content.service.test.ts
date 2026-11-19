@@ -9,10 +9,14 @@ vi.mock("@/services/curseforge/content", async (importOriginal) => {
     getProjectDescription: vi.fn(),
     listCategories: vi.fn(),
     listProjectFiles: vi.fn(),
-    getContentFiles: vi.fn(),
     getFileChangelog: vi.fn(),
     matchFingerprints: vi.fn(),
   };
+});
+vi.mock("@/services/curseforge/files", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/services/curseforge/files")>();
+  return { ...actual, getFiles: vi.fn() };
 });
 vi.mock("@/services/curseforge/mods", async (importOriginal) => {
   const actual =
@@ -35,15 +39,15 @@ import {
   getMods,
   type CurseForgeProjectData,
 } from "@/services/curseforge/mods";
+import type { CurseForgeFile } from "@/services/curseforge/client";
+import { getFiles } from "@/services/curseforge/files";
 import {
-  getContentFiles,
   getFileChangelog,
   getProjectDescription,
   listCategories,
   listProjectFiles,
   matchFingerprints,
   searchProjects,
-  type CurseForgeContentFile,
   type CurseForgeProjectHit,
 } from "@/services/curseforge/content";
 import {
@@ -52,6 +56,7 @@ import {
 } from "@/services/curseforge/downloads";
 import { featureFlagService } from "@/services/feature-flag";
 import { launcherContentService } from "@/services/launcher/content/launcher-content.service";
+import { curseforgeFile } from "@/tests/helpers/curseforge-file";
 
 const CREATE_PAGE = "https://www.curseforge.com/minecraft/mc-mods/create";
 
@@ -73,9 +78,9 @@ function makeHit(
 }
 
 function makeContentFile(
-  overrides: Partial<CurseForgeContentFile> = {},
-): CurseForgeContentFile {
-  return {
+  overrides: Partial<CurseForgeFile> = {},
+): CurseForgeFile {
+  return curseforgeFile({
     id: 7000001,
     projectId: 328085,
     gameId: 432,
@@ -88,9 +93,8 @@ function makeContentFile(
     fileLength: 19123767,
     sha1: "0e97e49837bed766e6f28a4c95b04885d6acc353",
     gameVersions: ["1.21.1", "NeoForge"],
-    dependencies: [],
     ...overrides,
-  };
+  });
 }
 
 function makeProjectData(
@@ -164,7 +168,7 @@ function packProject() {
   });
 }
 
-function packZip(overrides: Partial<CurseForgeContentFile> = {}) {
+function packZip(overrides: Partial<CurseForgeFile> = {}) {
   return makeContentFile({
     id: 6500000,
     projectId: 925200,
@@ -734,16 +738,16 @@ describe("LauncherContentService.listFiles", () => {
 
 describe("LauncherContentService.getFile", () => {
   it("answers a file with its address, hash and dependencies", async () => {
-    vi.mocked(getContentFiles).mockResolvedValue([
+    vi.mocked(getFiles).mockResolvedValue([
       makeContentFile({
-        dependencies: [{ projectId: 238222, required: true }],
+        dependencies: [{ projectId: 238222, relationType: 3 }],
       }),
     ]);
     vi.mocked(getMods).mockResolvedValue([createProject()]);
 
     const file = await launcherContentService.getFile(7000001);
 
-    expect(getContentFiles).toHaveBeenCalledWith([7000001]);
+    expect(getFiles).toHaveBeenCalledWith([7000001]);
     expect(getMods).toHaveBeenCalledWith([328085]);
     expect(file).toMatchObject({
       id: "7000001",
@@ -761,7 +765,7 @@ describe("LauncherContentService.getFile", () => {
 
   describe("for a file CurseForge blocks", () => {
     beforeEach(() => {
-      vi.mocked(getContentFiles).mockResolvedValue([
+      vi.mocked(getFiles).mockResolvedValue([
         makeContentFile({ downloadUrl: null }),
       ]);
       vi.mocked(getMods).mockResolvedValue([createProject()]);
@@ -828,7 +832,7 @@ describe("LauncherContentService.getFile", () => {
     ["belongs to another game", () => [makeContentFile({ gameId: 1 })]],
     ["has no SHA-1", () => [makeContentFile({ sha1: null })]],
   ])("answers 404 for a file that %s", async (_label, files) => {
-    vi.mocked(getContentFiles).mockResolvedValue(files());
+    vi.mocked(getFiles).mockResolvedValue(files());
     vi.mocked(getMods).mockResolvedValue([createProject()]);
 
     await expect(launcherContentService.getFile(7000001)).rejects.toMatchObject(
@@ -837,7 +841,7 @@ describe("LauncherContentService.getFile", () => {
   });
 
   it("answers 404 for a file of a project that is no mod, resource pack, shader or modpack", async () => {
-    vi.mocked(getContentFiles).mockResolvedValue([
+    vi.mocked(getFiles).mockResolvedValue([
       makeContentFile({ projectId: 6945001 }),
     ]);
     vi.mocked(getMods).mockResolvedValue([
@@ -954,7 +958,7 @@ describe("LauncherContentService for modpacks", () => {
   });
 
   it("answers the zip of a modpack with its address and SHA-1", async () => {
-    vi.mocked(getContentFiles).mockResolvedValue([packZip()]);
+    vi.mocked(getFiles).mockResolvedValue([packZip()]);
     vi.mocked(getMods).mockResolvedValue([packProject()]);
 
     const file = await launcherContentService.getFile(6500000);
@@ -976,8 +980,8 @@ describe("LauncherContentService.getFiles", () => {
   const FLYWHEEL_PAGE =
     "https://www.curseforge.com/minecraft/mc-mods/vitest-mod-486392";
 
-  function serveFiles(files: CurseForgeContentFile[]) {
-    vi.mocked(getContentFiles).mockImplementation(async (ids) =>
+  function serveFiles(files: CurseForgeFile[]) {
+    vi.mocked(getFiles).mockImplementation(async (ids) =>
       files.filter((file) => ids.includes(file.id)),
     );
   }
@@ -1006,8 +1010,8 @@ describe("LauncherContentService.getFiles", () => {
       7000002, 7000003, 7000001, 7000004, 7000005, 7999999, 7000002,
     ]);
 
-    expect(getContentFiles).toHaveBeenCalledTimes(1);
-    expect(getContentFiles).toHaveBeenCalledWith([
+    expect(getFiles).toHaveBeenCalledTimes(1);
+    expect(getFiles).toHaveBeenCalledWith([
       7000002, 7000003, 7000001, 7000004, 7000005, 7999999,
     ]);
     expect(getMods).toHaveBeenCalledTimes(1);
@@ -1077,8 +1081,8 @@ describe("LauncherContentService.getFiles", () => {
   });
 
   it("answers 503 when CurseForge fails", async () => {
-    vi.mocked(getContentFiles).mockRejectedValue(
-      new Error("CurseForge getContentFiles failed"),
+    vi.mocked(getFiles).mockRejectedValue(
+      new Error("CurseForge getFiles failed"),
     );
 
     await expect(
@@ -1091,7 +1095,7 @@ describe("LauncherContentService.getFileChangelog", () => {
   const CHANGELOG = "<p>Fixed the crash on load</p>";
 
   beforeEach(() => {
-    vi.mocked(getContentFiles).mockResolvedValue([makeContentFile()]);
+    vi.mocked(getFiles).mockResolvedValue([makeContentFile()]);
     vi.mocked(getMods).mockResolvedValue([createProject()]);
     vi.mocked(getFileChangelog).mockResolvedValue(CHANGELOG);
   });
@@ -1099,7 +1103,7 @@ describe("LauncherContentService.getFileChangelog", () => {
   it("looks the file up for its project and answers the changelog of the file", async () => {
     const changelog = await launcherContentService.getFileChangelog(7000001);
 
-    expect(getContentFiles).toHaveBeenCalledWith([7000001]);
+    expect(getFiles).toHaveBeenCalledWith([7000001]);
     expect(getFileChangelog).toHaveBeenCalledWith(328085, 7000001);
     expect(changelog).toBe(CHANGELOG);
   });
@@ -1122,7 +1126,7 @@ describe("LauncherContentService.getFileChangelog", () => {
     expect(changelog).toBe(CHANGELOG);
     expect(getMods).toHaveBeenCalledWith([328085]);
     expect(getFileChangelog).toHaveBeenCalledWith(328085, 7000001);
-    expect(getContentFiles).not.toHaveBeenCalled();
+    expect(getFiles).not.toHaveBeenCalled();
   });
 
   it("answers 404 for a file that is no file of the project named", async () => {
@@ -1156,14 +1160,12 @@ describe("LauncherContentService.getFileChangelog", () => {
         launcherContentService.getFileChangelog(7000001, 6945001),
       ).rejects.toMatchObject({ statusCode: 404, code: "FILE_NOT_FOUND" });
       expect(getFileChangelog).not.toHaveBeenCalled();
-      expect(getContentFiles).not.toHaveBeenCalled();
+      expect(getFiles).not.toHaveBeenCalled();
     },
   );
 
   it("holds a file to the rules of a file lookup only when no project is named", async () => {
-    vi.mocked(getContentFiles).mockResolvedValue([
-      makeContentFile({ sha1: null }),
-    ]);
+    vi.mocked(getFiles).mockResolvedValue([makeContentFile({ sha1: null })]);
 
     await expect(
       launcherContentService.getFileChangelog(7000001),
@@ -1196,7 +1198,7 @@ describe("LauncherContentService.getFileChangelog", () => {
   ])(
     "answers 404 for a file that %s, without asking for a changelog",
     async (_label, files) => {
-      vi.mocked(getContentFiles).mockResolvedValue(files());
+      vi.mocked(getFiles).mockResolvedValue(files());
 
       await expect(
         launcherContentService.getFileChangelog(7000001),

@@ -9,8 +9,8 @@ import {
 } from "vitest";
 import config from "@/config";
 import { getMods } from "@/services/curseforge/mods";
+import { getFiles } from "@/services/curseforge/files";
 import {
-  getContentFiles,
   getFileChangelog,
   getProjectDescription,
   listCategories,
@@ -405,9 +405,15 @@ describe("listProjectFiles", () => {
         sha1: "abcdef0123456789abcdef0123456789abcdef01",
         gameVersions: ["Client", "1.21.1", "NeoForge", "Server"],
         dependencies: [
-          { projectId: 238222, required: false },
-          { projectId: 328085, required: true },
+          { projectId: 238222, relationType: 2 },
+          { projectId: 328085, relationType: 3 },
         ],
+        fileStatus: null,
+        isAvailable: true,
+        serverPackFileId: null,
+        alternateFileId: null,
+        parentProjectFileId: null,
+        isServerPack: false,
       },
     ]);
   });
@@ -426,9 +432,9 @@ describe("listProjectFiles", () => {
   });
 });
 
-describe("getContentFiles", () => {
+describe("getFiles", () => {
   it("asks for nothing without ids", async () => {
-    expect(await getContentFiles([])).toEqual([]);
+    expect(await getFiles([])).toEqual([]);
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -439,7 +445,7 @@ describe("getContentFiles", () => {
       ...Array.from({ length: 150 }, (_, i) => 990000000 + i),
     ];
 
-    const files = await getContentFiles(ids);
+    const files = await getFiles(ids);
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(requestedUrl(fetchMock).pathname).toBe("/v1/curseforge/mods/files");
@@ -455,14 +461,14 @@ describe("getContentFiles", () => {
       new Response(null, { status: 404, headers: { "x-cache": "miss" } }),
     );
 
-    expect(await getContentFiles([999999999])).toEqual([]);
+    expect(await getFiles([999999999])).toEqual([]);
   });
 
   it("throws when CurseForge fails", async () => {
     fetchMock.mockResolvedValue(answer({}, 503));
 
-    await expect(getContentFiles([7000001])).rejects.toThrow(
-      "CurseForge getContentFiles failed (503)",
+    await expect(getFiles([7000001])).rejects.toThrow(
+      "CurseForge getFiles failed (503)",
     );
   });
 });
@@ -508,8 +514,8 @@ describe("matchFingerprints", () => {
         projectId: 439890,
         sha1: "abcdef0123456789abcdef0123456789abcdef01",
         dependencies: [
-          { projectId: 238222, required: false },
-          { projectId: 328085, required: true },
+          { projectId: 238222, relationType: 2 },
+          { projectId: 328085, relationType: 3 },
         ],
       },
     });

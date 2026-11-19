@@ -15,7 +15,7 @@ import {
   type ModpackReleaseDiff,
 } from "./release-changelog";
 import { isOlderVersion } from "./version";
-import config from "@/config";
+import { siteUrl } from "@/config/site-url";
 
 export interface ModpackReleaseAnnouncementSummary {
   parts: number;
@@ -110,12 +110,13 @@ export class ModpackReleaseService {
             { orderBy: "id", orderDirection: "desc", limit: 1 },
           )
         : [];
-    const website = config.meta.links.website.replace(/\/+$/, "");
     const sectionOf = async (
       release: ModpackRelease,
     ): Promise<ChangelogMarkdownSection> => ({
       changelog: await getReleaseChangelog(modpack, release),
-      rowImageBaseUrl: `${website}/api/modpacks/${options.curseforgeProjectId}/changelog/rows/${release.curseforgeFileId}`,
+      rowImageBaseUrl: siteUrl(
+        `/api/modpacks/${options.curseforgeProjectId}/changelog/rows/${release.curseforgeFileId}`,
+      ),
     });
     const [latestSection, installedSection] = await Promise.all([
       sectionOf(latest),

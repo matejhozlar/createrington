@@ -1,4 +1,4 @@
-import config from "@/config";
+import { siteUrl } from "@/config/site-url";
 import {
   ActionRowBuilder,
   ButtonBuilder,
@@ -48,9 +48,8 @@ function message(container: ContainerBuilder): RegistrationMessage {
 }
 
 function termsLine(): TextDisplayBuilder {
-  const site = config.meta.links.website;
   return text(
-    `-# By registering you agree to our [Rules](${site}/rules), [Terms of Service](${site}/terms) and [Privacy Policy](${site}/privacy).`,
+    `-# By registering you agree to our [Rules](${siteUrl("/rules")}), [Terms of Service](${siteUrl("/terms")}) and [Privacy Policy](${siteUrl("/privacy")}).`,
   );
 }
 
@@ -176,7 +175,7 @@ export const RegistrationComponentPresets = {
         text(`**Useful channels**\n${channels}`),
         text(
           `**📖 Guides**\n` +
-            `Our [Guides](${config.meta.links.website}/guides) cover everything from installing and updating the modpack to adding custom mods.`,
+            `Our [Guides](${siteUrl("/guides")}) cover everything from installing and updating the modpack to adding custom mods.`,
         ),
         text(
           `**Need help?**\n` +

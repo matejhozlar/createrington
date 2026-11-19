@@ -17,7 +17,8 @@ import {
   httpUrlSchema,
   type ComponentsData,
 } from "@createrington/shared/api/embed";
-import { CURSEFORGE_CLASSES } from "@createrington/shared/workshop";
+import { loaderLabel } from "@/services/curseforge/loader";
+import { curseforgeProjectUrl } from "@/services/curseforge/project";
 import type {
   Modpack,
   ModpackRelease,
@@ -33,21 +34,6 @@ export const CHANGELOG_PRESET_CATEGORY = "Changelogs";
 const PRESET_AUTHOR = "system";
 const PRESET_NAME_MAX = 100;
 const PRESET_NAME_SEARCH_PREFIX = 40;
-
-const CLASS_PATHS: Record<number, string> = {
-  [CURSEFORGE_CLASSES.mods]: "mc-mods",
-  [CURSEFORGE_CLASSES.modpacks]: "modpacks",
-  [CURSEFORGE_CLASSES.resourcePacks]: "texture-packs",
-  [CURSEFORGE_CLASSES.shaders]: "shaders",
-  [CURSEFORGE_CLASSES.dataPacks]: "data-packs",
-};
-
-const LOADER_NAMES: Record<string, string> = {
-  forge: "Forge",
-  neoforge: "NeoForge",
-  fabric: "Fabric",
-  quilt: "Quilt",
-};
 
 const MENTION_ROLE_ID = Discord.Roles.UPDATE;
 
@@ -321,13 +307,6 @@ function releaseLabel(release: ModpackRelease): string {
   );
 }
 
-function loaderLabel(loader: string | null): string | null {
-  if (!loader) return null;
-  const [name, ...rest] = loader.split("-");
-  const pretty = LOADER_NAMES[name.toLowerCase()] ?? name;
-  return rest.length > 0 ? `${pretty} ${rest.join("-")}` : pretty;
-}
-
 function httpUrl(value: string | null | undefined): string | null {
   if (!value) return null;
   return httpUrlSchema.safeParse(value).success ? value : null;
@@ -339,14 +318,13 @@ function fileLabel(row: ReleaseModRow): string {
 }
 
 function projectUrl(row: ReleaseModRow): string | null {
-  const cached = httpUrl(row.websiteUrl);
-  if (cached) return cached;
-  const path = CLASS_PATHS[row.classId];
-  return path
-    ? httpUrl(
-        `https://www.curseforge.com/minecraft/${path}/${encodeURIComponent(row.projectSlug)}`,
-      )
-    : null;
+  return httpUrl(
+    curseforgeProjectUrl({
+      websiteUrl: httpUrl(row.websiteUrl),
+      classId: row.classId,
+      slug: row.projectSlug,
+    }),
+  );
 }
 
 function stateLabel(required: boolean): string {
@@ -406,7 +384,7 @@ export async function toChangelogInputs(
         label: releaseLabel(release),
         titleImageUrl: httpUrl(modpack.titleImageUrl),
         minecraftVersion: release.minecraftVersion,
-        modLoader: loaderLabel(release.modLoader),
+        modLoader: release.modLoader ? loaderLabel(release.modLoader) : null,
         modCount: release.modCount,
         publishedAt: release.publishedAt,
         downloadUrl: packUrl

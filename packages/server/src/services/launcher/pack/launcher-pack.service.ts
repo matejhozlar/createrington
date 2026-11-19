@@ -26,7 +26,7 @@ import {
   type LauncherPackSummary,
 } from "@createrington/shared/launcher";
 import { packError } from "./pack-error";
-import { parseModLoader } from "./pack-rules";
+import { parseLoaderId } from "@/services/curseforge/loader";
 import { storageSnapshotUrl } from "./sandbox-files";
 
 function toAppProject(slug: string, modpack: Modpack): LauncherPackProject {
@@ -60,9 +60,7 @@ function toPackData(
   project: LauncherPackProject,
   source: LauncherPackSource,
 ): LauncherPackData | null {
-  const modLoader = release.modLoader
-    ? parseModLoader(release.modLoader)
-    : null;
+  const modLoader = release.modLoader ? parseLoaderId(release.modLoader) : null;
   if (
     !release.version ||
     !release.minecraftVersion ||

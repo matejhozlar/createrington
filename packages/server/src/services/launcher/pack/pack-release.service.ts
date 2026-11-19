@@ -12,11 +12,13 @@ import { refreshProjects } from "@/services/curseforge/ingest";
 import { curseforgeFilePageUrl } from "@/services/launcher/content/curseforge-content";
 import { getMinecraftJavaMajorVersion } from "@/services/content-gateway/minecraft";
 import type { Modpack, ModpackRelease } from "@createrington/shared/db";
-import { packFolderForClass, parseModLoader } from "./pack-rules";
+import { parseLoaderId } from "@/services/curseforge/loader";
+import { packFolderForClass } from "./pack-rules";
 import {
   launcherPackFileService,
   NOTICE_MAX_FILES,
 } from "./pack-files.service";
+import { projectLabel } from "@/services/curseforge/project";
 
 export interface SnapshotZip {
   fileName: string;
@@ -183,7 +185,7 @@ export class LauncherPackReleaseService {
       }
 
       const modLoader = manifest.modLoader
-        ? parseModLoader(manifest.modLoader)
+        ? parseLoaderId(manifest.modLoader)
         : null;
       if (!manifest.version || !manifest.minecraftVersion || !modLoader) {
         await this.reportBlocked(
@@ -285,7 +287,7 @@ export class LauncherPackReleaseService {
       const release = await Q.modpack.release.get({ id: releaseId });
       if (release.launcherReadyAt !== null) return { status: "ready" };
 
-      const modLoader = parseModLoader(snapshot.modLoader);
+      const modLoader = parseLoaderId(snapshot.modLoader);
       if (!modLoader) {
         return {
           status: "blocked",
@@ -460,7 +462,7 @@ export class LauncherPackReleaseService {
 
     const lines = manual.slice(0, NOTICE_MAX_FILES).map((entry) => {
       const row = stored.get(entry.fileId);
-      const name = nameById.get(entry.projectId) ?? `#${entry.projectId}`;
+      const name = projectLabel(nameById.get(entry.projectId), entry.projectId);
       const pageUrl = row ? curseforgeFilePageUrl(row.project, row.id) : null;
       return [
         `- ${pageUrl ? `[${name}](${pageUrl})` : name}`,

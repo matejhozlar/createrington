@@ -49,10 +49,7 @@ import pool, { Q } from "@/db";
 import { BadRequestError, NotFoundError } from "@/errors";
 import { modpackPublishService } from "@/services/modpack/publish.service";
 import { modpackReleaseService } from "@/services/modpack/release.service";
-import {
-  getModpackFile,
-  type ModpackFile,
-} from "@/services/curseforge/modpack";
+import { getModpackFile } from "@/services/curseforge/modpack";
 import { getModpackManifest } from "@/services/curseforge/modpack-manifest";
 import { launcherPackReleaseService } from "@/services/launcher/pack/pack-release.service";
 import { findSandboxSnapshotUrl } from "@/services/launcher/pack/sandbox-files";
@@ -69,6 +66,7 @@ import {
   seedLauncherPack,
 } from "@/tests/helpers/launcher-pack";
 import { manifest, sidedManifest, fileIdFor } from "@/tests/helpers/modpack";
+import { curseforgeFile } from "@/tests/helpers/curseforge-file";
 
 const USER_A = "999900000000000002";
 
@@ -88,26 +86,6 @@ afterAll(async () => {
   await pool.end();
 });
 
-function cfFile(
-  overrides: Partial<ModpackFile> & { id: number; projectId: number },
-): ModpackFile {
-  return {
-    displayName: null,
-    fileName: null,
-    fileDate: null,
-    downloadUrl: null,
-    fileLength: null,
-    sha1: null,
-    fileStatus: null,
-    isAvailable: true,
-    serverPackFileId: null,
-    alternateFileId: null,
-    parentProjectFileId: null,
-    isServerPack: false,
-    ...overrides,
-  };
-}
-
 describe("ModpackPublishService.recordPublish", () => {
   const CLIENT = 8_710_127;
   const SERVER = 8_710_134;
@@ -115,9 +93,13 @@ describe("ModpackPublishService.recordPublish", () => {
   function serveReportedPair(projectId: number) {
     vi.mocked(getModpackFile).mockImplementation(async (_project, fileId) =>
       fileId === CLIENT
-        ? cfFile({ id: CLIENT, projectId })
+        ? curseforgeFile({ id: CLIENT, projectId })
         : fileId === SERVER
-          ? cfFile({ id: SERVER, projectId, parentProjectFileId: CLIENT })
+          ? curseforgeFile({
+              id: SERVER,
+              projectId,
+              parentProjectFileId: CLIENT,
+            })
           : null,
     );
   }
@@ -258,7 +240,7 @@ describe("ModpackPublishService.recordPublish", () => {
     const projectId = ctx.nextProjectId++;
     const modpack = await seedModpack(ctx, { curseforgeProjectId: projectId });
     vi.mocked(getModpackFile).mockImplementation(async (_project, fileId) =>
-      cfFile({
+      curseforgeFile({
         id: fileId,
         projectId,
         parentProjectFileId: fileId === SERVER ? CLIENT - 1 : null,
@@ -281,7 +263,7 @@ describe("ModpackPublishService.recordPublish", () => {
     const projectId = ctx.nextProjectId++;
     await seedModpack(ctx, { curseforgeProjectId: projectId });
     vi.mocked(getModpackFile).mockImplementation(async (_project, fileId) =>
-      fileId === CLIENT ? cfFile({ id: CLIENT, projectId }) : null,
+      fileId === CLIENT ? curseforgeFile({ id: CLIENT, projectId }) : null,
     );
 
     await expect(

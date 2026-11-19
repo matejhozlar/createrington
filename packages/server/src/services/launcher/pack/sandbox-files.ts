@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import config from "@/config";
+import { siteUrl } from "@/config/site-url";
 import { findFileUrls } from "./file-lookup";
 
 export interface SandboxFileQuery {
@@ -38,8 +39,7 @@ function internalUrl(): string | null {
 }
 
 function storageUrl(path: string): string {
-  const website = config.meta.links.website.replace(/\/+$/, "");
-  return `${website}${STORAGE_FILES_PATH}/${path}`;
+  return siteUrl(`${STORAGE_FILES_PATH}/${path}`);
 }
 
 /** The app's own download link for a jar the sandbox keeps under this CurseForge file id. */

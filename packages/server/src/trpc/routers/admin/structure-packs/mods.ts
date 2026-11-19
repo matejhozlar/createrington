@@ -4,14 +4,17 @@ import { Q } from "@/db";
 import { httpUrlSchema } from "@createrington/shared/api/embed";
 import { structurePackService } from "@/services/structure-pack";
 import {
-  searchMods,
-  getModFiles,
-  resolveDependencies,
-} from "@/services/curseforge/mods";
+  DEFAULT_GAME_VERSION,
+  NEOFORGE_LOADER_TYPE,
+} from "@/services/curseforge/client";
+import { listProjectFiles } from "@/services/curseforge/content";
 import { getFilesDependencies } from "@/services/curseforge/files";
+import { resolveDependencies, searchMods } from "@/services/curseforge/mods";
 import { auditActor } from "@/trpc/utils";
 import { getRotationService } from "./helpers";
 import { structurePackModFileName } from "@createrington/shared/structure-pack";
+
+const MOD_FILES_PAGE_SIZE = 50;
 
 export const structurePackModProcedures = {
   addMod: adminProcedure
@@ -73,7 +76,17 @@ export const structurePackModProcedures = {
     .meta({ description: "Get available files for a CurseForge mod" })
     .input(z.object({ modId: z.number().int().positive() }))
     .query(async ({ input }) => {
-      return getModFiles(input.modId);
+      const { files } = await listProjectFiles(input.modId, {
+        gameVersion: DEFAULT_GAME_VERSION,
+        modLoaderType: NEOFORGE_LOADER_TYPE,
+        index: 0,
+        pageSize: MOD_FILES_PAGE_SIZE,
+      });
+      return files.flatMap(({ fileName, displayName, ...file }) =>
+        fileName
+          ? [{ ...file, fileName, displayName: displayName || fileName }]
+          : [],
+      );
     }),
 
   resolveDeps: adminProcedure
