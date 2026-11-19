@@ -178,6 +178,12 @@ export function useAdminChatSession({
     }
   }, [sessionQuery.error, toast]);
 
+  useEffect(() => {
+    if (historyQuery.error) {
+      toast.error("Couldn't load the chat history");
+    }
+  }, [historyQuery.error, toast]);
+
   const pageContext = useCallback(
     (type: PageContext["type"]): PageContext => ({
       type,
