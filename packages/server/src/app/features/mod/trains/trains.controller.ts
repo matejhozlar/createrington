@@ -1,54 +1,14 @@
-import { respondSuccess } from "@/app/middleware";
-import { BadRequestError } from "@/errors";
+import { getValidated } from "@/app/middleware/validation.middleware";
+import { respondSuccess } from "@/app/middleware/api-envelope";
 import { Q } from "@/db";
 import { Discord } from "@/discord/constants";
 import { createEmbed } from "@/discord/embeds";
 import { EmbedColors } from "@/discord/embeds/colors";
-import { MC_UUID_REGEX } from "@/utils/zod-schemas";
 import type { Request, Response } from "express";
-import { z } from "zod";
-
-const uuidSchema = z.string().regex(MC_UUID_REGEX, "Invalid UUID");
-const playerNameSchema = z.string().min(1).max(32);
-
-const trainCrashSchema = z.object({
-  trainId: z.string().min(1).max(100),
-  trainName: z.string().min(1).max(100),
-  speed: z.number().finite().optional(),
-  carriageCount: z.number().int().nonnegative().optional(),
-  position: z
-    .object({
-      x: z.number().finite(),
-      y: z.number().finite(),
-      z: z.number().finite(),
-    })
-    .nullable()
-    .optional(),
-  dimension: z.string().max(100).optional(),
-  timestamp: z.number().int().nonnegative().optional(),
-  owner: uuidSchema.optional(),
-  driverUuid: uuidSchema.optional(),
-  passengers: z
-    .array(
-      z.object({
-        uuid: uuidSchema,
-        name: playerNameSchema.optional(),
-        isDriver: z.boolean(),
-      }),
-    )
-    .max(64)
-    .optional(),
-  backwardsDriver: z
-    .object({ uuid: uuidSchema, name: playerNameSchema.optional() })
-    .optional(),
-});
+import type { TrainCrashBody } from "./trains.schemas";
 
 export class TrainsController {
-  static async reportCrash(req: Request, res: Response): Promise<void> {
-    const parsed = trainCrashSchema.safeParse(req.body);
-    if (!parsed.success) {
-      throw new BadRequestError("Invalid train crash payload");
-    }
+  static async reportCrash(_req: Request, res: Response): Promise<void> {
     const {
       trainId,
       trainName,
@@ -61,7 +21,7 @@ export class TrainsController {
       driverUuid,
       passengers,
       backwardsDriver,
-    } = parsed.data;
+    } = getValidated<{ body: TrainCrashBody }>(res).body;
 
     const allUuids = new Set<string>();
     if (owner) allUuids.add(owner);

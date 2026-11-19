@@ -1,22 +1,22 @@
-import { BadRequestError, NotFoundError } from "@/errors";
+import { getValidated } from "@/app/middleware/validation.middleware";
+import { respondSuccess } from "@/app/middleware/api-envelope";
+import { NotFoundError } from "@/errors";
 import { consumeSsoCode } from "@/services/auth/sso/code-store";
 import type { Request, Response } from "express";
+import type { SsoExchangeBody } from "./sso-exchange.schemas";
 
 export class InternalSsoExchangeController {
-  static async exchange(req: Request, res: Response): Promise<void> {
-    const { code } = (req.body ?? {}) as { code?: unknown };
-
-    if (typeof code !== "string" || !code) {
-      throw new BadRequestError("code is required");
-    }
+  static async exchange(_req: Request, res: Response): Promise<void> {
+    const {
+      body: { code },
+    } = getValidated<{ body: SsoExchangeBody }>(res);
 
     const payload = await consumeSsoCode(code);
     if (!payload) {
       throw new NotFoundError("Unknown, expired, or already-consumed code");
     }
 
-    res.json({
-      success: true,
+    respondSuccess(res, {
       data: {
         playerId: payload.playerId,
         minecraftUsername: payload.minecraftUsername,

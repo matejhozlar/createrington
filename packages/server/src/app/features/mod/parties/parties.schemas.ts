@@ -1,7 +1,12 @@
 import { mcUuid } from "@/utils/zod-schemas";
 import { PARTY_MEMBER_RANKS } from "@createrington/shared/party";
 import { z } from "zod";
-import { dimensionId, syncList, syncName } from "../shared/sync-schemas";
+import {
+  dimensionId,
+  optionalServerId,
+  syncList,
+  syncName,
+} from "../shared/sync-schemas";
 
 export const MAX_PARTY_SYNC_PARTIES = 2_000;
 export const MAX_PARTY_SYNC_PLAYERS = 200;
@@ -38,6 +43,7 @@ const PartySchema = z
 
 export const PartySyncBodySchema = z.object({
   parties: syncList(PartySchema, MAX_PARTY_SYNC_PARTIES),
+  serverId: optionalServerId,
 });
 
 export type PartySyncBody = z.infer<typeof PartySyncBodySchema>;
@@ -58,6 +64,7 @@ const PartyClaimDimensionSchema = z.object({
 export const PartyClaimsBodySchema = z.object({
   hash: z.string().min(1).max(MAX_PARTY_CLAIM_HASH_LENGTH),
   dimensions: syncList(PartyClaimDimensionSchema, MAX_PARTY_CLAIM_DIMENSIONS),
+  serverId: optionalServerId,
 });
 
 export type PartyClaimsBody = z.infer<typeof PartyClaimsBodySchema>;

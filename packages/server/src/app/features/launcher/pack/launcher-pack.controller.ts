@@ -9,6 +9,7 @@ import type {
   LauncherPacksData,
   LauncherSuccessResponse,
 } from "@createrington/shared/launcher";
+import { respondSuccess } from "@/app/middleware/api-envelope";
 import { getValidated } from "@/app/middleware/validation.middleware";
 import { sendCachedJson } from "@/app/utils/cached-json";
 import { createKeyValueStore } from "@/services/key-value-store";
@@ -150,11 +151,9 @@ export class LauncherPackController {
   static async resolveFiles(_req: Request, res: Response): Promise<void> {
     const { body } = getValidated<{ body: ResolveFilesBody }>(res);
 
-    const response: LauncherSuccessResponse<LauncherPackFilesData> = {
-      success: true,
+    respondSuccess<LauncherPackFilesData>(res, {
       data: await launcherPackFileService.resolveFiles(body.fileIds),
-    };
-    res.json(response);
+    });
   }
 
   static async storageFile(req: Request, res: Response): Promise<void> {

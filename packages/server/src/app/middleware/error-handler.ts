@@ -60,6 +60,7 @@ const SENSITIVE_KEYS =
   /(password|secret|token|api_?key|authorization|cookie|jwt)/i;
 
 function redactSensitive(value: unknown): unknown {
+  if (Buffer.isBuffer(value)) return `[${value.length} bytes]`;
   if (Array.isArray(value)) return value.map(redactSensitive);
   if (!value || typeof value !== "object") return value;
   const result: Record<string, unknown> = {};

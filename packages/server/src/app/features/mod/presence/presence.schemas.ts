@@ -1,6 +1,10 @@
 import { mcUsername, mcUuid } from "@/utils/zod-schemas";
 import { z } from "zod";
-import { dimensionId, syncList } from "../shared/sync-schemas";
+import {
+  dimensionId,
+  optionalServerId,
+  syncList,
+} from "../shared/sync-schemas";
 
 const MAX_HEARTBEAT_PLAYERS = 1_000;
 
@@ -17,6 +21,7 @@ export const PresenceBodySchema = z.object({
     .optional()
     .catch(undefined),
   dimension: dimensionId.optional().catch(undefined),
+  serverId: optionalServerId,
 });
 
 export const HeartbeatBodySchema = z.object({
@@ -31,6 +36,7 @@ export const HeartbeatBodySchema = z.object({
       .catch(null),
     MAX_HEARTBEAT_PLAYERS,
   ),
+  serverId: optionalServerId,
 });
 
 export type PresenceBody = z.infer<typeof PresenceBodySchema>;

@@ -1,4 +1,5 @@
-import { BadRequestError, NotFoundError } from "@/errors";
+import { getValidated } from "@/app/middleware/validation.middleware";
+import { NotFoundError } from "@/errors";
 import { getService, Services } from "@/services";
 import { MINECRAFT_SERVERS } from "@/services/playtime/config";
 import {
@@ -7,8 +8,8 @@ import {
 } from "@/services/playtime/server-status";
 import type { PlaytimeManagerService } from "@/services/playtime";
 import type { Request, Response } from "express";
+import type { ServerStatusQuery } from "./servers.schemas";
 
-const SERVER_SLUG_RE = /^[a-z0-9-]{1,32}$/;
 const CACHE_CONTROL = "public, max-age=10";
 
 export interface ServerStatusEntry {
@@ -27,18 +28,6 @@ export interface ServerStatusResponse {
   generatedAt: string;
 }
 
-function parseServerSlug(value: unknown): string | undefined {
-  if (value === undefined || value === "") {
-    return undefined;
-  }
-
-  if (typeof value !== "string" || !SERVER_SLUG_RE.test(value)) {
-    throw new BadRequestError("server must be a valid server slug");
-  }
-
-  return value;
-}
-
 async function getPlaytimeManager(): Promise<
   PlaytimeManagerService | undefined
 > {
@@ -53,8 +42,10 @@ async function getPlaytimeManager(): Promise<
 }
 
 export class ServersController {
-  static async getStatus(req: Request, res: Response): Promise<void> {
-    const slug = parseServerSlug(req.query.server);
+  static async getStatus(_req: Request, res: Response): Promise<void> {
+    const {
+      query: { server: slug },
+    } = getValidated<{ query: ServerStatusQuery }>(res);
 
     const configs = Object.values(MINECRAFT_SERVERS)
       .filter((server) => !slug || server.slug === slug)

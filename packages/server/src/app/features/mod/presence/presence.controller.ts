@@ -1,4 +1,5 @@
-import { getValidated } from "@/app/middleware";
+import { getValidated } from "@/app/middleware/validation.middleware";
+import { respondSuccess } from "@/app/middleware/api-envelope";
 import { BadRequestError, ForbiddenError, InternalServerError } from "@/errors";
 import { getService, Services } from "@/services";
 import type {
@@ -25,7 +26,11 @@ export class PresenceController {
       throw new ForbiddenError("Token player does not match reported player");
     }
 
-    const targetServerId = resolveServerId(req, "Presence update");
+    const targetServerId = resolveServerId(
+      req,
+      body.serverId,
+      "Presence update",
+    );
     const eventTimestamp = parseEventTimestamp(timestamp);
     if (!eventTimestamp) {
       throw new BadRequestError("Invalid timestamp");
@@ -73,8 +78,7 @@ export class PresenceController {
         );
       }
 
-      res.json({
-        success: true,
+      respondSuccess(res, {
         message: "Presence updated successfully",
         data: {
           minecraftUsername,
@@ -101,7 +105,7 @@ export class PresenceController {
     }
 
     const {
-      body: { players },
+      body: { players, serverId },
     } = getValidated<{ body: HeartbeatBody }>(res);
     const onlinePlayers: HeartbeatPlayer[] = players
       .filter((p) => p !== null)
@@ -111,7 +115,7 @@ export class PresenceController {
         playTimeTicks: p.playTimeTicks,
       }));
 
-    const targetServerId = resolveServerId(req, "Heartbeat");
+    const targetServerId = resolveServerId(req, serverId, "Heartbeat");
 
     try {
       const playtimeManager = await getService(
@@ -134,8 +138,7 @@ export class PresenceController {
         `Heartbeat received for server ${targetServerId}: ${onlinePlayers.length} player(s) online`,
       );
 
-      res.json({
-        success: true,
+      respondSuccess(res, {
         message: "Heartbeat processed",
         data: {
           serverId: targetServerId,

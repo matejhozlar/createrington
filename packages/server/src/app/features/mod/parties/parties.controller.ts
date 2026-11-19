@@ -1,4 +1,5 @@
-import { getValidated } from "@/app/middleware";
+import { getValidated } from "@/app/middleware/validation.middleware";
+import { respondSuccess } from "@/app/middleware/api-envelope";
 import type { Request, Response } from "express";
 import { resolveServerId } from "../shared/resolve-server-id";
 import { runSync } from "../shared/run-sync";
@@ -12,9 +13,9 @@ import {
 export class PartiesController {
   static async sync(req: Request, res: Response): Promise<void> {
     const {
-      body: { parties },
+      body: { parties, serverId: bodyServerId },
     } = getValidated<{ body: PartySyncBody }>(res);
-    const serverId = resolveServerId(req, "Party sync");
+    const serverId = resolveServerId(req, bodyServerId, "Party sync");
 
     await runSync("party sync", () => replacePartyState({ serverId, parties }));
 
@@ -22,14 +23,14 @@ export class PartiesController {
       `Party sync for server ${serverId}: ${parties.length} part${parties.length === 1 ? "y" : "ies"}`,
     );
 
-    res.json({ success: true });
+    respondSuccess(res);
   }
 
   static async claims(req: Request, res: Response): Promise<void> {
     const {
-      body: { hash, dimensions },
+      body: { hash, dimensions, serverId: bodyServerId },
     } = getValidated<{ body: PartyClaimsBody }>(res);
-    const serverId = resolveServerId(req, "Party claims sync");
+    const serverId = resolveServerId(req, bodyServerId, "Party claims sync");
 
     let result: PartyClaimsResult = { stored: 0, changed: false };
     await runSync("party claims sync", async () => {

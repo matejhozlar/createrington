@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { customRoute } from "@/app/middleware/compose";
+import { route } from "@/app/middleware/compose";
 import { authenticateLauncher } from "@/app/middleware/launcher-auth.middleware";
 import { launcherPackLimiter } from "@/app/middleware/rate-limit.middleware";
 import { validate } from "@/app/middleware/validation.middleware";
@@ -16,39 +16,44 @@ const router = Router();
 
 router.use(authenticateLauncher, launcherPackLimiter);
 
-router.get("/", ...customRoute([], LauncherPackController.list));
+router.get("/", ...route("public", LauncherPackController.list));
 router.post(
   "/files/resolve",
-  ...customRoute(
-    [validate({ body: ResolveFilesBodySchema })],
+  ...route(
+    "public",
+    validate({ body: ResolveFilesBodySchema }),
     LauncherPackController.resolveFiles,
   ),
 );
 router.get(
   "/files/snapshot/:id",
-  ...customRoute(
-    [validate({ params: StorageSnapshotParamsSchema })],
+  ...route(
+    "public",
+    validate({ params: StorageSnapshotParamsSchema }),
     LauncherPackController.storageSnapshot,
   ),
 );
 router.get(
   "/files/:fileId",
-  ...customRoute(
-    [validate({ params: StorageFileParamsSchema })],
+  ...route(
+    "public",
+    validate({ params: StorageFileParamsSchema }),
     LauncherPackController.storageFile,
   ),
 );
 router.get(
   "/:slug/latest",
-  ...customRoute(
-    [validate({ params: PackParamsSchema })],
+  ...route(
+    "public",
+    validate({ params: PackParamsSchema }),
     LauncherPackController.latest,
   ),
 );
 router.get(
   "/:slug/releases",
-  ...customRoute(
-    [validate({ params: PackParamsSchema, query: ListReleasesQuerySchema })],
+  ...route(
+    "public",
+    validate({ params: PackParamsSchema, query: ListReleasesQuerySchema }),
     LauncherPackController.releases,
   ),
 );

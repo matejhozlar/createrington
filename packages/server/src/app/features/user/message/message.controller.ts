@@ -3,9 +3,11 @@ import { getService, Services } from "@/services";
 import { MESSAGE_CACHE_CONFIG } from "@/services/discord/message/cache";
 import { AttachmentBuilder } from "discord.js";
 import type { Request, Response } from "express";
-import {
-  SendMessageBodySchema,
-  type SendMessageResponse,
+import { getValidated } from "@/app/middleware/validation.middleware";
+import { respondSuccess } from "@/app/middleware/api-envelope";
+import type {
+  SendMessageBody,
+  SendMessageResponse,
 } from "@createrington/shared/api";
 
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
@@ -26,7 +28,9 @@ function resolveChannelForServer(serverId: number): string | null {
 
 export class MessageController {
   static async sendMessage(req: Request, res: Response): Promise<void> {
-    const { serverId, content } = SendMessageBodySchema.parse(req.body);
+    const {
+      body: { serverId, content },
+    } = getValidated<{ body: SendMessageBody }>(res);
 
     const channelId = resolveChannelForServer(serverId);
     if (!channelId) {
@@ -90,16 +94,14 @@ export class MessageController {
         throw new BadRequestError("Failed to send message");
       });
 
-    const response: SendMessageResponse = {
-      success: true,
+    respondSuccess<SendMessageResponse["data"]>(res, {
+      status: 201,
+      message: "Message sent successfully",
       data: {
         messageId: message.id,
         serverId,
         channelId,
       },
-      message: "Message sent successfully",
-    };
-
-    res.status(201).json(response);
+    });
   }
 }

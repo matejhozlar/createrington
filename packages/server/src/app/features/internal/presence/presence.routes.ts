@@ -1,4 +1,4 @@
-import { customRoute, validate, verifySyncSecret } from "@/app/middleware";
+import { route, validate, verifySyncSecret } from "@/app/middleware";
 import {
   HeartbeatBodySchema,
   PresenceBodySchema,
@@ -10,16 +10,20 @@ const router = Router();
 
 router.post(
   "/",
-  ...customRoute(
-    [verifySyncSecret, validate({ body: PresenceBodySchema })],
+  ...route(
+    "public",
+    verifySyncSecret,
+    validate({ body: PresenceBodySchema }),
     InternalPresenceController.handleSyncedPresence,
   ),
 );
 
 router.post(
   "/heartbeat",
-  ...customRoute(
-    [verifySyncSecret, validate({ body: HeartbeatBodySchema })],
+  ...route(
+    "public",
+    verifySyncSecret,
+    validate({ body: HeartbeatBodySchema }),
     InternalPresenceController.handleSyncedHeartbeat,
   ),
 );

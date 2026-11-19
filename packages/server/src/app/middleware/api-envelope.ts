@@ -2,13 +2,13 @@ import type { Response } from "express";
 
 export interface ApiEnvelope<T> {
   success: true;
-  message: string;
+  message?: string;
   playerMessage?: string;
   data?: T;
 }
 
 export interface RespondSuccessOptions<T> {
-  message: string;
+  message?: string;
   playerMessage?: string;
   data?: T;
   status?: number;
@@ -16,13 +16,13 @@ export interface RespondSuccessOptions<T> {
 
 export function respondSuccess<T>(
   res: Response,
-  options: RespondSuccessOptions<T>,
+  options: RespondSuccessOptions<T> = {},
 ): void {
   const { message, playerMessage, data, status = 200 } = options;
 
   const body: ApiEnvelope<T> = {
     success: true,
-    message,
+    ...(message !== undefined ? { message } : {}),
     ...(playerMessage ? { playerMessage } : {}),
     ...(data !== undefined ? { data } : {}),
   };

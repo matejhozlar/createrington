@@ -1,6 +1,7 @@
 import path from "path";
 import fs from "fs";
 import express, { type Express } from "express";
+import type { AnyTRPCRouter } from "@trpc/server";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerRoutes } from "./features";
 import {
@@ -20,6 +21,33 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import helmet from "helmet";
 import { registerHealthRoute } from "./health";
+import { allowedOrigins } from "./utils/allowed-origins";
+
+function mountTrpc(
+  app: Express,
+  path: string,
+  router: AnyTRPCRouter,
+  tag: string,
+): void {
+  app.use(
+    path,
+    createExpressMiddleware({
+      router,
+      createContext,
+      onError({ error, path: procedure }) {
+        if (error.code === "INTERNAL_SERVER_ERROR") {
+          logger.error(`[${tag}] ${procedure}:`, {
+            message: error.message,
+            stack: error.stack,
+            cause: error.cause,
+          });
+        } else {
+          logger.warn(`[${tag}] ${procedure}: ${error.message}`);
+        }
+      },
+    }),
+  );
+}
 
 export function createApp(): Express {
   const app = express();
@@ -35,9 +63,7 @@ export function createApp(): Express {
   app.use(cookieParser());
   app.use(
     cors({
-      origin: config.envMode.isProd
-        ? [config.meta.links.website, ...config.app.auth.sso.corsOrigins]
-        : config.app.devClientOrigin,
+      origin: allowedOrigins(),
       credentials: true,
     }),
   );
@@ -50,62 +76,14 @@ export function createApp(): Express {
 
   registerRoutes(app);
 
-  app.use(
-    "/trpc/consumers/panel",
-    createExpressMiddleware({
-      router: panelRouter,
-      createContext,
-      onError({ error, path }) {
-        if (error.code === "INTERNAL_SERVER_ERROR") {
-          logger.error(`[tRPC consumers.panel] ${path}:`, {
-            message: error.message,
-            stack: error.stack,
-            cause: error.cause,
-          });
-        } else {
-          logger.warn(`[tRPC consumers.panel] ${path}: ${error.message}`);
-        }
-      },
-    }),
-  );
-
-  app.use(
+  mountTrpc(app, "/trpc/consumers/panel", panelRouter, "tRPC consumers.panel");
+  mountTrpc(
+    app,
     "/trpc/consumers/sandbox",
-    createExpressMiddleware({
-      router: sandboxRouter,
-      createContext,
-      onError({ error, path }) {
-        if (error.code === "INTERNAL_SERVER_ERROR") {
-          logger.error(`[tRPC consumers.sandbox] ${path}:`, {
-            message: error.message,
-            stack: error.stack,
-            cause: error.cause,
-          });
-        } else {
-          logger.warn(`[tRPC consumers.sandbox] ${path}: ${error.message}`);
-        }
-      },
-    }),
+    sandboxRouter,
+    "tRPC consumers.sandbox",
   );
-
-  app.use(
-    "/trpc",
-    createExpressMiddleware({
-      router: appRouter,
-      createContext,
-      onError({ error, path }) {
-        if (error.code === "INTERNAL_SERVER_ERROR") {
-          logger.error(`[tRPC] ${path}:`, {
-            message: error.message,
-            stack: error.stack,
-            cause: error.cause,
-          });
-        } else {
-          logger.warn(`[tRPC] ${path}: ${error.message}`);
-        }
-      },
-    }),
-  );
+  mountTrpc(app, "/trpc", appRouter, "tRPC");
 
   const clientDir = path.join(import.meta.dirname, "../../../public");
   const indexHtml = path.join(clientDir, "index.html");

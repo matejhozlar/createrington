@@ -35,14 +35,30 @@ vi.mock("@/services/playtime/config", () => ({
   },
 }));
 
-import { BadRequestError, NotFoundError } from "@/errors";
+import { ZodError } from "zod";
+import { NotFoundError } from "@/errors";
+import { validate } from "@/app/middleware/validation.middleware";
+import { ServerStatusQuerySchema } from "@/app/features/servers/servers.schemas";
 import {
   ServersController,
   type ServerStatusResponse,
 } from "@/app/features/servers/servers.controller";
 import { ServerState } from "@/services/playtime/types";
-import type { Request } from "express";
-import { fakeReq, fakeRes, type FakeRes } from "@/tests/helpers/http";
+import type { Request, Response } from "express";
+import {
+  fakeReq,
+  fakeRes,
+  runHandlers,
+  type FakeRes,
+} from "@/tests/helpers/http";
+
+function getStatus(req: Request, res: Response): Promise<void> {
+  return runHandlers(
+    [validate({ query: ServerStatusQuerySchema }), ServersController.getStatus],
+    req,
+    res,
+  );
+}
 
 function makeReq(query: Record<string, unknown> = {}): Request {
   return fakeReq({ query });
@@ -93,7 +109,7 @@ describe("ServersController.getStatus", () => {
     mockManager({ 1: makePlaytimeService(3), 2: makePlaytimeService(1) });
     const res = fakeRes();
 
-    await ServersController.getStatus(makeReq(), res);
+    await getStatus(makeReq(), res);
 
     expect(res.setHeader).toHaveBeenCalledWith(
       "Cache-Control",
@@ -128,7 +144,7 @@ describe("ServersController.getStatus", () => {
     const rails = makePlaytimeService(3);
     mockManager({ 1: rails });
 
-    await ServersController.getStatus(makeReq({ server: "rails" }), fakeRes());
+    await getStatus(makeReq({ server: "rails" }), fakeRes());
 
     expect(rails.getActiveSessions).not.toHaveBeenCalled();
   });
@@ -137,7 +153,7 @@ describe("ServersController.getStatus", () => {
     mockManager({ 1: makePlaytimeService(3), 2: makePlaytimeService(1) });
     const res = fakeRes();
 
-    await ServersController.getStatus(makeReq({ server: "test" }), res);
+    await getStatus(makeReq({ server: "test" }), res);
 
     const body = responseBody(res);
     expect(body.servers).toHaveLength(1);
@@ -149,7 +165,7 @@ describe("ServersController.getStatus", () => {
     mockManager({ 1: makePlaytimeService(1), 2: makePlaytimeService(1) });
     const res = fakeRes();
 
-    await ServersController.getStatus(makeReq({ server: "" }), res);
+    await getStatus(makeReq({ server: "" }), res);
 
     expect(responseBody(res).servers).toHaveLength(2);
   });
@@ -161,7 +177,7 @@ describe("ServersController.getStatus", () => {
     });
     const res = fakeRes();
 
-    await ServersController.getStatus(makeReq(), res);
+    await getStatus(makeReq(), res);
 
     const body = responseBody(res);
     expect(body.servers[0]).toMatchObject({
@@ -178,7 +194,7 @@ describe("ServersController.getStatus", () => {
     mockManager({ 1: makePlaytimeService(2) });
     const res = fakeRes();
 
-    await ServersController.getStatus(makeReq(), res);
+    await getStatus(makeReq(), res);
 
     const body = responseBody(res);
     expect(body.servers[1]).toMatchObject({
@@ -195,7 +211,7 @@ describe("ServersController.getStatus", () => {
     );
     const res = fakeRes();
 
-    await ServersController.getStatus(makeReq(), res);
+    await getStatus(makeReq(), res);
 
     const body = responseBody(res);
     expect(body.servers.map((server) => server.status)).toEqual([
@@ -210,7 +226,7 @@ describe("ServersController.getStatus", () => {
     isInMaintenanceMock.mockImplementation((id: number) => id === 1);
     const res = fakeRes();
 
-    await ServersController.getStatus(makeReq(), res);
+    await getStatus(makeReq(), res);
 
     const body = responseBody(res);
     expect(body.servers[0].maintenance).toBe(true);
@@ -219,20 +235,17 @@ describe("ServersController.getStatus", () => {
 
   it("rejects a malformed server slug before touching the playtime manager", async () => {
     await expect(
-      ServersController.getStatus(
-        makeReq({ server: "Rails N Sails" }),
-        fakeRes(),
-      ),
-    ).rejects.toBeInstanceOf(BadRequestError);
+      getStatus(makeReq({ server: "Rails N Sails" }), fakeRes()),
+    ).rejects.toBeInstanceOf(ZodError);
     await expect(
-      ServersController.getStatus(makeReq({ server: ["a", "b"] }), fakeRes()),
-    ).rejects.toBeInstanceOf(BadRequestError);
+      getStatus(makeReq({ server: ["a", "b"] }), fakeRes()),
+    ).rejects.toBeInstanceOf(ZodError);
     expect(getServiceMock).not.toHaveBeenCalled();
   });
 
   it("returns 404 for an unknown server slug", async () => {
     await expect(
-      ServersController.getStatus(makeReq({ server: "nope" }), fakeRes()),
+      getStatus(makeReq({ server: "nope" }), fakeRes()),
     ).rejects.toBeInstanceOf(NotFoundError);
     expect(getServiceMock).not.toHaveBeenCalled();
   });

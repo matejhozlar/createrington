@@ -12,8 +12,18 @@ vi.mock("@/services/discord/message/cache", () => ({
 }));
 
 import { MessageController } from "@/app/features/user/message/message.controller";
-import type { Request } from "express";
-import { fakeReq, fakeRes } from "@/tests/helpers/http";
+import { validate } from "@/app/middleware/validation.middleware";
+import { SendMessageBodySchema } from "@createrington/shared/api";
+import type { Request, Response } from "express";
+import { fakeReq, fakeRes, runHandlers } from "@/tests/helpers/http";
+
+function sendMessage(req: Request, res: Response): Promise<void> {
+  return runHandlers(
+    [validate({ body: SendMessageBodySchema }), MessageController.sendMessage],
+    req,
+    res,
+  );
+}
 
 function makeReq({
   content,
@@ -49,26 +59,20 @@ describe("MessageController.sendMessage", () => {
   });
 
   it("prefixes text messages with the sender's name", async () => {
-    await MessageController.sendMessage(
-      makeReq({ content: " hello " }),
-      fakeRes(),
-    );
+    await sendMessage(makeReq({ content: " hello " }), fakeRes());
 
     expect(sentContent()).toBe("**<Steve>**: hello");
   });
 
   it("prefixes image-only messages with the sender's name", async () => {
-    await MessageController.sendMessage(
-      makeReq({ withImage: true }),
-      fakeRes(),
-    );
+    await sendMessage(makeReq({ withImage: true }), fakeRes());
 
     expect(sentContent()).toBe("**<Steve>**:");
     expect(sendMock.mock.calls[0][0].files).toHaveLength(1);
   });
 
   it("falls back to Web User when the account has no Minecraft username", async () => {
-    await MessageController.sendMessage(
+    await sendMessage(
       makeReq({ withImage: true, minecraftUsername: null }),
       fakeRes(),
     );
@@ -80,7 +84,7 @@ describe("MessageController.sendMessage", () => {
     sendMock.mockRejectedValue(new Error("Missing Permissions"));
 
     await expect(
-      MessageController.sendMessage(makeReq({ content: "hi" }), fakeRes()),
+      sendMessage(makeReq({ content: "hi" }), fakeRes()),
     ).rejects.toMatchObject({
       statusCode: 400,
       message: "Failed to send message",

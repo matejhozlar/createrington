@@ -1,4 +1,5 @@
-import { getValidated } from "@/app/middleware";
+import { getValidated } from "@/app/middleware/validation.middleware";
+import { respondSuccess } from "@/app/middleware/api-envelope";
 import { BadRequestError, InternalServerError } from "@/errors";
 import type {
   HeartbeatBody,
@@ -94,8 +95,7 @@ export class InternalPresenceController {
         );
       }
 
-      res.json({
-        success: true,
+      respondSuccess(res, {
         message: "Synced presence processed",
         data: {
           minecraftUsername: username,
@@ -136,8 +136,7 @@ export class InternalPresenceController {
         `[sync] Heartbeat reconciled: ${ended} ended, ${started} started, ${onlinePlayers.length} reported online`,
       );
 
-      res.json({
-        success: true,
+      respondSuccess(res, {
         message: "Heartbeat reconciled",
         data: {
           playersReported: onlinePlayers.length,
