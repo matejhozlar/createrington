@@ -18,11 +18,13 @@ const pageContextSchema = z
 
 const sessionId = z
   .number({ error: SESSION_ID_MESSAGE })
-  .int(SESSION_ID_MESSAGE);
+  .int(SESSION_ID_MESSAGE)
+  .positive(SESSION_ID_MESSAGE);
 
 const sessionIdQuery = z.coerce
   .number({ error: SESSION_ID_MESSAGE })
-  .int(SESSION_ID_MESSAGE);
+  .int(SESSION_ID_MESSAGE)
+  .positive(SESSION_ID_MESSAGE);
 
 const optionalQueryString = z.string().optional().catch(undefined);
 

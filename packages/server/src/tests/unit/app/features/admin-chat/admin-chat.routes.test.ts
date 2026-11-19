@@ -189,6 +189,21 @@ describe("admin chat proxy", () => {
     expect(seen).toHaveLength(0);
   });
 
+  it("rejects an empty or zero session id before calling upstream", async () => {
+    for (const path of [
+      "/messages?sessionId=",
+      "/stream?sessionId=",
+      "/messages?sessionId=0",
+    ]) {
+      const res = await chat(path);
+      expect(res.status).toBe(400);
+      await expect(res.json()).resolves.toMatchObject({
+        message: "sessionId is required",
+      });
+    }
+    expect(seen).toHaveLength(0);
+  });
+
   it("rejects an end request without a numeric session id before calling upstream", async () => {
     const res = await postJson("/end", { sessionId: "9" });
 
