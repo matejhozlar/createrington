@@ -1,4 +1,5 @@
 import config from "@/config";
+import { siteUrl } from "@/config/site-url";
 import { buildComponentsMessage, ComponentPresets } from "@/discord/components";
 import { Discord } from "@/discord/constants";
 import { GALLERY_INTAKE_REACTION } from "./intake";
@@ -23,7 +24,7 @@ const APPROVED_REACTION = "✅";
 const REJECTED_REACTION = "❌";
 
 export function galleryPageUrl(): string {
-  return `${config.meta.links.website}/gallery`;
+  return siteUrl("/gallery");
 }
 
 export async function announceApproval(

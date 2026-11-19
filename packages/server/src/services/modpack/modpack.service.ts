@@ -8,6 +8,7 @@ import type {
 } from "@createrington/shared/db";
 import { refreshProjects } from "@/services/curseforge/ingest";
 import { REQUIRED_DEPENDENCY } from "@/services/workshop/dependencies";
+import { projectLabel } from "@/services/curseforge/project";
 
 export type ModpackProjectSummary = Pick<
   CurseforgeProject,
@@ -188,7 +189,7 @@ export class ModpackService {
           ? (requirersByDependency.get(row.curseforgeProjectId) ?? []).map(
               (id) => ({
                 curseforgeProjectId: id,
-                name: projectById.get(id)?.name ?? `#${id}`,
+                name: projectLabel(projectById.get(id)?.name, id),
               }),
             )
           : [];

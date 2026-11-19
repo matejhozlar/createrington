@@ -26,7 +26,7 @@ interface SelectedFile {
   id: number;
   fileName: string;
   displayName: string;
-  dependencies: Array<{ modId: number; relationType: number }>;
+  dependencies: Array<{ projectId: number; relationType: number }>;
 }
 
 export function AddModDialog({
@@ -65,7 +65,7 @@ export function AddModDialog({
   );
 
   const addDepModIds = useMemo(
-    () => (selectedFile?.dependencies ?? []).map((d) => d.modId),
+    () => (selectedFile?.dependencies ?? []).map((d) => d.projectId),
     [selectedFile],
   );
   const depsQuery = useQuery(
@@ -79,7 +79,9 @@ export function AddModDialog({
     if (!depsQuery.data || !selectedFile) return new Set<number>();
     const set = new Set<number>();
     for (const dep of depsQuery.data) {
-      const rel = selectedFile.dependencies.find((d) => d.modId === dep.modId);
+      const rel = selectedFile.dependencies.find(
+        (d) => d.projectId === dep.modId,
+      );
       if (
         rel?.relationType === REQUIRED_DEPENDENCY &&
         !dep.inPack &&
@@ -131,8 +133,8 @@ export function AddModDialog({
           curseforgeFileId: selectedFile.id,
           fileName: selectedFile.fileName,
           modName: searchMod?.name ?? selectedFile.displayName,
-          modUrl: searchMod?.url,
-          thumbnailUrl: searchMod?.thumbnailUrl,
+          modUrl: searchMod?.websiteUrl,
+          thumbnailUrl: searchMod?.thumbnailUrl ?? undefined,
         });
       } catch (error) {
         toast.error(
@@ -297,8 +299,9 @@ export function AddModDialog({
                       <div>
                         <div className="font-medium">{file.displayName}</div>
                         <div className="text-xs text-muted-foreground">
-                          {file.fileName} ({(file.fileLength / 1024).toFixed(0)}{" "}
-                          KB)
+                          {file.fileName}
+                          {file.fileLength !== null &&
+                            ` (${(file.fileLength / 1024).toFixed(0)} KB)`}
                         </div>
                         <div className="mt-1 flex gap-1">
                           <Badge
@@ -387,7 +390,7 @@ export function AddModDialog({
 
           {depsQuery.data?.map((dep) => {
             const relType = selectedFile?.dependencies.find(
-              (d) => d.modId === dep.modId,
+              (d) => d.projectId === dep.modId,
             )?.relationType;
             const isRequired = relType === 3;
             const isSelected = selectedDeps.has(dep.modId);

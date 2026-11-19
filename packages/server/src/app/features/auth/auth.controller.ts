@@ -31,6 +31,7 @@ import {
 } from "@/services/auth/oauth/state-store";
 import { verifyDevLoginToken } from "@/services/auth/dev-login/hmac";
 import config from "@/config";
+import { siteUrl } from "@/config/site-url";
 import { Q } from "@/db";
 import {
   AuthRole,
@@ -294,7 +295,7 @@ export class AuthController {
       throw new TooManyRequestsError("Too many pending sign-in attempts");
     }
 
-    const consentUrl = new URL("/authorize", config.meta.links.website);
+    const consentUrl = new URL(siteUrl("/authorize"));
     consentUrl.searchParams.set("state", state);
     res.redirect(consentUrl.toString());
   }

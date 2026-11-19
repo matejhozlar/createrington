@@ -118,7 +118,7 @@ describe("getFilesDetails", () => {
     fetchMock.mockResolvedValue(answer({}, 500));
 
     await expect(getFilesDetails([7000001])).rejects.toThrow(
-      "Failed to fetch file details (500)",
+      "CurseForge getFiles failed (500)",
     );
   });
 });
@@ -166,7 +166,7 @@ describe("getFilesDependencies", () => {
     fetchMock.mockResolvedValue(answer({}, 503));
 
     await expect(getFilesDependencies([7000001])).rejects.toThrow(
-      "Failed to fetch file dependencies (503)",
+      "CurseForge getFiles failed (503)",
     );
   });
 });
@@ -232,6 +232,6 @@ describe("resolveDependencies", () => {
 
     await expect(
       resolveDependencies([238222], new Set(), TARGET),
-    ).rejects.toThrow("Failed to resolve dependencies (500)");
+    ).rejects.toThrow("CurseForge resolveDependencies failed (500)");
   });
 });

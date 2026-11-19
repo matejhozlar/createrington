@@ -2,15 +2,18 @@ import type {
   CurseforgeFileProject,
   CurseforgeFileWithProject,
 } from "@/db/queries/curseforge/file";
+import { CurseForgeRelationType } from "@createrington/content-gateway-client";
 import {
-  CurseForgeLoader,
   CurseForgeSortField,
+  type CurseForgeFile,
 } from "@/services/curseforge/client";
+import { CurseForgeLoader } from "@/services/curseforge/loader";
 import type { CurseForgeProjectData } from "@/services/curseforge/mods";
-import type {
-  CurseForgeCategory,
-  CurseForgeContentFile,
-} from "@/services/curseforge/content";
+import type { CurseForgeCategory } from "@/services/curseforge/content";
+import {
+  curseforgeProjectUrl,
+  type CurseForgeProjectPage,
+} from "@/services/curseforge/project";
 import {
   LAUNCHER_CONTENT_LOADERS,
   LAUNCHER_MODPACK_KIND,
@@ -30,23 +33,13 @@ import {
 } from "@createrington/shared/launcher";
 import { CURSEFORGE_CLASSES } from "@createrington/shared/workshop";
 
-const CURSEFORGE_SITE = "https://www.curseforge.com/minecraft";
 const GAME_VERSION_PATTERN = /^\d+\.\d+/;
 
-const CONTENT_CLASSES: Record<
-  number,
-  { kind: LauncherProjectKind; sitePath: string }
-> = {
-  [CURSEFORGE_CLASSES.mods]: { kind: "mod", sitePath: "mc-mods" },
-  [CURSEFORGE_CLASSES.resourcePacks]: {
-    kind: "resourcepack",
-    sitePath: "texture-packs",
-  },
-  [CURSEFORGE_CLASSES.shaders]: { kind: "shader", sitePath: "shaders" },
-  [CURSEFORGE_CLASSES.modpacks]: {
-    kind: LAUNCHER_MODPACK_KIND,
-    sitePath: "modpacks",
-  },
+const KINDS_BY_CLASS: Record<number, LauncherProjectKind> = {
+  [CURSEFORGE_CLASSES.mods]: "mod",
+  [CURSEFORGE_CLASSES.resourcePacks]: "resourcepack",
+  [CURSEFORGE_CLASSES.shaders]: "shader",
+  [CURSEFORGE_CLASSES.modpacks]: LAUNCHER_MODPACK_KIND,
 };
 
 const CLASS_BY_KIND: Record<LauncherProjectKind, number> = {
@@ -75,15 +68,10 @@ const LOADERS_BY_TYPE = new Map<number, LauncherContentLoader>(
   LAUNCHER_CONTENT_LOADERS.map((loader) => [CurseForgeLoader[loader], loader]),
 );
 
-type ProjectPage = Pick<
-  CurseforgeFileProject,
-  "websiteUrl" | "classId" | "slug"
->;
-
 export function projectKindForClass(
   classId: number,
 ): LauncherProjectKind | null {
-  return CONTENT_CLASSES[classId]?.kind ?? null;
+  return KINDS_BY_CLASS[classId] ?? null;
 }
 
 export function contentKindForClass(
@@ -116,16 +104,8 @@ export function toLauncherContentCategory(
   };
 }
 
-export function curseforgeProjectUrl(project: ProjectPage): string | null {
-  const sitePath = CONTENT_CLASSES[project.classId]?.sitePath;
-  return (
-    project.websiteUrl?.replace(/\/+$/, "") ||
-    (sitePath ? `${CURSEFORGE_SITE}/${sitePath}/${project.slug}` : null)
-  );
-}
-
 export function curseforgeFilePageUrl(
-  project: ProjectPage,
+  project: CurseForgeProjectPage,
   fileId: number,
 ): string | null {
   const projectUrl = curseforgeProjectUrl(project);
@@ -244,7 +224,7 @@ export function toLauncherContentFile(
 }
 
 export function toLauncherContentFileDetails(
-  file: CurseForgeContentFile,
+  file: CurseForgeFile,
   projectUrl: string,
 ): LauncherContentFileDetails | null {
   if (!file.fileName || file.fileLength === null || !file.sha1) return null;
@@ -273,7 +253,8 @@ export function toLauncherContentFileDetails(
     dependencies: file.dependencies.map((dependency) => ({
       source: "curseforge",
       projectId: String(dependency.projectId),
-      required: dependency.required,
+      required:
+        dependency.relationType === CurseForgeRelationType.requiredDependency,
     })),
   };
 }

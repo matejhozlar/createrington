@@ -2,7 +2,11 @@ import { db, Q } from "@/db";
 import { BadRequestError, NotFoundError } from "@/errors";
 import { UniqueViolationError } from "@/db/utils/errors";
 import type { Workshop, WorkshopMod } from "@createrington/shared/db";
-import { LOADERLESS_CLASSES, searchMods } from "@/services/curseforge/mods";
+import { LOADERLESS_CLASSES } from "@/services/curseforge/loader";
+import {
+  searchMods,
+  type CurseForgeSearchResult,
+} from "@/services/curseforge/mods";
 import { assertCanSuggest } from "./bans";
 import { announceRemoval, announceSuggestion } from "./discord";
 import { tryResolveProjectDependencies } from "./dependencies";
@@ -18,19 +22,10 @@ import {
 import { workshopModService, type WorkshopModListItem } from "./mods.service";
 import { USER_VISIBLE_MOD_STATUSES, workshopService } from "./workshop.service";
 
-export interface WorkshopProjectSearchResult {
-  id: number;
-  name: string;
-  slug: string;
-  url: string;
-  thumbnailUrl?: string;
-  summary: string | null;
-  primaryAuthor: string | null;
-  downloadCount: number;
-  inModpack: boolean;
+export type WorkshopProjectSearchResult = CurseForgeSearchResult & {
   rejected: boolean;
   claimed: boolean;
-}
+};
 
 /**
  * What players do in an open workshop: search CurseForge for a project,

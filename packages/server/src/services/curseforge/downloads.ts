@@ -8,7 +8,7 @@ import {
   type FileSource,
 } from "@createrington/content-gateway-client";
 import { contentGateway, currentContentPool } from "@/services/content-gateway";
-import { answerText, cfFetch, parseCfResponse } from "./client";
+import { cfRead } from "./client";
 
 export const CF_DOWNLOAD_TIMEOUT_MS = 120_000;
 
@@ -17,18 +17,13 @@ export async function getModFileDownloadUrl(
   modId: number,
   fileId: number,
 ): Promise<string> {
-  const answer = await cfFetch(`mods/${modId}/files/${fileId}/download-url`);
-  if (!answer.ok) {
-    throw new Error(
-      `CurseForge getDownloadUrl failed (${answer.status}): ${answerText(answer)}`,
-    );
-  }
-
-  return parseCfResponse(
+  const body = await cfRead(
+    `mods/${modId}/files/${fileId}/download-url`,
+    {},
     curseforgeData(z.string()),
-    answer.body,
     "getDownloadUrl",
-  ).data;
+  );
+  return body.data;
 }
 
 export interface CurseForgeFileDownload {

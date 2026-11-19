@@ -1,4 +1,5 @@
 import config from "@/config";
+import { siteUrl } from "@/config/site-url";
 import {
   ActionRowBuilder,
   ButtonBuilder,
@@ -81,15 +82,13 @@ export const WaitlistComponentPresets = {
     total: number;
     queuedAt: Date;
   }): WaitlistMessage {
-    const site = config.meta.links.website;
-
     const container = new ContainerBuilder()
       .setAccentColor(ComponentColors.Warning)
       .addTextDisplayComponents(
         text("## ⏳ You're on the waitlist!"),
         text(
           `Hey ${params.memberMention}, you're **#${params.position} of ${params.total}** in line (joined ${discordTimestamp(params.queuedAt, "R")}).\n\n` +
-            `We'll ping you right here as soon as a spot opens up. In the meantime, feel free to look around the Discord, check out the [website](${site}) or read up on the [rules](${site}/rules).`,
+            `We'll ping you right here as soon as a spot opens up. In the meantime, feel free to look around the Discord, check out the [website](${siteUrl()}) or read up on the [rules](${siteUrl("/rules")}).`,
         ),
       )
       .addSeparatorComponents(divider())

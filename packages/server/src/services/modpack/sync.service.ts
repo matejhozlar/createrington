@@ -6,7 +6,7 @@ import type {
   WorkshopMod,
   WorkshopModStatus,
 } from "@createrington/shared/db";
-import { CurseForgeLoader } from "@/services/curseforge/client";
+import { loaderTypeOf } from "@/services/curseforge/loader";
 import {
   manifestDisabledModIds,
   type ModpackManifest,
@@ -62,13 +62,6 @@ export interface ModpackSeedResult {
   memberCount: number;
   unresolvedProjectIds: number[];
   duplicateProjectIds: number[];
-}
-
-function manifestLoaderType(loaderId: string): number | null {
-  const prefix = loaderId.split("-")[0]?.toLowerCase() ?? "";
-  return Object.hasOwn(CurseForgeLoader, prefix)
-    ? CurseForgeLoader[prefix as keyof typeof CurseForgeLoader]
-    : null;
 }
 
 /**
@@ -187,7 +180,7 @@ export class ModpackSyncService {
       );
     }
     if (!seed.modLoader) return;
-    const loaderType = manifestLoaderType(seed.modLoader);
+    const loaderType = loaderTypeOf(seed.modLoader);
     if (
       loaderType !== null &&
       !workshops.some((w) => w.modLoaderType === loaderType)

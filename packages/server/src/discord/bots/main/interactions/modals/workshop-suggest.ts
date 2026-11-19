@@ -9,7 +9,7 @@ import {
   type ModalSubmitInteraction,
 } from "discord.js";
 import type { Workshop } from "@createrington/shared/db";
-import config from "@/config";
+import { siteUrl } from "@/config/site-url";
 import { Q } from "@/db";
 import { AppError } from "@/errors";
 import { EmbedPresets } from "@/discord/embeds";
@@ -206,7 +206,7 @@ export async function execute(
 
   if (!project) {
     const query = encodeURIComponent(parsed.slug.replace(/-/g, " "));
-    const suggestUrl = `${config.meta.links.website}/workshop/${workshop.slug}/suggest?q=${query}`;
+    const suggestUrl = `${siteUrl(`/workshop/${workshop.slug}/suggest`)}?q=${query}`;
     await replyError(
       interaction,
       "Mod Not Found",

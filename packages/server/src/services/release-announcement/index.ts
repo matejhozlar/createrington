@@ -1,4 +1,5 @@
 import config from "@/config";
+import { siteUrl } from "@/config/site-url";
 import { Discord } from "@/discord/constants";
 import { buildComponentsMessage, ComponentPresets } from "@/discord/components";
 import {
@@ -63,7 +64,7 @@ export class ReleaseAnnouncementService {
   }
 
   private changelogUrl(version: string | null): string {
-    const base = `${config.meta.links.website.replace(/\/+$/, "")}/admin/changelog`;
+    const base = siteUrl("/admin/changelog");
     return version ? `${base}#v${version}` : base;
   }
 }

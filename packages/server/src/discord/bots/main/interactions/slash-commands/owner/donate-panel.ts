@@ -1,4 +1,4 @@
-import config from "@/config";
+import { siteUrl } from "@/config/site-url";
 import { Discord } from "@/discord/constants";
 import { createEmbed, EmbedColors, EmbedPresets } from "@/discord/embeds";
 import { isSendableChannel } from "@/discord/utils/channel-guard";
@@ -42,7 +42,7 @@ export async function execute(
     return;
   }
 
-  const donateUrl = `${config.meta.links.website}/donate`;
+  const donateUrl = siteUrl("/donate");
 
   const embed = createEmbed()
     .title("❤️ Support Createrington")

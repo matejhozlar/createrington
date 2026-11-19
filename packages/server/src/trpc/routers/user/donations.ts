@@ -4,6 +4,7 @@ import { trpcError } from "@/trpc/utils";
 import { Q } from "@/db";
 import { getService, Services } from "@/services";
 import config from "@/config";
+import { siteUrl } from "@/config/site-url";
 
 const MIN_AMOUNT_CENTS = 100;
 const MAX_AMOUNT_CENTS = 100_000;
@@ -37,14 +38,13 @@ export const userDonationsRouter = router({
         );
       }
       const donationService = await getService(Services.DONATION_SERVICE);
-      const baseUrl = config.meta.links.website;
 
       const { sessionId, url } = await donationService.createCheckoutSession({
         discordId: ctx.user.discordId,
         type: input.type,
         amountCents: input.amountCents,
-        successUrl: `${baseUrl}/donate/success?session_id={CHECKOUT_SESSION_ID}`,
-        cancelUrl: `${baseUrl}/donate/cancel`,
+        successUrl: `${siteUrl("/donate/success")}?session_id={CHECKOUT_SESSION_ID}`,
+        cancelUrl: siteUrl("/donate/cancel"),
       });
 
       return { sessionId, url };

@@ -3,7 +3,7 @@ import {
   curseforgeFileSchema,
   curseforgeList,
 } from "@createrington/content-gateway-client";
-import { cfFetch, parseCfResponse, sha1Of, type RawFile } from "./client";
+import { cfRead, toCurseForgeFile, type CurseForgeFile } from "./client";
 
 export type ModpackManifestSides = "client" | "server" | "both";
 
@@ -78,23 +78,6 @@ export function mergeManifestFiles<T extends { projectId: number }>(
   ];
 }
 
-export interface ModpackFile {
-  id: number;
-  projectId: number;
-  displayName: string | null;
-  fileName: string | null;
-  fileDate: string | null;
-  downloadUrl: string | null;
-  fileLength: number | null;
-  sha1: string | null;
-  fileStatus: number | null;
-  isAvailable: boolean;
-  serverPackFileId: number | null;
-  alternateFileId: number | null;
-  parentProjectFileId: number | null;
-  isServerPack: boolean;
-}
-
 export interface ModpackPublishHint {
   clientFileId: number;
   serverPackFileId: number | null;
@@ -106,28 +89,9 @@ export interface ModpackReadContext {
 }
 
 export interface ModpackReleaseResolution {
-  file: ModpackFile;
+  file: CurseForgeFile;
   serverPackFileId: number | null;
   complete: boolean;
-}
-
-function toModpackFile(raw: RawFile): ModpackFile {
-  return {
-    id: raw.id,
-    projectId: raw.modId,
-    displayName: raw.displayName ?? null,
-    fileName: raw.fileName ?? null,
-    fileDate: raw.fileDate ?? null,
-    downloadUrl: raw.downloadUrl || null,
-    fileLength: raw.fileLength ?? null,
-    sha1: sha1Of(raw.hashes),
-    fileStatus: raw.fileStatus ?? null,
-    isAvailable: raw.isAvailable ?? true,
-    serverPackFileId: raw.serverPackFileId ?? null,
-    alternateFileId: raw.alternateFileId ?? null,
-    parentProjectFileId: raw.parentProjectFileId ?? null,
-    isServerPack: raw.isServerPack ?? false,
-  };
 }
 
 /**
@@ -140,22 +104,15 @@ export async function getModpackFile(
   packProjectId: number,
   fileId: number,
   options: { fresh?: boolean } = {},
-): Promise<ModpackFile | null> {
-  const answer = await cfFetch(`mods/${packProjectId}/files/${fileId}`, {
-    fresh: options.fresh,
-  });
-  if (answer.status === 404) return null;
-  if (!answer.ok) {
-    throw new Error(
-      `Failed to fetch modpack file ${fileId} (${answer.status})`,
-    );
-  }
-  const body = parseCfResponse(
+): Promise<CurseForgeFile | null> {
+  const body = await cfRead(
+    `mods/${packProjectId}/files/${fileId}`,
+    { fresh: options.fresh },
     curseforgeData(curseforgeFileSchema),
-    answer.body,
     "getModpackFile",
+    { notFound: "null" },
   );
-  return toModpackFile(body.data);
+  return body ? toCurseForgeFile(body.data) : null;
 }
 
 const RECENT_PUBLISHES = 5;
@@ -163,21 +120,15 @@ const RECENT_PUBLISHES = 5;
 export async function getLatestListedModpackFile(
   packProjectId: number,
   fresh: boolean,
-): Promise<ModpackFile | null> {
-  const answer = await cfFetch(`mods/${packProjectId}/files`, {
-    query: { pageSize: 1 },
-    fresh,
-  });
-  if (!answer.ok) {
-    throw new Error(`Failed to fetch modpack files (${answer.status})`);
-  }
-  const body = parseCfResponse(
+): Promise<CurseForgeFile | null> {
+  const body = await cfRead(
+    `mods/${packProjectId}/files`,
+    { query: { pageSize: 1 }, fresh },
     curseforgeList(curseforgeFileSchema),
-    answer.body,
     "getModpackFiles",
   );
   const latest = body.data[0];
-  return latest ? toModpackFile(latest) : null;
+  return latest ? toCurseForgeFile(latest) : null;
 }
 
 export async function loadModpackReadContext(
@@ -215,9 +166,9 @@ export async function loadModpackReadContext(
  * through it, so for sandbox releases the report is the usual source.
  */
 export async function resolveModpackRelease(
-  listed: ModpackFile | null,
+  listed: CurseForgeFile | null,
   context: ModpackReadContext,
-  readFile: (fileId: number) => Promise<ModpackFile | null>,
+  readFile: (fileId: number) => Promise<CurseForgeFile | null>,
 ): Promise<ModpackReleaseResolution> {
   const newest = context.publishes.reduce<ModpackPublishHint | null>(
     (held, publish) =>

@@ -14,6 +14,7 @@ import {
   type DependencyCoverage,
 } from "./dependencies";
 import { USER_VISIBLE_MOD_STATUSES, workshopService } from "./workshop.service";
+import { projectLabel } from "@/services/curseforge/project";
 
 export type WorkshopProjectSummary = Pick<
   CurseforgeProject,
@@ -281,7 +282,7 @@ export class WorkshopModService {
           ("missing" as const),
         requiredBy: group.requiredByProjectIds.map((id) => ({
           curseforgeProjectId: id,
-          name: projectById.get(id)?.name ?? `#${id}`,
+          name: projectLabel(projectById.get(id)?.name, id),
         })),
         optionalByCount: group.optionalByCount,
         shippingDemand: context.demand.get(group.dependsOnProjectId) ?? 0,

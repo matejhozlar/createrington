@@ -3,7 +3,6 @@ import {
   manifestDisabledModIds,
   mergeManifestFiles,
   resolveModpackRelease,
-  type ModpackFile,
   type ModpackManifest,
   type ModpackReadContext,
 } from "@/services/curseforge/modpack";
@@ -11,25 +10,8 @@ import {
   fromStoredModpackManifest,
   toStoredModpackManifest,
 } from "@/services/curseforge/modpack-manifest";
-
-function file(overrides: Partial<ModpackFile> & { id: number }): ModpackFile {
-  return {
-    projectId: 1,
-    displayName: null,
-    fileName: null,
-    fileDate: null,
-    downloadUrl: null,
-    fileLength: null,
-    sha1: null,
-    fileStatus: null,
-    isAvailable: true,
-    serverPackFileId: null,
-    alternateFileId: null,
-    parentProjectFileId: null,
-    isServerPack: false,
-    ...overrides,
-  };
-}
+import type { CurseForgeFile } from "@/services/curseforge/client";
+import { curseforgeFile as file } from "@/tests/helpers/curseforge-file";
 
 function context(
   overrides: Partial<ModpackReadContext> = {},
@@ -37,7 +19,7 @@ function context(
   return { shipsServerPack: false, publishes: [], ...overrides };
 }
 
-function reader(files: ModpackFile[]) {
+function reader(files: CurseForgeFile[]) {
   return vi.fn(
     async (fileId: number) => files.find((f) => f.id === fileId) ?? null,
   );

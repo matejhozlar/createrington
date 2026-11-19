@@ -1,6 +1,5 @@
 import { z } from "zod";
 import {
-  CurseForgeRelationType,
   curseforgeCategorySchema,
   curseforgeData,
   curseforgeFileSchema,
@@ -11,15 +10,11 @@ import {
 import {
   CurseForgeSortField,
   MINECRAFT_GAME_ID,
-  answerText,
-  cfFetch,
-  isDependency,
+  cfRead,
   logoUrlOf,
-  parseCfResponse,
-  postIds,
   searchHitSchema,
-  sha1Of,
-  type RawFile,
+  toCurseForgeFile,
+  type CurseForgeFile,
 } from "./client";
 
 export interface CurseForgePage {
@@ -39,50 +34,11 @@ export interface CurseForgeProjectHit {
   downloadCount: number;
 }
 
-export interface CurseForgeContentFile {
-  id: number;
-  projectId: number;
-  gameId: number | null;
-  displayName: string | null;
-  fileName: string | null;
-  fileDate: string | null;
-  releaseType: number | null;
-  downloadUrl: string | null;
-  fileLength: number | null;
-  sha1: string | null;
-  gameVersions: string[];
-  dependencies: Array<{ projectId: number; required: boolean }>;
-}
-
-function toContentFile(raw: RawFile): CurseForgeContentFile {
-  return {
-    id: raw.id,
-    projectId: raw.modId,
-    gameId: raw.gameId ?? null,
-    displayName: raw.displayName ?? null,
-    fileName: raw.fileName ?? null,
-    fileDate: raw.fileDate ?? null,
-    releaseType: raw.releaseType ?? null,
-    downloadUrl: raw.downloadUrl || null,
-    fileLength: raw.fileLength ?? null,
-    sha1: sha1Of(raw.hashes),
-    gameVersions: raw.gameVersions ?? [],
-    dependencies: (raw.dependencies ?? [])
-      .filter(isDependency)
-      .map((dependency) => ({
-        projectId: dependency.modId,
-        required:
-          dependency.relationType === CurseForgeRelationType.requiredDependency,
-      })),
-  };
-}
-
 /**
  * One page of the Minecraft projects of a class that match the text, with the
  * number of matches CurseForge counts in total: most popular first, or highest
  * first by `sortField`. An empty text lists the class, and `categoryIds`
- * narrows it to those categories. Unlike `searchMods` it targets no default
- * game version or loader and does not look at the modpack.
+ * narrows it to those categories. No game version or loader is assumed.
  */
 export async function searchProjects(
   options: {
@@ -94,31 +50,25 @@ export async function searchProjects(
     sortField?: number;
   } & CurseForgePage,
 ): Promise<{ projects: CurseForgeProjectHit[]; total: number }> {
-  const answer = await cfFetch("mods/search", {
-    query: {
-      gameId: MINECRAFT_GAME_ID,
-      classId: options.classId,
-      sortField: options.sortField ?? CurseForgeSortField.popularity,
-      sortOrder: "desc",
-      index: options.index,
-      pageSize: options.pageSize,
-      searchFilter: options.query || undefined,
-      categoryIds: options.categoryIds?.length
-        ? JSON.stringify(options.categoryIds)
-        : undefined,
-      gameVersion: options.gameVersion || undefined,
-      modLoaderType: options.modLoaderType,
+  const body = await cfRead(
+    "mods/search",
+    {
+      query: {
+        gameId: MINECRAFT_GAME_ID,
+        classId: options.classId,
+        sortField: options.sortField ?? CurseForgeSortField.popularity,
+        sortOrder: "desc",
+        index: options.index,
+        pageSize: options.pageSize,
+        searchFilter: options.query || undefined,
+        categoryIds: options.categoryIds?.length
+          ? JSON.stringify(options.categoryIds)
+          : undefined,
+        gameVersion: options.gameVersion || undefined,
+        modLoaderType: options.modLoaderType,
+      },
     },
-  });
-  if (!answer.ok) {
-    throw new Error(
-      `CurseForge search failed (${answer.status}): ${answerText(answer)}`,
-    );
-  }
-
-  const body = parseCfResponse(
     curseforgePage(searchHitSchema),
-    answer.body,
     "search",
   );
 
@@ -153,18 +103,10 @@ export interface CurseForgeCategory {
 export async function listCategories(
   classId: number,
 ): Promise<CurseForgeCategory[]> {
-  const answer = await cfFetch("categories", {
-    query: { gameId: MINECRAFT_GAME_ID, classId },
-  });
-  if (!answer.ok) {
-    throw new Error(
-      `CurseForge categories failed (${answer.status}): ${answerText(answer)}`,
-    );
-  }
-
-  const body = parseCfResponse(
+  const body = await cfRead(
+    "categories",
+    { query: { gameId: MINECRAFT_GAME_ID, classId } },
     curseforgeList(curseforgeCategorySchema),
-    answer.body,
     "categories",
   );
 
@@ -181,8 +123,8 @@ export async function listCategories(
 
 /**
  * One page of a project's files in the order CurseForge lists them, with the
- * number of files that match in total. Unlike `getModFiles` it targets no
- * default game version or loader.
+ * number of files that match in total. No game version or loader is
+ * assumed.
  */
 export async function listProjectFiles(
   projectId: number,
@@ -190,62 +132,36 @@ export async function listProjectFiles(
     gameVersion?: string;
     modLoaderType?: number | null;
   } & CurseForgePage,
-): Promise<{ files: CurseForgeContentFile[]; total: number }> {
-  const answer = await cfFetch(`mods/${projectId}/files`, {
-    query: {
-      index: options.index,
-      pageSize: options.pageSize,
-      gameVersion: options.gameVersion || undefined,
-      modLoaderType: options.modLoaderType,
+): Promise<{ files: CurseForgeFile[]; total: number }> {
+  const body = await cfRead(
+    `mods/${projectId}/files`,
+    {
+      query: {
+        index: options.index,
+        pageSize: options.pageSize,
+        gameVersion: options.gameVersion || undefined,
+        modLoaderType: options.modLoaderType,
+      },
     },
-  });
-  if (!answer.ok) {
-    throw new Error(
-      `CurseForge listProjectFiles failed (${answer.status}): ${answerText(answer)}`,
-    );
-  }
-
-  const body = parseCfResponse(
     curseforgePage(curseforgeFileSchema),
-    answer.body,
     "listProjectFiles",
   );
 
   return {
-    files: body.data.map(toContentFile),
+    files: body.data.map(toCurseForgeFile),
     total: body.pagination.totalCount,
   };
 }
 
-/** Files by id with their game versions and dependencies, in one request. Unknown ids are simply absent. */
-export async function getContentFiles(
-  fileIds: number[],
-): Promise<CurseForgeContentFile[]> {
-  const files = await postIds({
-    of: "files",
-    ids: fileIds,
-    row: curseforgeFileSchema,
-    endpoint: "getContentFiles",
-    failure: "CurseForge getContentFiles failed",
-  });
-  return files.map(toContentFile);
-}
-
 async function getHtml(path: string, endpoint: string): Promise<string | null> {
-  const answer = await cfFetch(path);
-  if (answer.status === 404) return null;
-  if (!answer.ok) {
-    throw new Error(
-      `CurseForge ${endpoint} failed (${answer.status}): ${answerText(answer)}`,
-    );
-  }
-
-  const body = parseCfResponse(
+  const body = await cfRead(
+    path,
+    {},
     curseforgeData(z.string().nullish()),
-    answer.body,
     endpoint,
+    { notFound: "null" },
   );
-  return body.data ?? "";
+  return body === null ? null : (body.data ?? "");
 }
 
 /**
@@ -275,7 +191,7 @@ export async function getFileChangelog(
 
 export interface CurseForgeFingerprintMatch {
   fingerprint: number;
-  file: CurseForgeContentFile;
+  file: CurseForgeFile;
 }
 
 /**
@@ -287,23 +203,15 @@ export interface CurseForgeFingerprintMatch {
 export async function matchFingerprints(
   fingerprints: number[],
 ): Promise<CurseForgeFingerprintMatch[]> {
-  const answer = await cfFetch(`fingerprints/${MINECRAFT_GAME_ID}`, {
-    body: { fingerprints },
-  });
-  if (!answer.ok) {
-    throw new Error(
-      `CurseForge matchFingerprints failed (${answer.status}): ${answerText(answer)}`,
-    );
-  }
-
-  const body = parseCfResponse(
+  const body = await cfRead(
+    `fingerprints/${MINECRAFT_GAME_ID}`,
+    { body: { fingerprints } },
     curseforgeData(curseforgeFingerprintMatchesSchema),
-    answer.body,
     "matchFingerprints",
   );
 
   return (body.data.exactMatches ?? []).map(({ file }) => ({
     fingerprint: file.fileFingerprint,
-    file: toContentFile(file),
+    file: toCurseForgeFile(file),
   }));
 }

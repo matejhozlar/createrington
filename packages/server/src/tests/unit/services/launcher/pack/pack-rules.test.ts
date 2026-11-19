@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
   packFolderForClass,
-  parseModLoader,
   pickFileSource,
 } from "@/services/launcher/pack/pack-rules";
 
@@ -66,25 +65,4 @@ describe("pickFileSource", () => {
       pickFileSource({ curseforge: null, resolved: null, storage: null }),
     ).toEqual({ source: "manual", downloadUrl: null });
   });
-});
-
-describe("parseModLoader", () => {
-  it("splits the loader id into name and exact version", () => {
-    expect(parseModLoader("neoforge-21.1.249")).toEqual({
-      id: "neoforge-21.1.249",
-      name: "neoforge",
-      version: "21.1.249",
-    });
-  });
-
-  it("keeps dashes inside the version", () => {
-    expect(parseModLoader("forge-47.2.0-beta")?.version).toBe("47.2.0-beta");
-  });
-
-  it.each(["neoforge", "-21.1.249", "neoforge-", ""])(
-    "rejects %j",
-    (loaderId) => {
-      expect(parseModLoader(loaderId)).toBeNull();
-    },
-  );
 });

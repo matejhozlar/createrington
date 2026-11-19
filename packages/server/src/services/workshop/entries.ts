@@ -12,6 +12,7 @@ import { CurseForgeClass } from "@/services/curseforge/client";
 import type { CurseForgeProjectData } from "@/services/curseforge/mods";
 import { getModpackModIds } from "@/services/curseforge/modpack-manifest";
 import { ingestProjects } from "@/services/curseforge/ingest";
+import { projectLabel } from "@/services/curseforge/project";
 
 export interface WorkshopModEntry {
   projectId: number;
@@ -217,7 +218,7 @@ async function projectLabels(projectIds: number[]): Promise<string[]> {
     id: { $in: unique },
   });
   const byId = new Map(projects.map((p) => [p.id, p.name]));
-  return unique.map((id) => byId.get(id) ?? `#${id}`);
+  return unique.map((id) => projectLabel(byId.get(id), id));
 }
 
 export function mapConstraintError(error: unknown): never {

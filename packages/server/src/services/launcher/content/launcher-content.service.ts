@@ -4,10 +4,13 @@ import {
   ContentGatewayError,
 } from "@createrington/content-gateway-client";
 import { ContentGatewayPool, inContentPool } from "@/services/content-gateway";
-import { CurseForgeLoader } from "@/services/curseforge/client";
-import { LOADERLESS_CLASSES, getMods } from "@/services/curseforge/mods";
+import { getFiles } from "@/services/curseforge/files";
 import {
-  getContentFiles,
+  CurseForgeLoader,
+  LOADERLESS_CLASSES,
+} from "@/services/curseforge/loader";
+import { getMods } from "@/services/curseforge/mods";
+import {
   getFileChangelog,
   getProjectDescription,
   listCategories,
@@ -328,7 +331,7 @@ class LauncherContentService {
   private async loadFiles(
     fileIds: number[],
   ): Promise<Map<number, LauncherContentFileDetails | null>> {
-    const fetched = await this.ask("file", () => getContentFiles(fileIds));
+    const fetched = await this.ask("file", () => getFiles(fileIds));
     const byId = new Map(
       fetched
         .filter((file) => file.gameId === CURSEFORGE_MINECRAFT_GAME_ID)
