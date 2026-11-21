@@ -1,3 +1,4 @@
+import { CustomIds } from "@/discord/custom-ids";
 import {
   ActionRowBuilder,
   ButtonBuilder,
@@ -70,7 +71,9 @@ function buttonRow(
   state: "open" | "closed",
 ): ActionRowBuilder<ButtonBuilder> {
   const isMulti = prompt.entryMode === "multi";
-  const button = new ButtonBuilder().setCustomId(`prompt:respond:${prompt.id}`);
+  const button = new ButtonBuilder().setCustomId(
+    CustomIds.promptRespond.build({ promptId: prompt.id }),
+  );
 
   if (state === "open") {
     button

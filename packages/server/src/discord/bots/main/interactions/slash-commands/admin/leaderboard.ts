@@ -15,8 +15,12 @@ import {
   PermissionFlagsBits,
   SlashCommandBuilder,
 } from "discord.js";
+import type {
+  CommandModule,
+  CommandPermissions,
+} from "@/discord/bots/common/loaders/command-loader";
 
-export const data = new SlashCommandBuilder()
+const data = new SlashCommandBuilder()
   .setName("leaderboard")
   .setDescription("Manage leaderboards")
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
@@ -58,11 +62,11 @@ export const data = new SlashCommandBuilder()
     sub.setName("refresh-all").setDescription("Refresh all leaderboards"),
   );
 
-export const permissions = {
+const permissions: CommandPermissions = {
   requireAdmin: true,
 };
 
-export async function execute(
+async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
   const subcommand = interaction.options.getSubcommand();
@@ -165,3 +169,9 @@ async function handleRefreshAll(
     embeds: [embed.build()],
   });
 }
+
+export default {
+  data,
+  permissions,
+  execute,
+} satisfies CommandModule;

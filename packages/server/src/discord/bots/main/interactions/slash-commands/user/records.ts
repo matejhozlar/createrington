@@ -11,22 +11,26 @@ import {
   ChatInputCommandInteraction,
   SlashCommandBuilder,
 } from "discord.js";
+import type {
+  CommandCooldown,
+  CommandModule,
+} from "@/discord/bots/common/loaders/command-loader";
 
 const TITLE = "Record Holders";
 const ATTACHMENT_NAME = "records.png";
 const MEDALS = ["🥇", "🥈", "🥉"];
 
-export const data = new SlashCommandBuilder()
+const data = new SlashCommandBuilder()
   .setName("records")
   .setDescription("Show who places #1 across the most Minecraft stats");
 
-export const cooldown = {
+const cooldown: CommandCooldown = {
   duration: 10,
   type: CooldownType.USER,
   message: "Please wait before checking the records again!",
 };
 
-export async function execute(
+async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
   await interaction.deferReply();
@@ -83,3 +87,9 @@ export async function execute(
     components: [links],
   });
 }
+
+export default {
+  data,
+  cooldown,
+  execute,
+} satisfies CommandModule;

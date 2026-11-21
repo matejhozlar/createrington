@@ -16,10 +16,7 @@ import {
 } from "../../component-builder";
 import { CommonComponentPresets } from "../common";
 import { Discord } from "@/discord/constants";
-
-export const REGISTER_BUTTON_ID = "registration:open";
-
-export const REGISTER_CLOSE_BUTTON_ID = "registration:close";
+import { CustomIds } from "@/discord/custom-ids";
 
 const PROGRESS_BAR_LENGTH = 12;
 
@@ -55,7 +52,7 @@ function termsLine(): TextDisplayBuilder {
 
 function registerRow(): ActionRowBuilder<ButtonBuilder> {
   const button = new ButtonBuilder()
-    .setCustomId(REGISTER_BUTTON_ID)
+    .setCustomId(CustomIds.registrationOpen.build())
     .setLabel("Register")
     .setStyle(ButtonStyle.Primary);
   return new ActionRowBuilder<ButtonBuilder>().addComponents(button);
@@ -152,7 +149,7 @@ export const RegistrationComponentPresets = {
     ].join("  ");
 
     const closeButton = new ButtonBuilder()
-      .setCustomId(REGISTER_CLOSE_BUTTON_ID)
+      .setCustomId(CustomIds.registrationClose.build())
       .setLabel("Close")
       .setStyle(ButtonStyle.Danger)
       .setEmoji("🗑️");

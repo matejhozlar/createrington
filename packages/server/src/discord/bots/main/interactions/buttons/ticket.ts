@@ -6,10 +6,9 @@ import {
   type GuildMember,
   MessageFlags,
 } from "discord.js";
-import {
-  parseTicketButtonId,
-  type TicketType,
-} from "@/services/discord/tickets";
+import { isTicketType, type TicketType } from "@/services/discord/tickets";
+import type { ButtonModule } from "@/discord/bots/common/loaders/component-loader";
+import { CustomIds } from "@/discord/custom-ids";
 import { EmbedColors, EmbedPresets } from "@/discord/embeds";
 import { Discord } from "@/discord/constants";
 import { Q } from "@/db";
@@ -62,10 +61,20 @@ async function respondDenied(
   }
 }
 
-export const pattern = "ticket:*";
+const TICKET_ACTIONS: Record<
+  string,
+  (interaction: ButtonInteraction, ticketId: number) => Promise<void>
+> = {
+  close: handleClose,
+  "confirm-close": handleConfirmClose,
+  "cancel-close": handleCancelClose,
+  reopen: handleReopen,
+  delete: handleDelete,
+  transcript: handleTranscript,
+};
 
-export async function execute(interaction: ButtonInteraction): Promise<void> {
-  const parsed = parseTicketButtonId(interaction.customId);
+async function execute(interaction: ButtonInteraction): Promise<void> {
+  const parsed = CustomIds.ticket.parse(interaction.customId);
 
   if (!parsed) {
     await interaction.reply({
@@ -75,22 +84,14 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
     return;
   }
 
-  const { action, ticketId, type } = parsed;
+  const { action, target } = parsed;
+  const ticketId = Number(target);
+  const handler = TICKET_ACTIONS[action];
 
-  if (action === "create" && type) {
-    await handleCreate(interaction, type);
-  } else if (action === "close" && ticketId) {
-    await handleClose(interaction, ticketId);
-  } else if (action === "confirm-close" && ticketId) {
-    await handleConfirmClose(interaction, ticketId);
-  } else if (action === "cancel-close" && ticketId) {
-    await handleCancelClose(interaction, ticketId);
-  } else if (action === "reopen" && ticketId) {
-    await handleReopen(interaction, ticketId);
-  } else if (action === "delete" && ticketId) {
-    await handleDelete(interaction, ticketId);
-  } else if (action === "transcript" && ticketId) {
-    await handleTranscript(interaction, ticketId);
+  if (action === "create" && isTicketType(target)) {
+    await handleCreate(interaction, target);
+  } else if (handler && Number.isInteger(ticketId) && ticketId > 0) {
+    await handler(interaction, ticketId);
   } else {
     await interaction.reply({
       content: "Unknown action",
@@ -181,11 +182,15 @@ async function handleClose(
 
   const confirmRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
-      .setCustomId(`ticket:confirm-close:${ticketId}`)
+      .setCustomId(
+        CustomIds.ticket.build({ action: "confirm-close", target: ticketId }),
+      )
       .setLabel("Confirm")
       .setStyle(ButtonStyle.Success),
     new ButtonBuilder()
-      .setCustomId(`ticket:cancel-close:${ticketId}`)
+      .setCustomId(
+        CustomIds.ticket.build({ action: "cancel-close", target: ticketId }),
+      )
       .setLabel("Cancel")
       .setStyle(ButtonStyle.Danger),
   );
@@ -277,3 +282,8 @@ async function handleDelete(
     });
   }, 5000);
 }
+
+export default {
+  customId: CustomIds.ticket,
+  execute,
+} satisfies ButtonModule;

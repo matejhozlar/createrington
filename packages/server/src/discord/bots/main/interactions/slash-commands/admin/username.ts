@@ -6,8 +6,12 @@ import {
   PermissionFlagsBits,
   SlashCommandBuilder,
 } from "discord.js";
+import type {
+  CommandModule,
+  CommandPermissions,
+} from "@/discord/bots/common/loaders/command-loader";
 
-export const data = new SlashCommandBuilder()
+const data = new SlashCommandBuilder()
   .setName("username")
   .setDescription("Retrieve user's Minecraft username")
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
@@ -18,11 +22,11 @@ export const data = new SlashCommandBuilder()
       .setRequired(true),
   );
 
-export const permissions = {
+const permissions: CommandPermissions = {
   requireAdmin: true,
 };
 
-export async function execute(
+async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
   const user = interaction.options.getUser("user", true);
@@ -40,3 +44,9 @@ export async function execute(
     flags: MessageFlags.Ephemeral,
   });
 }
+
+export default {
+  data,
+  permissions,
+  execute,
+} satisfies CommandModule;

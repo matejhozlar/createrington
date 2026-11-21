@@ -33,11 +33,10 @@ vi.mock("@/services", () => ({
   getService: async () => ({ removeParticipant }),
 }));
 
-import {
-  data,
-  execute,
-} from "@/discord/bots/main/interactions/slash-commands/admin/ticket";
+import handler from "@/discord/bots/main/interactions/slash-commands/admin/ticket";
 import type { ChatInputCommandInteraction } from "discord.js";
+
+const { data, execute } = handler;
 
 interface SentEmbed {
   kind: string;

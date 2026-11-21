@@ -9,19 +9,23 @@ import {
   PermissionFlagsBits,
   SlashCommandBuilder,
 } from "discord.js";
+import type {
+  CommandModule,
+  CommandPermissions,
+} from "@/discord/bots/common/loaders/command-loader";
 
-export const data = new SlashCommandBuilder()
+const data = new SlashCommandBuilder()
   .setName("force-inactivity-cleanup")
   .setDescription(
     "Force-run the inactivity cleanup cycle now and reset its 7-day schedule",
   )
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
 
-export const permissions = {
+const permissions: CommandPermissions = {
   requireOwner: true,
 };
 
-export async function execute(
+async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
@@ -54,3 +58,9 @@ export async function execute(
     `${interaction.user.tag} force-triggered inactivity cleanup via /force-inactivity-cleanup`,
   );
 }
+
+export default {
+  data,
+  permissions,
+  execute,
+} satisfies CommandModule;

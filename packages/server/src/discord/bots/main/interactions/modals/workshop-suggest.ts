@@ -23,8 +23,9 @@ import { featureFlagService, FeatureFlags } from "@/services/feature-flag";
 import { workshopSuggestionService } from "@/services/workshop/suggestion.service";
 import { banNotice, findSuggestBan } from "@/services/workshop/bans";
 import { discordTimestamp } from "@/utils/format";
+import type { ModalModule } from "@/discord/bots/common/loaders/component-loader";
+import { CustomIds } from "@/discord/custom-ids";
 
-const MODAL_ID_PREFIX = "workshop-suggest";
 const PICKER_SUFFIX = "pick";
 const WORKSHOP_SELECT_ID = "workshop";
 const LINK_INPUT_ID = "link";
@@ -38,8 +39,6 @@ const LINK_ERRORS: Record<ModUrlErrorReason, string> = {
   "missing-slug":
     "Could not find a mod in that link. Paste the mod's full page URL.",
 };
-
-export const customId = `${MODAL_ID_PREFIX}:*`;
 
 function linkField(): LabelBuilder {
   return new LabelBuilder()
@@ -78,7 +77,7 @@ export function buildWorkshopSuggestModal(
   slotsUsed: number,
 ): ModalBuilder {
   return new ModalBuilder()
-    .setCustomId(`${MODAL_ID_PREFIX}:${workshop.id}`)
+    .setCustomId(CustomIds.workshopSuggest.build({ target: workshop.id }))
     .setTitle("Suggest a mod")
     .addTextDisplayComponents(
       new TextDisplayBuilder().setContent(
@@ -106,17 +105,15 @@ export function buildWorkshopPickerSuggestModal(
     );
 
   return new ModalBuilder()
-    .setCustomId(`${MODAL_ID_PREFIX}:${PICKER_SUFFIX}`)
+    .setCustomId(CustomIds.workshopSuggest.build({ target: PICKER_SUFFIX }))
     .setTitle("Suggest a mod")
     .addLabelComponents(workshopField, linkField(), noteField());
 }
 
-export async function execute(
-  interaction: ModalSubmitInteraction,
-): Promise<void> {
+async function execute(interaction: ModalSubmitInteraction): Promise<void> {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-  const suffix = interaction.customId.split(":")[1];
+  const suffix = CustomIds.workshopSuggest.parse(interaction.customId)?.target;
   const workshopId =
     suffix === PICKER_SUFFIX
       ? Number(interaction.fields.getStringSelectValues(WORKSHOP_SELECT_ID)[0])
@@ -253,3 +250,8 @@ export async function execute(
     );
   }
 }
+
+export default {
+  customId: CustomIds.workshopSuggest,
+  execute,
+} satisfies ModalModule;

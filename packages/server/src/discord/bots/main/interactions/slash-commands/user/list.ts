@@ -5,8 +5,9 @@ import {
   MessageFlags,
   SlashCommandBuilder,
 } from "discord.js";
+import type { CommandModule } from "@/discord/bots/common/loaders/command-loader";
 
-export const data = new SlashCommandBuilder()
+const data = new SlashCommandBuilder()
   .setName("list")
   .setDescription("List players on a server")
   .addStringOption((opt) =>
@@ -17,7 +18,7 @@ export const data = new SlashCommandBuilder()
       .addChoices({ name: "Rails 'n Sails", value: "1" }),
   );
 
-export async function execute(
+async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
   const serverOpt = interaction.options.getString("server", true);
@@ -40,3 +41,8 @@ export async function execute(
     flags: MessageFlags.Ephemeral,
   });
 }
+
+export default {
+  data,
+  execute,
+} satisfies CommandModule;

@@ -15,8 +15,10 @@ vi.mock("@/discord/utils/render-screenshot", () => ({
   renderScreenshot: vi.fn(),
 }));
 
-import { execute } from "@/discord/bots/main/interactions/slash-commands/user/profile";
+import handler from "@/discord/bots/main/interactions/slash-commands/user/profile";
 import { NotFoundError } from "@/db/utils/errors";
+
+const { execute } = handler;
 
 function interaction() {
   const fake = {

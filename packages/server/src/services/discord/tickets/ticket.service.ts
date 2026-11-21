@@ -16,6 +16,7 @@ import type { Ticket } from "@/generated/db";
 import { type CreateTicketOptions, TicketUserAction } from "./";
 import { getTicketTypeConfig, TicketSystemIds } from "./";
 import { Discord } from "@/discord/constants";
+import { CustomIds } from "@/discord/custom-ids";
 import { Q, ticketRepo } from "@/db";
 import config from "@/config";
 import { EmbedPresets } from "@/discord/embeds";
@@ -163,7 +164,9 @@ export class TicketService {
     return [
       new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
-          .setCustomId(`ticket:close:${ticketId}`)
+          .setCustomId(
+            CustomIds.ticket.build({ action: "close", target: ticketId }),
+          )
           .setStyle(ButtonStyle.Danger)
           .setLabel("Close")
           .setEmoji("🔒"),
@@ -262,17 +265,23 @@ export class TicketService {
     return [
       new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
-          .setCustomId(`ticket:reopen:${ticketId}`)
+          .setCustomId(
+            CustomIds.ticket.build({ action: "reopen", target: ticketId }),
+          )
           .setLabel("Reopen Ticket")
           .setStyle(ButtonStyle.Success)
           .setEmoji("🔓"),
         new ButtonBuilder()
-          .setCustomId(`ticket:transcript:${ticketId}`)
+          .setCustomId(
+            CustomIds.ticket.build({ action: "transcript", target: ticketId }),
+          )
           .setLabel("Transcript")
           .setStyle(ButtonStyle.Primary)
           .setEmoji("📄"),
         new ButtonBuilder()
-          .setCustomId(`ticket:delete:${ticketId}`)
+          .setCustomId(
+            CustomIds.ticket.build({ action: "delete", target: ticketId }),
+          )
           .setLabel("Delete Ticket")
           .setStyle(ButtonStyle.Danger),
       ),

@@ -3,17 +3,14 @@ import { EmbedPresets } from "@/discord/embeds";
 import { replyError } from "@/discord/utils/interaction-reply";
 import { RoleManager } from "@/discord/utils/roles/role-manager";
 import { getUnassignableReason } from "@/discord/utils/roles/self-assignable";
-import {
-  isPresetRole,
-  ROLE_PANEL_BUTTON_PREFIX,
-} from "../../config/role-panel";
+import { isPresetRole } from "../../config/role-panel";
+import type { ButtonModule } from "@/discord/bots/common/loaders/component-loader";
+import { CustomIds } from "@/discord/custom-ids";
 
-export const pattern = `${ROLE_PANEL_BUTTON_PREFIX}:*`;
-
-export async function execute(interaction: ButtonInteraction): Promise<void> {
+async function execute(interaction: ButtonInteraction): Promise<void> {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-  const [, roleId] = interaction.customId.split(":");
+  const roleId = CustomIds.rolePanel.parse(interaction.customId)?.roleId;
 
   if (!roleId) {
     await replyError(
@@ -100,3 +97,8 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
     await interaction.editReply({ embeds: [embed.build()] });
   }
 }
+
+export default {
+  customId: CustomIds.rolePanel,
+  execute,
+} satisfies ButtonModule;

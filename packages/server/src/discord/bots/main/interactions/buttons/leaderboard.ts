@@ -3,26 +3,13 @@ import { getService, Services } from "@/services";
 import { isValidLeaderboardType } from "@/services/discord/leaderboard/config";
 import type { LeaderboardType } from "@/services/discord/leaderboard/types";
 import { type ButtonInteraction, MessageFlags } from "discord.js";
+import type { ButtonModule } from "@/discord/bots/common/loaders/component-loader";
+import { CustomIds } from "@/discord/custom-ids";
 
-export const pattern = "leaderboard:*";
+async function execute(interaction: ButtonInteraction): Promise<void> {
+  const type = CustomIds.leaderboardRefresh.parse(interaction.customId)?.type;
 
-function parseCustomId(customId: string): {
-  action: string;
-  type: LeaderboardType;
-} | null {
-  const [, action, type] = customId.split(":");
-
-  if (!action || !type || !isValidLeaderboardType(type)) {
-    return null;
-  }
-
-  return { action, type };
-}
-
-export async function execute(interaction: ButtonInteraction): Promise<void> {
-  const parsed = parseCustomId(interaction.customId);
-
-  if (!parsed) {
+  if (!type || !isValidLeaderboardType(type)) {
     await interaction.reply({
       content: "Invalid button format",
       flags: MessageFlags.Ephemeral,
@@ -30,16 +17,7 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
     return;
   }
 
-  const { action, type } = parsed;
-
-  if (action === "refresh") {
-    await handleRefresh(interaction, type);
-  } else {
-    await interaction.reply({
-      content: "Unknown action",
-      flags: MessageFlags.Ephemeral,
-    });
-  }
+  await handleRefresh(interaction, type);
 }
 
 async function handleRefresh(
@@ -71,3 +49,8 @@ async function handleRefresh(
 
   logger.info(`${interaction.user.tag} refreshed ${type} leaderboard`);
 }
+
+export default {
+  customId: CustomIds.leaderboardRefresh,
+  execute,
+} satisfies ButtonModule;

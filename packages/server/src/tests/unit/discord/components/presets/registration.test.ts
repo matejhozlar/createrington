@@ -1,9 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { ComponentType, MessageFlags } from "discord.js";
-import {
-  REGISTER_CLOSE_BUTTON_ID,
-  RegistrationComponentPresets,
-} from "@/discord/components/presets/registration";
+import { RegistrationComponentPresets } from "@/discord/components/presets/registration";
+import { CustomIds } from "@/discord/custom-ids";
 import { ComponentColors } from "@/discord/components/colors";
 
 type ChildView = {
@@ -61,6 +59,8 @@ describe("RegistrationComponentPresets.success", () => {
 
     const { children } = view(result);
     const row = children.find((c) => c.type === ComponentType.ActionRow);
-    expect(row?.components?.[0]?.custom_id).toBe(REGISTER_CLOSE_BUTTON_ID);
+    expect(row?.components?.[0]?.custom_id).toBe(
+      CustomIds.registrationClose.build(),
+    );
   });
 });

@@ -3,45 +3,23 @@ import { isAdmin } from "@/discord/utils/admin-guard";
 import { EmbedPresets } from "@/discord/embeds";
 import { replyError } from "@/discord/utils/interaction-reply";
 import { playerDeletionService } from "@/services/player/deletion";
-import {
-  type ButtonInteraction,
-  type GuildMember,
-  MessageFlags,
-} from "discord.js";
+import { type ButtonInteraction, MessageFlags } from "discord.js";
+import type { ButtonModule } from "@/discord/bots/common/loaders/component-loader";
+import { CustomIds } from "@/discord/custom-ids";
 
-export const pattern = "departed:*";
+const permissionDeniedMessage = "You must be an admin to do that.";
 
-export const permissionDeniedMessage = "You must be an admin to do that.";
-
-export async function checkPermission(
+async function checkPermission(
   interaction: ButtonInteraction,
 ): Promise<boolean> {
-  const member = interaction.member as GuildMember | null;
-
-  if (
-    !member ||
-    typeof member.roles === "string" ||
-    Array.isArray(member.roles)
-  ) {
-    return false;
-  }
-
-  return await isAdmin(member);
+  return interaction.inCachedGuild() && (await isAdmin(interaction.member));
 }
 
-function parseCustomId(customId: string): {
-  action: string;
-  id: string;
-} | null {
-  const [, action, id] = customId.split(":");
-  if (!action || !id) return null;
-  return { action, id };
-}
+async function execute(interaction: ButtonInteraction): Promise<void> {
+  const parsed = CustomIds.departedDeleteNow.parse(interaction.customId);
+  const departedId = Number(parsed?.departedId);
 
-export async function execute(interaction: ButtonInteraction): Promise<void> {
-  const parsed = parseCustomId(interaction.customId);
-
-  if (!parsed) {
+  if (!Number.isInteger(departedId)) {
     await interaction.reply({
       content: "Invalid button format",
       flags: MessageFlags.Ephemeral,
@@ -49,17 +27,7 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
     return;
   }
 
-  const { action, id } = parsed;
-  const departedId = parseInt(id);
-
-  if (action === "delete-now") {
-    await handleDeleteNow(interaction, departedId);
-  } else {
-    await interaction.reply({
-      content: "Unknown action",
-      flags: MessageFlags.Ephemeral,
-    });
-  }
+  await handleDeleteNow(interaction, departedId);
 }
 
 async function handleDeleteNow(
@@ -130,3 +98,10 @@ async function handleDeleteNow(
     flags: MessageFlags.Ephemeral,
   });
 }
+
+export default {
+  customId: CustomIds.departedDeleteNow,
+  checkPermission,
+  permissionDeniedMessage,
+  execute,
+} satisfies ButtonModule;

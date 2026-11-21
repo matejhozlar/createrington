@@ -20,7 +20,9 @@ vi.mock("@/discord/embeds", () => ({
   },
 }));
 
-import { execute } from "@/discord/bots/main/interactions/slash-commands/user/money";
+import handler from "@/discord/bots/main/interactions/slash-commands/user/money";
+
+const { execute } = handler;
 
 function moneyInteraction() {
   const fake = {

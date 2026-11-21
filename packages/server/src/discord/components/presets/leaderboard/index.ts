@@ -1,3 +1,4 @@
+import { CustomIds } from "@/discord/custom-ids";
 import {
   ButtonBuilder,
   ButtonStyle,
@@ -58,7 +59,7 @@ function footerSection(
     )
     .setButtonAccessory(
       new ButtonBuilder()
-        .setCustomId(`leaderboard:refresh:${type}`)
+        .setCustomId(CustomIds.leaderboardRefresh.build({ type }))
         .setLabel("Refresh")
         .setEmoji(appEmoji("refresh"))
         .setStyle(ButtonStyle.Secondary),

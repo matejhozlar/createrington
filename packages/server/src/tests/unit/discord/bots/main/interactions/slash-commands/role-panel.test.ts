@@ -30,8 +30,9 @@ vi.mock("@/discord/utils/roles/self-assignable", () => ({
   getUnassignableReason: (...args: unknown[]) => getUnassignableReason(...args),
 }));
 
-const { execute } =
-  await import("@/discord/bots/main/interactions/slash-commands/owner/role-panel");
+const { execute } = (
+  await import("@/discord/bots/main/interactions/slash-commands/owner/role-panel")
+).default;
 const { getRolePanelPreset } =
   await import("@/discord/bots/main/config/role-panel");
 

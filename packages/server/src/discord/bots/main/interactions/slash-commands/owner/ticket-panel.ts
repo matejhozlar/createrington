@@ -10,19 +10,23 @@ import {
 import { EmbedPresets } from "@/discord/embeds";
 import { replyError } from "@/discord/utils/interaction-reply";
 import { getAllTicketTypes } from "@/services/discord/tickets";
-import { TicketButtonGenerator } from "@/services/discord/tickets";
+import { CustomIds } from "@/discord/custom-ids";
 import { isSendableChannel } from "@/discord/utils/channel-guard";
+import type {
+  CommandModule,
+  CommandPermissions,
+} from "@/discord/bots/common/loaders/command-loader";
 
-export const data = new SlashCommandBuilder()
+const data = new SlashCommandBuilder()
   .setName("ticket-panel")
   .setDescription("Create or refresh the ticket panel")
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
 
-export const permissions = {
+const permissions: CommandPermissions = {
   requireOwner: true,
 };
 
-export async function execute(
+async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
   if (!isSendableChannel(interaction.channel)) {
@@ -40,7 +44,9 @@ export async function execute(
 
   const buttons = ticketTypes.map((config) => {
     const button = new ButtonBuilder()
-      .setCustomId(TicketButtonGenerator.create(config.type))
+      .setCustomId(
+        CustomIds.ticket.build({ action: "create", target: config.type }),
+      )
       .setLabel(config.label)
       .setStyle(ButtonStyle.Primary);
 
@@ -66,3 +72,9 @@ export async function execute(
     flags: MessageFlags.Ephemeral,
   });
 }
+
+export default {
+  data,
+  permissions,
+  execute,
+} satisfies CommandModule;

@@ -13,12 +13,7 @@ import {
 import { ComponentColors } from "../../colors";
 import type { TopLevelComponent } from "../../component-builder";
 import { discordTimestamp } from "@/utils/format";
-
-export const WAITLIST_JOIN_BUTTON_ID = "waitlist:join";
-
-export const WAITLIST_REFRESH_BUTTON_ID = "waitlist:refresh";
-
-export const WAITLIST_LEAVE_BUTTON_ID = "waitlist:leave";
+import { CustomIds } from "@/discord/custom-ids";
 
 export interface WaitlistMessage {
   components: TopLevelComponent[];
@@ -41,7 +36,7 @@ function message(container: ContainerBuilder): WaitlistMessage {
 
 function joinButton(): ButtonBuilder {
   return new ButtonBuilder()
-    .setCustomId(WAITLIST_JOIN_BUTTON_ID)
+    .setCustomId(CustomIds.waitlist.build({ action: "join" }))
     .setLabel("Join Waitlist")
     .setStyle(ButtonStyle.Primary)
     .setEmoji("📝");
@@ -95,12 +90,12 @@ export const WaitlistComponentPresets = {
       .addActionRowComponents(
         new ActionRowBuilder<ButtonBuilder>().addComponents(
           new ButtonBuilder()
-            .setCustomId(WAITLIST_REFRESH_BUTTON_ID)
+            .setCustomId(CustomIds.waitlist.build({ action: "refresh" }))
             .setLabel("Refresh Position")
             .setStyle(ButtonStyle.Secondary)
             .setEmoji("🔄"),
           new ButtonBuilder()
-            .setCustomId(WAITLIST_LEAVE_BUTTON_ID)
+            .setCustomId(CustomIds.waitlist.build({ action: "leave" }))
             .setLabel("Leave Waitlist")
             .setStyle(ButtonStyle.Danger),
         ),

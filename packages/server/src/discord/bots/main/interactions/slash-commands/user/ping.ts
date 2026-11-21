@@ -4,18 +4,22 @@ import {
   type ChatInputCommandInteraction,
   SlashCommandBuilder,
 } from "discord.js";
+import type {
+  CommandCooldown,
+  CommandModule,
+} from "@/discord/bots/common/loaders/command-loader";
 
-export const data = new SlashCommandBuilder()
+const data = new SlashCommandBuilder()
   .setName("ping")
   .setDescription("Check bot latency");
 
-export const cooldown = {
+const cooldown: CommandCooldown = {
   duration: 5,
   type: CooldownType.USER,
   message: "Please wait before checking ping again!",
 };
 
-export async function execute(
+async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
   await interaction.reply({
@@ -35,3 +39,9 @@ export async function execute(
 
   await interaction.editReply({ embeds: [embed] });
 }
+
+export default {
+  data,
+  cooldown,
+  execute,
+} satisfies CommandModule;

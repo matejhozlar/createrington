@@ -1,9 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { MessageFlags, type ButtonInteraction } from "discord.js";
-import { execute } from "@/discord/bots/main/interactions/buttons/registration";
+import handler from "@/discord/bots/main/interactions/buttons/registration";
 import { CLOSE_GRACE_MS } from "@/discord/bots/main/registration-cleanup";
-import { REGISTER_CLOSE_BUTTON_ID } from "@/discord/components/presets/registration";
+import { CustomIds } from "@/discord/custom-ids";
 import { Discord } from "@/discord/constants";
+
+const { execute } = handler;
 
 // The handler only reads a handful of fields off the interaction, so a plain
 // object is enough. The cast goes via `unknown` because ButtonInteraction has
@@ -26,7 +28,7 @@ function interactionStub(overrides: { parentId?: string | null } = {}) {
   };
 
   const interaction = {
-    customId: REGISTER_CLOSE_BUTTON_ID,
+    customId: CustomIds.registrationClose.build(),
     user: { tag: "steve", id: "1" },
     channel,
     update,

@@ -1,10 +1,11 @@
 import config from "@/config";
-import fs from "node:fs";
 import path from "node:path";
 import type { Client, ClientEvents } from "discord.js";
 import { pathToFileURL } from "node:url";
+import { collectModuleFiles } from "./module-files";
 
 const isDev = config.envMode.isDev;
+const extension = isDev ? ".ts" : ".js";
 
 export interface EventModule<
   K extends keyof ClientEvents = keyof ClientEvents,
@@ -29,12 +30,12 @@ export async function loadEventHandlers(
   client: Client,
   eventsPath: string,
 ): Promise<number> {
-  if (!fs.existsSync(eventsPath)) {
-    logger.warn(`Events directory not found: ${eventsPath}`);
-    return 0;
+  const eventFiles = collectModuleFiles(eventsPath, extension);
+
+  if (eventFiles.length === 0) {
+    logger.warn(`No event modules found in ${eventsPath}`);
   }
 
-  const eventFiles = getAllEventFiles(eventsPath);
   let loadedCount = 0;
 
   for (const filePath of eventFiles) {
@@ -76,27 +77,4 @@ export async function loadEventHandlers(
 
   logger.info(`Loaded ${loadedCount} Discord event(s) from ${eventsPath}`);
   return loadedCount;
-}
-
-function getAllEventFiles(dir: string): string[] {
-  const files: string[] = [];
-  const items = fs.readdirSync(dir, { withFileTypes: true });
-
-  for (const item of items) {
-    const fullPath = path.join(dir, item.name);
-
-    if (item.isDirectory()) {
-      files.push(...getAllEventFiles(fullPath));
-    } else if (item.isFile()) {
-      const isValid = isDev
-        ? item.name.endsWith(".ts")
-        : item.name.endsWith(".js");
-
-      if (isValid) {
-        files.push(fullPath);
-      }
-    }
-  }
-
-  return files;
 }

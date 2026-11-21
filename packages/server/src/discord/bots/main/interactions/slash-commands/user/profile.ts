@@ -13,8 +13,12 @@ import {
   ChatInputCommandInteraction,
   SlashCommandBuilder,
 } from "discord.js";
+import type {
+  CommandCooldown,
+  CommandModule,
+} from "@/discord/bots/common/loaders/command-loader";
 
-export const data = new SlashCommandBuilder()
+const data = new SlashCommandBuilder()
   .setName("profile")
   .setDescription("View a player's profile card")
   .addUserOption((opt) =>
@@ -24,13 +28,13 @@ export const data = new SlashCommandBuilder()
       .setRequired(false),
   );
 
-export const cooldown = {
+const cooldown: CommandCooldown = {
   duration: 5,
   type: CooldownType.USER,
   message: "Please wait before viewing profiles again!",
 };
 
-export async function execute(
+async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
   const targetUser =
@@ -87,3 +91,9 @@ export async function execute(
     await interaction.editReply({ embeds: [embed.build()] });
   }
 }
+
+export default {
+  data,
+  cooldown,
+  execute,
+} satisfies CommandModule;

@@ -20,29 +20,11 @@ vi.mock("@/discord/utils/admin-guard", () => ({
   requireAdmin: vi.fn(async () => true),
   requireOwner: vi.fn(async () => true),
 }));
-vi.mock("@/discord/bots/common/loaders/button-loader", () => ({
-  findButtonHandler: (
-    customId: string,
-    handlers: Collection<string, unknown>,
-  ) => handlers.get(customId),
-}));
-vi.mock("@/discord/bots/main/interactions/modals/registration", () => ({
-  customId: "registration",
-  execute: vi.fn(),
-}));
-vi.mock("@/discord/bots/main/interactions/modals/prompt-submit", () => ({
-  customId: "prompt",
-  execute: vi.fn(),
-}));
-vi.mock("@/discord/bots/main/interactions/modals/workshop-suggest", () => ({
-  customId: "workshop",
-  execute: vi.fn(),
-}));
-
 import { registerInteractionHandler } from "@/discord/bots/main/handlers/interaction-handler";
 import { InteractionError } from "@/discord/utils/interaction-error";
 import type { CommandModule } from "@/discord/bots/common/loaders/command-loader";
-import type { ButtonModule } from "@/discord/bots/common/loaders/button-loader";
+import type { ButtonModule } from "@/discord/bots/common/loaders/component-loader";
+import { defineCustomId } from "@/discord/utils/custom-id";
 
 type Execute = (interaction: never) => Promise<void>;
 
@@ -56,11 +38,12 @@ function dispatcher(options: {
       execute: options.command,
     } as unknown as CommandModule);
   }
-  const buttons = new Collection<string, ButtonModule>();
+  const buttons: ButtonModule[] = [];
   if (options.button) {
-    buttons.set("panel:toggle", {
-      execute: options.button,
-    } as unknown as ButtonModule);
+    buttons.push({
+      customId: defineCustomId("panel:toggle"),
+      execute: options.button as ButtonModule["execute"],
+    });
   }
 
   let listener: ((interaction: Interaction) => void) | undefined;
@@ -69,7 +52,7 @@ function dispatcher(options: {
       listener = handler;
     },
   } as unknown as Client;
-  registerInteractionHandler(client, commands, buttons);
+  registerInteractionHandler(client, { commands, buttons, modals: [] });
 
   return (interaction) => listener?.(interaction);
 }

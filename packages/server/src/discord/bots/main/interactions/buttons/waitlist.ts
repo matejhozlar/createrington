@@ -2,15 +2,10 @@ import { Q, waitlistRepo } from "@/db";
 import { waitlistService } from "@/services/waitlist/waitlist.service";
 import { RegistrationComponentPresets } from "@/discord/components/presets/registration";
 import { denyForeignVerificationChannel } from "@/discord/bots/main/registration/verification-channel";
-import {
-  WaitlistComponentPresets,
-  WAITLIST_JOIN_BUTTON_ID,
-  WAITLIST_LEAVE_BUTTON_ID,
-  WAITLIST_REFRESH_BUTTON_ID,
-} from "@/discord/components/presets/waitlist";
+import { WaitlistComponentPresets } from "@/discord/components/presets/waitlist";
+import type { ButtonModule } from "@/discord/bots/common/loaders/component-loader";
+import { CustomIds } from "@/discord/custom-ids";
 import { MessageFlags, type ButtonInteraction } from "discord.js";
-
-export const pattern = "waitlist:*";
 
 async function renderCurrentState(
   interaction: ButtonInteraction,
@@ -57,13 +52,13 @@ async function renderCurrentState(
   });
 }
 
-export async function execute(interaction: ButtonInteraction): Promise<void> {
+async function execute(interaction: ButtonInteraction): Promise<void> {
   const discordId = interaction.user.id;
 
   if (await denyForeignVerificationChannel(interaction)) return;
 
-  switch (interaction.customId) {
-    case WAITLIST_JOIN_BUTTON_ID: {
+  switch (CustomIds.waitlist.parse(interaction.customId)?.action) {
+    case "join": {
       await interaction.deferUpdate();
 
       const hasCapacity = await waitlistRepo.hasCapacity();
@@ -80,13 +75,13 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
       return;
     }
 
-    case WAITLIST_REFRESH_BUTTON_ID: {
+    case "refresh": {
       await interaction.deferUpdate();
       await renderCurrentState(interaction);
       return;
     }
 
-    case WAITLIST_LEAVE_BUTTON_ID: {
+    case "leave": {
       await interaction.deferUpdate();
       await waitlistService.leaveQueue(discordId);
       await renderCurrentState(interaction);
@@ -103,3 +98,8 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
     }
   }
 }
+
+export default {
+  customId: CustomIds.waitlist,
+  execute,
+} satisfies ButtonModule;

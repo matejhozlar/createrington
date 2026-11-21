@@ -1,3 +1,4 @@
+import { CustomIds } from "@/discord/custom-ids";
 import {
   ActionRowBuilder,
   ButtonBuilder,
@@ -109,7 +110,7 @@ export function buildButtons(
       const btn = data.actionButtons[i];
       const button = new ButtonBuilder()
         .setLabel(btn.label)
-        .setCustomId(`embed-action:${presetId}:${i}`)
+        .setCustomId(CustomIds.embedAction.build({ presetId, buttonIndex: i }))
         .setStyle(ButtonStyle.Primary);
 
       if (btn.emoji) button.setEmoji(btn.emoji);

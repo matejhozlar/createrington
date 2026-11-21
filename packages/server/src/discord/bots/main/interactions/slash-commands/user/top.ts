@@ -17,6 +17,10 @@ import {
   ChatInputCommandInteraction,
   SlashCommandBuilder,
 } from "discord.js";
+import type {
+  CommandCooldown,
+  CommandModule,
+} from "@/discord/bots/common/loaders/command-loader";
 
 const CATEGORY_CHOICES = [
   { name: "Mined (blocks)", value: "minecraft:mined" },
@@ -30,7 +34,7 @@ const CATEGORY_CHOICES = [
   { name: "Custom (misc stats)", value: "minecraft:custom" },
 ];
 
-export const data = new SlashCommandBuilder()
+const data = new SlashCommandBuilder()
   .setName("top")
   .setDescription("Show top 3 players for a Minecraft stat")
   .addStringOption((opt) =>
@@ -48,13 +52,13 @@ export const data = new SlashCommandBuilder()
       .setAutocomplete(true),
   );
 
-export const cooldown = {
+const cooldown: CommandCooldown = {
   duration: 5,
   type: CooldownType.USER,
   message: "Please wait before checking stats again!",
 };
 
-export async function autocomplete(
+async function autocomplete(
   interaction: AutocompleteInteraction,
 ): Promise<void> {
   const category = CATEGORY_CHOICES.find(
@@ -73,7 +77,7 @@ export async function autocomplete(
   );
 }
 
-export async function execute(
+async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
   const category = interaction.options.getString("category", true);
@@ -143,3 +147,10 @@ export async function execute(
     });
   }
 }
+
+export default {
+  data,
+  cooldown,
+  autocomplete,
+  execute,
+} satisfies CommandModule;

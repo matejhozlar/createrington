@@ -53,8 +53,10 @@ vi.mock("@/services/issue-triage/issue-triage.service", () => ({
   issueTriageService: triage,
 }));
 
-import { execute } from "@/discord/bots/main/interactions/slash-commands/admin/issue";
+import handler from "@/discord/bots/main/interactions/slash-commands/admin/issue";
 import { ChannelUnavailableError } from "@/services/discord/message/errors";
+
+const { execute } = handler;
 
 const FILED = {
   status: "completed",

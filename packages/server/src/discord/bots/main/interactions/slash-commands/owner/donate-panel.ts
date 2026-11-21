@@ -12,8 +12,12 @@ import {
   PermissionFlagsBits,
   SlashCommandBuilder,
 } from "discord.js";
+import type {
+  CommandModule,
+  CommandPermissions,
+} from "@/discord/bots/common/loaders/command-loader";
 
-export const data = new SlashCommandBuilder()
+const data = new SlashCommandBuilder()
   .setName("donate-panel")
   .setDescription("Create or update the donation panel")
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
@@ -26,11 +30,11 @@ export const data = new SlashCommandBuilder()
       .setRequired(false),
   );
 
-export const permissions = {
+const permissions: CommandPermissions = {
   requireOwner: true,
 };
 
-export async function execute(
+async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
   if (!isSendableChannel(interaction.channel)) {
@@ -109,3 +113,9 @@ export async function execute(
     logger.info(`${interaction.user.tag} created donation panel`);
   }
 }
+
+export default {
+  data,
+  permissions,
+  execute,
+} satisfies CommandModule;

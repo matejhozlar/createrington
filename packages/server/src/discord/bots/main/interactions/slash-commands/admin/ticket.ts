@@ -12,10 +12,15 @@ import { TicketType } from "@/services/discord/tickets";
 import { Discord } from "@/discord/constants";
 import { getService, Services } from "@/services";
 import { Q } from "@/db";
+import type {
+  CommandCooldown,
+  CommandModule,
+  CommandPermissions,
+} from "@/discord/bots/common/loaders/command-loader";
 
 const TICKET_PARTY_SERVER_ID = 1;
 
-export const data = new SlashCommandBuilder()
+const data = new SlashCommandBuilder()
   .setName("ticket")
   .setDescription("Manage tickets")
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
@@ -62,17 +67,17 @@ export const data = new SlashCommandBuilder()
       ),
   );
 
-export const cooldown = {
+const cooldown: CommandCooldown = {
   duration: 5,
   type: CooldownType.USER,
   message: "Please wait before using the ticket command again!",
 };
 
-export const permissions = {
+const permissions: CommandPermissions = {
   requireAdmin: true,
 };
 
-export async function autocomplete(
+async function autocomplete(
   interaction: AutocompleteInteraction,
 ): Promise<void> {
   const focused = interaction.options.getFocused(true);
@@ -95,7 +100,7 @@ export async function autocomplete(
   );
 }
 
-export async function execute(
+async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
   const ticketService = await getService(Services.TICKET_SERVICE);
@@ -345,3 +350,11 @@ export async function execute(
     return;
   }
 }
+
+export default {
+  data,
+  permissions,
+  cooldown,
+  autocomplete,
+  execute,
+} satisfies CommandModule;
