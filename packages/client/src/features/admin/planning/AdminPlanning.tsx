@@ -159,8 +159,8 @@ export function AdminPlanning() {
 
       <div className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-4 px-4 pb-4">
         <AdminPageTitle
-          title="Season Planning"
-          description="Ideas, problems and decisions for the next season, in one place."
+          title="Planning"
+          description="Ideas, problems and decisions the team is working through, in one place."
           actions={
             <>
               <Button
@@ -282,7 +282,7 @@ export function AdminPlanning() {
           <EmptyState
             icon={Lightbulb}
             message="No cards yet"
-            hint="Add the first idea, problem or question for next season."
+            hint="Add the first idea, problem or open question."
           >
             <Button onClick={() => setCreateOpen(true)}>
               <Plus className="mr-2 size-4" />
