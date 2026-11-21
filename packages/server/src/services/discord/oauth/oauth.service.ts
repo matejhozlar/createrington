@@ -73,7 +73,7 @@ export class DiscordOAuthService {
   }
 
   /** Returns the singleton instance, creating (and validating env) on first call. */
-  public static getInstance(): DiscordOAuthService {
+  static getInstance(): DiscordOAuthService {
     if (!DiscordOAuthService.instance) {
       DiscordOAuthService.instance = new DiscordOAuthService();
     }

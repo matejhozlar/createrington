@@ -12,44 +12,35 @@ export function formatBalance(balance: number | string): string {
   return `$${formatted}`;
 }
 
-export function formatDaysCount(days: number): string {
-  return `${days} ${pluralize(days, "day")}`;
+export function formatCount(
+  count: number,
+  singular: string,
+  plural?: string,
+): string {
+  return `${count} ${pluralize(count, singular, plural)}`;
+}
+
+function withRemainder(main: string, remainder: number, unit: string): string {
+  return remainder === 0 ? main : `${main} and ${formatCount(remainder, unit)}`;
 }
 
 export function formatDuration(start: Date, end: Date = new Date()): string {
-  const diffMs = end.getTime() - start.getTime();
-  const diffSeconds = Math.floor(diffMs / 1000);
+  const seconds = Math.floor((end.getTime() - start.getTime()) / 1000);
+  if (seconds < 60) return formatCount(seconds, "second");
 
-  if (diffSeconds < 60) {
-    return `${diffSeconds} second${diffSeconds !== 1 ? "s" : ""}`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return formatCount(minutes, "minute");
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) {
+    return withRemainder(formatCount(hours, "hour"), minutes % 60, "minute");
   }
 
-  const diffMinutes = Math.floor(diffSeconds / 60);
-  if (diffMinutes < 60) {
-    return `${diffMinutes} minute${diffMinutes !== 1 ? "s" : ""}`;
-  }
-
-  const diffHours = Math.floor(diffMinutes / 60);
-  const remainingMinutes = diffMinutes % 60;
-
-  if (diffHours < 24) {
-    if (remainingMinutes === 0) {
-      return `${diffHours} hour${diffHours !== 1 ? "s" : ""}`;
-    }
-    return `${diffHours} hour${
-      diffHours !== 1 ? "s" : ""
-    } and ${remainingMinutes} minute${remainingMinutes !== 1 ? "s" : ""}`;
-  }
-
-  const diffDays = Math.floor(diffHours / 24);
-  const remainingHours = diffHours % 24;
-
-  if (remainingHours === 0) {
-    return `${diffDays} day${diffDays !== 1 ? "s" : ""}`;
-  }
-  return `${diffDays} day${
-    diffDays !== 1 ? "s" : ""
-  } and ${remainingHours} hour${remainingHours !== 1 ? "s" : ""}`;
+  return withRemainder(
+    formatCount(Math.floor(hours / 24), "day"),
+    hours % 24,
+    "hour",
+  );
 }
 
 export function formatSeconds(seconds: number): string {

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { errorMessage } from "@/errors";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
 import {
@@ -63,7 +64,7 @@ export const structurePackRotationRouter = router({
           description: "Manual structure pack rotation failed",
           metadata: {
             success: false,
-            reason: error instanceof Error ? error.message : String(error),
+            reason: errorMessage(error),
           },
         });
         throw error;

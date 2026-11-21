@@ -70,7 +70,7 @@ export class ServerRconConnection {
     }
   }
 
-  public async disconnect(): Promise<void> {
+  async disconnect(): Promise<void> {
     if (this.connection) {
       try {
         await this.connection.end();
@@ -88,7 +88,7 @@ export class ServerRconConnection {
     }
   }
 
-  public async send(command: string): Promise<string> {
+  async send(command: string): Promise<string> {
     if (!command || command.trim().length === 0) {
       throw new RconCommandError(
         "Command cannot be empty",
@@ -156,11 +156,11 @@ export class ServerRconConnection {
     return response;
   }
 
-  public getLastUsed(): number {
+  getLastUsed(): number {
     return this.lastUsed;
   }
 
-  public isConnected(): boolean {
+  isConnected(): boolean {
     return this.connection !== null;
   }
 }

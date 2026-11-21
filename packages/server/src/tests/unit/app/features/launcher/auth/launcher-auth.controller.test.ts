@@ -29,7 +29,7 @@ vi.mock("@/config", () => ({
     redis: { url: null },
   },
 }));
-vi.mock("@/utils/mojang-has-joined", () => ({
+vi.mock("@/services/auth/launcher/mojang-has-joined", () => ({
   verifyMojangJoin: mocks.verifyMojangJoin,
 }));
 vi.mock("@/services/auth/launcher/launcher-session.service", () => ({
@@ -47,10 +47,7 @@ vi.mock("@/services/auth/launcher/launcher-jwt.service", () => ({
 }));
 
 import { LauncherAuthController } from "@/app/features/launcher/auth/launcher-auth.controller";
-import {
-  __resetLauncherChallengesForTests,
-  issueLauncherChallenge,
-} from "@/services/auth/launcher/challenge-store";
+import { issueLauncherChallenge } from "@/services/auth/launcher/challenge-store";
 import type { Request } from "express";
 import { fakeReq, fakeRes } from "@/tests/helpers/http";
 
@@ -94,7 +91,6 @@ async function captureError(promise: Promise<void>) {
 describe("LauncherAuthController", () => {
   beforeEach(() => {
     vi.resetAllMocks();
-    __resetLauncherChallengesForTests();
     mocks.generate.mockReturnValue("access-token");
     mocks.createSession.mockResolvedValue({
       refreshToken: REFRESH_TOKEN,

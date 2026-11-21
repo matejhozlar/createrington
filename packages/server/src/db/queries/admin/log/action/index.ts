@@ -8,6 +8,11 @@ import type {
 } from "@createrington/shared/db/admin_log_action.types";
 import type { WorkshopModReviewAction } from "@createrington/shared/workshop";
 
+export const SYSTEM_AUDIT_ACTOR = {
+  discordId: "system",
+  username: "System",
+} as const;
+
 export type AdminActionType =
   | "admin_demote"
   | "admin_promote"

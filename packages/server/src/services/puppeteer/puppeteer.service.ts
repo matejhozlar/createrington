@@ -177,12 +177,11 @@ export class PuppeteerService {
       if (!element) {
         throw new Error(`Element not found for selector: ${elementSelector}`);
       }
-      buffer = (await element.screenshot(screenshotOpts)) as Buffer;
+      buffer = Buffer.from(await element.screenshot(screenshotOpts));
     } else {
-      buffer = (await page.screenshot({
-        ...screenshotOpts,
-        fullPage: true,
-      })) as Buffer;
+      buffer = Buffer.from(
+        await page.screenshot({ ...screenshotOpts, fullPage: true }),
+      );
     }
 
     return { buffer, format };

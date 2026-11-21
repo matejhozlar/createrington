@@ -29,8 +29,8 @@ export function nullIfNotFound(error: unknown): null {
 }
 
 export class ConstraintViolationError extends DatabaseError {
-  public readonly code?: string;
-  public readonly column?: string;
+  readonly code?: string;
+  readonly column?: string;
 
   constructor(
     message: string,

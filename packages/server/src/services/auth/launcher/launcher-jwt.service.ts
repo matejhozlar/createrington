@@ -39,7 +39,7 @@ export class LauncherJwtService {
     this.secret = config.app.auth.launcherAccessToken.secret;
   }
 
-  public static getInstance(): LauncherJwtService {
+  static getInstance(): LauncherJwtService {
     if (!LauncherJwtService.instance) {
       LauncherJwtService.instance = new LauncherJwtService();
     }

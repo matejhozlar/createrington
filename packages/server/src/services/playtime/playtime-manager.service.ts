@@ -35,7 +35,6 @@ export type ServiceListener = (
 export class PlaytimeManagerService {
   private playtimeServices: Map<number, PlaytimeService> = new Map();
   private pendingServices: Map<number, Promise<PlaytimeService>> = new Map();
-  private messageCacheService?: MessageCacheService;
   private serviceListeners: ServiceListener[] = [];
   private stopped = false;
 
@@ -210,8 +209,6 @@ export class PlaytimeManagerService {
    * server: failures are logged but do not block the others.
    */
   setupMessageCacheIntegration(messageCacheService: MessageCacheService): void {
-    this.messageCacheService = messageCacheService;
-
     logger.info(
       "Setting up message cache integration for playtime services...",
     );

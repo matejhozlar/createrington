@@ -1,12 +1,13 @@
 import { userMention } from "discord.js";
-import { Q, waitlistRepo } from "@/db";
+import { Q } from "@/db";
 import { WaitlistComponentPresets } from "@/discord/components/presets/waitlist";
 import { getGuild, lookupChannel, lookupMember } from "./discord-lookup";
-import { expireEntry } from "./entries";
+import { expireEntry, PROMOTION_TTL_DAYS, requeueEntry } from "./entries";
 import { waitlistPromotionService } from "./promotion.service";
 import { waitlistService } from "./waitlist.service";
 
-const PROMOTION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const PROMOTION_TTL_MS = PROMOTION_TTL_DAYS * 24 * 60 * 60 * 1000;
+const CHECK_INTERVAL_MS = 60 * 60 * 1000;
 
 /**
  * Periodic waitlist maintenance: re-queues promotions whose 7-day
@@ -23,7 +24,6 @@ const PROMOTION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 export class WaitlistCleanupService {
   private intervalId?: NodeJS.Timeout;
   private maintenanceRunning = false;
-  private readonly CHECK_INTERVAL = 60 * 60 * 1000;
 
   /** Runs an immediate maintenance pass and schedules the hourly interval. */
   initialize(): void {
@@ -37,10 +37,10 @@ export class WaitlistCleanupService {
       this.runCycle().catch((error) => {
         logger.error("Scheduled waitlist maintenance failed:", error);
       });
-    }, this.CHECK_INTERVAL);
+    }, CHECK_INTERVAL_MS);
 
     logger.info(
-      `WaitlistCleanupService initialized (maintenance every ${this.CHECK_INTERVAL / 3600000}h)`,
+      `WaitlistCleanupService initialized (maintenance every ${CHECK_INTERVAL_MS / 3600000}h)`,
     );
   }
 
@@ -91,16 +91,7 @@ export class WaitlistCleanupService {
         continue;
       }
 
-      await Q.waitlist.entry.update(
-        { id: entry.id },
-        {
-          status: "queued",
-          queuedAt: new Date(),
-          promotedAt: null,
-          promotedBy: null,
-        },
-      );
-      await waitlistRepo.updateProgressEmbed(entry.id);
+      await requeueEntry(entry.id);
 
       logger.info(
         `Re-queued stale promotion #${entry.id} (${entry.discordUsername})`,

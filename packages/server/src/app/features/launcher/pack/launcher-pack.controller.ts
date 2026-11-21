@@ -1,4 +1,5 @@
 import { Readable, Transform } from "node:stream";
+import { errorMessage } from "@/errors";
 import { pipeline } from "node:stream/promises";
 import type { ReadableStream as NodeReadableStream } from "node:stream/web";
 import type { Request, Response } from "express";
@@ -85,7 +86,7 @@ async function streamStorage(
   } catch (error) {
     if (!res.headersSent) throw error;
     logger.debug(
-      `Storage download ${req.originalUrl} ended early: ${error instanceof Error ? error.message : String(error)}`,
+      `Storage download ${req.originalUrl} ended early: ${errorMessage(error)}`,
     );
     res.destroy();
   }

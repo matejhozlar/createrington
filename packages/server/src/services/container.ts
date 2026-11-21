@@ -1,4 +1,4 @@
-import EventEmitter from "node:events";
+import { typedEmitter } from "@/utils/typed-emitter";
 import type { Server } from "node:http";
 import type { Pool } from "pg";
 import type { Client } from "discord.js";
@@ -60,14 +60,6 @@ interface ContainerEvents {
   allReady: () => void;
 }
 
-interface TypedEventEmitter<T> {
-  on<K extends keyof T>(event: K, listener: T[K]): this;
-  emit<K extends keyof T>(
-    event: K,
-    ...args: T[K] extends (...args: infer A) => unknown ? A : never
-  ): boolean;
-}
-
 /**
  * Centralized service container with dependency injection
  *
@@ -81,8 +73,7 @@ interface TypedEventEmitter<T> {
  * authoritative registry: all services must be registered through it before
  * `initializeAll()` is called during server startup
  */
-export class ServiceContainer extends (EventEmitter as new () => TypedEventEmitter<ContainerEvents> &
-  EventEmitter) {
+export class ServiceContainer extends typedEmitter<ContainerEvents>() {
   private services: Map<string, ServiceDefinition> = new Map();
   private initializationPromises: Map<string, Promise<unknown>> = new Map();
 

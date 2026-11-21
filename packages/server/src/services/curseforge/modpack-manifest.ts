@@ -1,4 +1,5 @@
 import JSZip from "jszip";
+import { errorMessage } from "@/errors";
 import { z } from "zod";
 import { downloadCapped } from "@/utils/http";
 import { parseCfResponse } from "./client";
@@ -106,7 +107,7 @@ async function downloadPackManifest(packProjectId: number, fileId: number) {
       maxBytes: MAX_MODPACK_ZIP_BYTES,
     });
   } catch (error) {
-    const reason = error instanceof Error ? error.message : String(error);
+    const reason = errorMessage(error);
     throw new Error(`Failed to download modpack file ${fileId}: ${reason}`, {
       cause: error,
     });

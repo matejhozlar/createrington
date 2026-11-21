@@ -1,7 +1,7 @@
 import { userMention } from "discord.js";
 import { EmbedColors } from "../../colors";
 import { createEmbed } from "../../embed-builder";
-import { discordTimestamp } from "@/utils/format";
+import { discordTimestamp, pluralize } from "@/utils/format";
 
 export interface InactivePlayerInfo {
   discordId: string;
@@ -48,7 +48,7 @@ export const InactivityEmbedPresets = {
       .join("\n");
 
     const description = [
-      `**${data.players.length}** inactive player${data.players.length === 1 ? "" : "s"} removed at ${discordTimestamp(data.removedAt, "F")}.`,
+      `**${data.players.length}** inactive ${pluralize(data.players.length, "player")} removed at ${discordTimestamp(data.removedAt, "F")}.`,
       `**Triggered by:** ${triggeredByLine}`,
       "",
       playerLines,

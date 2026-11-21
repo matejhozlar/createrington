@@ -22,7 +22,7 @@ export class MinecraftRconManager {
     this.startCleanupInterval();
   }
 
-  public static getInstance(): MinecraftRconManager {
+  static getInstance(): MinecraftRconManager {
     if (!MinecraftRconManager.instance) {
       MinecraftRconManager.instance = new MinecraftRconManager();
     }
@@ -68,7 +68,7 @@ export class MinecraftRconManager {
     }, CLEANUP_INTERVAL_MS);
   }
 
-  public async shutdown(): Promise<void> {
+  async shutdown(): Promise<void> {
     if (this.cleanupInterval) {
       clearInterval(this.cleanupInterval);
       this.cleanupInterval = null;
@@ -80,17 +80,15 @@ export class MinecraftRconManager {
     MinecraftRconManager.instance = null;
   }
 
-  public getServerIds(): ServerId[] {
+  getServerIds(): ServerId[] {
     return [...SERVER_IDS];
   }
 
-  public async send(serverId: ServerId, command: string): Promise<string> {
+  async send(serverId: ServerId, command: string): Promise<string> {
     return this.getConnection(serverId).send(command);
   }
 
-  public async sendAll(
-    command: string,
-  ): Promise<Map<ServerId, MultiServerResult>> {
+  async sendAll(command: string): Promise<Map<ServerId, MultiServerResult>> {
     const results = new Map<ServerId, MultiServerResult>();
 
     await Promise.allSettled(
@@ -110,7 +108,7 @@ export class MinecraftRconManager {
     return results;
   }
 
-  public async whitelist(
+  async whitelist(
     serverId: ServerId,
     action: WhitelistAction,
     playerName?: string,
@@ -129,7 +127,7 @@ export class MinecraftRconManager {
     return this.send(serverId, `whitelist ${action}${playerArg}`);
   }
 
-  public async banAll(
+  async banAll(
     playerName: string,
     reason?: string,
   ): Promise<Map<ServerId, MultiServerResult>> {
@@ -140,7 +138,7 @@ export class MinecraftRconManager {
     return results;
   }
 
-  public async pardonAll(
+  async pardonAll(
     playerName: string,
   ): Promise<Map<ServerId, MultiServerResult>> {
     requirePlayerName(playerName);
@@ -149,7 +147,7 @@ export class MinecraftRconManager {
     return results;
   }
 
-  public async whitelistAll(
+  async whitelistAll(
     action: WhitelistAction.ADD | WhitelistAction.REMOVE,
     playerName: string,
   ): Promise<Map<ServerId, MultiServerResult>> {

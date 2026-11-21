@@ -17,10 +17,6 @@ import { BasePlayerRepository, type PlayerIdentifier } from "./base";
  * transaction. Player deletion is owned by PlayerDeletionService.
  */
 export class PlayerRepository extends BasePlayerRepository {
-  constructor() {
-    super();
-  }
-
   /** Enriched player view for the admin panel: balance, playtime, tickets, waitlist. */
   async getDetailed(identifier: PlayerIdentifier): Promise<{
     player: Player;

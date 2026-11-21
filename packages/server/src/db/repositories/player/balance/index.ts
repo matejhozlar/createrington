@@ -8,10 +8,6 @@ import { BasePlayerRepository } from "../base";
  * BalanceRepository directly.
  */
 export class PlayerBalanceRepository extends BasePlayerRepository {
-  constructor() {
-    super();
-  }
-
   /**
    * Apply the same signed delta to a list of players. Positive amount grants,
    * negative deducts. Returns a parallel result array with success status per

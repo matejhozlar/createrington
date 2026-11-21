@@ -1,7 +1,7 @@
 import config from "@/config";
 import { Q, db, balanceRepo } from "@/db";
 import { BalanceTransactionType } from "@/db/repositories/balance";
-import { BadRequestError } from "@/errors";
+import { BadRequestError, errorMessage } from "@/errors";
 import {
   isFileOpsAllowed,
   copyFileToServer,
@@ -259,7 +259,7 @@ export class StructurePackRotationService {
             logger.info(`Installed mod file: ${mod.fileName}`);
           }
         } catch (error) {
-          const reason = error instanceof Error ? error.message : String(error);
+          const reason = errorMessage(error);
           logger.error(`Rotation file operations failed: ${reason}`);
           await this.recordRotation(
             activePack?.id ?? null,

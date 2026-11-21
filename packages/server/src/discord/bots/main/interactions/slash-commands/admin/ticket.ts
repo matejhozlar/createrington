@@ -1,4 +1,5 @@
 import { EmbedPresets } from "@/discord/embeds";
+import { formatCount } from "@/utils/format";
 import { replyError } from "@/discord/utils/interaction-reply";
 import { CooldownType } from "@/discord/utils/cooldown";
 import {
@@ -96,7 +97,7 @@ async function autocomplete(
 
   await interaction.respond(
     results.map((p) => ({
-      name: `${p.name} (${p.memberCount} member${p.memberCount === 1 ? "" : "s"})`,
+      name: `${p.name} (${formatCount(p.memberCount, "member")})`,
       value: p.teamId,
     })),
   );

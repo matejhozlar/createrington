@@ -594,7 +594,11 @@ export class GalleryService {
     try {
       return await fs.readFile(this.originalFilePath(submission));
     } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      if (
+        error instanceof Error &&
+        "code" in error &&
+        error.code === "ENOENT"
+      ) {
         throw new ConflictError(
           "The stored image is gone, so this screenshot can no longer be published. Reject it and ask the player to post it again.",
         );

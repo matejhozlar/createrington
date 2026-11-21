@@ -1,4 +1,5 @@
 import type { CooldownStats } from "@/discord/utils/cooldown/cooldown-manager";
+import { pluralize } from "@/utils/format";
 import { createEmbed, DiscordEmbedBuilder } from "../../embed-builder";
 import { EmbedColors } from "../../colors";
 import { type ActiveSession, PlaytimeService } from "@/services/playtime";
@@ -55,7 +56,7 @@ export const CommandEmbedPresets = {
       .join("\n");
 
     embed.description(
-      `**${onlineCount}** player${onlineCount !== 1 ? "s" : ""} online\n\n${playerList}`,
+      `**${onlineCount}** ${pluralize(onlineCount, "player")} online\n\n${playerList}`,
     );
 
     return embed;

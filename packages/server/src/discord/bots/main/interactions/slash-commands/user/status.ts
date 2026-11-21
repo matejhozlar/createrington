@@ -1,4 +1,5 @@
 import { EmbedPresets } from "@/discord/embeds";
+import { formatCount } from "@/utils/format";
 import { CooldownType } from "@/discord/utils/cooldown";
 import { getService, Services } from "@/services";
 import { SERVERS } from "@/services/mc-server/servers";
@@ -49,10 +50,7 @@ async function execute(
     serverLines.length > 0 ? serverLines.join("\n") : "No servers configured.";
 
   const embed = EmbedPresets.info("Server Status", description)
-    .field(
-      "Total Online",
-      `${totalOnline} player${totalOnline !== 1 ? "s" : ""}`,
-    )
+    .field("Total Online", formatCount(totalOnline, "player"))
     .timestamp();
 
   await interaction.reply({ embeds: [embed.build()] });

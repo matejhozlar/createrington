@@ -43,7 +43,7 @@ export class JWTService {
     }
   }
 
-  public static getInstance(): JWTService {
+  static getInstance(): JWTService {
     if (!JWTService.instance) {
       JWTService.instance = new JWTService();
     }
@@ -52,25 +52,7 @@ export class JWTService {
 
   /** Signs a new access token for an authenticated user. */
   generate(user: AuthenticatedUser): string {
-    const payload: JWTPayload = {
-      discordId: user.discordId,
-      username: user.username,
-      role: user.role,
-      isAdmin: user.isAdmin,
-      minecraftUuid: user.minecraftUuid,
-      minecraftUsername: user.minecraftUsername,
-    };
-
-    if (user.avatar) {
-      payload.avatar = user.avatar;
-    }
-
-    const token = jwt.sign(payload, this.secret, {
-      algorithm: "HS256",
-      audience: JWT_AUDIENCE_WEB,
-      expiresIn: this.expiresIn as SignOptions["expiresIn"],
-    });
-
+    const token = this.generateFromPayload(user);
     logger.debug(
       `Generated access token for ${user.minecraftUsername} (${user.username})`,
     );

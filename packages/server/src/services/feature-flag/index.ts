@@ -26,17 +26,20 @@ const CACHE_TTL_MS = 10_000;
  * serve a stale flag for up to the cache TTL after a toggle.
  */
 export class FeatureFlagService {
-  private cache = new Map<string, { enabled: boolean; fetchedAt: number }>();
+  private cache = new Map<
+    FeatureFlagName,
+    { enabled: boolean; expiresAt: number }
+  >();
 
   /** Whether the named feature is currently enabled. */
-  async isEnabled(name: string): Promise<boolean> {
+  async isEnabled(name: FeatureFlagName): Promise<boolean> {
     return (await this.readEnabled(name)) ?? false;
   }
 
   /** Like `isEnabled`, but `null` when the flag could not be read, for callers that act on a flag being switched off. */
-  async readEnabled(name: string): Promise<boolean | null> {
+  async readEnabled(name: FeatureFlagName): Promise<boolean | null> {
     const cached = this.cache.get(name);
-    if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
+    if (cached && Date.now() < cached.expiresAt) {
       return cached.enabled;
     }
 
@@ -48,13 +51,13 @@ export class FeatureFlagService {
       return null;
     }
     const enabled = flag?.enabled ?? false;
-    this.cache.set(name, { enabled, fetchedAt: Date.now() });
+    this.cache.set(name, { enabled, expiresAt: Date.now() + CACHE_TTL_MS });
     return enabled;
   }
 
   /** Enable or disable a flag, creating it if it does not exist. */
   async setEnabled(
-    name: string,
+    name: FeatureFlagName,
     enabled: boolean,
     description?: string,
   ): Promise<FeatureFlag> {

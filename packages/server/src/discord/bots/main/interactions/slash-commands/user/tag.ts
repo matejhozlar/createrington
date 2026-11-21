@@ -1,4 +1,5 @@
 import config from "@/config";
+import { formatCount } from "@/utils/format";
 import { Q } from "@/db";
 import { EmbedPresets } from "@/discord/embeds";
 import { ButtonPresets } from "@/discord/embeds/presets/buttons";
@@ -159,7 +160,7 @@ async function lookupTeam(input: string): Promise<TagLookup> {
     card: {
       code: party.tagCode,
       title: party.name,
-      description: `${members} member${members === 1 ? "" : "s"}`,
+      description: formatCount(members, "member"),
       color: party.color,
     },
   };

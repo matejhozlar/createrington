@@ -9,10 +9,6 @@ import { BasePlayerRepository, type PlayerIdentifier } from "../base";
  * read surface used by admin views and player profiles.
  */
 export class PlayerSessionRepository extends BasePlayerRepository {
-  constructor() {
-    super();
-  }
-
   /** One page of the player's sessions, newest first, with the total count. */
   async getHistoryPage(
     identifier: PlayerIdentifier,

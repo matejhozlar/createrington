@@ -1,7 +1,8 @@
 import config from "@/config";
+import { SYSTEM_AUDIT_ACTOR } from "@/db/queries/admin/log/action";
 import { Q } from "@/db";
 import { DatabaseTable } from "@/generated/db";
-import { ConflictError, ServiceUnavailableError } from "@/errors";
+import { ConflictError, ServiceUnavailableError, errorMessage } from "@/errors";
 import { waitForPartySync } from "@/services/party/party-state";
 import {
   PartyMembersClient,
@@ -186,7 +187,7 @@ export class PartyPurgeService {
       await this.client.sync(serverId);
     } catch (error) {
       throw new ServiceUnavailableError(
-        `Could not ask the Minecraft server for its parties: ${error instanceof Error ? error.message : String(error)}`,
+        `Could not ask the Minecraft server for its parties: ${errorMessage(error)}`,
       );
     }
     if (!(await synced)) {
@@ -215,8 +216,8 @@ export class PartyPurgeService {
     );
     try {
       await Q.admin.log.action.create({
-        adminDiscordId: actor?.discordId ?? "system",
-        adminUsername: actor?.username ?? "System",
+        adminDiscordId: (actor ?? SYSTEM_AUDIT_ACTOR).discordId,
+        adminUsername: (actor ?? SYSTEM_AUDIT_ACTOR).username,
         actionType: "remove_party_member",
         targetPlayerUuid: minecraftUuid,
         targetPlayerName: removal.playerName,

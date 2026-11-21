@@ -13,10 +13,6 @@ import { BasePlayerRepository, type PlayerIdentifier } from "../base";
  * transaction.
  */
 export class PlayerStrikeRepository extends BasePlayerRepository {
-  constructor() {
-    super();
-  }
-
   /** Issue a new strike and write its admin_log_action entry in one transaction. */
   async issue(
     identifier: PlayerIdentifier,

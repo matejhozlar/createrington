@@ -1,4 +1,5 @@
 import { Q } from "@/db";
+import { pluralize } from "@/utils/format";
 import type { PlayerPlaytimeBreakdown } from "@/db/queries/player/playtime/summary";
 import { EmbedPresets } from "@/discord/embeds";
 import { replyNotRegistered } from "@/discord/utils/interaction-reply";
@@ -52,7 +53,7 @@ async function execute(interaction: ChatInputCommandInteraction) {
 
   const moreServers =
     breakdown.servers.length > 5
-      ? `\n*+${breakdown.servers.length - 5} more server${breakdown.servers.length - 5 !== 1 ? "s" : ""}*`
+      ? `\n*+${breakdown.servers.length - 5} more ${pluralize(breakdown.servers.length - 5, "server")}*`
       : "";
 
   const description = [

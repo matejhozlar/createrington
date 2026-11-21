@@ -1,4 +1,5 @@
 import config from "@/config";
+import { errorMessage } from "@/errors";
 import type { PlaytimeService } from "./playtime.service";
 import type {
   SessionStartEvent,
@@ -20,13 +21,11 @@ import type {
  * the dev server's normal operation.
  */
 export class PlaytimeForwarderService {
-  private targetUrl: string;
   private secret: string;
   private endpoint: string;
   private heartbeatEndpoint: string;
 
   constructor(targetUrl: string, secret: string) {
-    this.targetUrl = targetUrl;
     this.secret = secret;
     const base = targetUrl.replace(/\/+$/, "");
     this.endpoint = `${base}/api/internal/presence`;
@@ -50,39 +49,18 @@ export class PlaytimeForwarderService {
 
   /** Posts the mod heartbeat player list to production so it can reconcile stale sessions on the test-server entry. */
   async forwardHeartbeat(players: HeartbeatPlayer[]): Promise<void> {
-    try {
-      const response = await fetch(this.heartbeatEndpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Sync-Secret": this.secret,
-        },
-        body: JSON.stringify({
-          players: players.map((p) => ({
-            uuid: p.uuid,
-            minecraftUsername: p.username,
-            playTimeTicks: p.playTimeTicks,
-          })),
-          timestamp: new Date().toISOString(),
-        }),
-      });
-
-      if (!response.ok) {
-        const text = await response.text().catch(() => "");
-        logger.warn(
-          `[sync] Heartbeat forward failed (${response.status}): ${text.slice(0, 200)}`,
-        );
-      } else {
-        logger.debug(
-          `[sync] Forwarded heartbeat with ${players.length} player(s)`,
-        );
-      }
-    } catch (error) {
-      logger.warn(
-        "[sync] Heartbeat forward error:",
-        error instanceof Error ? error.message : error,
-      );
-    }
+    await this.post(
+      this.heartbeatEndpoint,
+      {
+        players: players.map((p) => ({
+          uuid: p.uuid,
+          minecraftUsername: p.username,
+          playTimeTicks: p.playTimeTicks,
+        })),
+        timestamp: new Date().toISOString(),
+      },
+      `heartbeat with ${players.length} player(s)`,
+    );
   }
 
   private async forwardJoin(event: SessionStartEvent): Promise<void> {
@@ -108,31 +86,38 @@ export class PlaytimeForwarderService {
   private async forward(
     payload: Record<string, string | number | undefined>,
   ): Promise<void> {
+    await this.post(
+      this.endpoint,
+      payload,
+      `${payload.state} for ${payload.minecraftUsername}`,
+    );
+  }
+
+  private async post(
+    endpoint: string,
+    body: unknown,
+    label: string,
+  ): Promise<void> {
     try {
-      const response = await fetch(this.endpoint, {
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "X-Sync-Secret": this.secret,
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(body),
       });
 
       if (!response.ok) {
         const text = await response.text().catch(() => "");
         logger.warn(
-          `[sync] Forward failed (${response.status}): ${text.slice(0, 200)}`,
+          `[sync] Forwarding ${label} failed (${response.status}): ${text.slice(0, 200)}`,
         );
       } else {
-        logger.debug(
-          `[sync] Forwarded ${payload.state} for ${payload.minecraftUsername}`,
-        );
+        logger.debug(`[sync] Forwarded ${label}`);
       }
     } catch (error) {
-      logger.warn(
-        `[sync] Forward error for ${payload.minecraftUsername}:`,
-        error instanceof Error ? error.message : error,
-      );
+      logger.warn(`[sync] Forwarding ${label} failed: ${errorMessage(error)}`);
     }
   }
 }
