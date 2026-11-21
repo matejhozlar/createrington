@@ -13,26 +13,13 @@ import {
   REQUIRED_DEPENDENCY,
   type DependencyCoverage,
 } from "./dependencies";
-import { USER_VISIBLE_MOD_STATUSES, workshopService } from "./workshop.service";
-import { projectLabel } from "@/services/curseforge/project";
-
-export type WorkshopProjectSummary = Pick<
-  CurseforgeProject,
-  | "id"
-  | "classId"
-  | "name"
-  | "slug"
-  | "summary"
-  | "thumbnailUrl"
-  | "websiteUrl"
-  | "primaryAuthor"
-  | "categories"
-  | "downloadCount"
-  | "dateReleased"
-  | "allowModDistribution"
-  | "environment"
-  | "environmentSource"
->;
+import { USER_VISIBLE_MOD_STATUSES } from "@createrington/shared/workshop";
+import { workshopService } from "./workshop.service";
+import {
+  projectLabel,
+  toProjectSummary,
+  type CurseforgeProjectSummary,
+} from "@/services/curseforge/project";
 
 export interface WorkshopModDependencyInfo {
   curseforgeProjectId: number;
@@ -45,7 +32,7 @@ export interface WorkshopModDependencyInfo {
 }
 
 export interface WorkshopModListItem extends WorkshopMod {
-  project: WorkshopProjectSummary;
+  project: CurseforgeProjectSummary;
   upvoteCount: number;
   submitterName: string | null;
   submitterUuid: string | null;
@@ -330,7 +317,7 @@ export class WorkshopModService {
       return [
         {
           ...mod,
-          project: this.toProjectSummary(project),
+          project: toProjectSummary(project),
           upvoteCount: upvoteCounts[mod.id] ?? 0,
           submitterName: submitter?.minecraftUsername ?? null,
           submitterUuid: submitter?.minecraftUuid ?? null,
@@ -376,25 +363,6 @@ export class WorkshopModService {
       byProject.set(dep.curseforgeProjectId, list);
     }
     return byProject;
-  }
-
-  private toProjectSummary(project: CurseforgeProject): WorkshopProjectSummary {
-    return {
-      id: project.id,
-      classId: project.classId,
-      name: project.name,
-      slug: project.slug,
-      summary: project.summary,
-      thumbnailUrl: project.thumbnailUrl,
-      websiteUrl: project.websiteUrl,
-      primaryAuthor: project.primaryAuthor,
-      categories: project.categories,
-      downloadCount: project.downloadCount,
-      dateReleased: project.dateReleased,
-      allowModDistribution: project.allowModDistribution,
-      environment: project.environment,
-      environmentSource: project.environmentSource,
-    };
   }
 }
 

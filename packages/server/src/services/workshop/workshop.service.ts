@@ -1,11 +1,8 @@
 import { Q } from "@/db";
 import { BadRequestError, NotFoundError } from "@/errors";
 import type { WorkshopModEventListItem } from "@/db/queries/workshop/mod/event";
-import type {
-  Workshop,
-  WorkshopModEventType,
-  WorkshopModStatus,
-} from "@createrington/shared/db";
+import type { Workshop, WorkshopModEventType } from "@createrington/shared/db";
+import { USER_VISIBLE_MOD_STATUSES } from "@createrington/shared/workshop";
 import { modpackService } from "@/services/modpack/modpack.service";
 import type { ModpackModListItem } from "@/services/modpack/modpack.service";
 
@@ -52,14 +49,6 @@ export interface WorkshopSummary {
 }
 
 export type WorkshopListItem = Workshop & { summary: WorkshopSummary | null };
-
-export const USER_VISIBLE_MOD_STATUSES: WorkshopModStatus[] = [
-  "pending",
-  "approved",
-  "testing",
-  "next_update",
-  "in_pack",
-];
 
 /**
  * Community modpack workshops, read side: listing and lookup with the

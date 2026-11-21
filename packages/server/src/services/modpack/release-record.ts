@@ -1,6 +1,11 @@
 import { Q, db } from "@/db";
 import { UniqueViolationError } from "@/db/utils/errors";
-import type { Modpack, ModpackRelease } from "@createrington/shared/db";
+import type { DatabaseQueries } from "@/generated/db";
+import type {
+  Modpack,
+  ModpackRelease,
+  ModpackReleaseCreate,
+} from "@createrington/shared/db";
 import type { ReleaseModInsert } from "@/db/queries/modpack/release/mod";
 import { getFilesDetails } from "@/services/curseforge/files";
 import type { ModpackManifest } from "@/services/curseforge/modpack";
@@ -19,6 +24,23 @@ function firstPerProject<T extends { curseforgeProjectId: number }>(
     }
   }
   return [...held.values()];
+}
+
+function distinctProjectCount(rows: ReleaseModInsert[]): number {
+  return new Set(rows.map((row) => row.curseforgeProjectId)).size;
+}
+
+export async function createReleaseWithMods(
+  tx: DatabaseQueries,
+  release: Omit<ModpackReleaseCreate, "modCount">,
+  rows: ReleaseModInsert[],
+): Promise<ModpackRelease> {
+  const created = await tx.modpack.release.createAndReturn({
+    ...release,
+    modCount: distinctProjectCount(rows),
+  });
+  await tx.modpack.release.mod.insertMany(created.id, rows);
+  return created;
 }
 
 /**
@@ -66,20 +88,22 @@ export async function recordRelease(
   let releaseId: number;
   try {
     releaseId = await db.inTransaction(async (tx) => {
-      const release = await tx.modpack.release.createAndReturn({
-        modpackId: modpack.id,
-        curseforgeFileId: manifest.fileId,
-        serverPackFileId: manifest.serverPackFileId,
-        version: manifest.version,
-        displayName: manifest.displayName,
-        minecraftVersion: manifest.minecraftVersion,
-        modLoader: manifest.modLoader,
-        modCount: new Set(rows.map((row) => row.curseforgeProjectId)).size,
-        publishedAt: manifest.publishedAt
-          ? new Date(manifest.publishedAt)
-          : null,
-      });
-      await tx.modpack.release.mod.insertMany(release.id, rows);
+      const release = await createReleaseWithMods(
+        tx,
+        {
+          modpackId: modpack.id,
+          curseforgeFileId: manifest.fileId,
+          serverPackFileId: manifest.serverPackFileId,
+          version: manifest.version,
+          displayName: manifest.displayName,
+          minecraftVersion: manifest.minecraftVersion,
+          modLoader: manifest.modLoader,
+          publishedAt: manifest.publishedAt
+            ? new Date(manifest.publishedAt)
+            : null,
+        },
+        rows,
+      );
       await tx.modpack.mod.applyManifestFiles(
         modpack.id,
         firstPerProject(rows),
@@ -116,7 +140,7 @@ async function upgradeRelease(
     await tx.modpack.release.updateAll(
       {
         serverPackFileId: manifest.serverPackFileId,
-        modCount: new Set(rows.map((row) => row.curseforgeProjectId)).size,
+        modCount: distinctProjectCount(rows),
       },
       { id: release.id },
     );

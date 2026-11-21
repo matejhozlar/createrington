@@ -8,7 +8,7 @@ import type {
   LauncherPackSource,
   Modpack,
 } from "@createrington/shared/db";
-import { launcherPackService, PACK_ORDER } from "./launcher-pack.service";
+import { PACK_ORDER } from "./launcher-pack.service";
 
 const DEFAULT_PACK_SLUG = "createrington";
 
@@ -79,9 +79,9 @@ export class LauncherPackAdminService {
             `Launcher pack "${pack.slug}" points at modpack #${pack.modpackId}, which does not exist`,
           );
         }
-        const release = await launcherPackService.findLatestRelease(
-          pack.modpackId,
-        );
+        const release = await Q.modpack.release.findLatest(pack.modpackId, {
+          readyOnly: true,
+        });
         return { ...pack, modpack, latestVersion: release?.version ?? null };
       }),
     );

@@ -25,7 +25,7 @@ import {
   type LauncherPackRelease,
   type LauncherPackSummary,
 } from "@createrington/shared/launcher";
-import { packError } from "./pack-error";
+import { launcherError } from "@/services/launcher/launcher-error";
 import { parseLoaderId } from "@/services/curseforge/loader";
 import { storageSnapshotUrl } from "./sandbox-files";
 
@@ -155,11 +155,13 @@ export class LauncherPackService {
     const pack = await this.requirePack(slug);
     const modpack = await Q.modpack.get({ id: pack.modpackId });
     const project = await this.projectFor(pack, modpack);
-    const release = project ? await this.findLatestRelease(modpack.id) : null;
+    const release = project
+      ? await Q.modpack.release.findLatest(modpack.id, { readyOnly: true })
+      : null;
     const data =
       release && project ? toPackData(release, project, pack.source) : null;
     if (!data) {
-      throw packError(
+      throw launcherError(
         LauncherPackErrorCode.PACK_UNAVAILABLE,
         404,
         "No modpack release is available to the launcher yet",
@@ -231,22 +233,13 @@ export class LauncherPackService {
   private async requirePack(slug: string): Promise<LauncherPack> {
     const pack = await Q.launcher.pack.find({ slug });
     if (!pack?.enabled) {
-      throw packError(
+      throw launcherError(
         LauncherPackErrorCode.PACK_NOT_FOUND,
         404,
         "The launcher offers no pack by this name",
       );
     }
     return pack;
-  }
-
-  /** The newest release of the modpack that is ready for the launcher, or null. */
-  async findLatestRelease(modpackId: number): Promise<ModpackRelease | null> {
-    const [release] = await Q.modpack.release.findAll(
-      { modpackId, launcherReadyAt: { $ne: null } },
-      { orderBy: "id", orderDirection: "desc", limit: 1 },
-    );
-    return release ?? null;
   }
 
   private async describePack(pack: LauncherPack): Promise<LauncherPackSummary> {
@@ -258,7 +251,9 @@ export class LauncherPackService {
         )
       : null;
     const project = await this.projectFor(pack, modpack);
-    const release = project ? await this.findLatestRelease(modpack.id) : null;
+    const release = project
+      ? await Q.modpack.release.findLatest(modpack.id, { readyOnly: true })
+      : null;
 
     return {
       slug: pack.slug,

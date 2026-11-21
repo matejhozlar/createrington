@@ -18,6 +18,7 @@ import type {
   WorkshopModStatus,
 } from "@createrington/shared/db";
 import {
+  USER_VISIBLE_MOD_STATUSES,
   WORKSHOP_MOD_REJECT_REASON_LABELS,
   WORKSHOP_MOD_STATUS_LABELS,
 } from "@createrington/shared/workshop";
@@ -63,14 +64,6 @@ const MANAGED_TAG_NAMES = new Set(
     (tag) => tag.name,
   ),
 );
-
-const LIVE_MOD_STATUSES: WorkshopModStatus[] = [
-  "pending",
-  "approved",
-  "testing",
-  "next_update",
-  "in_pack",
-];
 
 const HEAL_THREAD_CREATE_CAP = 5;
 
@@ -256,7 +249,7 @@ export async function announceSuggestion(
       { discordThreadId: thread.id },
       {
         id: mod.id,
-        status: { $in: LIVE_MOD_STATUSES },
+        status: { $in: USER_VISIBLE_MOD_STATUSES },
         discordThreadId: null,
       },
     );
@@ -392,7 +385,8 @@ export async function healThreads(
 
   if (workshop.status !== "open" || !workshop.discordForumChannelId) return;
   const missing = rows.filter(
-    (mod) => !mod.discordThreadId && LIVE_MOD_STATUSES.includes(mod.status),
+    (mod) =>
+      !mod.discordThreadId && USER_VISIBLE_MOD_STATUSES.includes(mod.status),
   );
   if (missing.length === 0) return;
 

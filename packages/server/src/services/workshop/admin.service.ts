@@ -4,7 +4,7 @@ import { UniqueViolationError } from "@/db/utils/errors";
 import type { Workshop } from "@createrington/shared/db";
 import { WORKSHOP_STATUS_TRANSITIONS } from "@createrington/shared/workshop";
 import { CurseForgeClass } from "@/services/curseforge/client";
-import { getMod, type CurseForgeProjectData } from "@/services/curseforge/mods";
+import { assertCurseForgeModpack } from "@/services/curseforge/mods";
 import { modpackService } from "@/services/modpack/modpack.service";
 import { assertForumChannel } from "./discord";
 import { workshopService } from "./workshop.service";
@@ -62,7 +62,7 @@ export class WorkshopAdminService {
       await modpackService.getModpack(modpackId);
     }
     if (input.baseModpackProjectId) {
-      await this.assertBaseModpack(input.baseModpackProjectId);
+      await assertCurseForgeModpack(input.baseModpackProjectId);
     }
     if (input.discordForumChannelId) {
       await assertForumChannel(input.discordForumChannelId);
@@ -164,7 +164,7 @@ export class WorkshopAdminService {
       patch.baseModpackProjectId != null &&
       patch.baseModpackProjectId !== workshop.baseModpackProjectId
     ) {
-      await this.assertBaseModpack(patch.baseModpackProjectId);
+      await assertCurseForgeModpack(patch.baseModpackProjectId);
     }
 
     if (
@@ -207,22 +207,6 @@ export class WorkshopAdminService {
     }
     await Q.workshop.delete({ id: workshop.id });
     return workshop;
-  }
-
-  private async assertBaseModpack(projectId: number): Promise<void> {
-    let data: CurseForgeProjectData;
-    try {
-      data = await getMod(projectId);
-    } catch {
-      throw new BadRequestError(
-        `Could not resolve CurseForge project #${projectId}`,
-      );
-    }
-    if (data.classId !== CurseForgeClass.modpacks) {
-      throw new BadRequestError(
-        `"${data.name}" is not a modpack on CurseForge`,
-      );
-    }
   }
 }
 
