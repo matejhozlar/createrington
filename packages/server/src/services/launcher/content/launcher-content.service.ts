@@ -1,4 +1,4 @@
-import { AppError } from "@/errors";
+import type { AppError } from "@/errors";
 import {
   CURSEFORGE_MINECRAFT_GAME_ID,
   ContentGatewayError,
@@ -49,6 +49,7 @@ import {
   toLauncherProjectDetails,
   toLauncherProjectLatestFiles,
 } from "./curseforge-content";
+import { launcherError } from "@/services/launcher/launcher-error";
 
 const DOWNLOAD_LOOKUP_TIMEOUT_MS = 15_000;
 
@@ -67,17 +68,8 @@ export interface ContentTarget {
   loader?: LauncherContentLoader;
 }
 
-function contentError(
-  code: LauncherContentErrorCode,
-  statusCode: number,
-  message: string,
-  headers?: Record<string, string>,
-): AppError {
-  return new AppError(message, statusCode, true, undefined, { code, headers });
-}
-
 function projectNotFound(): AppError {
-  return contentError(
+  return launcherError(
     LauncherContentErrorCode.PROJECT_NOT_FOUND,
     404,
     "CurseForge has no such mod, resource pack, shader or modpack",
@@ -85,7 +77,7 @@ function projectNotFound(): AppError {
 }
 
 function fileNotFound(): AppError {
-  return contentError(
+  return launcherError(
     LauncherContentErrorCode.FILE_NOT_FOUND,
     404,
     "CurseForge has no such file of a mod, resource pack, shader or modpack",
@@ -430,7 +422,7 @@ class LauncherContentService {
       return await inContentPool(ContentGatewayPool.launcher, call);
     } catch (error) {
       if (error instanceof ContentGatewayError && error.retryAfterMs !== null) {
-        throw contentError(
+        throw launcherError(
           LauncherContentErrorCode.CONTENT_UNAVAILABLE,
           503,
           error.message,
@@ -443,7 +435,7 @@ class LauncherContentService {
         `Launcher content ${what} lookup on CurseForge failed:`,
         error,
       );
-      throw contentError(
+      throw launcherError(
         LauncherContentErrorCode.CONTENT_UNAVAILABLE,
         503,
         "CurseForge cannot be asked right now",

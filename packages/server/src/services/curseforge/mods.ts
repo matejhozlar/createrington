@@ -7,8 +7,10 @@ import {
   curseforgeMinecraftVersionSchema,
   curseforgeModSchema,
 } from "@createrington/content-gateway-client";
+import { BadRequestError } from "@/errors";
 import { compareVersions } from "@/utils/version";
 import {
+  CurseForgeClass,
   DEFAULT_GAME_VERSION,
   MINECRAFT_GAME_ID,
   MOD_CLASS_ID,
@@ -258,6 +260,22 @@ export async function getMod(
     "getMod",
   );
   return mapProject(body.data);
+}
+
+export async function assertCurseForgeModpack(
+  projectId: number,
+): Promise<void> {
+  let data: CurseForgeProjectData;
+  try {
+    data = await getMod(projectId);
+  } catch {
+    throw new BadRequestError(
+      `Could not resolve CurseForge project #${projectId}`,
+    );
+  }
+  if (data.classId !== CurseForgeClass.modpacks) {
+    throw new BadRequestError(`"${data.name}" is not a modpack on CurseForge`);
+  }
 }
 
 /**

@@ -14,13 +14,15 @@ import { recordModEvent } from "./events";
 import {
   addableClasses,
   createMod,
+  findProjectClaims,
   mapConstraintError,
   prepareEntries,
   type TxQueries,
   type WorkshopModEntry,
 } from "./entries";
 import { workshopModService, type WorkshopModListItem } from "./mods.service";
-import { USER_VISIBLE_MOD_STATUSES, workshopService } from "./workshop.service";
+import { USER_VISIBLE_MOD_STATUSES } from "@createrington/shared/workshop";
+import { workshopService } from "./workshop.service";
 
 export type WorkshopProjectSearchResult = CurseForgeSearchResult & {
   rejected: boolean;
@@ -65,17 +67,10 @@ export class WorkshopSuggestionService {
     });
     if (results.length === 0) return [];
 
-    const ids = results.map((r) => r.id);
-    const [claims, packClaims] = await Promise.all([
-      Q.workshop.mod.findAll({
-        workshopId: workshop.id,
-        curseforgeProjectId: { $in: ids },
-      }),
-      Q.modpack.mod.findAll({
-        modpackId: workshop.modpackId,
-        curseforgeProjectId: { $in: ids },
-      }),
-    ]);
+    const { claims, packClaims } = await findProjectClaims(
+      workshop,
+      results.map((r) => r.id),
+    );
     const rejectedIds = new Set(
       claims
         .filter((c) => c.status === "rejected")

@@ -2,6 +2,7 @@ import { Q, type db } from "@/db";
 import { BadRequestError, ConflictError } from "@/errors";
 import { UniqueViolationError, DatabaseError } from "@/db/utils/errors";
 import type {
+  ModpackMod,
   Workshop,
   WorkshopMod,
   WorkshopModCreate,
@@ -35,6 +36,23 @@ interface CreateModOptions {
   reviewedBy?: string;
 }
 
+export async function findProjectClaims(
+  workshop: Workshop,
+  projectIds: number[],
+): Promise<{ claims: WorkshopMod[]; packClaims: ModpackMod[] }> {
+  const [claims, packClaims] = await Promise.all([
+    Q.workshop.mod.findAll({
+      workshopId: workshop.id,
+      curseforgeProjectId: { $in: projectIds },
+    }),
+    Q.modpack.mod.findAll({
+      modpackId: workshop.modpackId,
+      curseforgeProjectId: { $in: projectIds },
+    }),
+  ]);
+  return { claims, packClaims };
+}
+
 export function addableClasses(workshop: Workshop): Set<number> {
   return workshop.classId === CurseForgeClass.mods
     ? new Set([workshop.classId, ...WORKSHOP_ADMIN_EXTRA_CLASSES])
@@ -57,16 +75,7 @@ export async function prepareEntries(
     throw new BadRequestError("The request contains duplicate mods");
   }
 
-  const [claims, packClaims] = await Promise.all([
-    Q.workshop.mod.findAll({
-      workshopId: workshop.id,
-      curseforgeProjectId: { $in: projectIds },
-    }),
-    Q.modpack.mod.findAll({
-      modpackId: workshop.modpackId,
-      curseforgeProjectId: { $in: projectIds },
-    }),
-  ]);
+  const { claims, packClaims } = await findProjectClaims(workshop, projectIds);
   const rejectedClaims = claims.filter((c) => c.status === "rejected");
   if (rejectedClaims.length > 0) {
     const labels = await projectLabels(

@@ -13,13 +13,17 @@ vi.mock("@/db", () => ({
     modpack: {
       find: async () => state.modpack,
       release: {
-        findAll: async (filter: { version?: string }) =>
-          filter.version === undefined
-            ? [...state.releases].sort((a, b) => b.id - a.id).slice(0, 1)
-            : [...state.releases]
-                .filter((release) => release.version === filter.version)
-                .sort((a, b) => b.id - a.id)
-                .slice(0, 1),
+        findLatest: async (
+          _modpackId: number,
+          options: { version?: string } = {},
+        ) =>
+          [...state.releases]
+            .filter(
+              (release) =>
+                options.version === undefined ||
+                release.version === options.version,
+            )
+            .sort((a, b) => b.id - a.id)[0] ?? null,
       },
     },
   },

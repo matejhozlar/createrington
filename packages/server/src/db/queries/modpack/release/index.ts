@@ -7,6 +7,22 @@ export class ModpackReleaseQueries extends ModpackReleaseBaseQueries {
     super(db);
   }
 
+  /** Newest recorded release of a modpack, optionally of one version or among launcher-ready releases only; null when none matches. */
+  async findLatest(
+    modpackId: number,
+    options: { version?: string; readyOnly?: boolean } = {},
+  ): Promise<ModpackRelease | null> {
+    const [release] = await this.findAll(
+      {
+        modpackId,
+        version: options.version,
+        launcherReadyAt: options.readyOnly ? { $ne: null } : undefined,
+      },
+      { orderBy: "id", orderDirection: "desc", limit: 1 },
+    );
+    return release ?? null;
+  }
+
   /** Newest recorded release per modpack; packs without a release are absent from the result. */
   async latestPerModpack(modpackIds: number[]): Promise<ModpackRelease[]> {
     if (modpackIds.length === 0) return [];

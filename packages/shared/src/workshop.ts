@@ -96,6 +96,14 @@ export const WORKSHOP_MOD_STATUSES = [
 // the package barrel re-exports both modules
 type WorkshopModStatus = (typeof WORKSHOP_MOD_STATUSES)[number];
 
+export const USER_VISIBLE_MOD_STATUSES: WorkshopModStatus[] = [
+  "pending",
+  "approved",
+  "testing",
+  "next_update",
+  "in_pack",
+];
+
 export const WORKSHOP_MOD_STATUS_LABELS: Record<WorkshopModStatus, string> = {
   pending: "In review",
   approved: "Approved",
