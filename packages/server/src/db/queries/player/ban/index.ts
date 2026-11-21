@@ -1,7 +1,9 @@
 import type { Pool, PoolClient } from "pg";
 import { PlayerBanBaseQueries } from "@/generated/db/player_ban.queries";
-import type { PlayerBan } from "@createrington/shared/db";
+import type { PlayerBan, PlayerBanRow } from "@createrington/shared/db";
 import { DatabaseTable } from "@/generated/db";
+import type { Granularity } from "@/db/utils";
+import { ACTIVE_BAN_WHERE, EXPIRED_BAN_WHERE } from "./sql";
 
 export interface BanStatistics {
   total: number;
@@ -11,11 +13,6 @@ export interface BanStatistics {
   permanent: number;
   expired: number;
 }
-
-const EXPIRED_BAN_WHERE = `ban_type = 'temporary'
-        AND unbanned = false
-        AND expires_at IS NOT NULL
-        AND expires_at <= NOW()`;
 
 /**
  * Custom queries for player_ban table
@@ -44,7 +41,7 @@ export class PlayerBanQueries extends PlayerBanBaseQueries {
   async getCountsByPeriod(
     start: Date,
     end: Date,
-    granularity: "day" | "week" | "month" = "day",
+    granularity: Granularity = "day",
   ): Promise<
     Array<{
       period: string;
@@ -53,24 +50,22 @@ export class PlayerBanQueries extends PlayerBanBaseQueries {
       permanent: number;
     }>
   > {
-    const query = `
-      SELECT
-        DATE_TRUNC($3, banned_at)::text AS period,
-        COUNT(*)::integer AS total,
-        COUNT(*) FILTER (WHERE ban_type = 'temporary')::integer AS temporary,
-        COUNT(*) FILTER (WHERE ban_type = 'permanent')::integer AS permanent
-      FROM ${this.table}
-      WHERE banned_at >= $1 AND banned_at < $2
-      GROUP BY 1
-      ORDER BY 1`;
-
-    const result = await this.runQuery<{
-      period: string;
+    return this.aggregateByPeriod<{
       total: number;
       temporary: number;
       permanent: number;
-    }>("get ban counts by period", query, [start, end, granularity]);
-    return result.rows;
+    }>(
+      "get ban counts by period",
+      "bannedAt",
+      {
+        total: "COUNT(*)::int",
+        temporary: "(COUNT(*) FILTER (WHERE ban_type = 'temporary'))::int",
+        permanent: "(COUNT(*) FILTER (WHERE ban_type = 'permanent'))::int",
+      },
+      start,
+      end,
+      granularity,
+    );
   }
 
   /**
@@ -89,7 +84,7 @@ export class PlayerBanQueries extends PlayerBanBaseQueries {
       SELECT
         banned_by_discord_id AS discord_id,
         banned_by_username AS username,
-        COUNT(*)::integer AS ban_count
+        COUNT(*)::int AS ban_count
       FROM ${this.table}
       GROUP BY banned_by_discord_id, banned_by_username
       ORDER BY ban_count DESC
@@ -101,11 +96,7 @@ export class PlayerBanQueries extends PlayerBanBaseQueries {
       ban_count: number;
     }>("get moderator activity", query, [limit]);
 
-    return result.rows.map((row) => ({
-      discordId: row.discord_id,
-      username: row.username,
-      banCount: row.ban_count,
-    }));
+    return this.mapRowsToEntities(result.rows);
   }
 
   /**
@@ -118,13 +109,8 @@ export class PlayerBanQueries extends PlayerBanBaseQueries {
     const query = `
       SELECT EXISTS(
         SELECT 1 FROM ${this.table}
-        WHERE player_minecraft_uuid = $1
-          AND unbanned = false
-          AND (
-            expires_at IS NULL OR
-            expires_at > NOW()
-          )
-      ) as is_banned`;
+        WHERE player_minecraft_uuid = $1 AND ${ACTIVE_BAN_WHERE}
+      ) AS is_banned`;
 
     const result = await this.runQuery<{ is_banned: boolean }>(
       "check if player is banned",
@@ -143,16 +129,11 @@ export class PlayerBanQueries extends PlayerBanBaseQueries {
   async getCurrentBan(playerMinecraftUuid: string): Promise<PlayerBan | null> {
     const query = `
       SELECT * FROM ${this.table}
-      WHERE player_minecraft_uuid = $1
-        AND unbanned = false
-        AND (
-          expires_at IS NULL OR
-          expires_at > NOW()
-        )
+      WHERE player_minecraft_uuid = $1 AND ${ACTIVE_BAN_WHERE}
       ORDER BY banned_at DESC
       LIMIT 1`;
 
-    const result = await this.runQuery<PlayerBan>("get current ban", query, [
+    const result = await this.runQuery<PlayerBanRow>("get current ban", query, [
       playerMinecraftUuid,
     ]);
     return result.rows[0] ? this.mapRowToEntity(result.rows[0]) : null;
@@ -244,7 +225,7 @@ export class PlayerBanQueries extends PlayerBanBaseQueries {
       WHERE ${EXPIRED_BAN_WHERE}
       ORDER BY expires_at ASC`;
 
-    const result = await this.runQuery<PlayerBan>("get expired bans", query);
+    const result = await this.runQuery<PlayerBanRow>("get expired bans", query);
     return this.mapRowsToEntities(result.rows);
   }
 
@@ -262,17 +243,15 @@ export class PlayerBanQueries extends PlayerBanBaseQueries {
     if (activeOnly) {
       const query = `
         SELECT * FROM ${this.table}
-        WHERE unbanned = false
-          AND (
-            expires_at IS NULL OR
-            expires_at > NOW()
-          )
+        WHERE ${ACTIVE_BAN_WHERE}
         ORDER BY banned_at DESC
         LIMIT $1`;
 
-      const result = await this.runQuery<PlayerBan>("get recent bans", query, [
-        limit,
-      ]);
+      const result = await this.runQuery<PlayerBanRow>(
+        "get recent bans",
+        query,
+        [limit],
+      );
       return this.mapRowsToEntities(result.rows);
     }
 
@@ -295,35 +274,23 @@ export class PlayerBanQueries extends PlayerBanBaseQueries {
   ): Promise<Record<string, number>> {
     if (playerUuids.length === 0) return {};
 
-    const query = `
-      SELECT 
-        player_minecraft_uuid,
-        COUNT(*)::integer as count
-      FROM ${this.table}
-      WHERE 
-        player_minecraft_uuid = ANY($1)
-        AND unbanned = false
-        AND (
-          expires_at IS NULL OR
-          expires_at > NOW()
-        )
-      GROUP BY player_minecraft_uuid`;
-
     const result = await this.runQuery<{
       player_minecraft_uuid: string;
       count: number;
-    }>("get active ban counts", query, [playerUuids]);
+    }>(
+      "get active ban counts",
+      `SELECT player_minecraft_uuid, COUNT(*)::int AS count
+       FROM ${this.table}
+       WHERE player_minecraft_uuid = ANY($1) AND ${ACTIVE_BAN_WHERE}
+       GROUP BY player_minecraft_uuid`,
+      [playerUuids],
+    );
 
-    const counts: Record<string, number> = {};
-
-    playerUuids.forEach((uuid) => {
-      counts[uuid] = 0;
-    });
-
-    result.rows.forEach((row) => {
-      counts[row.player_minecraft_uuid] = row.count;
-    });
-
-    return counts;
+    const counts = new Map(
+      result.rows.map((row) => [row.player_minecraft_uuid, row.count]),
+    );
+    return Object.fromEntries(
+      playerUuids.map((uuid) => [uuid, counts.get(uuid) ?? 0]),
+    );
   }
 }

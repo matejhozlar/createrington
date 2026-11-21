@@ -1,7 +1,10 @@
 import type { Pool, PoolClient } from "pg";
 import { AdminLogActionBaseQueries } from "@/generated/db/admin_log_action.queries";
 import { escapeLike } from "@/db/utils";
-import type { AdminLogAction } from "@createrington/shared/db/admin_log_action.types";
+import type {
+  AdminLogAction,
+  AdminLogActionRow,
+} from "@createrington/shared/db/admin_log_action.types";
 
 export class AdminLogActionQueries extends AdminLogActionBaseQueries {
   constructor(db: Pool | PoolClient) {
@@ -58,20 +61,20 @@ export class AdminLogActionQueries extends AdminLogActionBaseQueries {
     const dir = opts.orderDirection === "asc" ? "ASC" : "DESC";
 
     const [dataResult, countResult] = await Promise.all([
-      this.db.query(
-        `SELECT * FROM admin_log_action ${where} ORDER BY ${sortCol} ${dir} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
+      this.runQuery<AdminLogActionRow>(
+        "search admin log actions",
+        `SELECT * FROM ${this.table} ${where} ORDER BY ${sortCol} ${dir} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
         [...params, opts.limit, opts.offset],
       ),
-      this.db.query<{ count: number }>(
-        `SELECT COUNT(*)::int AS count FROM admin_log_action ${where}`,
+      this.runQuery<{ count: number }>(
+        "count admin log actions",
+        `SELECT COUNT(*)::int AS count FROM ${this.table} ${where}`,
         params,
       ),
     ]);
 
     return {
-      actions: dataResult.rows.map((row: Record<string, unknown>) =>
-        this.mapRowToEntity(row),
-      ),
+      actions: this.mapRowsToEntities(dataResult.rows),
       total: countResult.rows[0]?.count ?? 0,
     };
   }
@@ -80,8 +83,9 @@ export class AdminLogActionQueries extends AdminLogActionBaseQueries {
    * Get distinct admin usernames that have audit log entries
    */
   async getDistinctAdmins(): Promise<string[]> {
-    const result = await this.db.query<{ admin_username: string }>(
-      `SELECT DISTINCT admin_username FROM admin_log_action ORDER BY admin_username ASC`,
+    const result = await this.runQuery<{ admin_username: string }>(
+      "get distinct admin log usernames",
+      `SELECT DISTINCT admin_username FROM ${this.table} ORDER BY admin_username ASC`,
     );
     return result.rows.map((r) => r.admin_username);
   }

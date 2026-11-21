@@ -1,5 +1,5 @@
 import type { Pool, PoolClient } from "pg";
-import type { Donation } from "@createrington/shared/db";
+import type { Donation, DonationRow } from "@createrington/shared/db";
 import { DonationBaseQueries } from "@/generated/db/donation.queries";
 
 export class DonationQueries extends DonationBaseQueries {
@@ -24,7 +24,7 @@ export class DonationQueries extends DonationBaseQueries {
 
   /** The newest completed monthly donation of every Stripe subscription. */
   async getLatestPerSubscription(): Promise<Donation[]> {
-    const result = await this.runQuery(
+    const result = await this.runQuery<DonationRow>(
       "get latest donation per subscription",
       `SELECT DISTINCT ON (stripe_subscription_id) *
        FROM ${this.table}
@@ -42,22 +42,17 @@ export class DonationQueries extends DonationBaseQueries {
     donationCount: number;
   }> {
     const result = await this.runQuery<{
-      total_raised_cents: string;
+      total_raised_cents: number;
       donor_count: number;
       donation_count: number;
     }>(
       "aggregate donation stats",
-      `SELECT COALESCE(SUM(amount_cents), 0) AS total_raised_cents,
-        COUNT(DISTINCT player_discord_id)::integer AS donor_count,
-        COUNT(*)::integer AS donation_count
-      FROM donation
+      `SELECT COALESCE(SUM(amount_cents), 0)::float8 AS total_raised_cents,
+        COUNT(DISTINCT player_discord_id)::int AS donor_count,
+        COUNT(*)::int AS donation_count
+      FROM ${this.table}
       WHERE status = 'completed'`,
     );
-    const row = result.rows[0];
-    return {
-      totalRaisedCents: Number(row.total_raised_cents),
-      donorCount: row.donor_count,
-      donationCount: row.donation_count,
-    };
+    return this.mapRowToEntity(result.rows[0]);
   }
 }

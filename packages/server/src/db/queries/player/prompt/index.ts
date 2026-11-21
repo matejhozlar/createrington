@@ -1,6 +1,14 @@
 import type { Pool, PoolClient } from "pg";
 import { PlayerPromptBaseQueries } from "@/generated/db/player_prompt.queries";
-import type { PlayerPrompt } from "@createrington/shared/db/player_prompt.types";
+import type {
+  PlayerPrompt,
+  PlayerPromptRow,
+} from "@createrington/shared/db/player_prompt.types";
+
+type PromptWithCountsRow = PlayerPromptRow & {
+  response_count: number;
+  responder_count: number;
+};
 
 /**
  * Custom queries for player_prompt table.
@@ -32,12 +40,7 @@ export class PlayerPromptQueries extends PlayerPromptBaseQueries {
     const { whereClause, params } = this.buildFilterClause(filters);
 
     const [result, count] = await Promise.all([
-      this.runQuery<
-        Record<string, unknown> & {
-          response_count: number;
-          responder_count: number;
-        }
-      >(
+      this.runQuery<PromptWithCountsRow>(
         "list prompts with response count",
         `SELECT
            p.*,
@@ -57,19 +60,15 @@ export class PlayerPromptQueries extends PlayerPromptBaseQueries {
          LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
         [...params, options.limit, options.offset],
       ),
-      this.runQuery<{ total: string }>(
+      this.runQuery<{ total: number }>(
         "count prompts",
-        `SELECT COUNT(*) AS total FROM ${this.table} WHERE ${whereClause}`,
+        `SELECT COUNT(*)::int AS total FROM ${this.table} WHERE ${whereClause}`,
         params,
       ),
     ]);
     return {
-      rows: result.rows.map((row) => ({
-        ...this.mapRowToEntity(row as never),
-        responseCount: row.response_count,
-        responderCount: row.responder_count,
-      })),
-      total: Number(count.rows[0]?.total ?? 0),
+      rows: this.mapRowsToEntities(result.rows),
+      total: count.rows[0]?.total ?? 0,
     };
   }
 
@@ -82,10 +81,10 @@ export class PlayerPromptQueries extends PlayerPromptBaseQueries {
       SELECT * FROM ${this.table}
       WHERE status = 'active'
       ORDER BY ends_at ASC`;
-    const result = await this.runQuery<Record<string, unknown>>(
+    const result = await this.runQuery<PlayerPromptRow>(
       "find active prompts",
       query,
     );
-    return result.rows.map((row) => this.mapRowToEntity(row as never));
+    return this.mapRowsToEntities(result.rows);
   }
 }

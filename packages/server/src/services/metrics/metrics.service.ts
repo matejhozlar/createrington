@@ -1,7 +1,6 @@
 import { Q } from "@/db";
 import type { ServerHoursBreakdown } from "@/db/queries/player/playtime/summary";
-
-type Granularity = "day" | "week" | "month";
+import type { Granularity } from "@/db/utils";
 
 export interface PlaytimeHoursBreakdown extends ServerHoursBreakdown {
   archivedHours: number;

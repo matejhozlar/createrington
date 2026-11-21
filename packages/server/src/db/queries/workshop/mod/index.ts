@@ -43,13 +43,7 @@ export class WorkshopModQueries extends WorkshopModBaseQueries {
       thumbnail_url: string | null;
       upvote_count: number;
     }>("top pending workshop mods by upvotes", query, [workshopId, limit]);
-    return result.rows.map((row) => ({
-      workshopModId: row.workshop_mod_id,
-      name: row.name,
-      primaryAuthor: row.primary_author,
-      upvoteCount: row.upvote_count,
-      thumbnailUrl: row.thumbnail_url,
-    }));
+    return this.mapRowsToEntities(result.rows);
   }
 
   /**
@@ -90,10 +84,6 @@ export class WorkshopModQueries extends WorkshopModBaseQueries {
       modpackId,
       projectIds ?? null,
     ]);
-    return result.rows.map((row) => ({
-      curseforgeProjectId: row.curseforge_project_id,
-      status: row.status,
-      inPack: row.in_pack,
-    }));
+    return this.mapRowsToEntities(result.rows);
   }
 }

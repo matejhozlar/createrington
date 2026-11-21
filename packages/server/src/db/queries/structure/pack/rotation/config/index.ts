@@ -11,14 +11,16 @@ export class StructurePackRotationConfigQueries extends StructurePackRotationCon
   }
 
   async getOrCreateDefault(): Promise<StructurePackRotationConfig> {
-    const existing = await this.db.query<StructurePackRotationConfigRow>(
-      `SELECT * FROM structure_pack_rotation_config ORDER BY id LIMIT 1`,
+    const existing = await this.runQuery<StructurePackRotationConfigRow>(
+      "get structure pack rotation config",
+      `SELECT * FROM ${this.table} ORDER BY id LIMIT 1`,
     );
     if (existing.rows.length > 0) {
       return this.mapRowToEntity(existing.rows[0]);
     }
-    const result = await this.db.query<StructurePackRotationConfigRow>(
-      `INSERT INTO structure_pack_rotation_config DEFAULT VALUES RETURNING *`,
+    const result = await this.runQuery<StructurePackRotationConfigRow>(
+      "create default structure pack rotation config",
+      `INSERT INTO ${this.table} DEFAULT VALUES RETURNING *`,
     );
     return this.mapRowToEntity(result.rows[0]);
   }

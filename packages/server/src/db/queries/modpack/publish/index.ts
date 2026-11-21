@@ -1,6 +1,9 @@
 import type { Pool, PoolClient } from "pg";
 import { ModpackPublishBaseQueries } from "@/generated/db/modpack_publish.queries";
-import type { ModpackPublish } from "@createrington/shared/db";
+import type {
+  ModpackPublish,
+  ModpackPublishRow,
+} from "@createrington/shared/db";
 
 export class ModpackPublishQueries extends ModpackPublishBaseQueries {
   constructor(db: Pool | PoolClient) {
@@ -10,7 +13,7 @@ export class ModpackPublishQueries extends ModpackPublishBaseQueries {
   /** Newest reported publish per modpack (by client file id); packs without one are absent. */
   async latestPerModpack(modpackIds: number[]): Promise<ModpackPublish[]> {
     if (modpackIds.length === 0) return [];
-    const result = await this.runQuery(
+    const result = await this.runQuery<ModpackPublishRow>(
       "list latest publishes per modpack",
       `SELECT DISTINCT ON (modpack_id) *
        FROM ${this.table}

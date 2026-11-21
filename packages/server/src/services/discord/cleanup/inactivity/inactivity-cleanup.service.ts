@@ -169,7 +169,10 @@ export class InactivityCleanupService {
     for (const warning of expiredWarnings) {
       try {
         if (warning.lastSeen > warning.warnedAt) {
-          await Q.player.inactivity.warning.resolveWarning(warning.id);
+          await Q.player.inactivity.warning.update(
+            { id: warning.id },
+            { resolvedAt: new Date() },
+          );
           logger.info(
             `Skipped removal of ${warning.minecraftUsername}: logged in since warning`,
           );

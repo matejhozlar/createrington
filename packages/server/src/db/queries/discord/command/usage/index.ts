@@ -1,10 +1,13 @@
 import type { Pool, PoolClient } from "pg";
+import type { CamelCaseKeys } from "@createrington/shared/types";
 import { DiscordCommandUsageBaseQueries } from "@/generated/db/discord_command_usage.queries";
 
-export interface CommandUsageStat {
-  commandName: string;
+export interface CommandUsageStatRow {
+  command_name: string;
   count: number;
 }
+
+export type CommandUsageStat = CamelCaseKeys<CommandUsageStatRow>;
 
 export class DiscordCommandUsageQueries extends DiscordCommandUsageBaseQueries {
   constructor(db: Pool | PoolClient) {
@@ -12,26 +15,25 @@ export class DiscordCommandUsageQueries extends DiscordCommandUsageBaseQueries {
   }
 
   async topCommands(limit = 10): Promise<CommandUsageStat[]> {
-    const result = await this.db.query<{ command_name: string; count: string }>(
-      `SELECT command_name, COUNT(*)::text AS count
-       FROM discord_command_usage
+    const result = await this.runQuery<CommandUsageStatRow>(
+      "get top commands",
+      `SELECT command_name, COUNT(*)::int AS count
+       FROM ${this.table}
        GROUP BY command_name
        ORDER BY COUNT(*) DESC
        LIMIT $1`,
       [limit],
     );
-    return result.rows.map((r) => ({
-      commandName: r.command_name,
-      count: Number(r.count),
-    }));
+    return this.mapRowsToEntities(result.rows);
   }
 
   async countToday(): Promise<number> {
-    const result = await this.db.query<{ count: string }>(
-      `SELECT COUNT(*)::text AS count
-       FROM discord_command_usage
+    const result = await this.runQuery<{ count: number }>(
+      "count commands today",
+      `SELECT COUNT(*)::int AS count
+       FROM ${this.table}
        WHERE executed_at >= CURRENT_DATE`,
     );
-    return Number(result.rows[0]?.count ?? 0);
+    return result.rows[0]?.count ?? 0;
   }
 }
