@@ -35,7 +35,7 @@ export function SessionsTab({ playerId, getServerName }: SessionsTabProps) {
     ),
   );
 
-  const sessions = sessionsQuery.data?.sessions ?? [];
+  const sessions = sessionsQuery.data?.items ?? [];
   const total = sessionsQuery.data?.pagination.total ?? 0;
   const totalPages = sessionsQuery.data?.pagination.totalPages ?? 0;
   const loading = sessionsQuery.isLoading || sessionsQuery.isPlaceholderData;
@@ -43,7 +43,7 @@ export function SessionsTab({ playerId, getServerName }: SessionsTabProps) {
   const error = sessionsQuery.error?.message ?? null;
 
   type Session =
-    RouterOutput["admin"]["players"]["sessions"]["list"]["sessions"][number];
+    RouterOutput["admin"]["players"]["sessions"]["list"]["items"][number];
 
   const columns: DataTableColumn<Session>[] = [
     {

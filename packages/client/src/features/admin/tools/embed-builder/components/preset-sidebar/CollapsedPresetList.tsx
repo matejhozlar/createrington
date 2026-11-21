@@ -22,7 +22,7 @@ export function CollapsedPresetList({
   const recentQuery = useQuery(
     trpc.admin.embeds.presets.list.queryOptions({ limit: 6 }),
   );
-  const recent = recentQuery.data?.presets ?? [];
+  const recent = recentQuery.data?.items ?? [];
   return (
     <div className="flex flex-col gap-1">
       {recent.map((p) => {

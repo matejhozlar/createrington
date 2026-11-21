@@ -60,7 +60,7 @@ export const playersRouter = router({
       const violation = violationRequirement(input);
       if (violation === "none") {
         return {
-          players: [],
+          items: [],
           pagination: buildPagination(input.page, input.limit, 0),
         };
       }
@@ -110,7 +110,7 @@ export const playersRouter = router({
         }));
       }
 
-      return { players: enrichedPlayers, pagination };
+      return { items: enrichedPlayers, pagination };
     }),
 
   get: adminProcedure
@@ -225,7 +225,5 @@ export const playersRouter = router({
         },
         reason: input.reason,
       });
-
-      return { message: "Player deleted successfully" };
     }),
 });

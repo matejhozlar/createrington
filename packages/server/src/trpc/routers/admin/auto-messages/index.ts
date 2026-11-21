@@ -156,8 +156,6 @@ export const autoMessagesRouter = router({
           "auto_message_config_update",
           `Updated auto-message config "${existing.name}"`,
         );
-
-        return { message: "Config updated" };
       }),
 
     delete: adminProcedure
@@ -179,8 +177,6 @@ export const autoMessagesRouter = router({
           "auto_message_config_delete",
           `Deleted auto-message config "${existing.name}"`,
         );
-
-        return { message: "Config deleted" };
       }),
   }),
 
@@ -272,8 +268,6 @@ export const autoMessagesRouter = router({
             }
           }
         });
-
-        return { message: "Message updated" };
       }),
 
     delete: adminProcedure
@@ -286,8 +280,6 @@ export const autoMessagesRouter = router({
         );
 
         await Q.discord.auto.message.delete({ id: input.id });
-
-        return { message: "Message deleted" };
       }),
 
     reorder: adminProcedure
@@ -307,8 +299,6 @@ export const autoMessagesRouter = router({
         if (reordered < new Set(input.items.map((item) => item.id)).size) {
           throw trpcError.notFound("Message not found");
         }
-
-        return { message: "Messages reordered" };
       }),
   }),
 });

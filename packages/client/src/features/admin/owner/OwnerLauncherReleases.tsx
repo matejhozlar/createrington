@@ -54,7 +54,7 @@ import { trpc, type RouterOutput, queryClient } from "@/lib/trpc";
 import { keepPreviousData, useQuery, useMutation } from "@tanstack/react-query";
 
 type ReleaseRow =
-  RouterOutput["owner"]["launcherReleases"]["list"]["releases"][number];
+  RouterOutput["owner"]["launcherReleases"]["list"]["items"][number];
 
 type BudgetSnapshot = RouterOutput["owner"]["contentGateway"]["budget"]["get"];
 
@@ -341,7 +341,7 @@ export function OwnerLauncherReleases() {
     ),
   );
 
-  const releases = releasesQuery.data?.releases ?? [];
+  const releases = releasesQuery.data?.items ?? [];
   const channel = releasesQuery.data?.channel;
   const enabled = releasesQuery.data?.enabled ?? true;
   const total = releasesQuery.data?.pagination.total ?? 0;

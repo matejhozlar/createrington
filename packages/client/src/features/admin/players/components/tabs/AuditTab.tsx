@@ -32,7 +32,7 @@ export function AuditTab({ playerId }: AuditTabProps) {
     }),
   );
 
-  const actions = auditQuery.data?.actions ?? [];
+  const actions = auditQuery.data?.items ?? [];
   const total = auditQuery.data?.pagination.total ?? 0;
   const totalPages = auditQuery.data?.pagination.totalPages ?? 0;
   const loading = auditQuery.isLoading;

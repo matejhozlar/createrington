@@ -4,13 +4,13 @@ import { metricsService } from "@/services/metrics";
 import { dateRangeWithGranularity } from "./schemas";
 
 export const growthMetricsRouter = router({
-  getOverview: adminProcedure
+  overview: adminProcedure
     .meta({ description: "Get growth overview with total player count" })
     .query(async () => {
       return { totalPlayers: await Q.player.count() };
     }),
 
-  getRegistrations: adminProcedure
+  registrations: adminProcedure
     .meta({ description: "Get player registrations grouped by time period" })
     .input(dateRangeWithGranularity)
     .query(async ({ input }) => {
@@ -21,13 +21,13 @@ export const growthMetricsRouter = router({
       );
     }),
 
-  getWaitlistFunnel: adminProcedure
+  waitlistFunnel: adminProcedure
     .meta({ description: "Get waitlist funnel statistics" })
     .query(async () => {
       return await Q.waitlist.entry.getFunnelStats();
     }),
 
-  getDiscordGrowth: adminProcedure
+  discordGrowth: adminProcedure
     .meta({
       description: "Get Discord server growth (joins and leaves) by period.",
     })

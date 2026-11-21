@@ -3,7 +3,7 @@ import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
 import { useMutation } from "@tanstack/react-query";
 
-type Warning = RouterOutput["admin"]["inactivity"]["list"]["warnings"][number];
+type Warning = RouterOutput["admin"]["inactivity"]["list"]["items"][number];
 
 interface RemoveWarningModalProps {
   warning: Warning | null;

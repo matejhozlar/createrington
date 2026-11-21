@@ -105,8 +105,6 @@ export const userDonationsRouter = router({
           "No cancelled subscription found to reactivate",
         );
       }
-
-      return { success: true };
     }),
 
   history: userProcedure

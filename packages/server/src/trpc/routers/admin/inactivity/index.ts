@@ -87,7 +87,7 @@ export const inactivityRouter = router({
         });
 
       return {
-        warnings,
+        items: warnings,
         pagination: buildPagination(input.page, input.limit, total),
       };
     }),
@@ -124,8 +124,6 @@ export const inactivityRouter = router({
           warning.minecraftUsername ?? warning.playerMinecraftUuid
         }`,
       });
-
-      return { message: "Warning resolved" };
     }),
 
   removeManual: adminProcedure
@@ -194,8 +192,6 @@ export const inactivityRouter = router({
         actionType: "inactivity_remove_manual",
         description: `Manually removed inactive player ${warning.minecraftUsername}`,
       });
-
-      return { message: "Player removed" };
     }),
 
   triggerCleanup: adminProcedure
@@ -227,8 +223,6 @@ export const inactivityRouter = router({
         actionType: "inactivity_trigger_cleanup",
         description: "Force-triggered inactivity cleanup cycle",
       });
-
-      return { message: "Cleanup cycle completed" };
     }),
 
   triggerResolveRemove: adminProcedure
@@ -261,7 +255,5 @@ export const inactivityRouter = router({
         description:
           "Force-ran inactivity resolve+remove phases (no new warnings)",
       });
-
-      return { message: "Overdue warnings processed" };
     }),
 });

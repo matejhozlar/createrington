@@ -4,7 +4,7 @@ import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
 import { useMutation } from "@tanstack/react-query";
 
 type Exemption =
-  RouterOutput["admin"]["inactivity"]["exemptions"]["list"]["exemptions"][number];
+  RouterOutput["admin"]["inactivity"]["exemptions"]["list"]["items"][number];
 
 interface RemoveExemptionModalProps {
   exemption: Exemption | null;
@@ -16,7 +16,7 @@ export function RemoveExemptionModal({
   onClose,
 }: RemoveExemptionModalProps) {
   const removeExemption = useMutation(
-    trpc.admin.inactivity.exemptions.remove.mutationOptions(
+    trpc.admin.inactivity.exemptions.delete.mutationOptions(
       useMutationToast({
         success: "Exemption removed",
         onSuccess: () =>

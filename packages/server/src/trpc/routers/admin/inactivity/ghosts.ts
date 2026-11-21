@@ -95,7 +95,7 @@ export const ghostsRouter = router({
       return service.verify(input.discordId);
     }),
 
-  remove: adminProcedure
+  delete: adminProcedure
     .meta({
       description:
         "Remove a ghost member: re-verify, RCON whitelist remove on all servers, delete player record",
@@ -147,7 +147,5 @@ export const ghostsRouter = router({
         targetPlayerUuid: result.minecraftUuid,
         targetPlayerName: result.minecraftUsername,
       });
-
-      return { message: "Ghost member removed" };
     }),
 });

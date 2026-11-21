@@ -101,7 +101,7 @@ function TemplateField({
 }
 
 type MaintenanceSettings =
-  RouterOutput["admin"]["servers"]["maintenanceSettings"];
+  RouterOutput["admin"]["servers"]["maintenance"]["settings"]["get"];
 
 export function MaintenanceSettingsDialog({
   serverId,
@@ -109,7 +109,7 @@ export function MaintenanceSettingsDialog({
   onOpenChange,
 }: MaintenanceSettingsDialogProps) {
   const settingsQuery = useQuery(
-    trpc.admin.servers.maintenanceSettings.queryOptions(
+    trpc.admin.servers.maintenance.settings.get.queryOptions(
       { serverId },
       { enabled: open },
     ),
@@ -171,11 +171,11 @@ function MaintenanceSettingsForm({
 
   const invalidateSettings = () =>
     queryClient.invalidateQueries(
-      trpc.admin.servers.maintenanceSettings.queryFilter({ serverId }),
+      trpc.admin.servers.maintenance.settings.get.queryFilter({ serverId }),
     );
 
   const saveMutation = useMutation(
-    trpc.admin.servers.updateMaintenanceSettings.mutationOptions(
+    trpc.admin.servers.maintenance.settings.update.mutationOptions(
       useMutationToast({
         success: ({ pushed }) =>
           pushed
@@ -189,7 +189,7 @@ function MaintenanceSettingsForm({
   );
 
   const addMutation = useMutation(
-    trpc.admin.servers.addMaintenanceAllowedPlayer.mutationOptions(
+    trpc.admin.servers.maintenance.allowedPlayers.create.mutationOptions(
       useMutationToast({
         success: ({ username, pushed }) =>
           pushed
@@ -204,7 +204,7 @@ function MaintenanceSettingsForm({
   );
 
   const removeMutation = useMutation(
-    trpc.admin.servers.removeMaintenanceAllowedPlayer.mutationOptions(
+    trpc.admin.servers.maintenance.allowedPlayers.delete.mutationOptions(
       useMutationToast({
         success: ({ username }) => `${username} removed from the allow list`,
         onSuccess: () => {
@@ -215,13 +215,13 @@ function MaintenanceSettingsForm({
   );
 
   const pushMutation = useMutation(
-    trpc.admin.servers.pushMaintenanceSettings.mutationOptions(
+    trpc.admin.servers.maintenance.settings.push.mutationOptions(
       useMutationToast({
         success: ({ added, removed }) =>
           `Settings pushed to the server (+${added.length} / -${removed.length} allowed players)`,
         onSuccess: () => {
           void queryClient.invalidateQueries(
-            trpc.admin.servers.maintenanceStatus.queryFilter({ serverId }),
+            trpc.admin.servers.maintenance.status.queryFilter({ serverId }),
           );
         },
       }),
@@ -229,7 +229,7 @@ function MaintenanceSettingsForm({
   );
 
   const allowedUuids = new Set(settings.allowedPlayers.map((p) => p.uuid));
-  const results = (searchQuery.data?.players ?? []).filter(
+  const results = (searchQuery.data?.items ?? []).filter(
     (p) => !allowedUuids.has(p.minecraftUuid),
   );
 

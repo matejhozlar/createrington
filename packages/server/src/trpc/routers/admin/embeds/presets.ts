@@ -45,7 +45,7 @@ export const embedPresetsRouter = router({
         { orderBy: "updatedAt", orderDirection: "desc" },
       );
 
-      return { presets, pagination };
+      return { items: presets, pagination };
     }),
 
   get: adminProcedure
@@ -88,7 +88,6 @@ export const embedPresetsRouter = router({
       });
 
       return {
-        message: "Preset created",
         id: created.id,
         name: created.name,
         kind: created.kind,
@@ -133,8 +132,6 @@ export const embedPresetsRouter = router({
 
       assertPatchNotEmpty(updates);
       await Q.discord.embed.preset.update({ id: input.id }, updates);
-
-      return { message: "Preset updated" };
     }),
 
   delete: adminProcedure
@@ -147,8 +144,6 @@ export const embedPresetsRouter = router({
       );
 
       await Q.discord.embed.preset.delete({ id: input.id });
-
-      return { message: "Preset deleted" };
     }),
 
   setCategory: adminProcedure
@@ -171,8 +166,6 @@ export const embedPresetsRouter = router({
         { id: input.presetId },
         { categoryId: input.categoryId },
       );
-
-      return { message: "Preset category updated" };
     }),
 
   categories: embedPresetCategoriesRouter,

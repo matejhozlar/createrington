@@ -44,7 +44,7 @@ import { formatMoney, formatRelativeDate } from "@/lib/format";
 import { formatFullDate, toIso } from "../format";
 
 type PlayerRow =
-  RouterOutput["admin"]["players"]["players"]["list"]["players"][number];
+  RouterOutput["admin"]["players"]["players"]["list"]["items"][number];
 
 type SortField = "minecraftUsername" | "lastSeen" | "createdAt";
 
@@ -121,7 +121,7 @@ export function AdminPlayers() {
 
   const stats = statsQuery.data;
   const statsLoading = statsQuery.isLoading;
-  const players = playersQuery.data?.players ?? [];
+  const players = playersQuery.data?.items ?? [];
   const total = playersQuery.data?.pagination.total ?? 0;
   const totalPages = playersQuery.data?.pagination.totalPages ?? 0;
   const loading = playersQuery.isLoading || playersQuery.isPlaceholderData;

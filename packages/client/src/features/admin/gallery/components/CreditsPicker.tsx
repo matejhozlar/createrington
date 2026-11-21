@@ -36,7 +36,7 @@ export function CreditsPicker({
   );
 
   const taken = new Set([excludeUuid, ...value.map((c) => c.minecraftUuid)]);
-  const results = (searchQuery.data?.players ?? []).filter(
+  const results = (searchQuery.data?.items ?? []).filter(
     (player) => !taken.has(player.minecraftUuid),
   );
   const full = value.length >= MAX_CREDITS;

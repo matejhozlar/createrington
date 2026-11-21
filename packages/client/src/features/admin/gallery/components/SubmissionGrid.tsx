@@ -46,7 +46,7 @@ export function SubmissionGrid({ status }: SubmissionGridProps) {
   );
 
   const removeMutation = useMutation(
-    trpc.admin.gallery.remove.mutationOptions(
+    trpc.admin.gallery.delete.mutationOptions(
       useMutationToast({
         success: "Screenshot removed from the gallery",
         onSuccess: () => {

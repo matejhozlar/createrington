@@ -4,7 +4,7 @@ import { z } from "zod";
 import { dateRangeWithGranularity } from "./schemas";
 
 export const moderationMetricsRouter = router({
-  getBansByPeriod: adminProcedure
+  bansByPeriod: adminProcedure
     .meta({ description: "Get ban counts grouped by time period" })
     .input(dateRangeWithGranularity)
     .query(async ({ input }) => {
@@ -15,7 +15,7 @@ export const moderationMetricsRouter = router({
       );
     }),
 
-  getStrikesByPeriod: adminProcedure
+  strikesByPeriod: adminProcedure
     .meta({
       description:
         "Get strike counts grouped by time period with classification breakdown",
@@ -29,13 +29,13 @@ export const moderationMetricsRouter = router({
       );
     }),
 
-  getStrikeSeverityDistribution: adminProcedure
+  strikeSeverityDistribution: adminProcedure
     .meta({ description: "Get severity distribution for active strikes" })
     .query(async () => {
       return await Q.player.strike.getSeverityDistribution();
     }),
 
-  getTicketOverview: adminProcedure
+  ticketOverview: adminProcedure
     .meta({
       description:
         "Get ticket overview: total, open, closed, average resolution time",
@@ -44,7 +44,7 @@ export const moderationMetricsRouter = router({
       return await Q.ticket.getOverview();
     }),
 
-  getTicketVolume: adminProcedure
+  ticketVolume: adminProcedure
     .meta({ description: "Get ticket volume grouped by time period" })
     .input(dateRangeWithGranularity)
     .query(async ({ input }) => {
@@ -55,7 +55,7 @@ export const moderationMetricsRouter = router({
       );
     }),
 
-  getTopModerators: adminProcedure
+  topModerators: adminProcedure
     .meta({ description: "Get top moderators ranked by ban count" })
     .input(z.object({ limit: z.number().int().min(1).max(100).default(10) }))
     .query(async ({ input }) => {

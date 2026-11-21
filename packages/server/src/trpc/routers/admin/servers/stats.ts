@@ -164,7 +164,7 @@ export const serverStatsProcedures = {
       );
 
       return {
-        sessions,
+        items: sessions,
         pagination: buildPagination(input.page, input.limit, total),
       };
     }),

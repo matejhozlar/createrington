@@ -3,7 +3,7 @@ import { Q } from "@/db";
 import { dateRangeWithMonthGranularity, optionalDateRange } from "./schemas";
 
 export const activityMetricsRouter = router({
-  getActivePlayers: adminProcedure
+  activePlayers: adminProcedure
     .meta({
       description: "Get unique active player counts grouped by time period.",
     })
@@ -16,7 +16,7 @@ export const activityMetricsRouter = router({
       );
     }),
 
-  getAverageSessionLength: adminProcedure
+  averageSessionLength: adminProcedure
     .meta({ description: "Get average session length in seconds" })
     .input(optionalDateRange)
     .query(async ({ input }) => {

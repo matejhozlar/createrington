@@ -70,7 +70,7 @@ export const ownerLauncherPacksRouter = router({
       modpacks: await launcherPackAdminService.listCandidates(),
     })),
 
-  add: launcherOwnerProcedure
+  create: launcherOwnerProcedure
     .meta({
       description:
         "Offer a modpack to the launcher under a new slug; a pack served from CurseForge gets its recorded releases prepared right away",
@@ -133,7 +133,7 @@ export const ownerLauncherPacksRouter = router({
       return { packs: packs.map(toDto) };
     }),
 
-  remove: launcherOwnerProcedure
+  delete: launcherOwnerProcedure
     .meta({
       description:
         "Stop offering a pack; launchers that stored its slug lose it",

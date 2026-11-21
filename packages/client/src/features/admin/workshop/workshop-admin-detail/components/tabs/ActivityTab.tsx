@@ -248,7 +248,7 @@ export function ActivityTab({
     ),
   );
 
-  const events = eventsQuery.data?.events ?? [];
+  const events = eventsQuery.data?.items ?? [];
   const total = eventsQuery.data?.pagination.total ?? 0;
   const totalPages = eventsQuery.data?.pagination.totalPages ?? 0;
   const loading = eventsQuery.isLoading || eventsQuery.isPlaceholderData;

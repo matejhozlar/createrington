@@ -37,7 +37,7 @@ import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 
 type Status = "all" | "paid" | "pending" | "unlinked";
-type VoteRow = RouterOutput["admin"]["votes"]["list"]["votes"][number];
+type VoteRow = RouterOutput["admin"]["votes"]["list"]["items"][number];
 
 const PAGE_SIZE = 25;
 
@@ -147,7 +147,7 @@ export function VotesListCard() {
     ),
   );
 
-  const votes = query.data?.votes ?? [];
+  const votes = query.data?.items ?? [];
   const total = query.data?.pagination.total ?? 0;
   const totalPages = query.data?.pagination.totalPages ?? 0;
   const loading = query.isLoading || query.isPlaceholderData;

@@ -32,7 +32,7 @@ export const sessionsRouter = router({
         );
 
       return {
-        sessions: sessions.map((s) => ({
+        items: sessions.map((s) => ({
           ...s,
           secondsPlayed: s.secondsPlayed?.toString() || null,
           activeSeconds: s.activeSeconds.toString(),

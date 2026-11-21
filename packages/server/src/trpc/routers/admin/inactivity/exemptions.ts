@@ -33,12 +33,12 @@ export const exemptionsRouter = router({
         });
 
       return {
-        exemptions,
+        items: exemptions,
         pagination: buildPagination(input.page, input.limit, total),
       };
     }),
 
-  add: adminProcedure
+  create: adminProcedure
     .meta({
       description:
         "Exempt a player (by Minecraft username, UUID, or Discord ID) from inactivity cleanup; resolves any active warning they have",
@@ -100,13 +100,12 @@ export const exemptionsRouter = router({
       });
 
       return {
-        message: `${player.minecraftUsername} exempted`,
         minecraftUsername: player.minecraftUsername,
         resolvedWarnings,
       };
     }),
 
-  remove: adminProcedure
+  delete: adminProcedure
     .meta({
       description:
         "Remove a player's inactivity exemption so the sweep considers them again",
@@ -137,7 +136,5 @@ export const exemptionsRouter = router({
         targetPlayerUuid: input.minecraftUuid,
         targetPlayerName: player?.minecraftUsername,
       });
-
-      return { message: "Exemption removed" };
     }),
 });

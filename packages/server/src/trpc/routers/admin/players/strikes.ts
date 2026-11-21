@@ -81,7 +81,7 @@ export const strikesRouter = router({
       return { strike };
     }),
 
-  remove: adminProcedure
+  delete: adminProcedure
     .meta({ description: "Remove/pardon a strike from a player" })
     .input(
       z.object({

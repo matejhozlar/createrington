@@ -32,7 +32,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 
 type Release = RouterOutput["admin"]["modpacks"]["listReleases"][number];
-type Diff = RouterOutput["admin"]["modpacks"]["getReleaseDiff"];
+type Diff = RouterOutput["admin"]["modpacks"]["releaseDiff"];
 type DiffEntry = Diff["added"][number];
 
 const CHANGE_GROUPS = [
@@ -147,7 +147,7 @@ function ChangeRow({
 
 function ReleaseDiff({ releaseId }: { releaseId: number }) {
   const diffQuery = useQuery(
-    trpc.admin.modpacks.getReleaseDiff.queryOptions({ releaseId }),
+    trpc.admin.modpacks.releaseDiff.queryOptions({ releaseId }),
   );
 
   if (diffQuery.isLoading) {

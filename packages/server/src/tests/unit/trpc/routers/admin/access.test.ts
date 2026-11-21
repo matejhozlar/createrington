@@ -119,7 +119,7 @@ it("walks the whole admin router", () => {
       "refetchDiscordEntities",
       "players.bans.issueTemporary",
       "players.balance.adjust",
-      "servers.toggleMaintenance",
+      "servers.maintenance.toggle",
     ]),
   );
 });

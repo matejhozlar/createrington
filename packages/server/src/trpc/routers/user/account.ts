@@ -89,8 +89,6 @@ export const accountRouter = router({
       if (!revoked) {
         throw trpcError.notFound("Session not found");
       }
-
-      return { success: true };
     }),
 
   exportData: userProcedure
@@ -248,7 +246,5 @@ export const accountRouter = router({
           error,
         );
       }
-
-      return { success: true };
     }),
 });

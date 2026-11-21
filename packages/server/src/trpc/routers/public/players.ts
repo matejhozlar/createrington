@@ -117,7 +117,7 @@ export const playersRouter = router({
         },
       );
 
-      return { players: rows.map(toPublicPlayer), pagination };
+      return { items: rows.map(toPublicPlayer), pagination };
     }),
 
   count: publicProcedure

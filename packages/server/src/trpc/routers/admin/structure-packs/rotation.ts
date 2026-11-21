@@ -49,8 +49,8 @@ const rotationConfigRouter = router({
     }),
 });
 
-export const structurePackRotationProcedures = {
-  forceRotation: adminProcedure
+export const structurePackRotationRouter = router({
+  force: adminProcedure
     .meta({ description: "Trigger a manual rotation" })
     .mutation(async ({ ctx }) => {
       const service = await getRotationService();
@@ -74,10 +74,9 @@ export const structurePackRotationProcedures = {
         description: "Triggered manual structure pack rotation",
         metadata: { success: true },
       });
-      return { triggered: true };
     }),
 
-  clearRotation: adminProcedure
+  clear: adminProcedure
     .meta({ description: "Clear the current rotation and remove active mods" })
     .mutation(async ({ ctx }) => {
       const service = await getRotationService();
@@ -87,10 +86,9 @@ export const structurePackRotationProcedures = {
         actionType: "structure_pack_clear_rotation",
         description: "Cleared active structure pack rotation",
       });
-      return { cleared: true };
     }),
 
-  rotationHistory: adminProcedure
+  history: adminProcedure
     .meta({ description: "Get paginated rotation history" })
     .input(z.object({ ...paginationInput() }))
     .query(async ({ input }) => {
@@ -100,10 +98,10 @@ export const structurePackRotationProcedures = {
         pageOffset(input),
       );
       return {
-        data: rows,
+        items: rows,
         pagination: buildPagination(input.page, input.limit, total),
       };
     }),
 
-  rotationConfig: rotationConfigRouter,
-};
+  config: rotationConfigRouter,
+});

@@ -5,7 +5,7 @@ import { z } from "zod";
 import { dateRangeWithGranularity } from "./schemas";
 
 export const economyMetricsRouter = router({
-  getOverview: adminProcedure
+  overview: adminProcedure
     .meta({
       description:
         "Get economy overview: total balance, player count, average balance",
@@ -14,13 +14,13 @@ export const economyMetricsRouter = router({
       return await metricsService.getEconomyOverview();
     }),
 
-  getDistribution: adminProcedure
+  distribution: adminProcedure
     .meta({ description: "Get balance distribution across predefined ranges" })
     .query(async () => {
       return await Q.player.balance.getDistribution();
     }),
 
-  getTransactionVolume: adminProcedure
+  transactionVolume: adminProcedure
     .meta({ description: "Get transaction volume grouped by time period" })
     .input(dateRangeWithGranularity)
     .query(async ({ input }) => {
@@ -31,7 +31,7 @@ export const economyMetricsRouter = router({
       );
     }),
 
-  getTopBalances: adminProcedure
+  topBalances: adminProcedure
     .meta({ description: "Get top players by balance" })
     .input(z.object({ limit: z.number().int().min(1).max(100).default(10) }))
     .query(async ({ input }) => {

@@ -1,10 +1,10 @@
 import { router } from "@/trpc/trpc";
 import { structurePackCrudProcedures } from "./crud";
-import { structurePackModProcedures } from "./mods";
-import { structurePackRotationProcedures } from "./rotation";
+import { structurePackModsRouter } from "./mods";
+import { structurePackRotationRouter } from "./rotation";
 
 export const adminStructurePacksRouter = router({
   ...structurePackCrudProcedures,
-  ...structurePackModProcedures,
-  ...structurePackRotationProcedures,
+  mods: structurePackModsRouter,
+  rotation: structurePackRotationRouter,
 });

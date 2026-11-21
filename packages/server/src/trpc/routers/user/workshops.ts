@@ -219,7 +219,6 @@ export const userWorkshopsRouter = router({
         input.workshopModId,
         ctx.user.discordId,
       );
-      return { removed: true };
     }),
 
   listRejected: workshopProcedure

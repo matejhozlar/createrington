@@ -14,14 +14,14 @@ import {
 } from "@/components/data-table";
 
 type Rotation =
-  RouterOutput["admin"]["structurePacks"]["rotationHistory"]["data"][number];
+  RouterOutput["admin"]["structurePacks"]["rotation"]["history"]["items"][number];
 
 export function RotationHistory() {
   const [page, setPage] = useState(0);
   const limit = 10;
 
   const historyQuery = useQuery(
-    trpc.admin.structurePacks.rotationHistory.queryOptions(
+    trpc.admin.structurePacks.rotation.history.queryOptions(
       {
         page,
         limit,
@@ -109,7 +109,7 @@ export function RotationHistory() {
           onRetry={() => historyQuery.refetch()}
           compact
         />
-      ) : !loading && (!data || data.data.length === 0) ? (
+      ) : !loading && (!data || data.items.length === 0) ? (
         <EmptyState
           icon={History}
           message="No rotations yet"
@@ -119,7 +119,7 @@ export function RotationHistory() {
         <>
           <DataTable
             columns={columns}
-            rows={data?.data ?? []}
+            rows={data?.items ?? []}
             loading={loading}
             loadingRows={loadingRows}
             rowKey={(rotation) => rotation.id}

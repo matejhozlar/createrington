@@ -61,7 +61,7 @@ export const ownerLauncherReleasesRouter = router({
       return {
         channel: config.launcher.channel,
         enabled: launcherReleaseService.isEnabled(),
-        releases: rows.map(toDto),
+        items: rows.map(toDto),
         pagination,
       };
     }),

@@ -24,7 +24,7 @@ export const auditRouter = router({
       ]);
 
       return {
-        actions: auditLog,
+        items: auditLog,
         pagination: buildPagination(input.page, input.limit, total),
       };
     }),
