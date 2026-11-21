@@ -3,7 +3,10 @@ import { EmbedPresets } from "@/discord/embeds";
 import { replyError } from "@/discord/utils/interaction-reply";
 import { RoleManager } from "@/discord/utils/roles/role-manager";
 import { getUnassignableReason } from "@/discord/utils/roles/self-assignable";
-import { ROLE_PANEL_BUTTON_PREFIX } from "../../config/role-panel";
+import {
+  isPresetRole,
+  ROLE_PANEL_BUTTON_PREFIX,
+} from "../../config/role-panel";
 
 export const pattern = `${ROLE_PANEL_BUTTON_PREFIX}:*`;
 
@@ -45,7 +48,9 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
 
   const me =
     interaction.guild.members.me ?? (await interaction.guild.members.fetchMe());
-  const reason = getUnassignableReason(role, me);
+  const reason = getUnassignableReason(role, me, {
+    allowChannelOverwrites: isPresetRole(role.id),
+  });
 
   if (reason) {
     await replyError(

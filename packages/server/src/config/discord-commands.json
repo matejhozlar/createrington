@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-10T16:29:03.223Z",
+  "generatedAt": "2026-11-21T12:58:36.506Z",
   "commands": [
     {
       "name": "cooldown",
@@ -805,31 +805,30 @@
       }
     },
     {
-      "name": "notification-panel",
-      "description": "Create or update the notification selection panel",
-      "category": "owner",
-      "options": [
-        {
-          "type": 3,
-          "name": "message_id",
-          "description": "Message ID of an existing panel to update (sends new if omitted)",
-          "required": false
-        }
-      ],
-      "defaultMemberPermissions": "8",
-      "permissions": {
-        "requireOwner": true
-      }
-    },
-    {
       "name": "role-panel",
       "description": "Post a panel where members toggle the chosen roles with buttons",
       "category": "owner",
       "options": [
         {
+          "type": 3,
+          "choices": [
+            {
+              "name": "Notifications",
+              "value": "notifications"
+            },
+            {
+              "name": "Testing",
+              "value": "testing"
+            }
+          ],
+          "name": "preset",
+          "description": "Post a predefined panel instead of picking roles",
+          "required": false
+        },
+        {
           "name": "role1",
           "description": "Role members can pick",
-          "required": true,
+          "required": false,
           "type": 8
         },
         {
@@ -889,27 +888,10 @@
         {
           "type": 3,
           "name": "title",
-          "description": "Panel title (default: Role Picker)",
+          "description": "Panel title (default: the preset's title, or Role Picker)",
           "required": false,
           "max_length": 100
         },
-        {
-          "type": 3,
-          "name": "message_id",
-          "description": "Message ID of an existing panel to update (sends new if omitted)",
-          "required": false
-        }
-      ],
-      "defaultMemberPermissions": "8",
-      "permissions": {
-        "requireOwner": true
-      }
-    },
-    {
-      "name": "server-panel",
-      "description": "Create or update the server selection panel",
-      "category": "owner",
-      "options": [
         {
           "type": 3,
           "name": "message_id",
