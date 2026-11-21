@@ -22,6 +22,7 @@ interface PlanningBoardProps {
   items: PlanningItem[];
   subcategories: PlanningSubcategory[];
   showCategory: boolean;
+  lockedIds: number[];
   onOpen: (item: PlanningItem) => void;
   onMove: (item: PlanningItem, status: PlanningItemStatus) => void;
 }
@@ -35,15 +36,18 @@ function DraggableCard({
   item,
   subcategory,
   showCategory,
+  locked,
   onOpen,
 }: {
   item: PlanningItem;
   subcategory: string | null;
   showCategory: boolean;
+  locked: boolean;
   onOpen: (item: PlanningItem) => void;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: item.id,
+    disabled: locked,
   });
 
   return (
@@ -110,6 +114,7 @@ export function PlanningBoard({
   items,
   subcategories,
   showCategory,
+  lockedIds,
   onOpen,
   onMove,
 }: PlanningBoardProps) {
@@ -123,7 +128,9 @@ export function PlanningBoard({
     setDraggingId(null);
     const item = items.find((candidate) => candidate.id === active.id);
     const status = over?.id as PlanningItemStatus | undefined;
-    if (item && status && item.status !== status) onMove(item, status);
+    if (!item || !status || item.status === status) return;
+    if (lockedIds.includes(item.id)) return;
+    onMove(item, status);
   };
 
   return (
@@ -152,6 +159,7 @@ export function PlanningBoard({
                     item.subcategoryId,
                   )}
                   showCategory={showCategory}
+                  locked={lockedIds.includes(item.id)}
                   onOpen={onOpen}
                 />
               ))}

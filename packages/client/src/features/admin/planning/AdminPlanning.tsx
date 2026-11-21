@@ -36,6 +36,7 @@ import { ItemSheet } from "./components/ItemSheet";
 import { PlanningBoard } from "./components/PlanningBoard";
 import { SubcategoriesDialog } from "./components/SubcategoriesDialog";
 import { CATEGORY_CONFIG, OPEN_STATUSES } from "./constants";
+import { patchListItem } from "./listCache";
 import type { PlanningItem } from "./types";
 
 type CategoryTab = "all" | PlanningCategory;
@@ -70,6 +71,7 @@ export function AdminPlanning() {
   const [showRejected, setShowRejected] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [subcategoriesOpen, setSubcategoriesOpen] = useState(false);
+  const [movingIds, setMovingIds] = useState<number[]>([]);
 
   const itemsQuery = useQuery(trpc.admin.planning.items.list.queryOptions());
   const subcategoriesQuery = useQuery(
@@ -80,25 +82,27 @@ export function AdminPlanning() {
   const move = useMutation(
     trpc.admin.planning.items.update.mutationOptions({
       onMutate: async ({ id, status }) => {
+        setMovingIds((ids) => [...ids, id]);
         await queryClient.cancelQueries({ queryKey: listKey });
         const previous = queryClient.getQueryData(listKey);
-        queryClient.setQueryData(
-          listKey,
-          (current) =>
-            current && {
-              items: current.items.map((item) =>
-                item.id === id && status ? { ...item, status } : item,
-              ),
-            },
+        queryClient.setQueryData(listKey, (current) =>
+          patchListItem(current, id, status ? { status } : {}),
         );
         return { previous };
+      },
+      onSuccess: ({ id, revision }) => {
+        queryClient.setQueryData(listKey, (current) =>
+          patchListItem(current, id, { revision }),
+        );
       },
       onError: (error, _variables, context) => {
         queryClient.setQueryData(listKey, context?.previous);
         toast.error(error.message);
       },
-      onSettled: () =>
-        queryClient.invalidateQueries(trpc.admin.planning.pathFilter()),
+      onSettled: (_data, _error, { id }) => {
+        setMovingIds((ids) => ids.filter((movingId) => movingId !== id));
+        return queryClient.invalidateQueries(trpc.admin.planning.pathFilter());
+      },
     }),
   );
 
@@ -295,6 +299,7 @@ export function AdminPlanning() {
             items={visible}
             subcategories={subcategories}
             showCategory={category === "all"}
+            lockedIds={movingIds}
             onOpen={(item) => openItem(item.id)}
             onMove={(item, status) =>
               move.mutate({ id: item.id, revision: item.revision, status })
