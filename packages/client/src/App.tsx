@@ -210,6 +210,10 @@ const AdminGallery = lazyNamed(
   () => import("./features/admin/gallery/AdminGallery"),
   "AdminGallery",
 );
+const AdminPlanning = lazyNamed(
+  () => import("./features/admin/planning/AdminPlanning"),
+  "AdminPlanning",
+);
 const AdminWorkshopDetail = lazyNamed(
   () =>
     import("./features/admin/workshop/workshop-admin-detail/AdminWorkshopDetail"),
@@ -434,6 +438,7 @@ function AppContent() {
                         path="players/:id"
                         element={<AdminPlayerDetail />}
                       />
+                      <Route path="planning" element={<AdminPlanning />} />
                       <Route path="servers" element={<AdminServers />} />
                       <Route
                         path="servers/:id"

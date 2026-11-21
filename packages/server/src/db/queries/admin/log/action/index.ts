@@ -51,6 +51,7 @@ export type AdminActionType =
   | "modpack_delete"
   | "modpack_seed_manifest"
   | "modpack_update"
+  | "planning_item_delete"
   | "player_prompt_close"
   | "player_prompt_create"
   | "player_prompt_delete"

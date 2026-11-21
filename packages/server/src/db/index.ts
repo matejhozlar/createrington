@@ -28,6 +28,8 @@ export const balanceRepo = new repositories.BalanceRepository();
 
 export const ticketRepo = new repositories.TicketRepository();
 
+export const planningRepo = new repositories.PlanningRepository();
+
 export const playerRepo = new repositories.PlayerRepository();
 
 export const playerStrikeRepo = new repositories.PlayerStrikeRepository();
