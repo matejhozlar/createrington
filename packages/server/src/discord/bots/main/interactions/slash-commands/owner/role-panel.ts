@@ -70,7 +70,9 @@ builder
   .addStringOption((opt) =>
     opt
       .setName("title")
-      .setDescription(`Panel title (default: ${DEFAULT_TITLE})`)
+      .setDescription(
+        `Panel title (default: the preset's title, or ${DEFAULT_TITLE})`,
+      )
       .setMaxLength(100),
   )
   .addStringOption((opt) =>
