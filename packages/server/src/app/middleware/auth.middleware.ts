@@ -3,7 +3,7 @@ import { ForbiddenError, UnauthorizedError } from "@/errors";
 import { jwtService } from "@/services/auth/jwt";
 import { accessCookieService } from "@/services/auth/token/access-cookie.service";
 import { adminStatusService } from "@/services/auth/admin-status/admin-status.service";
-import { AuthRole } from "@createrington/shared/auth";
+import { AuthRole, type JWTPayload } from "@createrington/shared/auth";
 import { extractBearerToken } from "@/app/utils/bearer-token";
 import { allowedOrigins } from "@/app/utils/allowed-origins";
 
@@ -12,6 +12,13 @@ function extractAccessToken(req: Request): string | undefined {
   if (headerToken) return headerToken;
   if (!accessCookieService.isEnabled()) return undefined;
   return accessCookieService.extractFromRequest(req);
+}
+
+export function authenticatedUser(req: Request): JWTPayload {
+  if (!req.user) {
+    throw new UnauthorizedError("Authentication required");
+  }
+  return req.user;
 }
 
 export const authenticate = (

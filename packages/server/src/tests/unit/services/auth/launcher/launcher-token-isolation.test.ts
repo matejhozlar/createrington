@@ -39,7 +39,7 @@ import { authenticate } from "@/app/middleware/auth.middleware";
 import { authenticateLauncher } from "@/app/middleware/launcher-auth.middleware";
 import { verifyModJWT } from "@/app/middleware/mod-jwt.middleware";
 import { UnauthorizedError } from "@/errors";
-import { jwtService } from "@/services/auth/jwt/jwt.service";
+import { jwtService, TokenExpiredError } from "@/services/auth/jwt/jwt.service";
 import {
   JWT_AUDIENCE_LAUNCHER,
   launcherJwtService,
@@ -106,7 +106,7 @@ describe("LauncherJwtService", () => {
       expiresIn: -10,
     });
 
-    expect(() => launcherJwtService.verify(token)).toThrow("Token expired");
+    expect(() => launcherJwtService.verify(token)).toThrow(TokenExpiredError);
   });
 
   it("rejects a launcher-audience token signed with the web secret", () => {

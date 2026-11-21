@@ -1,8 +1,8 @@
 import type { NextFunction, Request, Response } from "express";
 import { LauncherAuthErrorCode } from "@createrington/shared/launcher";
 import { UnauthorizedError } from "@/errors";
+import { TokenExpiredError } from "@/services/auth/jwt/jwt.service";
 import {
-  LauncherTokenExpiredError,
   launcherJwtService,
   type LauncherJwtPayload,
 } from "@/services/auth/launcher/launcher-jwt.service";
@@ -36,7 +36,7 @@ export const authenticateLauncher = async (
     payload = launcherJwtService.verify(token);
   } catch (error) {
     next(
-      error instanceof LauncherTokenExpiredError
+      error instanceof TokenExpiredError
         ? new UnauthorizedError("Launcher token expired", {
             code: LauncherAuthErrorCode.TOKEN_EXPIRED,
           })

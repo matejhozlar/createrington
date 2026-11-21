@@ -7,7 +7,7 @@ import { BalanceUtils } from "@/db/repositories/balance/utils";
 import { playerDeletionService } from "@/services/player/deletion";
 import { getService, Services } from "@/services";
 import config from "@/config";
-import type { AuthSessionRow } from "@createrington/shared/db/auth_session.types";
+import type { AuthSession } from "@createrington/shared/db/auth_session.types";
 
 const exportLimit = createRateLimit({
   name: "user.account.exportData",
@@ -16,14 +16,14 @@ const exportLimit = createRateLimit({
   key: (ctx) => ctx.user?.discordId ?? "anonymous",
 });
 
-function toSessionView(session: AuthSessionRow) {
+function toSessionView(session: AuthSession) {
   return {
     id: session.id,
-    ipAddress: session.ip_address,
-    userAgent: session.user_agent,
-    createdAt: session.created_at.toISOString(),
-    lastUsedAt: session.last_used_at.toISOString(),
-    expiresAt: session.expires_at.toISOString(),
+    ipAddress: session.ipAddress,
+    userAgent: session.userAgent,
+    createdAt: session.createdAt.toISOString(),
+    lastUsedAt: session.lastUsedAt.toISOString(),
+    expiresAt: session.expiresAt.toISOString(),
   };
 }
 

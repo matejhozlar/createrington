@@ -16,7 +16,11 @@ vi.mock("@/config", () => ({
 }));
 
 import jwt from "jsonwebtoken";
-import { JWTService } from "@/services/auth/jwt/jwt.service";
+import {
+  JWTService,
+  JWT_AUDIENCE_WEB,
+  TokenExpiredError,
+} from "@/services/auth/jwt/jwt.service";
 import { AuthRole } from "@createrington/shared/auth";
 import type { AuthenticatedUser } from "@/services/discord/oauth/oauth.service";
 import type { JWTPayload } from "@createrington/shared/auth";
@@ -120,6 +124,15 @@ describe("JWTService", () => {
         name: baseUser.minecraftUsername,
       });
       expect(() => service.verify(modToken)).toThrow("Invalid token");
+    });
+
+    it("throws TokenExpiredError for an expired web token", () => {
+      const expired = jwt.sign(baseUser, TEST_SECRET, {
+        algorithm: "HS256",
+        audience: JWT_AUDIENCE_WEB,
+        expiresIn: -10,
+      });
+      expect(() => service.verify(expired)).toThrow(TokenExpiredError);
     });
 
     it("rejects a web-audience token with a malformed payload", () => {

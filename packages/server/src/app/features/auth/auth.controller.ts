@@ -11,10 +11,18 @@ import {
 import { jwtService } from "@/services/auth/jwt/jwt.service";
 import { refreshTokenService } from "@/services/auth/token/refresh-token.service";
 import { accessCookieService } from "@/services/auth/token/access-cookie.service";
+import { baseCookieOptions } from "@/services/auth/token/cookie-options";
 import { sessionService } from "@/services/auth/session/session.service";
 import { adminStatusService } from "@/services/auth/admin-status/admin-status.service";
 import { validateReturnTo } from "@/services/auth/sso/return-to";
-import { issueSsoCode } from "@/services/auth/sso/code-store";
+import {
+  completeLogin,
+  deriveRole,
+  issueSsoCodeFor,
+  toUserDto,
+  withLiveAdminStatus,
+} from "@/services/auth/login/login";
+import { authenticatedUser } from "@/app/middleware/auth.middleware";
 import {
   issueSsoState,
   peekSsoState,
@@ -39,18 +47,8 @@ import {
   type RefreshResponse,
 } from "@createrington/shared/auth";
 
-function deriveRole(currentRole: AuthRole, isAdmin: boolean): AuthRole {
-  if (currentRole === AuthRole.UNVERIFIED) return AuthRole.UNVERIFIED;
-  return isAdmin ? AuthRole.ADMIN : AuthRole.USER;
-}
-
 const STATE_COOKIE_NAME = "oauth_state";
-const stateCookieOptions = {
-  httpOnly: true,
-  secure: config.envMode.isProd,
-  sameSite: "lax",
-  path: "/api/auth",
-} as const;
+const stateCookieOptions = baseCookieOptions("/api/auth");
 
 const SSO_SHARED_SCOPES = [
   "minecraftUsername",
@@ -106,37 +104,13 @@ export class AuthController {
 
     try {
       const user = await discordOAuth.authenticate(code);
-
-      const accessToken = jwtService.generate(user);
-
-      const rawRefreshToken = await sessionService.createSession({
-        discordId: user.discordId,
-        username: user.username,
-        avatar: user.avatar,
-        ip: req.ip,
-        userAgent: req.headers["user-agent"],
-      });
-
-      refreshTokenService.setCookie(res, rawRefreshToken);
-
-      accessCookieService.setCookie(res, accessToken);
+      const accessToken = await completeLogin(req, res, user);
 
       logger.info(`User ${user.discordId} logged in successfully`);
 
       res.json({
         success: true,
-        data: {
-          accessToken,
-          user: {
-            discordId: user.discordId,
-            username: user.username,
-            avatar: user.avatar,
-            role: user.role,
-            isAdmin: user.isAdmin,
-            minecraftUuid: user.minecraftUuid,
-            minecraftUsername: user.minecraftUsername,
-          },
-        },
+        data: { accessToken, user: toUserDto(user) },
         message: "Authentication successful",
       });
     } catch (error) {
@@ -178,8 +152,8 @@ export class AuthController {
     }
 
     const player = await Q.player.get({ discordId: result.discordId });
-    const isAdmin = await Q.admin.exists({ discordId: result.discordId });
-    const role = isAdmin ? AuthRole.ADMIN : AuthRole.USER;
+    const isAdmin = await adminStatusService.isAdmin(result.discordId);
+    const role = deriveRole(AuthRole.USER, isAdmin);
 
     const payload: JWTPayload = {
       discordId: result.discordId,
@@ -200,19 +174,8 @@ export class AuthController {
   }
 
   static async getCurrentUser(req: Request, res: Response): Promise<void> {
-    if (!req.user) {
-      throw new UnauthorizedError("Authentication required");
-    }
-
-    const isAdmin = await adminStatusService.isAdmin(req.user.discordId);
-    const role = deriveRole(req.user.role, isAdmin);
-
-    res.json({
-      success: true,
-      data: {
-        user: { ...req.user, isAdmin, role },
-      },
-    });
+    const user = await withLiveAdminStatus(authenticatedUser(req));
+    res.json({ success: true, data: { user } });
   }
 
   static async logout(req: Request, res: Response): Promise<void> {
@@ -220,10 +183,10 @@ export class AuthController {
 
     let identity = req.user?.username;
     if (!identity && rawToken) {
-      const session = await Q.auth.session.findByTokenHash(
-        refreshTokenService.hash(rawToken),
-      );
-      identity = session?.discord_username ?? session?.discord_id ?? undefined;
+      const session = await Q.auth.session.find({
+        tokenHash: refreshTokenService.hash(rawToken),
+      });
+      identity = session?.discordUsername ?? session?.discordId;
     }
 
     if (rawToken) {
@@ -242,15 +205,13 @@ export class AuthController {
   }
 
   static async logoutAll(req: Request, res: Response): Promise<void> {
-    if (!req.user) {
-      throw new UnauthorizedError("Authentication required");
-    }
+    const { discordId } = authenticatedUser(req);
 
-    await sessionService.revokeAllForUser(req.user.discordId);
+    await sessionService.revokeAllForUser(discordId);
     refreshTokenService.clearCookie(res);
     accessCookieService.clearCookie(res);
 
-    logger.info(`User ${req.user.discordId} logged out of all sessions`);
+    logger.info(`User ${discordId} logged out of all sessions`);
 
     res.json({
       success: true,
@@ -259,20 +220,8 @@ export class AuthController {
   }
 
   static async checkStatus(req: Request, res: Response): Promise<void> {
-    if (!req.user) {
-      throw new UnauthorizedError("Authentication required");
-    }
-
-    const isAdmin = await adminStatusService.isAdmin(req.user.discordId);
-    const role = deriveRole(req.user.role, isAdmin);
-
-    res.json({
-      success: true,
-      data: {
-        authenticated: true,
-        user: { ...req.user, isAdmin, role },
-      },
-    });
+    const user = await withLiveAdminStatus(authenticatedUser(req));
+    res.json({ success: true, data: { authenticated: true, user } });
   }
 
   static async ssoStart(req: Request, res: Response): Promise<void> {
@@ -301,10 +250,6 @@ export class AuthController {
   }
 
   static async ssoConsent(req: Request, res: Response): Promise<void> {
-    if (!req.user) {
-      throw new UnauthorizedError("Authentication required");
-    }
-
     const rawState = req.query.state;
     const state = typeof rawState === "string" ? rawState : undefined;
     if (!state) {
@@ -327,10 +272,7 @@ export class AuthController {
   }
 
   static async ssoAuthorize(req: Request, res: Response): Promise<void> {
-    if (!req.user) {
-      throw new UnauthorizedError("Authentication required");
-    }
-
+    const user = authenticatedUser(req);
     const { state, action } = (req.body ?? {}) as {
       state?: unknown;
       action?: unknown;
@@ -349,7 +291,7 @@ export class AuthController {
     const { returnTo } = entry;
 
     if (action === "deny") {
-      logger.info(`User ${req.user.discordId} denied SSO to ${returnTo}`);
+      logger.info(`User ${user.discordId} denied SSO to ${returnTo}`);
       res.json({
         success: true,
         data: {
@@ -360,18 +302,10 @@ export class AuthController {
     }
 
     if (isCodeExchangeReturnTo(returnTo)) {
-      const ssoCode = await issueSsoCode({
-        playerId: req.user.minecraftUuid,
-        minecraftUsername: req.user.minecraftUsername,
-        isMember: req.user.role !== AuthRole.UNVERIFIED,
-        isOwner: req.user.discordId === config.app.auth.owner.discordId,
-      });
-      if (!ssoCode) {
-        throw new TooManyRequestsError("Too many pending sign-in attempts");
-      }
+      const ssoCode = await issueSsoCodeFor(user);
 
       logger.info(
-        `User ${req.user.discordId} authorized code-exchange SSO to ${returnTo}`,
+        `User ${user.discordId} authorized code-exchange SSO to ${returnTo}`,
       );
 
       res.json({
@@ -381,12 +315,9 @@ export class AuthController {
       return;
     }
 
-    accessCookieService.setCookie(
-      res,
-      jwtService.generateFromPayload(req.user),
-    );
+    accessCookieService.setCookie(res, jwtService.generateFromPayload(user));
 
-    logger.info(`User ${req.user.discordId} authorized SSO to ${returnTo}`);
+    logger.info(`User ${user.discordId} authorized SSO to ${returnTo}`);
 
     res.json({
       success: true,
@@ -414,15 +345,7 @@ export class AuthController {
       const user = await discordOAuth.authenticate(code, callbackUrl);
 
       if (isCodeExchangeReturnTo(entry.returnTo)) {
-        const ssoCode = await issueSsoCode({
-          playerId: user.minecraftUuid,
-          minecraftUsername: user.minecraftUsername,
-          isMember: true,
-          isOwner: user.discordId === config.app.auth.owner.discordId,
-        });
-        if (!ssoCode) {
-          throw new TooManyRequestsError("Too many pending sign-in attempts");
-        }
+        const ssoCode = await issueSsoCodeFor(user);
 
         logger.info(
           `User ${user.discordId} completed code-exchange SSO to ${entry.returnTo}`,
@@ -432,17 +355,7 @@ export class AuthController {
         return;
       }
 
-      const accessToken = jwtService.generate(user);
-      const rawRefreshToken = await sessionService.createSession({
-        discordId: user.discordId,
-        username: user.username,
-        avatar: user.avatar,
-        ip: req.ip,
-        userAgent: req.headers["user-agent"],
-      });
-
-      refreshTokenService.setCookie(res, rawRefreshToken);
-      accessCookieService.setCookie(res, accessToken);
+      await completeLogin(req, res, user);
 
       logger.info(`User ${user.discordId} completed SSO to ${entry.returnTo}`);
 
