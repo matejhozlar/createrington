@@ -4,6 +4,24 @@ import type { ChatInputCommandInteraction } from "discord.js";
 const replyError = vi.fn();
 const getUnassignableReason = vi.fn();
 
+vi.mock("@/discord/embeds", () => {
+  const builder = () => {
+    const embed = {
+      title: () => embed,
+      description: () => embed,
+      color: () => embed,
+      field: () => embed,
+      build: () => ({}),
+    };
+    return embed;
+  };
+  return {
+    createEmbed: builder,
+    EmbedColors: { Info: 0 },
+    EmbedPresets: { success: builder },
+  };
+});
+
 vi.mock("@/discord/utils/interaction-reply", () => ({
   replyError: (...args: unknown[]) => replyError(...args),
 }));
