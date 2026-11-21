@@ -12,6 +12,7 @@ function permissionsBeyond(
 export function getUnassignableReason(
   role: Role,
   me: GuildMember,
+  { allowChannelOverwrites = false }: { allowChannelOverwrites?: boolean } = {},
 ): string | null {
   const everyone = role.guild.roles.everyone;
 
@@ -23,7 +24,11 @@ export function getUnassignableReason(
     return `grants permissions beyond @everyone (${extra.join(", ")})`;
   }
 
-  for (const channel of role.guild.channels.cache.values()) {
+  const channels = allowChannelOverwrites
+    ? []
+    : role.guild.channels.cache.values();
+
+  for (const channel of channels) {
     if (channel.isThread()) continue;
 
     const overwrite = channel.permissionOverwrites.cache.get(role.id);

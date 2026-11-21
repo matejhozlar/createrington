@@ -7,6 +7,7 @@ import {
   ButtonBuilder,
   ButtonStyle,
   type ChatInputCommandInteraction,
+  type Guild,
   MessageFlags,
   PermissionFlagsBits,
   type Role,
@@ -108,6 +109,27 @@ function describeSelection(roles: Role[], duplicates: number): string {
   return duplicates > 0
     ? `${base} (${duplicates} duplicate selection(s) ignored)`
     : base;
+}
+
+async function resolvePresetRoles(
+  guild: Guild,
+  preset: RolePanelPreset,
+): Promise<{ found: Role[]; missing: string[] }> {
+  const found: Role[] = [];
+  const missing: string[] = [];
+
+  for (const { roleId, label } of preset.roles) {
+    const role =
+      guild.roles.cache.get(roleId) ??
+      (await guild.roles.fetch(roleId).catch(() => null));
+    if (role) {
+      found.push(role);
+    } else {
+      missing.push(label);
+    }
+  }
+
+  return { found, missing };
 }
 
 function buildRows(
@@ -239,28 +261,33 @@ export async function execute(
     return;
   }
 
-  const title = interaction.options.getString("title");
-  let panel: Panel;
+  const { found: panelRoles, missing } = preset
+    ? await resolvePresetRoles(interaction.guild, preset)
+    : { found: roles, missing: [] };
 
-  if (preset) {
-    panel = buildPresetPanel(preset, title);
-  } else {
-    const rejected = roles.flatMap((role) => {
-      const reason = getUnassignableReason(role, me);
+  const rejected = [
+    ...missing.map((label) => `${label} no longer exists`),
+    ...panelRoles.flatMap((role) => {
+      const reason = getUnassignableReason(role, me, {
+        allowChannelOverwrites: Boolean(preset),
+      });
       return reason ? [`${role} ${reason}`] : [];
-    });
+    }),
+  ];
 
-    if (rejected.length > 0) {
-      await replyError(
-        interaction,
-        "Roles Not Allowed",
-        `These roles cannot be self-assigned:\n${rejected.join("\n")}`,
-      );
-      return;
-    }
-
-    panel = buildRolePanel(roles, duplicates, title);
+  if (rejected.length > 0) {
+    await replyError(
+      interaction,
+      "Roles Not Allowed",
+      `These roles cannot be self-assigned:\n${rejected.join("\n")}`,
+    );
+    return;
   }
+
+  const title = interaction.options.getString("title");
+  const panel = preset
+    ? buildPresetPanel(preset, title)
+    : buildRolePanel(roles, duplicates, title);
 
   const payload = {
     embeds: [panel.embed.build()],

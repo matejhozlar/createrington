@@ -48,7 +48,9 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
 
   const me =
     interaction.guild.members.me ?? (await interaction.guild.members.fetchMe());
-  const reason = isPresetRole(role.id) ? null : getUnassignableReason(role, me);
+  const reason = getUnassignableReason(role, me, {
+    allowChannelOverwrites: isPresetRole(role.id),
+  });
 
   if (reason) {
     await replyError(
