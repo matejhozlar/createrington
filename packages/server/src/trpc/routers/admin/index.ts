@@ -13,6 +13,7 @@ import { inactivityRouter } from "./inactivity";
 import { adminLauncherReleasesRouter } from "./launcher-releases";
 import { logsRouter } from "./logs";
 import { adminMetricsRouter } from "./metrics";
+import { adminPlanningRouter } from "./planning";
 import { adminPlayersRouter } from "./players";
 import { adminPromptsRouter } from "./prompts";
 import { adminServersRouter } from "./servers";
@@ -57,6 +58,7 @@ export const adminRouter = router({
   launcherReleases: adminLauncherReleasesRouter,
   logs: logsRouter,
   metrics: adminMetricsRouter,
+  planning: adminPlanningRouter,
   players: adminPlayersRouter,
   prompts: adminPromptsRouter,
   servers: adminServersRouter,

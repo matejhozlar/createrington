@@ -6,6 +6,10 @@ import {
   LAUNCHER_RELEASE_STATUSES,
 } from "@createrington/shared/launcher";
 import { PARTY_MEMBER_RANKS } from "@createrington/shared/party";
+import {
+  PLANNING_CATEGORIES,
+  PLANNING_ITEM_STATUSES,
+} from "@createrington/shared/planning";
 import { PLAYER_PROMPT_ENTRY_MODES } from "@createrington/shared/player-prompt";
 import {
   MOD_ENVIRONMENTS,
@@ -157,4 +161,16 @@ export const curseforgeFileSourceEnum = pgEnum(
 export const partyMemberRankEnum = pgEnum(
   "party_member_rank",
   PARTY_MEMBER_RANKS,
+);
+
+// Where a planning item gets built; subcategories under it are data
+export const planningCategoryEnum = pgEnum(
+  "planning_category",
+  PLANNING_CATEGORIES,
+);
+
+// rejected items stay on record with their decision text
+export const planningItemStatusEnum = pgEnum(
+  "planning_item_status",
+  PLANNING_ITEM_STATUSES,
 );

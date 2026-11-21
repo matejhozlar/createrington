@@ -16,6 +16,7 @@ import {
   RocketIcon,
   ServerIcon,
   ShieldIcon,
+  SquarePenIcon,
   TrophyIcon,
   UserCogIcon,
   UserPlusIcon,
@@ -124,6 +125,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         title: "Workshop",
         url: "/admin/tools/workshop",
         icon: HammerIcon,
+      },
+      {
+        title: "Planning",
+        url: "/admin/planning",
+        icon: SquarePenIcon,
       },
       ...(LAUNCHER_ENABLED
         ? [
