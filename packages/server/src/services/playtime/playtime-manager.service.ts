@@ -1,5 +1,5 @@
 import { Q, playtimeRepo } from "@/db";
-import { MINECRAFT_SERVERS } from "./config";
+import { SERVERS } from "@/services/mc-server/servers";
 import { getPlaytimeForwarder } from "./forwarder.service";
 import { PlaytimeService } from "./playtime.service";
 import type { MessageCacheService } from "../discord/message/cache";
@@ -18,7 +18,7 @@ export type ServiceListener = (
 
 /**
  * Coordinates one PlaytimeService per Minecraft server: spins up each entry
- * of MINECRAFT_SERVERS at boot, restores the sessions the previous process
+ * of SERVERS at boot, restores the sessions the previous process
  * left open, wires them to the playtime repository and, when sync is
  * configured, to the playtime forwarder, and exposes per-server status.
  * Servers outside the static config, such as the synced test server, get
@@ -39,11 +39,11 @@ export class PlaytimeManagerService {
   private serviceListeners: ServiceListener[] = [];
   private stopped = false;
 
-  /** Brings up a PlaytimeService for each entry in MINECRAFT_SERVERS in parallel. Throws if none succeed. */
+  /** Brings up a PlaytimeService for each entry in SERVERS in parallel. Throws if none succeed. */
   async initialize(): Promise<void> {
     logger.info("Initializing the PlaytimeManagerService...");
 
-    const serverConfigs = Object.values(MINECRAFT_SERVERS);
+    const serverConfigs = SERVERS;
 
     if (serverConfigs.length === 0) {
       logger.warn(

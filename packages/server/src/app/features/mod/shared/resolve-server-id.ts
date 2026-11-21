@@ -1,5 +1,5 @@
 import { BadRequestError, InternalServerError } from "@/errors";
-import { getServerByIp, isValidServerId } from "@/services/playtime/config";
+import { getServerByIp, isValidServerId } from "@/services/mc-server/servers";
 import type { Request } from "express";
 
 export function resolveServerId(
@@ -23,9 +23,9 @@ export function resolveServerId(
       );
       throw new BadRequestError("Unknown serverId");
     }
-    if (ipServer && ipServer.serverId !== bodyServerId) {
+    if (ipServer && ipServer.id !== bodyServerId) {
       logger.warn(
-        `${context} rejected: serverId ${bodyServerId} does not match server ${ipServer.serverId} resolved from IP ${serverIp}`,
+        `${context} rejected: serverId ${bodyServerId} does not match server ${ipServer.id} resolved from IP ${serverIp}`,
       );
       throw new BadRequestError(
         "serverId does not match the originating server",
@@ -41,5 +41,5 @@ export function resolveServerId(
     );
   }
 
-  return ipServer.serverId;
+  return ipServer.id;
 }

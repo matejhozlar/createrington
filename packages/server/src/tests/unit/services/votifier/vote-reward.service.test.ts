@@ -12,6 +12,7 @@ vi.mock("@/config", () => ({
   default: {
     envMode: { isProd: false, isDev: true },
     redis: { url: null },
+    servers: { rails: { id: 1, name: "Rails 'n Sails" } },
   },
 }));
 vi.mock("@/db", () => ({

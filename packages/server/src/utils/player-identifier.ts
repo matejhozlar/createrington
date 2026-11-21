@@ -1,4 +1,8 @@
-import { DISCORD_ID_REGEX, MC_UUID_REGEX } from "@/utils/zod-schemas";
+import {
+  DISCORD_ID_REGEX,
+  MC_USERNAME_REGEX,
+  MC_UUID_REGEX,
+} from "@/utils/zod-schemas";
 
 export function getIdType(
   id: string,
@@ -9,7 +13,7 @@ export function getIdType(
   const isDiscordID = DISCORD_ID_REGEX.test(id);
   if (isDiscordID) return "discord";
 
-  const isMinecraftUsername = /^[a-zA-Z0-9_]{3,16}$/.test(id);
+  const isMinecraftUsername = MC_USERNAME_REGEX.test(id);
   if (isMinecraftUsername) return "minecraftUsername";
 
   return "invalid";

@@ -13,7 +13,7 @@ import {
   buildPagination,
   trpcError,
 } from "@/trpc/utils";
-import { discordId } from "@/utils/zod-schemas";
+import { discordId, mcUsername } from "@/utils/zod-schemas";
 import type { Player, PlayerFilters } from "@createrington/shared/db";
 import { violationFilterInput, violationRequirement } from "./violation-filter";
 
@@ -174,10 +174,7 @@ export const playersRouter = router({
     .input(
       z.object({
         id: z.string().min(1),
-        minecraftUsername: z
-          .string()
-          .regex(/^[a-zA-Z0-9_]{3,16}$/, "Invalid Minecraft username")
-          .optional(),
+        minecraftUsername: mcUsername.optional(),
         discordId: discordId.optional(),
         reason: z
           .string()

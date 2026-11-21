@@ -1,7 +1,7 @@
 import { Q } from "@/db";
 import { escapeLike } from "@/db/utils";
 import type { DiscordMessageService } from "@/services/discord/message/message.service";
-import { MINECRAFT_USERNAME } from "@/utils/rcon";
+import { MC_USERNAME_REGEX } from "@/utils/zod-schemas";
 import type { VotifierVote } from "./protocol";
 import type { VoteRewardService } from "./vote-reward.service";
 
@@ -34,7 +34,7 @@ export class VoteIntake {
   /** Stores the vote, announces it when the voter is a registered player and pays an online voter at once. */
   async accept(vote: VotifierVote): Promise<void> {
     const username = vote.username.trim();
-    if (!MINECRAFT_USERNAME.test(username)) {
+    if (!MC_USERNAME_REGEX.test(username)) {
       logger.warn(
         `Votifier: ignored a vote from ${vote.serviceName} for an invalid username ${JSON.stringify(vote.username)}`,
       );

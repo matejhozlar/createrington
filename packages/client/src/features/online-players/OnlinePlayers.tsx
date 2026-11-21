@@ -18,6 +18,7 @@ import {
   Signal,
   WifiOff,
 } from "lucide-react";
+import { MAIN_SERVER_ID } from "@/lib/minecraft";
 
 function getSessionSeconds(player: OnlinePlayer): number {
   return Math.max(0, (Date.now() - player.sessionStart.getTime()) / 1000);
@@ -117,8 +118,6 @@ function PlayerCard({
 }
 
 export function OnlinePlayers() {
-  const serverId = 1;
-
   const { user } = useAuth();
   const navigate = useNavigate();
   const isAdmin = user?.isAdmin ?? false;
@@ -130,13 +129,13 @@ export function OnlinePlayers() {
     refresh,
   } = usePlayerData();
   const { servers } = useServerData();
-  const server = servers.find((s) => s.serverId === serverId);
+  const server = servers.find((s) => s.serverId === MAIN_SERVER_ID);
 
   const [searchQuery, setSearchQuery] = useState("");
 
   const serverPlayers = useMemo(
-    () => getServerPlayers(serverId),
-    [getServerPlayers, serverId],
+    () => getServerPlayers(MAIN_SERVER_ID),
+    [getServerPlayers],
   );
 
   const filteredPlayers = useMemo(() => {

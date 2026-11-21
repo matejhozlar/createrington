@@ -6,7 +6,7 @@ vi.mock("@/services/discord/message/cache", () => ({
   MessageSource: { SYSTEM: "system" },
 }));
 
-vi.mock("@/services/playtime/config", () => ({ MINECRAFT_SERVERS: {} }));
+vi.mock("@/services/mc-server/servers", () => ({ SERVERS: [] }));
 
 vi.mock("@/services/playtime/forwarder.service", () => ({
   getPlaytimeForwarder: () => ({ connectToService: vi.fn() }),

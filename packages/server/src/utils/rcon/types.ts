@@ -6,12 +6,6 @@ export interface RconConfig {
   password: string;
 }
 
-export interface ServerInfo {
-  id: number;
-  name: string;
-  rcon: RconConfig;
-}
-
 export interface MultiServerResult {
   success: boolean;
   response?: string;

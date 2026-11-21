@@ -1,7 +1,7 @@
 import { EmbedPresets } from "@/discord/embeds";
 import { CooldownType } from "@/discord/utils/cooldown";
 import { getService, Services } from "@/services";
-import { getAllServerIds, getServerById } from "@/services/playtime/config";
+import { SERVERS } from "@/services/mc-server/servers";
 import { ServerState } from "@/services/playtime/types";
 import { ChatInputCommandInteraction, SlashCommandBuilder } from "discord.js";
 import type {
@@ -24,15 +24,13 @@ async function execute(
 ): Promise<void> {
   const playtimeManager = await getService(Services.PLAYTIME_MANAGER_SERVICE);
 
-  const serverIds = getAllServerIds();
   let totalOnline = 0;
   const serverLines: string[] = [];
 
-  for (const serverId of serverIds) {
-    const serverConfig = getServerById(serverId);
-    const playtimeService = playtimeManager.getService(serverId);
+  for (const serverConfig of SERVERS) {
+    const playtimeService = playtimeManager.getService(serverConfig.id);
 
-    if (!serverConfig || !playtimeService) continue;
+    if (!playtimeService) continue;
 
     const state = playtimeService.getServerState();
     const onlineCount = playtimeService.getOnlineCount();

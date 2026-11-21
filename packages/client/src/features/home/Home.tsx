@@ -37,6 +37,7 @@ import { trpc } from "@/lib/trpc";
 import { Spinner } from "@/components/ui/spinner";
 import { SkinApiPromo } from "@/components/skin-api-promo";
 import { useQuery } from "@tanstack/react-query";
+import { MAIN_SERVER_ID } from "@/lib/minecraft";
 
 const HERO_IMAGES = [
   "/assets/hero/gondola-station.webp",
@@ -221,9 +222,8 @@ export function Home() {
   const [firstHeroLoaded, setFirstHeroLoaded] = useState(false);
   const revealRemainingHeroes = () => setFirstHeroLoaded(true);
 
-  const serverId = 1;
   const { servers } = useServerData();
-  const server = servers.find((s) => s.serverId === serverId);
+  const server = servers.find((s) => s.serverId === MAIN_SERVER_ID);
 
   const {
     data: playerCount,

@@ -4,7 +4,7 @@ import type { StatsUpsertEntry } from "@/db/queries/player/minecraft/stats";
 import type { StatsReconcileEntry } from "@/db/repositories/playtime";
 import { FeatureFlags, featureFlagService } from "../feature-flag";
 import type { PlaytimeManagerService } from "../playtime/playtime-manager.service";
-import type { StatsImportServerConfig } from "./config";
+import type { McServer } from "../mc-server/servers";
 import { MC_UUID_REGEX } from "@/utils/zod-schemas";
 
 const DEBOUNCE_MS = 30_000;
@@ -34,7 +34,7 @@ export class StatsImportService {
 
   constructor(
     private readonly playtimeManager: PlaytimeManagerService,
-    private readonly configs: StatsImportServerConfig[],
+    private readonly configs: readonly Pick<McServer, "id" | "name" | "sftp">[],
   ) {}
 
   /**
@@ -48,25 +48,23 @@ export class StatsImportService {
     );
 
     Promise.allSettled(
-      this.configs.map((cfg) => this.importServerStats(cfg.serverId)),
+      this.configs.map((cfg) => this.importServerStats(cfg.id)),
     ).catch((error) => logger.error("Initial stats import failed:", error));
 
     for (const cfg of this.configs) {
-      const playtimeService = this.playtimeManager.getService(cfg.serverId);
+      const playtimeService = this.playtimeManager.getService(cfg.id);
       if (!playtimeService) {
         logger.warn(
-          `No PlaytimeService found for server ${cfg.serverId} (${cfg.serverName}), skipping event subscription`,
+          `No PlaytimeService found for server ${cfg.id} (${cfg.name}), skipping event subscription`,
         );
         continue;
       }
 
-      playtimeService.on("sessionStart", () =>
-        this.scheduleImport(cfg.serverId),
-      );
-      playtimeService.on("sessionEnd", () => this.scheduleImport(cfg.serverId));
+      playtimeService.on("sessionStart", () => this.scheduleImport(cfg.id));
+      playtimeService.on("sessionEnd", () => this.scheduleImport(cfg.id));
 
       logger.info(
-        `Subscribed to session events for server ${cfg.serverId} (${cfg.serverName})`,
+        `Subscribed to session events for server ${cfg.id} (${cfg.name})`,
       );
     }
 
@@ -110,7 +108,7 @@ export class StatsImportService {
       return;
     }
 
-    const cfg = this.configs.find((c) => c.serverId === serverId);
+    const cfg = this.configs.find((c) => c.id === serverId);
     if (!cfg) {
       logger.warn(`No config found for server ${serverId}`);
       return;
@@ -122,7 +120,7 @@ export class StatsImportService {
 
     try {
       logger.info(
-        `Starting stats import for server ${serverId} (${cfg.serverName})...`,
+        `Starting stats import for server ${serverId} (${cfg.name})...`,
       );
 
       await sftp.connect({
@@ -139,7 +137,7 @@ export class StatsImportService {
 
       if (jsonFiles.length === 0) {
         logger.info(
-          `No stats files found for server ${serverId} (${cfg.serverName})`,
+          `No stats files found for server ${serverId} (${cfg.name})`,
         );
         return;
       }
@@ -198,7 +196,7 @@ export class StatsImportService {
 
       if (statsToUpsert.length === 0) {
         logger.info(
-          `No matching player stats to import for server ${serverId} (${cfg.serverName}). ` +
+          `No matching player stats to import for server ${serverId} (${cfg.name}). ` +
             `${jsonFiles.length} files found, ${skipped} skipped (unknown players)`,
         );
         return;
@@ -208,14 +206,14 @@ export class StatsImportService {
 
       const duration = Date.now() - startTime;
       logger.info(
-        `Stats import complete for server ${serverId} (${cfg.serverName}): ` +
+        `Stats import complete for server ${serverId} (${cfg.name}): ` +
           `${statsToUpsert.length} imported, ${skipped} skipped, ${duration}ms`,
       );
 
       await this.reconcilePlaytime(serverId, playTimeEntries);
     } catch (error) {
       logger.error(
-        `Stats import failed for server ${serverId} (${cfg.serverName}):`,
+        `Stats import failed for server ${serverId} (${cfg.name}):`,
         error,
       );
     } finally {

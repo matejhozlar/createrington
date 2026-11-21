@@ -10,7 +10,7 @@ import {
 } from "@/utils/rcon";
 
 export interface VoteRewardServiceOptions {
-  rewardServerIds?: number[];
+  rewardServerIds?: readonly number[];
   sweepIntervalMs?: number;
   commands?: () => Promise<VoteRewardCommands>;
 }

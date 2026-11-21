@@ -14,9 +14,9 @@ vi.mock("@/services/maintenance", () => ({
   maintenanceService: { isInMaintenance: isInMaintenanceMock },
 }));
 
-vi.mock("@/services/playtime/config", () => ({
-  MINECRAFT_SERVERS: {
-    1: {
+vi.mock("@/services/mc-server/servers", () => ({
+  SERVERS: [
+    {
       id: 1,
       name: "Rails 'n Sails",
       slug: "rails",
@@ -24,7 +24,7 @@ vi.mock("@/services/playtime/config", () => ({
       port: 25565,
       maxPlayers: 20,
     },
-    2: {
+    {
       id: 2,
       name: "Test Server",
       slug: "test",
@@ -32,7 +32,7 @@ vi.mock("@/services/playtime/config", () => ({
       port: 25566,
       maxPlayers: 10,
     },
-  },
+  ],
 }));
 
 import { ZodError } from "zod";
