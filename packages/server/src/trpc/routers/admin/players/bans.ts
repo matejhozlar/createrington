@@ -1,6 +1,7 @@
 import { userMention } from "discord.js";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { fetchGuildMember } from "@/discord/utils/fetch-guild-member";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { playerDeletionService } from "@/services/player/deletion";
 import { Q, playerBanRepo } from "@/db";
@@ -9,12 +10,11 @@ import {
   BAN_REASON_MAX_LENGTH,
 } from "@createrington/shared/admin-reason";
 import type { PlayerBan } from "@createrington/shared/db";
-import { getService, Services } from "@/services";
 import { Discord } from "@/discord/constants";
 import { EmbedColors, EmbedPresets } from "@/discord/embeds";
 import { minecraftRcon, WhitelistAction } from "@/utils/rcon";
 import { discordTimestamp } from "@/utils/format";
-import { parsePlayerId } from "@/trpc/utils";
+import { id, playerId } from "@/trpc/utils";
 import { sessionService } from "@/services/auth/session/session.service";
 import { launcherSessionService } from "@/services/auth/launcher/launcher-session.service";
 
@@ -62,17 +62,15 @@ export const bansRouter = router({
     })
     .input(
       z.object({
-        id: z.string().min(1),
+        id: playerId(),
         includeUnbanned: z.boolean().default(false),
       }),
     )
     .query(async ({ input }) => {
-      const identifier = parsePlayerId(input.id);
-
       const [bans, statistics, currentBan] = await Promise.all([
-        playerBanRepo.getHistory(identifier, input.includeUnbanned),
-        playerBanRepo.getStatistics(identifier),
-        playerBanRepo.getCurrent(identifier),
+        playerBanRepo.getHistory(input.id, input.includeUnbanned),
+        playerBanRepo.getStatistics(input.id),
+        playerBanRepo.getCurrent(input.id),
       ]);
 
       return { bans, statistics, current: currentBan };
@@ -85,13 +83,13 @@ export const bansRouter = router({
     })
     .input(
       z.object({
-        id: z.string().min(1),
+        id: playerId(),
         reason: z
           .string()
           .min(1, "Reason is required")
           .max(BAN_REASON_MAX_LENGTH),
         durationDays: z.number().int().min(1).max(365),
-        serverId: z.number().int().positive().optional(),
+        serverId: id().optional(),
         metadata: z
           .record(
             z.string(),
@@ -101,13 +99,11 @@ export const bansRouter = router({
       }),
     )
     .mutation(async ({ input, ctx }) => {
-      const identifier = parsePlayerId(input.id);
-
       const expiresAt = new Date(
         Date.now() + input.durationDays * 24 * 60 * 60 * 1000,
       );
 
-      const player = await Q.player.get(identifier);
+      const player = await Q.player.get(input.id);
 
       const ban = await recordWithInGame(
         "ban",
@@ -121,7 +117,7 @@ export const bansRouter = router({
         },
         (applyInGame) =>
           playerBanRepo.issueTemporary(
-            identifier,
+            input.id,
             {
               reason: input.reason,
               expiresAt,
@@ -171,12 +167,12 @@ export const bansRouter = router({
     })
     .input(
       z.object({
-        id: z.string().min(1),
+        id: playerId(),
         reason: z
           .string()
           .min(1, "Reason is required")
           .max(BAN_REASON_MAX_LENGTH),
-        serverId: z.number().int().positive().optional(),
+        serverId: id().optional(),
         metadata: z
           .record(
             z.string(),
@@ -186,26 +182,10 @@ export const bansRouter = router({
       }),
     )
     .mutation(async ({ input, ctx }) => {
-      const identifier = parsePlayerId(input.id);
+      const player = await Q.player.get(input.id);
 
-      const player = await Q.player.get(identifier);
-
-      const mainBot = await getService(Services.DISCORD_MAIN_BOT);
-      const guild = mainBot.guilds.cache.first();
-      let member;
-      let discordTag = "Unknown";
-
-      if (guild) {
-        try {
-          member = await guild.members.fetch(player.discordId);
-          discordTag = member.user.tag;
-        } catch (error) {
-          logger.warn(
-            `Could not fetch Discord member ${player.discordId}:`,
-            error,
-          );
-        }
-      }
+      const member = await fetchGuildMember(player.discordId);
+      const discordTag = member?.user.tag ?? "Unknown";
 
       let ban: PlayerBan | undefined;
       await recordWithInGame(
@@ -230,7 +210,7 @@ export const bansRouter = router({
           },
         },
         (applyInGame) =>
-          playerDeletionService.delete(identifier, {
+          playerDeletionService.delete(input.id, {
             actor: {
               type: "admin",
               discordId: ctx.user.discordId,
@@ -310,7 +290,7 @@ export const bansRouter = router({
     })
     .input(
       z.object({
-        banId: z.number().int().positive(),
+        banId: id(),
         reason: z
           .string()
           .min(1, "Reason is required")

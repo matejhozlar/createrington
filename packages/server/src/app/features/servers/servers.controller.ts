@@ -4,6 +4,7 @@ import { getService, Services } from "@/services";
 import { SERVERS } from "@/services/mc-server/servers";
 import {
   buildServerStatusSummary,
+  buildServerStatuses,
   type ServerStatusSummary,
 } from "@/services/playtime/server-status";
 import type { PlaytimeManagerService } from "@/services/playtime";
@@ -47,9 +48,7 @@ export class ServersController {
       query: { server: slug },
     } = getValidated<{ query: ServerStatusQuery }>(res);
 
-    const configs = SERVERS.filter(
-      (server) => !slug || server.slug === slug,
-    ).sort((a, b) => a.id - b.id);
+    const configs = SERVERS.filter((server) => !slug || server.slug === slug);
 
     if (slug && configs.length === 0) {
       throw new NotFoundError(`Server "${slug}" not found`);
@@ -57,23 +56,19 @@ export class ServersController {
 
     const manager = await getPlaytimeManager();
 
-    const servers: ServerStatusEntry[] = configs.map((serverConfig) => {
-      const summary = buildServerStatusSummary(
-        serverConfig.id,
-        serverConfig,
-        manager?.getService(serverConfig.id),
-      );
-
-      return {
-        id: summary.serverId,
-        slug: summary.serverSlug,
-        name: summary.serverName,
-        status: summary.status,
-        maintenance: summary.maintenance,
-        playerCount: summary.playerCount,
-        maxPlayers: summary.maxPlayers,
-      };
-    });
+    const servers: ServerStatusEntry[] = buildServerStatuses(
+      manager,
+      buildServerStatusSummary,
+      configs,
+    ).map((summary) => ({
+      id: summary.serverId,
+      slug: summary.serverSlug,
+      name: summary.serverName,
+      status: summary.status,
+      maintenance: summary.maintenance,
+      playerCount: summary.playerCount,
+      maxPlayers: summary.maxPlayers,
+    }));
 
     const body: ServerStatusResponse = {
       servers,

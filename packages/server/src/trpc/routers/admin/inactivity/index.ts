@@ -7,6 +7,8 @@ import {
   paginationInput,
   trpcError,
   auditActor,
+  id,
+  pageOffset,
 } from "@/trpc/utils";
 import config from "@/config";
 import { getService, Services } from "@/services";
@@ -81,7 +83,7 @@ export const inactivityRouter = router({
           graceDays: INACTIVITY_GRACE_DAYS,
           search: input.search?.trim() || undefined,
           limit: input.limit,
-          offset: input.page * input.limit,
+          offset: pageOffset(input),
         });
 
       return {
@@ -95,7 +97,7 @@ export const inactivityRouter = router({
       description:
         "Manually resolve an inactivity warning (marks the player as returned)",
     })
-    .input(z.object({ id: z.number().int().positive() }))
+    .input(z.object({ id: id() }))
     .mutation(async ({ input, ctx }) => {
       const warning = await findOrThrow(
         Q.player.inactivity.warning.findByIdWithPlayer(input.id),
@@ -131,7 +133,7 @@ export const inactivityRouter = router({
       description:
         "Manually run the removal sequence for an inactivity warning (kick, whitelist remove, player delete)",
     })
-    .input(z.object({ id: z.number().int().positive() }))
+    .input(z.object({ id: id() }))
     .mutation(async ({ input, ctx }) => {
       if (!isManualActionsEnabled()) {
         throw trpcError.forbidden(

@@ -2,7 +2,7 @@ import { Discord } from "@/discord/constants";
 import { z } from "zod";
 import { adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
-import { findOrThrow, trpcError, auditActor } from "@/trpc/utils";
+import { findOrThrow, trpcError, auditActor, id } from "@/trpc/utils";
 import {
   embedBotSchema,
   messagePayloadSchema,
@@ -18,7 +18,7 @@ export const embedLinkedMessageProcedures = {
     .input(
       z
         .object({
-          presetId: z.number().int().positive(),
+          presetId: id(),
           bot: embedBotSchema.default("main"),
         })
         .and(messagePayloadSchema),
@@ -75,7 +75,7 @@ export const embedLinkedMessageProcedures = {
     .input(
       z
         .object({
-          linkId: z.number().int().positive(),
+          linkId: id(),
           bot: embedBotSchema.default("main"),
         })
         .and(messagePayloadSchema),

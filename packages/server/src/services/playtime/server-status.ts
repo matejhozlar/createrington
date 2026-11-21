@@ -1,4 +1,5 @@
 import { maintenanceService } from "@/services/maintenance";
+import { SERVERS, type McServer } from "@/services/mc-server/servers";
 import type { PlaytimeService } from "./playtime.service";
 import { ServerState, type ActiveSession } from "./types";
 
@@ -108,5 +109,30 @@ export function buildServerStatus(
     port: serverConfig.port,
     players,
     lastChecked: new Date(),
+  };
+}
+
+/** One status per configured server (or per entry of `servers`), ordered by server id. A missing manager reports every server as "unknown". */
+export function buildServerStatuses<T extends ServerStatusSummary>(
+  manager: { getService(id: number): PlaytimeService | undefined } | undefined,
+  build: (
+    id: number,
+    serverConfig: ServerStatusConfig,
+    service: PlaytimeService | undefined,
+  ) => T,
+  servers: readonly McServer[] = SERVERS,
+): T[] {
+  return servers
+    .map((server) => build(server.id, server, manager?.getService(server.id)))
+    .sort((a, b) => a.serverId - b.serverId);
+}
+
+/** Server count, online server count and total players across `statuses`. */
+export function summarizeServerStatuses(statuses: ServerStatusSummary[]) {
+  return {
+    totalServers: statuses.length,
+    onlineServers: statuses.filter((status) => status.status === "online")
+      .length,
+    totalPlayers: statuses.reduce((sum, status) => sum + status.playerCount, 0),
   };
 }

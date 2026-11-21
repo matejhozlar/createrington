@@ -1,9 +1,9 @@
 import { z } from "zod";
+import { fetchGuildMember } from "@/discord/utils/fetch-guild-member";
 import { router, ownerProcedure } from "@/trpc/trpc";
 import { trpcError, auditActor } from "@/trpc/utils";
 import { Q } from "@/db";
 import { ilikeContains } from "@/db/utils";
-import { getService, Services } from "@/services";
 import { sessionService } from "@/services/auth/session/session.service";
 import { adminStatusService } from "@/services/auth/admin-status/admin-status.service";
 import { RoleManager } from "@/discord/utils/roles/role-manager";
@@ -11,9 +11,6 @@ import { Discord } from "@/discord/constants";
 import { minecraftRcon } from "@/utils/rcon";
 import { SERVERS } from "@/services/mc-server/servers";
 import { discordId, DISCORD_ID_REGEX } from "@/utils/zod-schemas";
-
-const ACTION_PROMOTE = "admin_promote";
-const ACTION_DEMOTE = "admin_demote";
 
 export const ownerAdminsRouter = router({
   list: ownerProcedure
@@ -93,14 +90,8 @@ export const ownerAdminsRouter = router({
 
       let hasDiscordRole = false;
       try {
-        const mainBot = await getService(Services.DISCORD_MAIN_BOT);
-        const guild = mainBot.guilds.cache.first();
-        if (guild) {
-          const member = await guild.members
-            .fetch(input.discordId)
-            .catch(() => null);
-          hasDiscordRole = !!member?.roles.cache.has(Discord.Roles.ADMIN);
-        }
+        const member = await fetchGuildMember(input.discordId);
+        hasDiscordRole = !!member?.roles.cache.has(Discord.Roles.ADMIN);
       } catch {}
 
       const activeSessions = await Q.auth.session.getActiveSessions(
@@ -140,20 +131,13 @@ export const ownerAdminsRouter = router({
 
       let discordRoleAdded = false;
       try {
-        const mainBot = await getService(Services.DISCORD_MAIN_BOT);
-        const guild = mainBot.guilds.cache.first();
-        if (guild) {
-          const member = await guild.members
-            .fetch(input.discordId)
-            .catch(() => null);
-          if (member) {
-            const result = await RoleManager.assign(
-              member,
-              Discord.Roles.ADMIN,
-              input.reason ?? `Promoted by ${ctx.user.minecraftUsername}`,
-            );
-            discordRoleAdded = result;
-          }
+        const member = await fetchGuildMember(input.discordId);
+        if (member) {
+          discordRoleAdded = await RoleManager.assign(
+            member,
+            Discord.Roles.ADMIN,
+            input.reason ?? `Promoted by ${ctx.user.minecraftUsername}`,
+          );
         }
       } catch (error) {
         logger.error(
@@ -164,7 +148,7 @@ export const ownerAdminsRouter = router({
 
       await Q.admin.log.action.logAction({
         ...auditActor(ctx),
-        actionType: ACTION_PROMOTE,
+        actionType: "admin_promote",
         description: `Promoted ${player?.minecraftUsername ?? input.discordId} to admin`,
         targetPlayerUuid: player?.minecraftUuid,
         targetPlayerName: player?.minecraftUsername,
@@ -206,20 +190,13 @@ export const ownerAdminsRouter = router({
 
       let discordRoleRemoved = false;
       try {
-        const mainBot = await getService(Services.DISCORD_MAIN_BOT);
-        const guild = mainBot.guilds.cache.first();
-        if (guild) {
-          const member = await guild.members
-            .fetch(input.discordId)
-            .catch(() => null);
-          if (member && member.roles.cache.has(Discord.Roles.ADMIN)) {
-            const result = await RoleManager.remove(
-              member,
-              Discord.Roles.ADMIN,
-              input.reason ?? `Demoted by ${ctx.user.minecraftUsername}`,
-            );
-            discordRoleRemoved = result;
-          }
+        const member = await fetchGuildMember(input.discordId);
+        if (member?.roles.cache.has(Discord.Roles.ADMIN)) {
+          discordRoleRemoved = await RoleManager.remove(
+            member,
+            Discord.Roles.ADMIN,
+            input.reason ?? `Demoted by ${ctx.user.minecraftUsername}`,
+          );
         }
       } catch (error) {
         logger.error(
@@ -254,7 +231,7 @@ export const ownerAdminsRouter = router({
 
       await Q.admin.log.action.logAction({
         ...auditActor(ctx),
-        actionType: ACTION_DEMOTE,
+        actionType: "admin_demote",
         description: `Demoted ${player?.minecraftUsername ?? input.discordId} from admin`,
         targetPlayerUuid: player?.minecraftUuid,
         targetPlayerName: player?.minecraftUsername,
@@ -281,7 +258,7 @@ export const ownerAdminsRouter = router({
     .input(z.object({ limit: z.number().int().min(1).max(100).default(20) }))
     .query(async ({ input }) => {
       const entries = await Q.admin.log.action
-        .where({ actionType: { $in: [ACTION_PROMOTE, ACTION_DEMOTE] } })
+        .where({ actionType: { $in: ["admin_promote", "admin_demote"] } })
         .orderBy("performedAt", "desc")
         .limit(input.limit)
         .all();

@@ -7,6 +7,7 @@ import {
   buildPagination,
   id,
   paginationInput,
+  pageOffset,
 } from "@/trpc/utils";
 import { createRateLimit } from "@/trpc/middleware/rate-limit";
 import { workshopService } from "@/services/workshop/workshop.service";
@@ -349,7 +350,7 @@ export const adminWorkshopsRouter = router({
           eventType: input.eventType,
           search: input.search || undefined,
           limit: input.limit,
-          offset: input.page * input.limit,
+          offset: pageOffset(input),
         },
       );
       return {
