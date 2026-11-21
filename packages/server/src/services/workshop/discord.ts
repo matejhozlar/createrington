@@ -92,7 +92,7 @@ async function closeThread(
   try {
     await thread.setArchived(true, reason);
   } catch (error) {
-    logger.warn(`Could not close thread for mod #${modId}: ${error}`);
+    logger.warn(`Could not close thread for mod #${modId}:`, error);
   }
 }
 
@@ -163,7 +163,7 @@ async function ensureStatusTags(
         ]);
         tags = updated.availableTags;
       } catch (error) {
-        logger.warn(`Could not create workshop forum tags: ${error}`);
+        logger.warn(`Could not create workshop forum tags:`, error);
       }
     }
   }
@@ -184,7 +184,7 @@ async function fetchThread(threadId: string): Promise<ThreadLookup> {
     ) {
       return { state: "gone" };
     }
-    logger.warn(`Could not fetch workshop thread ${threadId}: ${error}`);
+    logger.warn(`Could not fetch workshop thread ${threadId}:`, error);
     return { state: "unavailable" };
   }
 }
@@ -196,7 +196,7 @@ async function removeThread(threadId: string): Promise<boolean> {
     await lookup.thread.delete();
     return true;
   } catch (error) {
-    logger.warn(`Could not delete thread ${threadId}, archiving: ${error}`);
+    logger.warn(`Could not delete thread ${threadId}, archiving:`, error);
     await lookup.thread.setArchived(true).catch(() => {});
     return false;
   }
@@ -263,7 +263,8 @@ export async function announceSuggestion(
     }
   } catch (error) {
     logger.warn(
-      `Failed to create suggestion thread for mod #${mod.id}: ${error}`,
+      `Failed to create suggestion thread for mod #${mod.id}:`,
+      error,
     );
   }
 }
@@ -324,7 +325,7 @@ export async function announceReview(
         : (options.message ?? REVIEW_MESSAGES[status]);
     await thread.send({ content, allowedMentions: { parse: [] } });
   } catch (error) {
-    logger.warn(`Failed to post review outcome for mod #${mod.id}: ${error}`);
+    logger.warn(`Failed to post review outcome for mod #${mod.id}:`, error);
     return;
   }
   if (closesThread(status)) await closeThread(thread, mod.id, reason);
@@ -345,7 +346,8 @@ export async function announceRemoval(mod: WorkshopMod): Promise<void> {
     await removeThread(mod.discordThreadId);
   } catch (error) {
     logger.warn(
-      `Failed to remove suggestion thread for mod #${mod.id}: ${error}`,
+      `Failed to remove suggestion thread for mod #${mod.id}:`,
+      error,
     );
   }
 }
@@ -379,7 +381,7 @@ export async function healThreads(
         );
       }
     } catch (error) {
-      logger.warn(`Workshop thread heal failed for mod #${mod.id}: ${error}`);
+      logger.warn(`Workshop thread heal failed for mod #${mod.id}:`, error);
     }
   }
 
@@ -402,7 +404,8 @@ export async function healThreads(
     }
   } catch (error) {
     logger.warn(
-      `Workshop thread recreation failed for workshop #${workshop.id}: ${error}`,
+      `Workshop thread recreation failed for workshop #${workshop.id}:`,
+      error,
     );
   }
   if (missing.length > batch.length) {

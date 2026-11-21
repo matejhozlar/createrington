@@ -2,7 +2,7 @@ import { Q } from "@/db";
 import { NotFoundError } from "@/errors";
 import type { Modpack, ModpackMod, Workshop } from "@createrington/shared/db";
 import { refreshProjects } from "@/services/curseforge/ingest";
-import { REQUIRED_DEPENDENCY } from "@/services/workshop/dependencies";
+import { REQUIRED_DEPENDENCY } from "@createrington/shared/workshop";
 import {
   projectLabel,
   toProjectSummary,
@@ -87,7 +87,11 @@ export class ModpackService {
     if (!cached) {
       try {
         await refreshProjects([modpack.curseforgeProjectId]);
-      } catch {
+      } catch (error) {
+        logger.warn(
+          `Modpack #${modpack.id}: CurseForge project #${modpack.curseforgeProjectId} could not be fetched for its page URL:`,
+          error,
+        );
         return null;
       }
       cached = await Q.curseforge.project.find({

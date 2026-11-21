@@ -22,7 +22,7 @@ vi.mock("@/services/curseforge/files", async () =>
 vi.mock("@/services/curseforge/modpack", async () =>
   (await import("@/tests/helpers/mocks/curseforge")).curseforgeMocks.modpack(),
 );
-vi.mock("@/services/curseforge/modpack-manifest", async () =>
+vi.mock("@/services/modpack/manifest", async () =>
   (
     await import("@/tests/helpers/mocks/curseforge")
   ).curseforgeMocks.modpackManifest(),

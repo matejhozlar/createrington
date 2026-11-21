@@ -8,12 +8,12 @@ import type {
   WorkshopProjectDependency,
 } from "@createrington/shared/db";
 import { discordThreadUrl } from "./discord";
+import { loadDependencyContext } from "./dependencies";
 import {
-  loadDependencyContext,
   REQUIRED_DEPENDENCY,
+  USER_VISIBLE_MOD_STATUSES,
   type DependencyCoverage,
-} from "./dependencies";
-import { USER_VISIBLE_MOD_STATUSES } from "@createrington/shared/workshop";
+} from "@createrington/shared/workshop";
 import { workshopService } from "./workshop.service";
 import {
   projectLabel,

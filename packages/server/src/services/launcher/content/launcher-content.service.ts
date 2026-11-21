@@ -120,18 +120,8 @@ function loaderTypeFor(
  * Throws `CONTENT_UNAVAILABLE` (503) when CurseForge cannot be asked, with a
  * `Retry-After` header when the gateway refused the call because the budget
  * of the minute is spent or CurseForge is holding the key off after a 429.
- * Singleton.
  */
 class LauncherContentService {
-  private static instance: LauncherContentService;
-
-  static getInstance(): LauncherContentService {
-    if (!LauncherContentService.instance) {
-      LauncherContentService.instance = new LauncherContentService();
-    }
-    return LauncherContentService.instance;
-  }
-
   /** One page of the projects of a kind that match the text, in `categoryIds` when given, most popular first unless `sort` says otherwise. `page` counts from 0; `total` never exceeds what CurseForge lets a search page through. */
   async search(
     params: { query: string; kind: LauncherProjectKind } & ContentTarget &
@@ -444,4 +434,4 @@ class LauncherContentService {
   }
 }
 
-export const launcherContentService = LauncherContentService.getInstance();
+export const launcherContentService = new LauncherContentService();

@@ -1,5 +1,5 @@
 import type { KnownPose } from "createrington-skin-api";
-import { getSkinApiClient } from "./index";
+import { getSkinApiClient } from "./client";
 import { POSE_RENDER_STYLE } from "./quality";
 import { RenderMemo } from "./render-memo";
 

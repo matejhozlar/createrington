@@ -81,7 +81,7 @@ async function clearReleases(): Promise<void> {
   await Q.launcher.release.deleteAll({
     platform: { $in: [PLATFORM, LINUX] },
   });
-  launcherReleaseService.clearCache();
+  await launcherReleaseService.clearCache();
 }
 
 describe("LauncherReleaseService", () => {

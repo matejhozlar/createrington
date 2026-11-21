@@ -1,15 +1,12 @@
 import { db, Q } from "@/db";
 import type { Workshop, WorkshopModStatus } from "@createrington/shared/db";
 import { getFilesDependencies } from "@/services/curseforge/files";
-import { getModpackModIds } from "@/services/curseforge/modpack-manifest";
+import { getModpackModIds } from "@/services/modpack/manifest";
 import { refreshProjects } from "@/services/curseforge/ingest";
-
 import {
   REQUIRED_DEPENDENCY,
   type DependencyCoverage,
 } from "@createrington/shared/workshop";
-
-export { REQUIRED_DEPENDENCY, type DependencyCoverage };
 
 export interface DependencySubject {
   curseforgeProjectId: number;
@@ -41,7 +38,12 @@ export async function resolveProjectDependencies(
   if (workshop.baseModpackProjectId) {
     try {
       basePackIds = await getModpackModIds(workshop.baseModpackProjectId);
-    } catch {}
+    } catch (error) {
+      logger.warn(
+        `Workshop #${workshop.id}: base modpack manifest could not be read, dependencies it ships are stored too:`,
+        error,
+      );
+    }
   }
 
   const allDepIds = [

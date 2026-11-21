@@ -32,9 +32,9 @@ export const curseforgeMocks: Record<
     getModpackFile: vi.fn(async () => null),
   }),
   modpackManifest: async () => ({
-    ...(await vi.importActual<
-      typeof import("@/services/curseforge/modpack-manifest")
-    >("@/services/curseforge/modpack-manifest")),
+    ...(await vi.importActual<typeof import("@/services/modpack/manifest")>(
+      "@/services/modpack/manifest",
+    )),
     getModpackManifest: vi.fn(async () => ({
       fileId: 1,
       serverPackFileId: null,
@@ -48,6 +48,7 @@ export const curseforgeMocks: Record<
       disabledModIds: new Set<number>(),
     })),
     getModpackModIds: vi.fn(async () => new Set<number>()),
+    findModpackModIds: vi.fn(async () => new Set<number>()),
   }),
   downloads: async () => ({
     ...(await vi.importActual<typeof import("@/services/curseforge/downloads")>(

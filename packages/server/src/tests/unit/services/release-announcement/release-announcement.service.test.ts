@@ -78,7 +78,7 @@ vi.mock("@/services/app-changelog", async (importOriginal) => ({
 
 import type { SendMessageOptions } from "@/services/discord/message/types";
 import { Discord } from "@/discord/constants";
-import { releaseAnnouncementService } from "@/services/release-announcement";
+import { releaseAnnouncementService } from "@/services/release-announcement/release-announcement.service";
 
 const CHANGELOG = [
   "## v1.66.0 (2026-10-10)",

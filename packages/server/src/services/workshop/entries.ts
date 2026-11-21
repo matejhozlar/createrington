@@ -11,7 +11,7 @@ import type {
 import { WORKSHOP_ADMIN_EXTRA_CLASSES } from "@createrington/shared/workshop";
 import { CurseForgeClass } from "@/services/curseforge/client";
 import type { CurseForgeProjectData } from "@/services/curseforge/mods";
-import { getModpackModIds } from "@/services/curseforge/modpack-manifest";
+import { getModpackModIds } from "@/services/modpack/manifest";
 import { ingestProjects } from "@/services/curseforge/ingest";
 import { projectLabel } from "@/services/curseforge/project";
 

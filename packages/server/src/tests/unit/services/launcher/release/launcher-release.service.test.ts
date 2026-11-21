@@ -15,6 +15,7 @@ vi.mock("@/config", () => ({
       publishTokenHash: "",
       downloadHosts: [],
     },
+    redis: { url: null },
   },
 }));
 vi.mock("@/db", () => ({ Q: { launcher: { release } } }));
@@ -75,11 +76,11 @@ function pruned(
   };
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   release.findAll.mockReset();
   release.find.mockReset();
   release.updateAll.mockReset();
-  launcherReleaseService.clearCache();
+  await launcherReleaseService.clearCache();
 });
 
 describe("checkForUpdate", () => {

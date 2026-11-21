@@ -12,7 +12,8 @@ import type {
 } from "@/services/discord/sticky-message";
 import { FeatureFlags, featureFlagService } from "@/services/feature-flag";
 import { settings } from "@/services/settings";
-import { objectStorage } from "@/services/storage";
+import { objectStorage } from "@/services/storage/object-storage.service";
+import { DownloadTooLargeError, downloadCapped } from "@/utils/http";
 import type { GallerySubmission } from "@createrington/shared/db";
 import {
   galleryCaption,
@@ -520,10 +521,13 @@ export class GalleryService {
     });
     if (existing) return null;
 
-    const bytes = await this.download(attachment.url);
-    if (bytes.length > GALLERY_MAX_ORIGINAL_BYTES) {
+    let bytes: Buffer;
+    try {
+      bytes = await this.download(attachment.url);
+    } catch (error) {
+      if (!(error instanceof DownloadTooLargeError)) throw error;
       logger.warn(
-        `Gallery: attachment ${attachment.id} is ${bytes.length} bytes, over the ${GALLERY_MAX_ORIGINAL_BYTES} byte cap`,
+        `Gallery: attachment ${attachment.id} is over the ${GALLERY_MAX_ORIGINAL_BYTES} byte cap`,
       );
       return null;
     }
@@ -610,16 +614,9 @@ export class GalleryService {
   }
 }
 
-async function downloadAttachment(url: string): Promise<Buffer> {
-  const response = await fetch(url, {
-    signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS),
+function downloadAttachment(url: string): Promise<Buffer> {
+  return downloadCapped(url, {
+    timeoutMs: DOWNLOAD_TIMEOUT_MS,
+    maxBytes: GALLERY_MAX_ORIGINAL_BYTES,
   });
-
-  if (!response.ok) {
-    throw new Error(
-      `Attachment download failed with status ${response.status}`,
-    );
-  }
-
-  return Buffer.from(await response.arrayBuffer());
 }

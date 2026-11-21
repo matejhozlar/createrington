@@ -22,7 +22,7 @@ vi.mock("@/services/curseforge/files", async () =>
 vi.mock("@/services/curseforge/modpack", async () =>
   (await import("@/tests/helpers/mocks/curseforge")).curseforgeMocks.modpack(),
 );
-vi.mock("@/services/curseforge/modpack-manifest", async () =>
+vi.mock("@/services/modpack/manifest", async () =>
   (
     await import("@/tests/helpers/mocks/curseforge")
   ).curseforgeMocks.modpackManifest(),
@@ -53,7 +53,7 @@ import { modpackAttentionService } from "@/services/modpack/attention.service";
 import { workshopReviewService } from "@/services/workshop/review.service";
 import { CurseForgeClass } from "@/services/curseforge/client";
 import { getFilesDetails } from "@/services/curseforge/files";
-import { getModpackManifest } from "@/services/curseforge/modpack-manifest";
+import { getModpackManifest } from "@/services/modpack/manifest";
 import {
   announcePackDropOut,
   announceReview,

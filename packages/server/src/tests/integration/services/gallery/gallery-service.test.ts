@@ -20,11 +20,11 @@ import { randomUUID } from "node:crypto";
 import pool, { Q } from "@/db";
 import { featureFlagService } from "@/services/feature-flag";
 import type { DiscordStickyMessageService } from "@/services/discord/sticky-message";
-import {
-  GalleryService,
-  type IntakeAttachment,
-  type IntakeMessage,
-} from "@/services/gallery";
+import { GalleryService } from "@/services/gallery/gallery.service";
+import type {
+  IntakeAttachment,
+  IntakeMessage,
+} from "@/services/gallery/intake";
 
 const RUN = Date.now().toString();
 let seq = 0;

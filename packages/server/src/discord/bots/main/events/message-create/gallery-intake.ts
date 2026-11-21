@@ -1,7 +1,10 @@
 import config from "@/config";
 import type { EventModule } from "@/discord/bots/common/loaders/event-loader";
 import { container, Services } from "@/services/container";
-import { GALLERY_INTAKE_REACTION, toIntakeMessage } from "@/services/gallery";
+import {
+  GALLERY_INTAKE_REACTION,
+  toIntakeMessage,
+} from "@/services/gallery/intake";
 import type { Client, Message } from "discord.js";
 
 export const eventName: EventModule<"messageCreate">["eventName"] =

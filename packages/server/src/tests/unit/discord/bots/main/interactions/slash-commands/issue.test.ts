@@ -48,7 +48,7 @@ vi.mock("@/discord/utils/channel-transcript", () => ({
   })),
 }));
 
-vi.mock("@/services/issue-triage", () => ({
+vi.mock("@/services/issue-triage/issue-triage.service", () => ({
   IssueTriageError: class extends Error {},
   issueTriageService: triage,
 }));

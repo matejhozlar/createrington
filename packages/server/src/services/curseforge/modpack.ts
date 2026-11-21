@@ -3,6 +3,7 @@ import {
   curseforgeFileSchema,
   curseforgeList,
 } from "@createrington/content-gateway-client";
+import { z } from "zod";
 import { cfRead, toCurseForgeFile, type CurseForgeFile } from "./client";
 
 export type ModpackManifestSides = "client" | "server" | "both";
@@ -115,8 +116,6 @@ export async function getModpackFile(
   return body ? toCurseForgeFile(body.data) : null;
 }
 
-const RECENT_PUBLISHES = 5;
-
 export async function getLatestListedModpackFile(
   packProjectId: number,
   fresh: boolean,
@@ -129,30 +128,6 @@ export async function getLatestListedModpackFile(
   );
   const latest = body.data[0];
   return latest ? toCurseForgeFile(latest) : null;
-}
-
-export async function loadModpackReadContext(
-  packProjectId: number,
-): Promise<ModpackReadContext> {
-  const { Q } = await import("@/db/index.js");
-  const modpack = await Q.modpack.find({ curseforgeProjectId: packProjectId });
-  if (!modpack) return { shipsServerPack: false, publishes: [] };
-  const publishes = await Q.modpack.publish.findAll(
-    { modpackId: modpack.id },
-    {
-      select: ["clientFileId", "serverPackFileId"],
-      orderBy: "clientFileId",
-      orderDirection: "desc",
-      limit: RECENT_PUBLISHES,
-    },
-  );
-  return {
-    shipsServerPack: modpack.shipsServerPack,
-    publishes: publishes.map((publish) => ({
-      clientFileId: publish.clientFileId,
-      serverPackFileId: publish.serverPackFileId,
-    })),
-  };
 }
 
 /**
@@ -208,5 +183,49 @@ export async function resolveModpackRelease(
     file,
     serverPackFileId,
     complete: !context.shipsServerPack || serverPackFileId !== null,
+  };
+}
+
+const storedModpackManifestSchema = z.object({
+  fileId: z.number(),
+  serverPackFileId: z.number().nullable(),
+  displayName: z.string().nullable(),
+  version: z.string().nullable(),
+  minecraftVersion: z.string().nullable(),
+  modLoader: z.string().nullable(),
+  publishedAt: z.string().nullable(),
+  entries: z.array(
+    z.object({
+      projectId: z.number(),
+      fileId: z.number(),
+      required: z.boolean(),
+      sides: z.enum(["client", "server", "both"]),
+    }),
+  ),
+  modIds: z.array(z.number()),
+  disabledModIds: z.array(z.number()),
+});
+
+type StoredModpackManifest = z.infer<typeof storedModpackManifestSchema>;
+
+export function toStoredModpackManifest(
+  manifest: ModpackManifest,
+): StoredModpackManifest {
+  return {
+    ...manifest,
+    modIds: [...manifest.modIds],
+    disabledModIds: [...manifest.disabledModIds],
+  };
+}
+
+export function fromStoredModpackManifest(
+  value: unknown,
+): ModpackManifest | undefined {
+  const parsed = storedModpackManifestSchema.safeParse(value);
+  if (!parsed.success) return undefined;
+  return {
+    ...parsed.data,
+    modIds: new Set(parsed.data.modIds),
+    disabledModIds: new Set(parsed.data.disabledModIds),
   };
 }

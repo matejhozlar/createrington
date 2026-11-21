@@ -11,11 +11,11 @@ import {
 import { AttachmentBuilder } from "discord.js";
 import { randomPose } from "createrington-skin-api";
 import config from "@/config";
+import { getSkinApiClient } from "@/services/skin-api/client";
 import {
-  getSkinApiClient,
   MAX_QUALITY_RENDER,
   POSE_RENDER_STYLE,
-} from "@/services/skin-api";
+} from "@/services/skin-api/quality";
 import { mcHeadsBodyUrl } from "@/services/skin-api/urls";
 import { computeBBox, fitFontSize } from "@/utils/canvas";
 

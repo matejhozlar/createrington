@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   describeHttpError,
+  downloadCapped,
+  DownloadTooLargeError,
   fetchJson,
   HttpStatusError,
   readBody,
@@ -108,6 +110,84 @@ describe("fetchJson", () => {
     fetchMock.mockRejectedValueOnce(failure);
 
     await expect(fetchJson("http://upstream.test/x")).rejects.toBe(failure);
+  });
+});
+
+describe("downloadCapped", () => {
+  const fetchMock = vi.fn<typeof fetch>();
+  const options = { timeoutMs: 1000, maxBytes: 4 };
+
+  function streamOf(...chunks: number[][]): ReadableStream<Uint8Array> {
+    return new ReadableStream({
+      start(controller) {
+        for (const chunk of chunks) controller.enqueue(new Uint8Array(chunk));
+        controller.close();
+      },
+    });
+  }
+
+  beforeEach(() => {
+    fetchMock.mockReset();
+    vi.stubGlobal("fetch", fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("returns the whole body when it fits the cap", async () => {
+    fetchMock.mockResolvedValueOnce(new Response(streamOf([1, 2], [3, 4])));
+
+    const body = await downloadCapped("http://upstream.test/x", options);
+
+    expect([...body]).toEqual([1, 2, 3, 4]);
+  });
+
+  it("refuses a body over the cap that carries no content-length", async () => {
+    const response = new Response(streamOf([1, 2, 3], [4, 5]));
+    expect(response.headers.get("content-length")).toBeNull();
+    fetchMock.mockResolvedValueOnce(response);
+
+    await expect(
+      downloadCapped("http://upstream.test/x", options),
+    ).rejects.toBeInstanceOf(DownloadTooLargeError);
+  });
+
+  it("refuses a declared content-length over the cap before reading", async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(streamOf([1]), { headers: { "content-length": "5" } }),
+    );
+
+    await expect(
+      downloadCapped("http://upstream.test/x", options),
+    ).rejects.toBeInstanceOf(DownloadTooLargeError);
+  });
+
+  it("throws the status of a failed response", async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response("gone", { status: 404, statusText: "Not Found" }),
+    );
+
+    await expect(
+      downloadCapped("http://upstream.test/x", options),
+    ).rejects.toMatchObject({ status: 404 });
+  });
+
+  it("passes the redirect mode and a timeout signal to fetch", async () => {
+    fetchMock.mockResolvedValueOnce(new Response(streamOf([1])));
+
+    await downloadCapped("http://upstream.test/x", {
+      ...options,
+      redirect: "error",
+    });
+
+    expect(fetchMock).toHaveBeenCalledExactlyOnceWith(
+      "http://upstream.test/x",
+      expect.objectContaining({
+        redirect: "error",
+        signal: expect.any(AbortSignal),
+      }),
+    );
   });
 });
 

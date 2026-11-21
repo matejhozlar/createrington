@@ -26,15 +26,9 @@ vi.mock("@/discord/embeds", () => {
 
 vi.mock("@/discord/utils/cooldown", () => ({ CooldownType: { USER: "user" } }));
 
-vi.mock("@/services/skin-api", async () => {
-  const quality = await vi.importActual<
-    typeof import("@/services/skin-api/quality")
-  >("@/services/skin-api/quality");
-  return {
-    getSkinApiClient: () => ({ render: sdkRender }),
-    MAX_QUALITY_RENDER: quality.MAX_QUALITY_RENDER,
-  };
-});
+vi.mock("@/services/skin-api/client", () => ({
+  getSkinApiClient: () => ({ render: sdkRender }),
+}));
 
 import {
   data,

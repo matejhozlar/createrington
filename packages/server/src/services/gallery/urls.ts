@@ -1,4 +1,4 @@
-import { objectStorage } from "@/services/storage";
+import { objectStorage } from "@/services/storage/object-storage.service";
 import type { GallerySubmission } from "@createrington/shared/db";
 
 export interface GalleryImageUrls {

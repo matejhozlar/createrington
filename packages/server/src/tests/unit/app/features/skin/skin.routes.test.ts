@@ -46,10 +46,8 @@ vi.mock("@/services/auth/token/access-cookie.service", async () =>
 vi.mock("@/services/auth/admin-status/admin-status.service", async () =>
   (await import("@/tests/helpers/mocks/auth")).authMocks.adminStatus(),
 );
-vi.mock("@/services/skin-api", () => ({
+vi.mock("@/services/skin-api/client", () => ({
   getSkinApiClient: () => ({ avatar: mocks.avatar, render: mocks.render }),
-  POSE_RENDER_STYLE: "cel",
-  MAX_QUALITY_RENDER: { width: 1600, height: 2400 },
 }));
 
 import express from "express";

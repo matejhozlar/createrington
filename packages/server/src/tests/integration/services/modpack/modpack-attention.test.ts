@@ -22,7 +22,7 @@ vi.mock("@/services/curseforge/files", async () =>
 vi.mock("@/services/curseforge/modpack", async () =>
   (await import("@/tests/helpers/mocks/curseforge")).curseforgeMocks.modpack(),
 );
-vi.mock("@/services/curseforge/modpack-manifest", async () =>
+vi.mock("@/services/modpack/manifest", async () =>
   (
     await import("@/tests/helpers/mocks/curseforge")
   ).curseforgeMocks.modpackManifest(),
@@ -47,7 +47,7 @@ vi.mock("@/services/launcher/pack/sandbox-files", async () =>
 import pool, { Q } from "@/db";
 import { BadRequestError, ConflictError, NotFoundError } from "@/errors";
 import { modpackAttentionService } from "@/services/modpack/attention.service";
-import { getModpackManifest } from "@/services/curseforge/modpack-manifest";
+import { getModpackManifest } from "@/services/modpack/manifest";
 import { announceReview } from "@/services/workshop/discord";
 import {
   createWorkshopTestContext,
