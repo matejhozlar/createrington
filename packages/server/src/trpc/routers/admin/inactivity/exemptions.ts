@@ -7,6 +7,7 @@ import {
   paginationInput,
   trpcError,
   auditActor,
+  pageOffset,
 } from "@/trpc/utils";
 import { idToObject } from "@/utils/player-identifier";
 import { mcUuid } from "@/utils/zod-schemas";
@@ -28,7 +29,7 @@ export const exemptionsRouter = router({
         await Q.player.inactivity.exemption.listWithPlayer({
           search: input.search?.trim() || undefined,
           limit: input.limit,
-          offset: input.page * input.limit,
+          offset: pageOffset(input),
         });
 
       return {

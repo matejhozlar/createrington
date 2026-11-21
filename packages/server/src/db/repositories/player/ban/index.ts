@@ -1,7 +1,6 @@
 import { db, Q } from "@/db";
 import { DatabaseTable, type DatabaseQueries } from "@/generated/db";
 import type { PlayerBan } from "@createrington/shared/db";
-import { AdminEdit } from "@/types";
 import { BasePlayerRepository, type PlayerIdentifier } from "../base";
 import type { BanStatistics } from "@/db/queries/player/ban";
 
@@ -63,7 +62,7 @@ export class PlayerBanRepository extends BasePlayerRepository {
       await tx.admin.log.action.create({
         adminDiscordId,
         adminUsername,
-        actionType: AdminEdit.BAN_PLAYER_TEMPORARY,
+        actionType: "ban_player_temporary",
         targetPlayerUuid: uuid,
         targetPlayerName: player.minecraftUsername,
         tableName: DatabaseTable.PLAYER_BAN.TABLE,
@@ -131,7 +130,7 @@ export class PlayerBanRepository extends BasePlayerRepository {
     await tx.admin.log.action.create({
       adminDiscordId,
       adminUsername,
-      actionType: AdminEdit.BAN_PLAYER_PERMANENT,
+      actionType: "ban_player_permanent",
       targetPlayerUuid: player.minecraftUuid,
       targetPlayerName: player.minecraftUsername,
       tableName: DatabaseTable.PLAYER_BAN.TABLE,
@@ -192,7 +191,7 @@ export class PlayerBanRepository extends BasePlayerRepository {
       await tx.admin.log.action.create({
         adminDiscordId,
         adminUsername,
-        actionType: AdminEdit.UNBAN_PLAYER,
+        actionType: "unban_player",
         targetPlayerUuid: ban.playerMinecraftUuid,
         targetPlayerName: playerName,
         tableName: DatabaseTable.PLAYER_BAN.TABLE,

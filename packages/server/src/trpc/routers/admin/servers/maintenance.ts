@@ -3,25 +3,13 @@ import { adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
 import { getService, Services } from "@/services";
 import { maintenanceService } from "@/services/maintenance";
-import { getServerById } from "@/services/mc-server/servers";
-import { trpcError, auditActor } from "@/trpc/utils";
+import { getServerById, requireServer } from "@/services/mc-server/servers";
+import { trpcError, auditActor, serverIdInput } from "@/trpc/utils";
 import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
 
-const serverIdInput = z.object({
-  serverId: z.coerce.number().int().positive(),
-});
-
 const MOTD_MAX_LENGTH = 300;
 const MESSAGE_MAX_LENGTH = 600;
-
-function requireServer(serverId: number) {
-  const serverConfig = getServerById(serverId);
-  if (!serverConfig) {
-    throw trpcError.badRequest(`Server with id ${serverId} not found`);
-  }
-  return serverConfig;
-}
 
 async function broadcastStatus(serverId: number) {
   try {

@@ -8,6 +8,7 @@ import {
   findOrThrow,
   paginateQuery,
   paginationInput,
+  id,
 } from "@/trpc/utils";
 import { container, Services } from "@/services/container";
 import { galleryImageUrls } from "@/services/gallery/urls";
@@ -23,7 +24,7 @@ import {
 } from "@createrington/shared/gallery";
 
 const statusSchema = z.enum(GALLERY_SUBMISSION_STATUSES);
-const idInput = z.object({ id: z.number().int().positive() });
+const idInput = z.object({ id: id() });
 
 const MAX_NOTE_LENGTH = 500;
 const MAX_CREDITS = 10;

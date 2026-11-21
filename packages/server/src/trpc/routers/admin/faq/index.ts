@@ -10,6 +10,7 @@ import {
   trpcError,
   auditActor,
   assertPatchNotEmpty,
+  id,
 } from "@/trpc/utils";
 import { container, Services } from "@/services/container";
 import { FaqService } from "@/services/discord/faq";
@@ -81,7 +82,7 @@ export const faqRouter = router({
 
   get: adminProcedure
     .meta({ description: "Get a single FAQ entry by ID" })
-    .input(z.object({ id: z.number().int().positive() }))
+    .input(z.object({ id: id() }))
     .query(async ({ input }) => {
       const entry = await findOrThrow(
         Q.faq.entry.find({ id: input.id }),
@@ -131,7 +132,7 @@ export const faqRouter = router({
     .meta({ description: "Update an existing FAQ entry" })
     .input(
       z.object({
-        id: z.number().int().positive(),
+        id: id(),
         matchMode: z.enum(["keywords", "regex"]).optional(),
         pattern: z.string().min(1).optional(),
         title: z.string().min(1).max(100).optional(),
@@ -168,7 +169,7 @@ export const faqRouter = router({
 
   delete: adminProcedure
     .meta({ description: "Delete a FAQ entry" })
-    .input(z.object({ id: z.number().int().positive() }))
+    .input(z.object({ id: id() }))
     .mutation(async ({ input, ctx }) => {
       const existing = await findOrThrow(
         Q.faq.entry.find({ id: input.id }),

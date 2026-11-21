@@ -1,9 +1,10 @@
 import { Discord } from "@/discord/constants";
 import { z } from "zod";
+import { guildChannelsProcedure } from "../guild-channels";
 import { adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
 import { getServiceSync, isServiceReady, Services } from "@/services";
-import { trpcError, auditActor } from "@/trpc/utils";
+import { trpcError, auditActor, id } from "@/trpc/utils";
 import { isMessageGone } from "@/services/discord/message/errors";
 import config from "@/config";
 import {
@@ -21,37 +22,7 @@ import {
 const colors = config.discord.embeds.colors;
 
 export const embedCrudProcedures = {
-  channels: adminProcedure
-    .meta({ description: "Get all text channels grouped by category" })
-    .query(() => {
-      const channels = config.discord.guild.channels;
-      const categories = config.discord.guild.categories;
-      const grouped: Array<{
-        category: string;
-        categoryId: string;
-        channels: Array<{ name: string; id: string }>;
-      }> = [];
-
-      for (const [categoryKey, channelMap] of Object.entries(channels)) {
-        const categoryId =
-          (categories as unknown as Record<string, string>)[categoryKey] ?? "";
-        const channelList: Array<{ name: string; id: string }> = [];
-
-        for (const [channelName, channelId] of Object.entries(
-          channelMap as Record<string, string>,
-        )) {
-          channelList.push({ name: channelName, id: channelId });
-        }
-
-        grouped.push({
-          category: categoryKey,
-          categoryId,
-          channels: channelList,
-        });
-      }
-
-      return grouped;
-    }),
+  channels: guildChannelsProcedure,
 
   roles: adminProcedure
     .meta({ description: "Get all Discord roles" })
@@ -87,7 +58,7 @@ export const embedCrudProcedures = {
       z
         .object({
           channelId: z.string().min(1),
-          presetId: z.number().int().positive().optional(),
+          presetId: id().optional(),
           bot: embedBotSchema.default("main"),
         })
         .and(messagePayloadSchema),
@@ -136,7 +107,7 @@ export const embedCrudProcedures = {
         .object({
           channelId: z.string().min(1),
           messageId: z.string().min(1),
-          presetId: z.number().int().positive().optional(),
+          presetId: id().optional(),
           bot: embedBotSchema.default("main"),
         })
         .and(messagePayloadSchema),

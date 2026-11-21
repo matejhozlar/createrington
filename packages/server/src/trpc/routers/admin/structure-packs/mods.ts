@@ -12,7 +12,7 @@ import { listProjectFiles } from "@/services/curseforge/content";
 import { getFilesDependencies } from "@/services/curseforge/files";
 import { resolveDependencies, searchMods } from "@/services/curseforge/mods";
 import { findModpackModIds } from "@/services/modpack/manifest";
-import { auditActor } from "@/trpc/utils";
+import { auditActor, id } from "@/trpc/utils";
 import { getRotationService } from "./helpers";
 import { structurePackModFileName } from "@createrington/shared/structure-pack";
 
@@ -78,7 +78,7 @@ export const structurePackModProcedures = {
 
   getModFiles: adminProcedure
     .meta({ description: "Get available files for a CurseForge mod" })
-    .input(z.object({ modId: z.number().int().positive() }))
+    .input(z.object({ modId: id() }))
     .query(async ({ input }) => {
       const { files } = await listProjectFiles(input.modId, {
         gameVersion: DEFAULT_GAME_VERSION,
@@ -101,7 +101,7 @@ export const structurePackModProcedures = {
     .input(
       z.object({
         packId: z.coerce.number().int().positive(),
-        modIds: z.array(z.number().int().positive()).min(1),
+        modIds: z.array(id()).min(1),
       }),
     )
     .query(async ({ input }) => {

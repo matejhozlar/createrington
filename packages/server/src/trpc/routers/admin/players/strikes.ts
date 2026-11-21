@@ -5,7 +5,7 @@ import {
 } from "@createrington/shared/admin-reason";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { playerStrikeRepo } from "@/db";
-import { parsePlayerId } from "@/trpc/utils";
+import { id, playerId } from "@/trpc/utils";
 
 export const strikesRouter = router({
   list: adminProcedure
@@ -15,16 +15,14 @@ export const strikesRouter = router({
     })
     .input(
       z.object({
-        id: z.string().min(1),
+        id: playerId(),
         activeOnly: z.boolean().optional(),
       }),
     )
     .query(async ({ input }) => {
-      const identifier = parsePlayerId(input.id);
-
       const [strikes, statistics] = await Promise.all([
-        playerStrikeRepo.getHistory(identifier, input.activeOnly),
-        playerStrikeRepo.getStatistics(identifier),
+        playerStrikeRepo.getHistory(input.id, input.activeOnly),
+        playerStrikeRepo.getStatistics(input.id),
       ]);
 
       return { strikes, statistics };
@@ -34,7 +32,7 @@ export const strikesRouter = router({
     .meta({ description: "Issue a strike to a player" })
     .input(
       z.object({
-        id: z.string().min(1),
+        id: playerId(),
         classification: z.enum([
           "pvp",
           "theft",
@@ -57,7 +55,7 @@ export const strikesRouter = router({
           z.literal(4),
           z.literal(5),
         ]),
-        serverId: z.number().int().positive().optional(),
+        serverId: id().optional(),
         metadata: z
           .record(
             z.string(),
@@ -67,10 +65,8 @@ export const strikesRouter = router({
       }),
     )
     .mutation(async ({ input, ctx }) => {
-      const identifier = parsePlayerId(input.id);
-
       const strike = await playerStrikeRepo.issue(
-        identifier,
+        input.id,
         {
           classification: input.classification,
           description: input.description,
@@ -90,7 +86,7 @@ export const strikesRouter = router({
     .input(
       z.object({
         id: z.string().min(1),
-        strikeId: z.number().int().positive(),
+        strikeId: id(),
         reason: z
           .string()
           .min(1, "Reason is required")

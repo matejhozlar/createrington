@@ -9,6 +9,8 @@ import {
   findOrThrow,
   paginateQuery,
   mapDomainError,
+  pageOffset,
+  playerId,
   sortDirection,
 } from "@/trpc/utils";
 
@@ -20,6 +22,36 @@ describe("sortDirection", () => {
 
   it("carries no default of its own", () => {
     expect(sortDirection().safeParse(undefined).success).toBe(false);
+  });
+});
+
+describe("playerId", () => {
+  it("turns a Minecraft username into a username identifier", () => {
+    expect(playerId().parse("Steve")).toEqual({ minecraftUsername: "Steve" });
+  });
+
+  it("turns a Discord ID into a Discord identifier", () => {
+    expect(playerId().parse("100000000000000001")).toEqual({
+      discordId: "100000000000000001",
+    });
+  });
+
+  it("rejects an unrecognised ID with a BAD_REQUEST naming the accepted forms", () => {
+    let thrown: unknown;
+    try {
+      playerId().parse("not a player!");
+    } catch (error) {
+      thrown = error;
+    }
+    expect(thrown).toBeInstanceOf(TRPCError);
+    expect((thrown as TRPCError).code).toBe("BAD_REQUEST");
+    expect((thrown as TRPCError).message).toMatch(/^Invalid player ID\./);
+  });
+});
+
+describe("pageOffset", () => {
+  it("skips the rows of every earlier page", () => {
+    expect(pageOffset({ page: 3, limit: 20 })).toBe(60);
   });
 });
 

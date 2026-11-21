@@ -9,6 +9,10 @@ type TrpcCode = ConstructorParameters<typeof TRPCError>[0]["code"];
 
 export const id = () => z.number().int().positive().max(2147483647);
 
+export const serverIdInput = z.object({
+  serverId: z.coerce.number().int().positive(),
+});
+
 export const sortDirection = () => z.enum(["asc", "desc"]);
 
 export const trpcError = {
@@ -73,6 +77,8 @@ export function parsePlayerId(id: string) {
   return identifier;
 }
 
+export const playerId = () => z.string().min(1).transform(parsePlayerId);
+
 export function auditActor(ctx: {
   user: { discordId: string; minecraftUsername: string };
 }) {
@@ -95,6 +101,10 @@ export function paginationInput(opts?: {
       .max(opts?.maxLimit ?? 100)
       .default(opts?.defaultLimit ?? 20),
   };
+}
+
+export function pageOffset(input: { page: number; limit: number }): number {
+  return input.page * input.limit;
 }
 
 export function buildPagination(page: number, limit: number, total: number) {
@@ -129,7 +139,7 @@ export async function paginateQuery<TEntity, TFilters>(
     source.findAll(filters, {
       ...order,
       limit: input.limit,
-      offset: input.page * input.limit,
+      offset: pageOffset(input),
     }),
     source.count(filters),
   ]);

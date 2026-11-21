@@ -6,7 +6,6 @@ import { ActionRowBuilder, type ButtonBuilder } from "discord.js";
 import { getService, Services } from "@/services";
 import { settings } from "@/services/settings";
 import { DatabaseTable } from "@/generated/db";
-import { AdminEdit } from "@/types";
 
 const CAPACITY_MEMO_TTL_MS = 5_000;
 
@@ -90,7 +89,7 @@ export class WaitlistRepository {
       await tx.admin.log.action.create({
         adminDiscordId,
         adminUsername,
-        actionType: AdminEdit.DELETE_WAITLIST,
+        actionType: "delete_waitlist",
         targetPlayerUuid: "00000000-0000-0000-0000-000000000000",
         targetPlayerName: entry.discordUsername,
         tableName: DatabaseTable.WAITLIST_ENTRY.TABLE,

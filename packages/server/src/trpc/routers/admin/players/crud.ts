@@ -6,12 +6,13 @@ import { Q, playerBanRepo, playerRepo, playerStrikeRepo } from "@/db";
 import { ilikeContains } from "@/db/utils";
 import { BalanceUtils } from "@/db/repositories/balance/utils";
 import {
-  parsePlayerId,
   paginationInput,
   paginateQuery,
   sortDirection,
   buildPagination,
   trpcError,
+  playerId,
+  pageOffset,
 } from "@/trpc/utils";
 import { discordId, mcUsername } from "@/utils/zod-schemas";
 import type { Player, PlayerFilters } from "@createrington/shared/db";
@@ -68,7 +69,7 @@ export const playersRouter = router({
         ? await Q.player
             .listWithViolations(filters, violation, {
               limit: input.limit,
-              offset: input.page * input.limit,
+              offset: pageOffset(input),
               orderBy: input.orderBy,
               orderDirection: input.orderDirection,
             })
@@ -117,14 +118,13 @@ export const playersRouter = router({
       description:
         "Get comprehensive player details including balance, playtime, tickets, waitlist, strikes, and bans",
     })
-    .input(z.object({ id: z.string().min(1) }))
+    .input(z.object({ id: playerId() }))
     .query(async ({ input }) => {
-      const identifier = parsePlayerId(input.id);
       const [playerData, strikes, banHistory, currentBan] = await Promise.all([
-        playerRepo.getDetailed(identifier),
-        playerStrikeRepo.getHistory(identifier),
-        playerBanRepo.getHistory(identifier),
-        playerBanRepo.getCurrent(identifier),
+        playerRepo.getDetailed(input.id),
+        playerStrikeRepo.getHistory(input.id),
+        playerBanRepo.getHistory(input.id),
+        playerBanRepo.getCurrent(input.id),
       ]);
       const activeStrikes = strikes.filter((s) => !s.removed);
       const activeBans = banHistory.filter((b) => !b.unbanned);
@@ -173,7 +173,7 @@ export const playersRouter = router({
     })
     .input(
       z.object({
-        id: z.string().min(1),
+        id: playerId(),
         minecraftUsername: mcUsername.optional(),
         discordId: discordId.optional(),
         reason: z
@@ -183,8 +183,6 @@ export const playersRouter = router({
       }),
     )
     .mutation(async ({ input, ctx }) => {
-      const identifier = parsePlayerId(input.id);
-
       if (!input.minecraftUsername && !input.discordId) {
         throw trpcError.badRequest("At least one field to update is required");
       }
@@ -195,7 +193,7 @@ export const playersRouter = router({
       if (input.discordId) updates.discordId = input.discordId;
 
       const updatedPlayer = await playerRepo.adminUpdate(
-        identifier,
+        input.id,
         updates,
         ctx.user.discordId,
         ctx.user.minecraftUsername,
@@ -211,7 +209,7 @@ export const playersRouter = router({
     })
     .input(
       z.object({
-        id: z.string().min(1),
+        id: playerId(),
         reason: z
           .string()
           .min(1, "Reason is required")
@@ -219,9 +217,7 @@ export const playersRouter = router({
       }),
     )
     .mutation(async ({ input, ctx }) => {
-      const identifier = parsePlayerId(input.id);
-
-      await playerDeletionService.delete(identifier, {
+      await playerDeletionService.delete(input.id, {
         actor: {
           type: "admin",
           discordId: ctx.user.discordId,

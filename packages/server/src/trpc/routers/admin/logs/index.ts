@@ -1,7 +1,12 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
-import { paginationInput, buildPagination, sortDirection } from "@/trpc/utils";
+import {
+  paginationInput,
+  buildPagination,
+  sortDirection,
+  pageOffset,
+} from "@/trpc/utils";
 
 export const logsRouter = router({
   admins: adminProcedure
@@ -35,7 +40,7 @@ export const logsRouter = router({
         orderBy: input.orderBy,
         orderDirection: input.orderDirection,
         limit: input.limit,
-        offset: input.page * input.limit,
+        offset: pageOffset(input),
       });
 
       return {

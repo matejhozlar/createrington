@@ -12,7 +12,6 @@ import {
   type DeletedPlayer,
   type DeletionActor,
 } from "@/services/player/deletion";
-import { AdminEdit } from "@/types";
 import { minecraftRcon } from "@/utils/rcon";
 
 const SYNC_TIMEOUT_MS = 15_000;
@@ -218,7 +217,7 @@ export class PartyPurgeService {
       await Q.admin.log.action.create({
         adminDiscordId: actor?.discordId ?? "system",
         adminUsername: actor?.username ?? "System",
-        actionType: AdminEdit.REMOVE_PARTY_MEMBER,
+        actionType: "remove_party_member",
         targetPlayerUuid: minecraftUuid,
         targetPlayerName: removal.playerName,
         tableName: DatabaseTable.SERVER_PARTY_MEMBER.TABLE,

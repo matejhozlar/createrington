@@ -1,10 +1,10 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import {
-  parsePlayerId,
   paginationInput,
   paginateQuery,
   buildPagination,
+  playerId,
 } from "@/trpc/utils";
 import { Q } from "@/db";
 import { BalanceUtils } from "@/db/repositories/balance/utils";
@@ -14,14 +14,12 @@ export const transactionsRouter = router({
     .meta({ description: "Get paginated balance transactions for a player" })
     .input(
       z.object({
-        id: z.string().min(1),
+        id: playerId(),
         ...paginationInput({ maxLimit: 100, defaultLimit: 20 }),
       }),
     )
     .query(async ({ input }) => {
-      const identifier = parsePlayerId(input.id);
-
-      const player = await Q.player.find(identifier);
+      const player = await Q.player.find(input.id);
       if (!player)
         return { items: [], pagination: buildPagination(0, input.limit, 0) };
 

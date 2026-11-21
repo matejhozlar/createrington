@@ -1,14 +1,16 @@
 import { z } from "zod";
+import { guildChannelsProcedure } from "../guild-channels";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q, db } from "@/db";
+import type { AdminActionType } from "@/db/queries/admin/log/action";
 import {
   findOrThrow,
   auditActor,
   assertPatchNotEmpty,
   trpcError,
+  id,
 } from "@/trpc/utils";
 import { getServiceSync, Services } from "@/services";
-import config from "@/config";
 
 const MAX_FOLLOWUPS_PER_MESSAGE = 5;
 
@@ -20,7 +22,7 @@ const followupInputSchema = z.object({
 
 async function logAutoMessageAction(
   ctx: { user: { discordId: string; minecraftUsername: string } },
-  actionType: string,
+  actionType: AdminActionType,
   description: string,
   metadata?: Record<string, unknown>,
 ) {
@@ -33,37 +35,7 @@ async function logAutoMessageAction(
 }
 
 export const autoMessagesRouter = router({
-  channels: adminProcedure
-    .meta({ description: "Get all text channels grouped by category" })
-    .query(() => {
-      const channels = config.discord.guild.channels;
-      const categories = config.discord.guild.categories;
-      const grouped: Array<{
-        category: string;
-        categoryId: string;
-        channels: Array<{ name: string; id: string }>;
-      }> = [];
-
-      for (const [categoryKey, channelMap] of Object.entries(channels)) {
-        const categoryId =
-          (categories as unknown as Record<string, string>)[categoryKey] ?? "";
-        const channelList: Array<{ name: string; id: string }> = [];
-
-        for (const [channelName, channelId] of Object.entries(
-          channelMap as Record<string, string>,
-        )) {
-          channelList.push({ name: channelName, id: channelId });
-        }
-
-        grouped.push({
-          category: categoryKey,
-          categoryId,
-          channels: channelList,
-        });
-      }
-
-      return grouped;
-    }),
+  channels: guildChannelsProcedure,
 
   configs: router({
     list: adminProcedure
@@ -85,7 +57,7 @@ export const autoMessagesRouter = router({
 
     get: adminProcedure
       .meta({ description: "Get a single auto-message config with messages" })
-      .input(z.object({ id: z.number().int().positive() }))
+      .input(z.object({ id: id() }))
       .query(async ({ input }) => {
         const config = await findOrThrow(
           Q.discord.auto.message.config.find({ id: input.id }),
@@ -158,7 +130,7 @@ export const autoMessagesRouter = router({
       .meta({ description: "Update an auto-message config" })
       .input(
         z.object({
-          id: z.number().int().positive(),
+          id: id(),
           name: z.string().min(1).max(100).optional(),
           channelId: z.string().min(1).optional(),
           enabled: z.boolean().optional(),
@@ -190,7 +162,7 @@ export const autoMessagesRouter = router({
 
     delete: adminProcedure
       .meta({ description: "Delete an auto-message config" })
-      .input(z.object({ id: z.number().int().positive() }))
+      .input(z.object({ id: id() }))
       .mutation(async ({ input, ctx }) => {
         const existing = await findOrThrow(
           Q.discord.auto.message.config.find({ id: input.id }),
@@ -217,7 +189,7 @@ export const autoMessagesRouter = router({
       .meta({ description: "Add a message to a config" })
       .input(
         z.object({
-          configId: z.number().int().positive(),
+          configId: id(),
           content: z.string().min(1).max(2000),
           sortOrder: z.number().int().default(0),
           enabled: z.boolean().default(true),
@@ -260,7 +232,7 @@ export const autoMessagesRouter = router({
       .meta({ description: "Update a message" })
       .input(
         z.object({
-          id: z.number().int().positive(),
+          id: id(),
           content: z.string().min(1).max(2000).optional(),
           sortOrder: z.number().int().optional(),
           enabled: z.boolean().optional(),
@@ -306,7 +278,7 @@ export const autoMessagesRouter = router({
 
     delete: adminProcedure
       .meta({ description: "Delete a message" })
-      .input(z.object({ id: z.number().int().positive() }))
+      .input(z.object({ id: id() }))
       .mutation(async ({ input }) => {
         await findOrThrow(
           Q.discord.auto.message.find({ id: input.id }),
@@ -324,7 +296,7 @@ export const autoMessagesRouter = router({
         z.object({
           items: z.array(
             z.object({
-              id: z.number().int().positive(),
+              id: id(),
               sortOrder: z.number().int(),
             }),
           ),

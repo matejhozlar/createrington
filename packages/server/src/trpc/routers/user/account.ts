@@ -1,11 +1,11 @@
 import { z } from "zod";
+import { fetchGuildMember } from "@/discord/utils/fetch-guild-member";
 import { router, userProcedure } from "@/trpc/trpc";
-import { findOrThrow, trpcError } from "@/trpc/utils";
+import { findOrThrow, trpcError, id } from "@/trpc/utils";
 import { createRateLimit } from "@/trpc/middleware/rate-limit";
 import { Q } from "@/db";
 import { BalanceUtils } from "@/db/repositories/balance/utils";
 import { playerDeletionService } from "@/services/player/deletion";
-import { getService, Services } from "@/services";
 import config from "@/config";
 import type { AuthSession } from "@createrington/shared/db/auth_session.types";
 
@@ -80,7 +80,7 @@ export const accountRouter = router({
       description:
         "Revoke a specific session by ID. Only sessions belonging to the authenticated user can be revoked",
     })
-    .input(z.object({ id: z.number() }))
+    .input(z.object({ id: id() }))
     .mutation(async ({ ctx, input }) => {
       const revoked = await Q.auth.session.revokeOwnedById(
         input.id,
@@ -235,16 +235,12 @@ export const accountRouter = router({
       );
 
       try {
-        const mainBot = await getService(Services.DISCORD_MAIN_BOT);
-        const guild = mainBot.guilds.cache.first();
-        if (guild) {
-          const member = await guild.members.fetch(discordId).catch(() => null);
-          if (member) {
-            await member.kick("Account deleted by user");
-            logger.info(
-              `Kicked ${player.minecraftUsername} from Discord after account deletion`,
-            );
-          }
+        const member = await fetchGuildMember(discordId);
+        if (member) {
+          await member.kick("Account deleted by user");
+          logger.info(
+            `Kicked ${player.minecraftUsername} from Discord after account deletion`,
+          );
         }
       } catch (error) {
         logger.warn(

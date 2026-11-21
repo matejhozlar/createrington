@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
-import { parsePlayerId, findOrThrow } from "@/trpc/utils";
+import { findOrThrow, playerId } from "@/trpc/utils";
 
 export const minecraftStatsRouter = router({
   list: adminProcedure
@@ -11,14 +11,12 @@ export const minecraftStatsRouter = router({
     })
     .input(
       z.object({
-        id: z.string().min(1),
+        id: playerId(),
       }),
     )
     .query(async ({ input }) => {
-      const identifier = parsePlayerId(input.id);
-
       const player = await findOrThrow(
-        Q.player.find(identifier),
+        Q.player.find(input.id),
         "Player not found",
       );
 

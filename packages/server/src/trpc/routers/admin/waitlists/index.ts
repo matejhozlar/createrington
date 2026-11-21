@@ -4,7 +4,12 @@ import { router, adminProcedure } from "@/trpc/trpc";
 import { Q, waitlistRepo } from "@/db";
 import { waitlistPromotionService } from "@/services/waitlist/promotion.service";
 import { ilikeContains } from "@/db/utils";
-import { paginationInput, paginateQuery, sortDirection } from "@/trpc/utils";
+import {
+  paginationInput,
+  paginateQuery,
+  sortDirection,
+  id,
+} from "@/trpc/utils";
 import type { WaitlistEntryFilters } from "@createrington/shared/db";
 
 export const waitlistsRouter = router({
@@ -58,7 +63,7 @@ export const waitlistsRouter = router({
     .meta({
       description: "Get detailed information for a single waitlist entry.",
     })
-    .input(z.object({ id: z.number().int().positive() }))
+    .input(z.object({ id: id() }))
     .query(async ({ input }) => {
       const entry = await Q.waitlist.entry.get({ id: input.id });
 
@@ -70,7 +75,7 @@ export const waitlistsRouter = router({
       description:
         "Force-promote a waitlist entry: the bot pings the member in their verification channel and they can register immediately",
     })
-    .input(z.object({ id: z.number().int().positive() }))
+    .input(z.object({ id: id() }))
     .mutation(async ({ input, ctx }) => {
       return await waitlistPromotionService.promote(
         input.id,
@@ -82,7 +87,7 @@ export const waitlistsRouter = router({
     .meta({ description: "Delete a waitlist entry with a reason for audit" })
     .input(
       z.object({
-        id: z.number().int().positive(),
+        id: id(),
         reason: z
           .string()
           .min(1, "Reason is required")

@@ -1,7 +1,12 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
-import { paginationInput, buildPagination, auditActor } from "@/trpc/utils";
+import {
+  paginationInput,
+  buildPagination,
+  auditActor,
+  pageOffset,
+} from "@/trpc/utils";
 import { getRotationService } from "./helpers";
 
 const rotationConfigRouter = router({
@@ -92,7 +97,7 @@ export const structurePackRotationProcedures = {
       const service = await getRotationService();
       const { rows, total } = await service.getRotationHistory(
         input.limit,
-        input.page * input.limit,
+        pageOffset(input),
       );
       return {
         data: rows,
