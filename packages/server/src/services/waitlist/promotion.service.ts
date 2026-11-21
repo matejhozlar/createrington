@@ -1,3 +1,4 @@
+import { userMention } from "discord.js";
 import { Q, waitlistRepo } from "@/db";
 import { Discord } from "@/discord/constants";
 import { RegistrationComponentPresets } from "@/discord/components/presets/registration";
@@ -122,7 +123,7 @@ export class WaitlistPromotionService {
     try {
       await Discord.Messages.send({
         channelId: Discord.Channels.administration.NOTIFICATIONS,
-        content: `⚠️ Waitlist entry #${entry.id} (<@${entry.discordId}>) was promoted but could not be pinged in their verification channel. They hold a reserved slot for 7 days; reach out to them or delete the entry from the admin panel to free it.`,
+        content: `⚠️ Waitlist entry #${entry.id} (${userMention(entry.discordId)}) was promoted but could not be pinged in their verification channel. They hold a reserved slot for 7 days; reach out to them or delete the entry from the admin panel to free it.`,
       });
     } catch (error) {
       logger.error(
@@ -200,7 +201,7 @@ export class WaitlistPromotionService {
     }
 
     await channel.send({
-      content: `🎉 <@${entry.discordId}> A spot opened up for you! Click **Register** above to claim it.`,
+      content: `🎉 ${userMention(entry.discordId)} A spot opened up for you! Click **Register** above to claim it.`,
     });
 
     return true;

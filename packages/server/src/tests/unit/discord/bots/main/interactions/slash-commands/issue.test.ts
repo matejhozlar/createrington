@@ -11,7 +11,6 @@ const messages = vi.hoisted(() => ({ send: vi.fn() }));
 vi.mock("@/discord/constants", () => ({
   Discord: {
     Channels: { administration: { NOTIFICATIONS: "900" } },
-    Users: { mention: (id: string) => `<@${id}>` },
     Messages: messages,
   },
 }));

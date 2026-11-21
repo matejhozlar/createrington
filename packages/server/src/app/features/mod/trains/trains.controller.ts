@@ -1,3 +1,4 @@
+import { roleMention, userMention } from "discord.js";
 import { getValidated } from "@/app/middleware/validation.middleware";
 import { respondSuccess } from "@/app/middleware/api-envelope";
 import { Q } from "@/db";
@@ -36,7 +37,7 @@ export class TrainsController {
       });
       for (const p of players) {
         const display = p.discordId
-          ? `${p.minecraftUsername} (${Discord.Users.mention(p.discordId)})`
+          ? `${p.minecraftUsername} (${userMention(p.discordId)})`
           : p.minecraftUsername;
         displayMap.set(p.minecraftUuid, display);
       }
@@ -96,7 +97,7 @@ export class TrainsController {
 
     await Discord.Messages.send({
       channelId: Discord.Channels.railsNSails.NOTIFICATIONS,
-      content: `||${Discord.Roles.mention(Discord.Roles.RAILSNSAILSNOTIFICATIONS)}||`,
+      content: `||${roleMention(Discord.Roles.RAILSNSAILSNOTIFICATIONS)}||`,
       embeds: embed.build(),
     });
 

@@ -20,10 +20,6 @@ vi.mock("@/discord/embeds", () => {
 
 vi.mock("@/discord/utils/cooldown", () => ({ CooldownType: { USER: "user" } }));
 
-vi.mock("@/discord/constants", () => ({
-  Discord: { Users: { mention: (id: string) => `<@${id}>` } },
-}));
-
 vi.mock("@/services/discord/tickets", () => ({
   TicketType: { GENERAL: "general" },
 }));

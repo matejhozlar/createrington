@@ -6,6 +6,7 @@ import {
   PermissionFlagsBits,
   SlashCommandBuilder,
   channelMention,
+  userMention,
 } from "discord.js";
 import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
@@ -184,7 +185,7 @@ async function reportOutcome(
     interaction.editReply({ embeds: [outcomeEmbed(outcome).build()] }),
     Discord.Messages.send({
       channelId: Discord.Channels.administration.NOTIFICATIONS,
-      content: `${Discord.Users.mention(interaction.user.id)} \`/issue\` in ${channelMention(channelId)}`,
+      content: `${userMention(interaction.user.id)} \`/issue\` in ${channelMention(channelId)}`,
       embeds: outcomeEmbed(outcome).build(),
       allowedMentions: { users: [interaction.user.id] },
     }),

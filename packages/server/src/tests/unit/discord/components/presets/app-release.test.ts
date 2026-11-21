@@ -8,7 +8,7 @@ import {
   buildComponentsMessage,
   validateComponentsV2,
 } from "@/discord/components";
-import { ComponentColors } from "@/discord/components/colors";
+import { EmbedColors } from "@/discord/embeds/colors";
 import type { ReleaseSummary } from "@/services/app-changelog";
 import type {
   ComponentContainer,
@@ -59,7 +59,7 @@ describe("AppReleaseComponentPresets.live", () => {
     const message = AppReleaseComponentPresets.live(input());
 
     expect(validateComponentsV2(message)).toBeNull();
-    expect(only(message).accentColor).toBe(ComponentColors.Success);
+    expect(only(message).accentColor).toBe(EmbedColors.Success);
     expect(lines(message)).toEqual([
       "### App v1.66.0 is live",
       "-# Released Oct 10, 2026",

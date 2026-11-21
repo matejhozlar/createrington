@@ -13,7 +13,11 @@ import {
   AttachmentBuilder,
 } from "discord.js";
 import type { Ticket } from "@/generated/db";
-import { type CreateTicketOptions, TicketUserAction } from "./";
+import {
+  type CreateTicketOptions,
+  readTicketMetadata,
+  TicketUserAction,
+} from "./";
 import { getTicketTypeConfig, TicketSystemIds } from "./";
 import { Discord } from "@/discord/constants";
 import { CustomIds } from "@/discord/custom-ids";
@@ -22,7 +26,10 @@ import config from "@/config";
 import { EmbedPresets } from "@/discord/embeds";
 import path from "node:path";
 import fs from "node:fs/promises";
-import { isSendableChannel } from "@/discord/utils/channel-guard";
+import {
+  isGuildTextChannel,
+  isSendableChannel,
+} from "@/discord/utils/channel-guard";
 const loadTranscripts = () => import("discord-html-transcripts");
 
 const PARTICIPANT_PERMISSIONS = [
@@ -204,13 +211,11 @@ export class TicketService {
   ): Promise<void> {
     try {
       const channel = await this.bot.channels.fetch(channelId);
-      if (!isSendableChannel(channel)) {
+      if (!isGuildTextChannel(channel)) {
         return;
       }
 
-      const textChannel = channel as TextChannel;
-
-      await textChannel.permissionOverwrites.edit(
+      await channel.permissionOverwrites.edit(
         creatorId,
         {
           ViewChannel: false,
@@ -219,7 +224,7 @@ export class TicketService {
         { type: OverwriteType.Member },
       );
 
-      const participants = textChannel.permissionOverwrites.cache.filter(
+      const participants = channel.permissionOverwrites.cache.filter(
         (overwrite) =>
           overwrite.type === OverwriteType.Member && overwrite.id !== creatorId,
       );
@@ -296,8 +301,8 @@ export class TicketService {
   async reopenTicket(ticketId: number, reopenedBy: string): Promise<Ticket> {
     const ticket = await ticketRepo.reopen(ticketId, reopenedBy);
 
-    const closeMessageId: unknown = ticket.metadata?.closeMessageId;
-    if (typeof closeMessageId === "string" && closeMessageId) {
+    const { closeMessageId } = readTicketMetadata(ticket.metadata);
+    if (closeMessageId) {
       try {
         await Discord.Messages.delete({
           channelId: ticket.channelId,
@@ -330,11 +335,9 @@ export class TicketService {
   ): Promise<void> {
     try {
       const channel = await this.bot.channels.fetch(channelId);
-      if (!channel?.isTextBased()) return;
+      if (!isGuildTextChannel(channel)) return;
 
       const guild = await this.bot.guilds.fetch(config.discord.guild.id);
-      const textChannel = channel as TextChannel;
-
       const member = await guild.members.fetch(creatorId).catch(() => null);
 
       if (!member) {
@@ -342,10 +345,7 @@ export class TicketService {
         return;
       }
 
-      await textChannel.permissionOverwrites.edit(
-        member,
-        PARTICIPANT_OVERWRITE,
-      );
+      await channel.permissionOverwrites.edit(member, PARTICIPANT_OVERWRITE);
 
       logger.debug(
         `Unlocked ticket channel ${channelId} for creator ${creatorId}`,
@@ -479,9 +479,9 @@ export class TicketService {
     ticketId: number,
   ): Promise<{ transcriptPath: string; generated: boolean }> {
     const ticket = await Q.ticket.get({ id: ticketId });
-    const stored: unknown = ticket.metadata?.transcriptPath;
+    const { transcriptPath: stored } = readTicketMetadata(ticket.metadata);
 
-    if (typeof stored === "string" && stored) {
+    if (stored) {
       return { transcriptPath: stored, generated: false };
     }
 
@@ -535,8 +535,7 @@ export class TicketService {
   async sendTranscript(ticketId: number, generatedBy: string): Promise<string> {
     const ticket = await Q.ticket.get({ id: ticketId });
 
-    const transcriptPath = ticket.metadata?.transcriptPath as
-      string | undefined;
+    const { transcriptPath } = readTicketMetadata(ticket.metadata);
 
     if (!transcriptPath) {
       throw new Error("No transcript found for this ticket");

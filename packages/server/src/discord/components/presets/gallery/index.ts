@@ -1,4 +1,4 @@
-import { escapeMarkdown } from "discord.js";
+import { escapeMarkdown, userMention } from "discord.js";
 import {
   actionRow,
   container,
@@ -7,7 +7,7 @@ import {
   separator,
   text,
 } from "../../component-builder";
-import { ComponentColors } from "../../colors";
+import { EmbedColors } from "@/discord/embeds/colors";
 import { formatMoney } from "@createrington/shared/format";
 import type { ComponentsData } from "@createrington/shared/api/embed";
 
@@ -37,7 +37,7 @@ function plainCaption(caption: string): string {
 }
 
 function details(input: GalleryApprovalAnnouncementInput): string {
-  const lines = [`### Screenshot by <@${input.authorDiscordId}>`];
+  const lines = [`### Screenshot by ${userMention(input.authorDiscordId)}`];
   if (input.caption) {
     lines.push(plainCaption(input.caption));
   }
@@ -75,7 +75,7 @@ export const GalleryComponentPresets = {
             separator(),
             actionRow([linkButton(OPEN_GALLERY_LABEL, input.galleryUrl)]),
           ],
-          { accentColor: ComponentColors.Success },
+          { accentColor: EmbedColors.Success },
         ),
       ],
     };

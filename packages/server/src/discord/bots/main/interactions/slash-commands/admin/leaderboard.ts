@@ -1,19 +1,19 @@
 import { Q } from "@/db";
-import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
 import { InteractionError } from "@/discord/utils/interaction-error";
 import { replyError } from "@/discord/utils/interaction-reply";
 import { getService, Services } from "@/services";
 import {
   getAllLeaderboardTypes,
+  isValidLeaderboardType,
   type LeaderboardService,
-  type LeaderboardType,
 } from "@/services/discord/leaderboard";
 import {
   type ChatInputCommandInteraction,
   MessageFlags,
   PermissionFlagsBits,
   SlashCommandBuilder,
+  channelMention,
 } from "discord.js";
 import type {
   CommandModule,
@@ -86,7 +86,15 @@ async function handleCreate(
   interaction: ChatInputCommandInteraction,
   leaderboardService: LeaderboardService,
 ): Promise<void> {
-  const type = interaction.options.getString("type", true) as LeaderboardType;
+  const type = interaction.options.getString("type", true);
+  if (!isValidLeaderboardType(type)) {
+    await replyError(
+      interaction,
+      "Unknown Leaderboard",
+      `There is no ${type} leaderboard.`,
+    );
+    return;
+  }
 
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
@@ -94,9 +102,7 @@ async function handleCreate(
 
   const embed = EmbedPresets.success(
     "Leaderboard Created",
-    `Created ${type} leaderboard in ${Discord.Channels.mention(
-      result.channelId,
-    )}`,
+    `Created ${type} leaderboard in ${channelMention(result.channelId)}`,
   );
 
   await interaction.editReply({
@@ -108,7 +114,15 @@ async function handleRefresh(
   interaction: ChatInputCommandInteraction,
   leaderboardService: LeaderboardService,
 ): Promise<void> {
-  const type = interaction.options.getString("type", true) as LeaderboardType;
+  const type = interaction.options.getString("type", true);
+  if (!isValidLeaderboardType(type)) {
+    await replyError(
+      interaction,
+      "Unknown Leaderboard",
+      `There is no ${type} leaderboard.`,
+    );
+    return;
+  }
 
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 

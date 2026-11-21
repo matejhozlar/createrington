@@ -1,3 +1,4 @@
+import { userMention } from "discord.js";
 import { EmbedColors } from "../../colors";
 import { createEmbed } from "../../embed-builder";
 import { discordTimestamp } from "@/utils/format";
@@ -36,7 +37,7 @@ export const DepartedEmbedPresets = {
     deletedBy: { discordId: string; username: string | null };
     deletedAt: Date;
   }) {
-    const deletedByLine = `<@${info.deletedBy.discordId}>${info.deletedBy.username ? ` (\`${info.deletedBy.username}\`)` : ""}`;
+    const deletedByLine = `${userMention(info.deletedBy.discordId)}${info.deletedBy.username ? ` (\`${info.deletedBy.username}\`)` : ""}`;
 
     return createEmbed()
       .title("✅ Member Deleted")

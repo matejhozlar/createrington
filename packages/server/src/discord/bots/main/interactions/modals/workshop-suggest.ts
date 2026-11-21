@@ -7,6 +7,7 @@ import {
   TextInputBuilder,
   TextInputStyle,
   type ModalSubmitInteraction,
+  channelMention,
 } from "discord.js";
 import type { Workshop } from "@createrington/shared/db";
 import { siteUrl } from "@/config/site-url";
@@ -223,7 +224,7 @@ async function execute(interaction: ModalSubmitInteraction): Promise<void> {
     );
 
     const forumLine = workshop.discordForumChannelId
-      ? `\nA discussion thread will appear in <#${workshop.discordForumChannelId}> shortly.`
+      ? `\nA discussion thread will appear in ${channelMention(workshop.discordForumChannelId)} shortly.`
       : "";
 
     const embed = EmbedPresets.success(

@@ -5,7 +5,6 @@ import { CooldownType } from "@/discord/utils/cooldown";
 import { runRegistration } from "@/discord/bots/main/registration/run-registration";
 import {
   type ChatInputCommandInteraction,
-  type GuildTextBasedChannel,
   SlashCommandBuilder,
 } from "discord.js";
 import type {
@@ -33,20 +32,17 @@ async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
   const mcName = interaction.options.getString("mc_name", true);
-  const member = await interaction.guild!.members.fetch(interaction.user.id);
 
-  if (
-    !member ||
-    typeof member.roles === "string" ||
-    Array.isArray(member.roles)
-  ) {
+  if (!interaction.inCachedGuild()) {
     const { components, flags } = RegistrationComponentPresets.errorWithAdmin(
       "Registration Failed",
-      "Could not verify your roles. Please try again.",
+      "Registration only works inside the server.",
     );
     await interaction.reply({ components, flags });
     return;
   }
+
+  const member = await interaction.guild.members.fetch(interaction.user.id);
 
   if (!member.roles.cache.has(Discord.Roles.UNVERIFIED)) {
     await replyError(
@@ -59,7 +55,7 @@ async function execute(
 
   await interaction.deferReply();
 
-  const channel = (interaction.channel ?? null) as GuildTextBasedChannel | null;
+  const channel = interaction.channel;
 
   await runRegistration({
     member,

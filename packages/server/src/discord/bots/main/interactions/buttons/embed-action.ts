@@ -1,5 +1,11 @@
 import { Q } from "@/db";
-import { ChannelType, type ButtonInteraction, MessageFlags } from "discord.js";
+import {
+  ChannelType,
+  type ButtonInteraction,
+  MessageFlags,
+  channelMention,
+  userMention,
+} from "discord.js";
 import type { EmbedActionButton } from "@createrington/shared/api/embed";
 import type { ButtonModule } from "@/discord/bots/common/loaders/component-loader";
 import { CustomIds } from "@/discord/custom-ids";
@@ -13,7 +19,7 @@ function applyTemplate(
   username: string,
 ): string {
   return template
-    .replace(/\{user\}/g, `<@${userId}>`)
+    .replace(/\{user\}/g, userMention(userId))
     .replace(/\{username\}/g, username)
     .replace(
       /\{date\}/g,
@@ -123,7 +129,7 @@ async function handleCreateThread(
     await thread.send(threadMessage);
 
     await interaction.editReply({
-      content: `Thread created: <#${thread.id}>`,
+      content: `Thread created: ${channelMention(thread.id)}`,
     });
 
     logger.info(
@@ -137,7 +143,7 @@ async function handleCreateThread(
     });
 
     await interaction.editReply({
-      content: `Post created: <#${thread.id}>`,
+      content: `Post created: ${channelMention(thread.id)}`,
     });
 
     logger.info(

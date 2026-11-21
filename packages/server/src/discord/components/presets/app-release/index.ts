@@ -5,7 +5,7 @@ import {
   separator,
   text,
 } from "../../component-builder";
-import { ComponentColors } from "../../colors";
+import { EmbedColors } from "@/discord/embeds/colors";
 import {
   CHANGE_KINDS,
   type ChangeKind,
@@ -59,7 +59,7 @@ export const AppReleaseComponentPresets = {
             separator(),
             actionRow([linkButton("View changelog", data.changelogUrl)]),
           ],
-          { accentColor: ComponentColors.Success },
+          { accentColor: EmbedColors.Success },
         ),
       ],
     };

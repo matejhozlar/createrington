@@ -43,11 +43,14 @@ vi.mock("@/services/settings", () => ({
 vi.mock("@/discord/constants", () => ({
   Discord: {
     Channels: { administration: { NOTIFICATIONS: "notifications" } },
-    Users: { fetch: async () => null },
     Messages: { edit: async () => ({ success: true }) },
   },
 }));
 vi.mock("@/discord/embeds", () => ({ EmbedPresets: {} }));
+vi.mock("@/services", () => ({
+  Services: { DISCORD_MAIN_BOT: "discord-main-bot" },
+  getService: async () => ({ users: { fetch: async () => null } }),
+}));
 vi.mock("@/discord/embeds/presets/buttons", () => ({
   ButtonPresets: { links: { adminPanel: () => ({}) } },
 }));

@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 export enum TicketType {
   GENERAL = "general",
   REPORT = "report",
@@ -27,4 +29,17 @@ export interface CreateTicketOptions {
 
 export function isTicketType(value: string): value is TicketType {
   return (Object.values(TicketType) as string[]).includes(value);
+}
+
+const ticketMetadataSchema = z
+  .object({
+    closeMessageId: z.string().min(1).optional().catch(undefined),
+    transcriptPath: z.string().min(1).optional().catch(undefined),
+  })
+  .catch({});
+
+export type TicketMetadata = z.infer<typeof ticketMetadataSchema>;
+
+export function readTicketMetadata(metadata: unknown): TicketMetadata {
+  return ticketMetadataSchema.parse(metadata ?? {});
 }

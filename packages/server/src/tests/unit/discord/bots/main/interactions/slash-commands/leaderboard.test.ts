@@ -23,6 +23,7 @@ vi.mock("@/services", () => ({
 }));
 vi.mock("@/services/discord/leaderboard", () => ({
   getAllLeaderboardTypes: () => ["playtime"],
+  isValidLeaderboardType: (type: string) => type === "playtime",
 }));
 
 import handler from "@/discord/bots/main/interactions/slash-commands/admin/leaderboard";

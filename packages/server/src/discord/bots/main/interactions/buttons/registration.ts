@@ -1,19 +1,15 @@
 import { RegistrationComponentPresets } from "@/discord/components/presets/registration";
 import { CLOSE_GRACE_MS } from "@/discord/bots/main/registration-cleanup";
 import { Discord } from "@/discord/constants";
-import { isSendableChannel } from "@/discord/utils/channel-guard";
-import {
-  type ButtonInteraction,
-  type GuildChannel,
-  MessageFlags,
-} from "discord.js";
+import { isGuildTextChannel } from "@/discord/utils/channel-guard";
+import { type ButtonInteraction, MessageFlags } from "discord.js";
 import type { ButtonModule } from "@/discord/bots/common/loaders/component-loader";
 import { CustomIds } from "@/discord/custom-ids";
 
 async function execute(interaction: ButtonInteraction): Promise<void> {
   const channel = interaction.channel;
 
-  if (!channel || !isSendableChannel(channel) || channel.isDMBased()) {
+  if (!isGuildTextChannel(channel)) {
     await interaction.reply({
       content: "❌ Channel not found or invalid",
       flags: MessageFlags.Ephemeral,
@@ -21,10 +17,9 @@ async function execute(interaction: ButtonInteraction): Promise<void> {
     return;
   }
 
-  const guildChannel = channel as GuildChannel & { name: string };
-  const channelName = guildChannel.name;
+  const channelName = channel.name;
 
-  if (guildChannel.parentId !== Discord.Categories.VERIFICATION) {
+  if (channel.parentId !== Discord.Categories.VERIFICATION) {
     logger.warn(
       `User ${interaction.user.tag} clicked registration close outside the verification category (channel: ${channelName})`,
     );

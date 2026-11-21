@@ -1,4 +1,7 @@
-import { TicketUserAction } from "@/services/discord/tickets/types";
+import {
+  type TicketMetadata,
+  TicketUserAction,
+} from "@/services/discord/tickets/types";
 import type { Ticket, TicketCreate } from "@/generated/db";
 import { db, Q } from "@/db";
 
@@ -147,7 +150,7 @@ export class TicketRepository {
   /** Shallow-merge into the ticket's metadata JSON blob. */
   async updateMetadata(
     ticketId: number,
-    metadata: Record<string, unknown>,
+    metadata: TicketMetadata,
   ): Promise<Ticket> {
     const ticket = await Q.ticket.get({ id: ticketId });
 

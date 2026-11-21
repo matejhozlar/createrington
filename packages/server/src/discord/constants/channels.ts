@@ -1,16 +1,10 @@
 import config from "@/config";
+import {
+  type ToScreamingSnakeCase,
+  toScreamingSnakeCase,
+} from "./screaming-snake";
 
 const channelsConfig = config.discord.guild.channels;
-
-function toScreamingSnakeCase(str: string): string {
-  return str.replace(/([a-z])([A-Z])/g, "$1_$2").toUpperCase();
-}
-
-type ToScreamingSnakeCase<S extends string> = S extends `${infer T}${infer U}`
-  ? U extends Uncapitalize<U>
-    ? `${Uppercase<T>}${ToScreamingSnakeCase<U>}`
-    : `${Uppercase<T>}_${ToScreamingSnakeCase<U>}`
-  : S;
 
 type TransformChannels<T> = {
   [K in keyof T]: T[K] extends string
@@ -36,12 +30,6 @@ const DiscordChannels = Object.fromEntries(
   ),
 ) as TransformChannels<typeof channelsConfig>;
 
-export type DiscordChannelId = string;
-
 export const DiscordChannelsNamespace = {
   ...DiscordChannels,
-
-  mention(channelId: DiscordChannelId): string {
-    return `<#${channelId}>`;
-  },
 } as const;

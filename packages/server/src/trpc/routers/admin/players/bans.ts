@@ -1,3 +1,4 @@
+import { userMention } from "discord.js";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
@@ -145,7 +146,7 @@ export const bansRouter = router({
           description: [
             `**Player**: ${player.minecraftUsername}`,
             `**Reason**: ${input.reason}`,
-            `**Banned by**: <@${ctx.user.discordId}>`,
+            `**Banned by**: ${userMention(ctx.user.discordId)}`,
             `**Duration**: ${input.durationDays} day${input.durationDays !== 1 ? "s" : ""}`,
             `**Expires**: ${discordTimestamp(expiresAt)}`,
           ].join("\n"),
@@ -284,7 +285,7 @@ export const bansRouter = router({
             `**Player**: ${player.minecraftUsername}`,
             `**Discord**: ${discordTag} (\`${player.discordId}\`)`,
             `**Reason**: ${input.reason}`,
-            `**Banned by**: <@${ctx.user.discordId}>`,
+            `**Banned by**: ${userMention(ctx.user.discordId)}`,
             ``,
             `\u26A0\uFE0F **All player data has been permanently deleted**`,
           ].join("\n"),
@@ -349,7 +350,7 @@ export const bansRouter = router({
           title: "\u2705 Player Unbanned",
           description: [
             `**Player**: ${minecraftUsername}`,
-            `**Unbanned by**: <@${ctx.user.discordId}>`,
+            `**Unbanned by**: ${userMention(ctx.user.discordId)}`,
             `**Reason**: ${input.reason}`,
             `**Original ban reason**: ${existingBan.reason}`,
           ].join("\n"),

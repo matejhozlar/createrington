@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { MessageFlags, type ButtonInteraction } from "discord.js";
+import { ChannelType, MessageFlags, type ButtonInteraction } from "discord.js";
 import handler from "@/discord/bots/main/interactions/buttons/registration";
 import { CLOSE_GRACE_MS } from "@/discord/bots/main/registration-cleanup";
 import { CustomIds } from "@/discord/custom-ids";
@@ -18,12 +18,11 @@ function interactionStub(overrides: { parentId?: string | null } = {}) {
 
   const channel = {
     name: "verify-1",
+    type: ChannelType.GuildText,
     parentId:
       overrides.parentId === undefined
         ? Discord.Categories.VERIFICATION
         : overrides.parentId,
-    send: () => {},
-    isDMBased: () => false,
     delete: del,
   };
 

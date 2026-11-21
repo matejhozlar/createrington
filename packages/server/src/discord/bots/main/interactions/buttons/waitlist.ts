@@ -5,13 +5,13 @@ import { denyForeignVerificationChannel } from "@/discord/bots/main/registration
 import { WaitlistComponentPresets } from "@/discord/components/presets/waitlist";
 import type { ButtonModule } from "@/discord/bots/common/loaders/component-loader";
 import { CustomIds } from "@/discord/custom-ids";
-import { MessageFlags, type ButtonInteraction } from "discord.js";
+import { MessageFlags, type ButtonInteraction, userMention } from "discord.js";
 
 async function renderCurrentState(
   interaction: ButtonInteraction,
 ): Promise<void> {
   const discordId = interaction.user.id;
-  const memberMention = `<@${discordId}>`;
+  const memberMention = userMention(discordId);
 
   const entry = await Q.waitlist.entry.find({ discordId });
 

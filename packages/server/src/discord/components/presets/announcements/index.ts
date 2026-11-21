@@ -8,7 +8,7 @@ import {
   text,
   thumbnail,
 } from "../../component-builder";
-import { ComponentColors } from "../../colors";
+import { EmbedColors } from "@/discord/embeds/colors";
 import { discordTimestamp } from "@/utils/format";
 import type {
   ComponentContainer,
@@ -61,7 +61,7 @@ export const AnnouncementComponentPresets = {
       components: [
         container(
           children,
-          data.accent ? { accentColor: ComponentColors.Warning } : {},
+          data.accent ? { accentColor: EmbedColors.Warning } : {},
         ),
       ],
     };
@@ -83,7 +83,7 @@ export const AnnouncementComponentPresets = {
       components: [
         container(
           children,
-          data.accent ? { accentColor: ComponentColors.Info } : {},
+          data.accent ? { accentColor: EmbedColors.Info } : {},
         ),
       ],
     };

@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { ComponentType, MessageFlags } from "discord.js";
 import { RegistrationComponentPresets } from "@/discord/components/presets/registration";
 import { CustomIds } from "@/discord/custom-ids";
-import { ComponentColors } from "@/discord/components/colors";
+import { EmbedColors } from "@/discord/embeds/colors";
 
 type ChildView = {
   type: number;
@@ -37,7 +37,7 @@ describe("RegistrationComponentPresets.closing", () => {
     expect(result.flags).toBe(MessageFlags.IsComponentsV2);
 
     const { container, texts } = view(result);
-    expect(container.accent_color).toBe(ComponentColors.Error);
+    expect(container.accent_color).toBe(EmbedColors.Error);
     expect(texts[0]?.content).toContain("Channel Deletion");
     expect(texts[1]?.content).toContain("deleted");
   });

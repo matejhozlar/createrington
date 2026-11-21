@@ -10,7 +10,7 @@ import {
   SeparatorSpacingSize,
   TextDisplayBuilder,
 } from "discord.js";
-import { ComponentColors } from "../../colors";
+import { EmbedColors } from "@/discord/embeds/colors";
 import type { TopLevelComponent } from "../../component-builder";
 import { discordTimestamp } from "@/utils/format";
 import { CustomIds } from "@/discord/custom-ids";
@@ -52,7 +52,7 @@ function websiteButton(): ButtonBuilder {
 export const WaitlistComponentPresets = {
   queueOffer(params: { memberMention: string }): WaitlistMessage {
     const container = new ContainerBuilder()
-      .setAccentColor(ComponentColors.Warning)
+      .setAccentColor(EmbedColors.Warning)
       .addTextDisplayComponents(
         text("## 🎉 Welcome to Createrington!"),
         text(
@@ -78,7 +78,7 @@ export const WaitlistComponentPresets = {
     queuedAt: Date;
   }): WaitlistMessage {
     const container = new ContainerBuilder()
-      .setAccentColor(ComponentColors.Warning)
+      .setAccentColor(EmbedColors.Warning)
       .addTextDisplayComponents(
         text("## ⏳ You're on the waitlist!"),
         text(
@@ -106,7 +106,7 @@ export const WaitlistComponentPresets = {
 
   left(params: { memberMention: string }): WaitlistMessage {
     const container = new ContainerBuilder()
-      .setAccentColor(ComponentColors.Neutral)
+      .setAccentColor(EmbedColors.Neutral)
       .addTextDisplayComponents(
         text("## 👋 You've left the waitlist"),
         text(
