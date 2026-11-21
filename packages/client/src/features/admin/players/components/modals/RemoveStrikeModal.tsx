@@ -23,7 +23,7 @@ export function RemoveStrikeModal({
   const [reason, setReason] = useState("");
 
   const removeStrike = useMutation(
-    trpc.admin.players.strikes.remove.mutationOptions(
+    trpc.admin.players.strikes.delete.mutationOptions(
       useMutationToast({
         success: "Strike removed",
         onSuccess: () => {

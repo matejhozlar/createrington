@@ -5,7 +5,7 @@ import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
 import { useMutation } from "@tanstack/react-query";
 
 type WaitlistEntry =
-  RouterOutput["admin"]["waitlists"]["list"]["entries"][number];
+  RouterOutput["admin"]["waitlists"]["list"]["items"][number];
 
 interface PromoteWaitlistModalProps {
   open: boolean;

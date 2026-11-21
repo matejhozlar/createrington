@@ -56,7 +56,7 @@ export const waitlistsRouter = router({
         { orderBy: input.orderBy, orderDirection: input.orderDirection },
       );
 
-      return { entries, pagination };
+      return { items: entries, pagination };
     }),
 
   get: adminProcedure
@@ -105,7 +105,5 @@ export const waitlistsRouter = router({
       void waitlistPromotionService.promoteEligible().catch((error) => {
         logger.error("Promotion pass after waitlist delete failed:", error);
       });
-
-      return { message: "Waitlist entry deleted successfully" };
     }),
 });

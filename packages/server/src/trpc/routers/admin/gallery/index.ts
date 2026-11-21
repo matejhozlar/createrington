@@ -293,7 +293,7 @@ export const adminGalleryRouter = router({
       return item;
     }),
 
-  remove: adminProcedure
+  delete: adminProcedure
     .meta({
       description:
         "Pull an approved screenshot from the gallery, deleting its published files and announcement",

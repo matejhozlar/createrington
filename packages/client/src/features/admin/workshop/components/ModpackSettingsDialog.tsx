@@ -55,7 +55,7 @@ export function ModpackSettingsDialog({
             trpc.admin.workshops.listPackMods.pathFilter(),
           );
           void queryClient.invalidateQueries(
-            trpc.admin.workshops.getAttention.pathFilter(),
+            trpc.admin.workshops.attention.pathFilter(),
           );
           void queryClient.invalidateQueries(
             trpc.user.workshops.list.pathFilter(),

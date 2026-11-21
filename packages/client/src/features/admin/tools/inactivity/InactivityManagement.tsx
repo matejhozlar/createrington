@@ -65,7 +65,7 @@ import { UnlinkedMembersCard } from "./components/UnlinkedMembersCard";
 import { EmptyState, ErrorState } from "@/components/query-states";
 import { StatCard } from "@/components/stat-card";
 
-type Warning = RouterOutput["admin"]["inactivity"]["list"]["warnings"][number];
+type Warning = RouterOutput["admin"]["inactivity"]["list"]["items"][number];
 
 const invalidateAfterRemovalRun = () => {
   void queryClient.invalidateQueries(trpc.admin.inactivity.pathFilter());
@@ -117,7 +117,7 @@ export function InactivityManagement() {
     ),
   );
 
-  const warnings = listQuery.data?.warnings ?? [];
+  const warnings = listQuery.data?.items ?? [];
   const total = listQuery.data?.pagination.total ?? 0;
   const totalPages = listQuery.data?.pagination.totalPages ?? 0;
   const loading = listQuery.isLoading || listQuery.isPlaceholderData;

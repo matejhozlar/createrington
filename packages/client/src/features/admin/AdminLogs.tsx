@@ -93,7 +93,7 @@ export function AdminLogs() {
     ),
   );
 
-  const actions = logsQuery.data?.actions ?? [];
+  const actions = logsQuery.data?.items ?? [];
   const total = logsQuery.data?.pagination.total ?? 0;
   const totalPages = logsQuery.data?.pagination.totalPages ?? 0;
   const loading = logsQuery.isLoading || logsQuery.isPlaceholderData;

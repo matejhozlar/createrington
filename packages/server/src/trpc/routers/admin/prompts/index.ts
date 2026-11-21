@@ -157,8 +157,6 @@ export const adminPromptsRouter = router({
         description: `Manually closed player prompt #${input.id}`,
         metadata: { promptId: input.id },
       });
-
-      return { ok: true };
     }),
 
   delete: adminProcedure
@@ -187,7 +185,5 @@ export const adminPromptsRouter = router({
           responderCount: totals.responderCount,
         },
       });
-
-      return { ok: true };
     }),
 });

@@ -51,14 +51,14 @@ export function AddModDialog({
   const debouncedSearch = useDebouncedValue(searchQuery, 400);
 
   const searchModsQuery = useQuery(
-    trpc.admin.structurePacks.searchMods.queryOptions(
+    trpc.admin.structurePacks.mods.search.queryOptions(
       { query: debouncedSearch },
       { enabled: debouncedSearch.length >= 2 },
     ),
   );
 
   const modFilesQuery = useQuery(
-    trpc.admin.structurePacks.getModFiles.queryOptions(
+    trpc.admin.structurePacks.mods.files.queryOptions(
       { modId: selectedModId! },
       { enabled: selectedModId !== null },
     ),
@@ -69,7 +69,7 @@ export function AddModDialog({
     [selectedFile],
   );
   const depsQuery = useQuery(
-    trpc.admin.structurePacks.resolveDeps.queryOptions(
+    trpc.admin.structurePacks.mods.resolveDeps.queryOptions(
       { packId, modIds: addDepModIds },
       { enabled: addDepModIds.length > 0 && selectedFile !== null },
     ),
@@ -96,7 +96,7 @@ export function AddModDialog({
   const selectedDeps = depOverrides ?? defaultDepSelection;
 
   const addModMutation = useMutation(
-    trpc.admin.structurePacks.addMod.mutationOptions({
+    trpc.admin.structurePacks.mods.create.mutationOptions({
       onSuccess: () => {
         void queryClient.invalidateQueries(
           trpc.admin.structurePacks.get.queryFilter({ id: packId }),

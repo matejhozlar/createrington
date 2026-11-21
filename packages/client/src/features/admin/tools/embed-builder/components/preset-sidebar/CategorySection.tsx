@@ -66,7 +66,7 @@ export function CategorySection({
       { enabled: isOpen },
     ),
   );
-  const presets = presetsQuery.data?.presets ?? [];
+  const presets = presetsQuery.data?.items ?? [];
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>

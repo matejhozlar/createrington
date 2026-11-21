@@ -25,7 +25,7 @@ export const ticketsRouter = router({
       );
 
       return {
-        tickets,
+        items: tickets,
         pagination: buildPagination(input.page, input.limit, total),
       };
     }),

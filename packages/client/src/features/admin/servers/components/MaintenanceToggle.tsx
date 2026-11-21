@@ -79,7 +79,7 @@ export function MaintenanceToggle({
   };
 
   const { data: status } = useQuery(
-    trpc.admin.servers.maintenanceStatus.queryOptions(
+    trpc.admin.servers.maintenance.status.queryOptions(
       { serverId },
       { refetchInterval: 15_000 },
     ),
@@ -96,12 +96,12 @@ export function MaintenanceToggle({
     );
     void queryClient.invalidateQueries(trpc.admin.servers.list.pathFilter());
     void queryClient.invalidateQueries(
-      trpc.admin.servers.maintenanceStatus.queryFilter({ serverId }),
+      trpc.admin.servers.maintenance.status.queryFilter({ serverId }),
     );
   };
 
   const toggleMutation = useMutation(
-    trpc.admin.servers.toggleMaintenance.mutationOptions({
+    trpc.admin.servers.maintenance.toggle.mutationOptions({
       onSuccess: (data) => {
         if (!data.enabled) {
           toast.success("Maintenance mode disabled");
@@ -122,7 +122,7 @@ export function MaintenanceToggle({
   );
 
   const scheduleMutation = useMutation(
-    trpc.admin.servers.scheduleMaintenance.mutationOptions(
+    trpc.admin.servers.maintenance.schedule.mutationOptions(
       useMutationToast({
         success: "Maintenance scheduled",
         onSuccess: () => {
@@ -136,7 +136,7 @@ export function MaintenanceToggle({
   );
 
   const cancelMutation = useMutation(
-    trpc.admin.servers.cancelScheduledMaintenance.mutationOptions({
+    trpc.admin.servers.maintenance.cancelSchedule.mutationOptions({
       ...useMutationToast({ success: "Scheduled maintenance cancelled" }),
       onSettled: () => {
         invalidate();

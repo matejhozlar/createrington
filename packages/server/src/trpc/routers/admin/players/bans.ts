@@ -348,7 +348,7 @@ export const bansRouter = router({
       return { ban };
     }),
 
-  getRecent: adminProcedure
+  listRecent: adminProcedure
     .meta({
       description:
         "Get recent bans across all players. Defaults to active-only",

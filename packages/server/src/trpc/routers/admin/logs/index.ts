@@ -44,7 +44,7 @@ export const logsRouter = router({
       });
 
       return {
-        actions,
+        items: actions,
         pagination: buildPagination(input.page, input.limit, total),
       };
     }),

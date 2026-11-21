@@ -77,8 +77,6 @@ export const embedPresetCategoriesRouter = router({
 
       assertPatchNotEmpty(updates);
       await Q.discord.embed.preset.category.update({ id: input.id }, updates);
-
-      return { message: "Category updated" };
     }),
 
   delete: adminProcedure
@@ -93,7 +91,5 @@ export const embedPresetCategoriesRouter = router({
       );
 
       await Q.discord.embed.preset.category.delete({ id: input.id });
-
-      return { message: "Category deleted" };
     }),
 });

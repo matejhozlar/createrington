@@ -45,7 +45,7 @@ import { trpc, type RouterOutput } from "@/lib/trpc";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { EmptyState, ErrorState } from "@/components/query-states";
 
-type FaqEntry = RouterOutput["admin"]["faq"]["list"]["entries"][number];
+type FaqEntry = RouterOutput["admin"]["faq"]["list"]["items"][number];
 
 type SortField = "priority" | "title" | "createdAt";
 type EnabledFilter = "all" | "enabled" | "disabled";
@@ -94,7 +94,7 @@ export function AdminFaq() {
     ),
   );
 
-  const entries = entriesQuery.data?.entries ?? [];
+  const entries = entriesQuery.data?.items ?? [];
   const total = entriesQuery.data?.pagination.total ?? 0;
   const totalPages = entriesQuery.data?.pagination.totalPages ?? 0;
   const loading = entriesQuery.isLoading || entriesQuery.isPlaceholderData;

@@ -56,7 +56,7 @@ export function AdminDashboard() {
     trpc.admin.waitlists.stats.queryOptions(),
   );
   const recentBansQuery = useQuery(
-    trpc.admin.players.bans.getRecent.queryOptions({
+    trpc.admin.players.bans.listRecent.queryOptions({
       limit: 5,
       activeOnly: false,
     }),
@@ -187,7 +187,7 @@ export function AdminDashboard() {
       },
     },
   ];
-  const recentLogs = recentLogsQuery.data?.actions ?? [];
+  const recentLogs = recentLogsQuery.data?.items ?? [];
 
   return (
     <div className="flex flex-1 flex-col gap-4">

@@ -32,7 +32,7 @@ import { RowDetails, type DetailTab } from "./RowDetails";
 import { useSuspenseQuery, useQuery } from "@tanstack/react-query";
 
 type BoardPage = RouterOutput["public"]["leaderboards"]["list"];
-type BoardRow = BoardPage["rows"][number];
+type BoardRow = BoardPage["items"][number];
 type BoardFocus = NonNullable<BoardPage["focus"]>;
 type TopRole = RouterOutput["public"]["leaderboards"]["hero"][number];
 type BoardEntry = (typeof BOARDS)[number];
@@ -350,7 +350,7 @@ export function LeaderboardTable() {
     ),
   );
   const listQuery = activeStat ? statQuery : boardQuery;
-  const rows = listQuery.data?.rows ?? [];
+  const rows = listQuery.data?.items ?? [];
   const pagination = listQuery.data?.pagination;
   const topValue = listQuery.data?.topValue ?? 0;
   const contestedKeys = boardQuery.data?.contestedKeys ?? 0;

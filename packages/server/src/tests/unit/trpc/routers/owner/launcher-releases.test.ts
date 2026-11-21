@@ -129,7 +129,7 @@ describe("owner.launcherReleases.list", () => {
     expect(result).toEqual({
       channel: "staging",
       enabled: false,
-      releases: [
+      items: [
         {
           id: 7,
           version: "0.3.0",

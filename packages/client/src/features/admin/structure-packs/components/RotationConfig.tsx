@@ -37,7 +37,7 @@ const DAYS_OF_MONTH = Array.from({ length: 28 }, (_, i) => i + 1);
 
 export function RotationConfig() {
   const configQuery = useQuery(
-    trpc.admin.structurePacks.rotationConfig.get.queryOptions(),
+    trpc.admin.structurePacks.rotation.config.get.queryOptions(),
   );
   const config = configQuery.data;
 
@@ -75,12 +75,12 @@ export function RotationConfig() {
     gracePeriodMinutes ?? config?.gracePeriodMinutes ?? 30;
 
   const updateMutation = useMutation(
-    trpc.admin.structurePacks.rotationConfig.update.mutationOptions(
+    trpc.admin.structurePacks.rotation.config.update.mutationOptions(
       useMutationToast({
         success: "Rotation config updated",
         onSuccess: () => {
           void queryClient.invalidateQueries(
-            trpc.admin.structurePacks.rotationConfig.get.pathFilter(),
+            trpc.admin.structurePacks.rotation.config.get.pathFilter(),
           );
         },
       }),
@@ -88,7 +88,7 @@ export function RotationConfig() {
   );
 
   const forceRotationMutation = useMutation(
-    trpc.admin.structurePacks.forceRotation.mutationOptions(
+    trpc.admin.structurePacks.rotation.force.mutationOptions(
       useMutationToast({
         success: "Rotation triggered",
         onSuccess: () => {
@@ -96,7 +96,7 @@ export function RotationConfig() {
             trpc.admin.structurePacks.list.pathFilter(),
           );
           void queryClient.invalidateQueries(
-            trpc.admin.structurePacks.rotationConfig.get.pathFilter(),
+            trpc.admin.structurePacks.rotation.config.get.pathFilter(),
           );
         },
       }),
@@ -104,7 +104,7 @@ export function RotationConfig() {
   );
 
   const clearRotationMutation = useMutation(
-    trpc.admin.structurePacks.clearRotation.mutationOptions(
+    trpc.admin.structurePacks.rotation.clear.mutationOptions(
       useMutationToast({
         success: "Rotation cleared — no active structure pack",
         onSuccess: () => {
@@ -112,7 +112,7 @@ export function RotationConfig() {
             trpc.admin.structurePacks.list.pathFilter(),
           );
           void queryClient.invalidateQueries(
-            trpc.admin.structurePacks.rotationConfig.get.pathFilter(),
+            trpc.admin.structurePacks.rotation.config.get.pathFilter(),
           );
         },
       }),

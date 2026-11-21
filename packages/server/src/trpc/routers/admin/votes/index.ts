@@ -68,7 +68,7 @@ export const adminVotesRouter = router({
         input,
         { orderBy: "votedAt", orderDirection: "desc" },
       );
-      return { votes, pagination };
+      return { items: votes, pagination };
     }),
 
   rewardCommands: adminProcedure

@@ -74,7 +74,7 @@ export function PresetSidebar({
   }, [collapsed, forceExpanded]);
 
   const isSearching = !!search;
-  const searchResults = presetsQuery.data?.presets ?? [];
+  const searchResults = presetsQuery.data?.items ?? [];
   const categories = categoriesQuery.data ?? [];
 
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);

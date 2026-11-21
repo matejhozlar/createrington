@@ -110,7 +110,7 @@ export function usePresetActions({
           limit: 50,
         }),
       );
-      const copyNames = new Set(existing.presets.map((p) => p.name));
+      const copyNames = new Set(existing.items.map((p) => p.name));
       if (copyNames.has(copyName)) {
         let n = 2;
         while (copyNames.has(`${baseName} (copy ${n})`)) n++;

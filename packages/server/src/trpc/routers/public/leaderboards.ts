@@ -99,7 +99,7 @@ function boardPage(
   const offset = pageOffset(input);
 
   return {
-    rows: matches.slice(offset, offset + input.limit),
+    items: matches.slice(offset, offset + input.limit),
     pagination: buildPagination(input.page, input.limit, matches.length),
     contestedKeys: snapshot.contestedKeys,
     topValue: snapshot.rows[0]?.value ?? 0,
@@ -232,7 +232,7 @@ export const leaderboardsRouter = router({
         },
       );
       return {
-        rows,
+        items: rows,
         pagination: buildPagination(input.page, input.limit, total),
       };
     }),
