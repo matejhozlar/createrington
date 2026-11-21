@@ -1,6 +1,10 @@
 import type { Pool, PoolClient } from "pg";
-import type { Workshop } from "@createrington/shared/db";
+import type { Workshop, WorkshopRow } from "@createrington/shared/db";
 import { WorkshopBaseQueries } from "@/generated/db/workshop.queries";
+
+export interface WorkshopWithModCountRow extends WorkshopRow {
+  mod_count: number;
+}
 
 export interface WorkshopParticipantSummary {
   count: number;
@@ -23,13 +27,11 @@ export class WorkshopQueries extends WorkshopBaseQueries {
         GROUP BY workshop_id
       ) m ON m.workshop_id = w.id
       ORDER BY w.created_at DESC`;
-    const result = await this.runQuery<
-      Record<string, unknown> & { mod_count: number }
-    >("list workshops with mod count", query);
-    return result.rows.map((row) => ({
-      ...this.mapRowToEntity(row as never),
-      modCount: row.mod_count,
-    }));
+    const result = await this.runQuery<WorkshopWithModCountRow>(
+      "list workshops with mod count",
+      query,
+    );
+    return this.mapRowsToEntities(result.rows);
   }
 
   /**

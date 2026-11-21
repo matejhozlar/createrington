@@ -34,6 +34,33 @@ export interface HeldRecord {
   runnerUp: number;
 }
 
+interface StatCompareRow {
+  minecraft_uuid: string;
+  minecraft_username: string;
+  values: number[];
+}
+
+interface RecordLeaderboardRow {
+  minecraft_uuid: string;
+  minecraft_username: string;
+  discord_id: string;
+  records: number;
+}
+
+interface StatRankingRow {
+  minecraft_uuid: string;
+  minecraft_username: string;
+  value: number;
+}
+
+interface HeldRecordRow {
+  category: string;
+  item: string;
+  value: number;
+  holders: number;
+  runner_up: number;
+}
+
 const RECORD_CATEGORIES = [
   "minecraft:mined",
   "minecraft:killed",
@@ -191,13 +218,7 @@ export class PlayerMinecraftStatTotalQueries extends PlayerMinecraftStatTotalBas
       minecraftUuid,
       DISTANCE_ITEMS,
     ]);
-    const row = result.rows[0];
-    return {
-      blocksMined: row?.blocks_mined ?? 0,
-      mobsKilled: row?.mobs_killed ?? 0,
-      deaths: row?.deaths ?? 0,
-      distanceCm: row?.distance_cm ?? 0,
-    };
+    return this.mapRowToEntity(result.rows[0]);
   }
 
   /**
@@ -215,8 +236,8 @@ export class PlayerMinecraftStatTotalQueries extends PlayerMinecraftStatTotalBas
 
     const query = `
       SELECT
-        p.minecraft_uuid AS "minecraftUuid",
-        p.minecraft_username AS "minecraftUsername",
+        p.minecraft_uuid,
+        p.minecraft_username,
         array_agg(COALESCE(v.value, 0)::float8 ORDER BY c.position) AS "values"
       FROM player p
       CROSS JOIN unnest($2::text[]) WITH ORDINALITY AS c(category, position)
@@ -235,12 +256,12 @@ export class PlayerMinecraftStatTotalQueries extends PlayerMinecraftStatTotalBas
       LIMIT $3
     `;
 
-    const result = await this.runQuery<StatCompareResult>(
+    const result = await this.runQuery<StatCompareRow>(
       "compare minecraft stat item",
       query,
       [item, categories, options?.limit ?? 200],
     );
-    return result.rows;
+    return this.mapRowsToEntities(result.rows);
   }
 
   /**
@@ -253,15 +274,15 @@ export class PlayerMinecraftStatTotalQueries extends PlayerMinecraftStatTotalBas
     const query = `
       WITH ranked AS (${this.recordRankedSql()})
       SELECT
-        p.minecraft_uuid AS "minecraftUuid",
-        p.minecraft_username AS "minecraftUsername",
-        p.discord_id AS "discordId",
+        p.minecraft_uuid,
+        p.minecraft_username,
+        p.discord_id,
         count(*)::int AS records,
         (
           SELECT count(DISTINCT stat_key_id)
           FROM ranked
           WHERE holders >= $3
-        )::int AS "contestedKeys"
+        )::int AS contested_keys
       FROM ranked r
       JOIN player p ON p.minecraft_uuid = r.minecraft_uuid
       WHERE r.position = 1 AND r.holders >= $3
@@ -271,7 +292,7 @@ export class PlayerMinecraftStatTotalQueries extends PlayerMinecraftStatTotalBas
     `;
 
     const result = await this.runQuery<
-      RecordLeaderboardEntry & { contestedKeys: number }
+      RecordLeaderboardRow & { contested_keys: number }
     >("get record leaderboard", query, [
       RECORD_CATEGORIES,
       RECORD_CUSTOM_BLOCKLIST,
@@ -280,13 +301,10 @@ export class PlayerMinecraftStatTotalQueries extends PlayerMinecraftStatTotalBas
     ]);
 
     return {
-      rows: result.rows.map((row) => ({
-        minecraftUuid: row.minecraftUuid,
-        minecraftUsername: row.minecraftUsername,
-        discordId: row.discordId,
-        records: row.records,
-      })),
-      contestedKeys: result.rows[0]?.contestedKeys ?? 0,
+      rows: result.rows.map(({ contested_keys: _contestedKeys, ...row }) =>
+        this.mapRowToEntity(row),
+      ),
+      contestedKeys: result.rows[0]?.contested_keys ?? 0,
     };
   }
 
@@ -305,22 +323,18 @@ export class PlayerMinecraftStatTotalQueries extends PlayerMinecraftStatTotalBas
         WHERE r.position = 1 AND r.holders >= $3
         GROUP BY p.minecraft_uuid, p.minecraft_username, p.discord_id
       )
-      SELECT
-        minecraft_uuid AS "minecraftUuid",
-        minecraft_username AS "minecraftUsername",
-        discord_id AS "discordId",
-        records
+      SELECT minecraft_uuid, minecraft_username, discord_id, records
       FROM leaders
       WHERE records = (SELECT max(records) FROM leaders)
       ORDER BY minecraft_username ASC
     `;
 
-    const result = await this.runQuery<RecordLeaderboardEntry>(
+    const result = await this.runQuery<RecordLeaderboardRow>(
       "get record leaders",
       query,
       [RECORD_CATEGORIES, RECORD_CUSTOM_BLOCKLIST, RECORD_MIN_HOLDERS],
     );
-    return result.rows;
+    return this.mapRowsToEntities(result.rows);
   }
 
   private recordRankedSql(): string {
@@ -344,8 +358,8 @@ export class PlayerMinecraftStatTotalQueries extends PlayerMinecraftStatTotalBas
   ): Promise<StatRankingEntry[]> {
     const query = `
       SELECT
-        p.minecraft_uuid AS "minecraftUuid",
-        p.minecraft_username AS "minecraftUsername",
+        p.minecraft_uuid,
+        p.minecraft_username,
         t.value::float8 AS value
       FROM ${this.table} t
       JOIN player_minecraft_stat_key k ON k.id = t.stat_key_id
@@ -354,12 +368,12 @@ export class PlayerMinecraftStatTotalQueries extends PlayerMinecraftStatTotalBas
       ORDER BY t.value DESC, p.minecraft_username ASC
     `;
 
-    const result = await this.runQuery<StatRankingEntry>(
+    const result = await this.runQuery<StatRankingRow>(
       "get minecraft stat ranking",
       query,
       [category, item],
     );
-    return result.rows;
+    return this.mapRowsToEntities(result.rows);
   }
 
   /**
@@ -391,13 +405,13 @@ export class PlayerMinecraftStatTotalQueries extends PlayerMinecraftStatTotalBas
         item,
         value::float8 AS value,
         holders::int AS holders,
-        runner_up::float8 AS "runnerUp"
+        runner_up::float8 AS runner_up
       FROM mine
       WHERE holders >= $4 AND value >= runner_up
       ORDER BY holders DESC, value DESC, category, item
     `;
 
-    const result = await this.runQuery<HeldRecord>(
+    const result = await this.runQuery<HeldRecordRow>(
       "get minecraft stat records held",
       query,
       [
@@ -407,7 +421,7 @@ export class PlayerMinecraftStatTotalQueries extends PlayerMinecraftStatTotalBas
         RECORD_MIN_HOLDERS,
       ],
     );
-    return result.rows;
+    return this.mapRowsToEntities(result.rows);
   }
 
   /**

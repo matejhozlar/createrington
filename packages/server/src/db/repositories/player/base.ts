@@ -1,5 +1,6 @@
 import { Q } from "@/db";
 import type { Player } from "@createrington/shared/db";
+import type { DatabaseQueries } from "@/generated/db";
 
 export type PlayerIdentifier =
   | { minecraftUuid: string }
@@ -16,12 +17,13 @@ export type PlayerIdentifier =
 export abstract class BasePlayerRepository {
   protected async resolvePlayerUuid(
     identifier: PlayerIdentifier,
+    tx?: DatabaseQueries,
   ): Promise<string> {
     if (typeof identifier === "string") return identifier;
     if ("minecraftUuid" in identifier && identifier.minecraftUuid) {
       return identifier.minecraftUuid;
     }
-    const result = await Q.player.get(identifier);
-    return result.minecraftUuid;
+    const player = await (tx ?? Q).player.get(identifier);
+    return player.minecraftUuid;
   }
 }

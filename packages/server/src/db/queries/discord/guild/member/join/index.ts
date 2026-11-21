@@ -1,5 +1,6 @@
 import type { Pool, PoolClient } from "pg";
 import { DiscordGuildMemberJoinBaseQueries } from "@/generated/db/discord_guild_member_join.queries";
+import type { Granularity } from "@/db/utils";
 
 /**
  * Custom queries for discord_guild_member_join table
@@ -23,23 +24,16 @@ export class DiscordGuildMemberJoinQueries extends DiscordGuildMemberJoinBaseQue
   async getJoinsByPeriod(
     start: Date,
     end: Date,
-    granularity: "day" | "week" | "month" = "day",
+    granularity: Granularity = "day",
   ): Promise<Array<{ period: string; count: number }>> {
-    const query = `
-      SELECT
-        DATE_TRUNC($3, joined_at)::text AS period,
-        COUNT(*)::integer AS count
-      FROM ${this.table}
-      WHERE joined_at >= $1 AND joined_at < $2
-      GROUP BY 1
-      ORDER BY 1`;
-
-    const result = await this.runQuery<{ period: string; count: number }>(
+    return this.aggregateByPeriod<{ count: number }>(
       "get joins by period",
-      query,
-      [start, end, granularity],
+      "joinedAt",
+      { count: "COUNT(*)::int" },
+      start,
+      end,
+      granularity,
     );
-    return result.rows;
   }
 
   /**

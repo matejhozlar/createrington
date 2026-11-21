@@ -1,6 +1,5 @@
 import type { Pool, PoolClient } from "pg";
 import { PlayerPlaytimeSummaryBaseQueries } from "@/generated/db/player_playtime_summary.queries";
-import type { PlayerPlaytimeSummaryRow } from "@createrington/shared/db/player_playtime_summary.types";
 
 export type GlobalLeaderboardEntry = {
   discordId: string;
@@ -25,6 +24,27 @@ export type ServerStats = {
   totalSeconds: number;
   totalSessions: number;
   avgSessionSeconds: number;
+};
+
+type LeaderboardRow = {
+  player_minecraft_uuid: string;
+  server_id: number;
+  total_seconds: number;
+  total_sessions: number;
+  avg_session_seconds: number;
+  first_seen: Date | null;
+  last_seen: Date | null;
+  minecraft_username: string;
+};
+
+type ServerPlaytimeRow = {
+  server_id: number;
+  server_name: string;
+  total_seconds: number;
+  total_sessions: number;
+  avg_session_seconds: number;
+  first_seen: Date | null;
+  last_seen: Date | null;
 };
 
 type ServerStatsRow = {
@@ -95,7 +115,8 @@ export class PlayerPlaytimeSummaryQueries extends PlayerPlaytimeSummaryBaseQueri
     periodStart: Date,
     periodEnd: Date,
   ): Promise<void> {
-    await this.db.query(
+    await this.runQuery(
+      "credit playtime seconds",
       `INSERT INTO ${this.table} (player_minecraft_uuid, server_id, total_seconds, total_sessions, first_seen, last_seen)
        VALUES ($1, $2, $3, 0, $4, $5)
        ON CONFLICT (player_minecraft_uuid, server_id)
@@ -124,7 +145,8 @@ export class PlayerPlaytimeSummaryQueries extends PlayerPlaytimeSummaryBaseQueri
     sessionStart: Date,
     sessionEnd: Date,
   ): Promise<void> {
-    await this.db.query(
+    await this.runQuery(
+      "record playtime session end",
       `INSERT INTO ${this.table} (player_minecraft_uuid, server_id, total_seconds, total_sessions, first_seen, last_seen)
        VALUES ($1, $2, 0, 1, $3, $4)
        ON CONFLICT (player_minecraft_uuid, server_id)
@@ -184,20 +206,17 @@ export class PlayerPlaytimeSummaryQueries extends PlayerPlaytimeSummaryBaseQueri
 
     const result = await this.runQuery<{
       player_minecraft_uuid: string;
-      total_seconds: string;
+      total_seconds: number;
     }>(
       "get playtime totals",
-      `SELECT player_minecraft_uuid, total_seconds
+      `SELECT player_minecraft_uuid, total_seconds::float8 AS total_seconds
        FROM ${this.table}
        WHERE server_id = $1 AND player_minecraft_uuid = ANY($2::uuid[])`,
       [serverId, playerMinecraftUuids],
     );
 
     return new Map(
-      result.rows.map((row) => [
-        row.player_minecraft_uuid,
-        Number(row.total_seconds),
-      ]),
+      result.rows.map((row) => [row.player_minecraft_uuid, row.total_seconds]),
     );
   }
 
@@ -217,8 +236,14 @@ export class PlayerPlaytimeSummaryQueries extends PlayerPlaytimeSummaryBaseQueri
     limit: number = 10,
   ): Promise<LeaderboardEntry[]> {
     const query = `
-      SELECT 
-        s.*,
+      SELECT
+        s.player_minecraft_uuid,
+        s.server_id,
+        s.total_seconds::float8 AS total_seconds,
+        s.total_sessions,
+        s.avg_session_seconds::float8 AS avg_session_seconds,
+        s.first_seen,
+        s.last_seen,
         p.minecraft_username
       FROM ${this.table} s
       JOIN player p ON p.minecraft_uuid = s.player_minecraft_uuid
@@ -226,17 +251,13 @@ export class PlayerPlaytimeSummaryQueries extends PlayerPlaytimeSummaryBaseQueri
       ORDER BY s.total_seconds DESC
       LIMIT $2`;
 
-    const result = await this.runQuery<
-      PlayerPlaytimeSummaryRow & { minecraft_username: string }
-    >("get leaderboard", query, [serverId, limit]);
+    const result = await this.runQuery<LeaderboardRow>(
+      "get leaderboard",
+      query,
+      [serverId, limit],
+    );
 
-    return result.rows.map((row) => ({
-      ...this.mapRowToEntity(row),
-      totalSeconds: Number(row.total_seconds),
-      totalSessions: Number(row.total_sessions),
-      avgSessionSeconds: Number(row.avg_session_seconds),
-      minecraftUsername: row.minecraft_username,
-    }));
+    return this.mapRowsToEntities(result.rows);
   }
 
   /**
@@ -265,7 +286,7 @@ export class PlayerPlaytimeSummaryQueries extends PlayerPlaytimeSummaryBaseQueri
       [serverId],
     );
 
-    return this.mapRowToEntity<ServerStatsRow, ServerStats>(result.rows[0]);
+    return this.mapRowToEntity(result.rows[0]);
   }
 
   /**
@@ -281,13 +302,12 @@ export class PlayerPlaytimeSummaryQueries extends PlayerPlaytimeSummaryBaseQueri
     playerMinecraftUuid: string,
   ): Promise<PlayerPlaytimeBreakdown> {
     const query = `
-      SELECT 
-        s.player_minecraft_uuid,
+      SELECT
         s.server_id,
-        srv.name as server_name,
-        s.total_seconds,
+        srv.name AS server_name,
+        s.total_seconds::float8 AS total_seconds,
         s.total_sessions,
-        s.avg_session_seconds,
+        s.avg_session_seconds::float8 AS avg_session_seconds,
         s.first_seen,
         s.last_seen
       FROM ${this.table} s
@@ -295,9 +315,11 @@ export class PlayerPlaytimeSummaryQueries extends PlayerPlaytimeSummaryBaseQueri
       WHERE s.player_minecraft_uuid = $1
       ORDER BY s.total_seconds DESC`;
 
-    const result = await this.runQuery<
-      Omit<PlayerPlaytimeSummaryRow, "updated_at"> & { server_name: string }
-    >("get playtime breakdown", query, [playerMinecraftUuid]);
+    const result = await this.runQuery<ServerPlaytimeRow>(
+      "get playtime breakdown",
+      query,
+      [playerMinecraftUuid],
+    );
 
     if (result.rows.length === 0) {
       throw new Error(
@@ -305,15 +327,7 @@ export class PlayerPlaytimeSummaryQueries extends PlayerPlaytimeSummaryBaseQueri
       );
     }
 
-    const servers: PlayerServerPlaytime[] = result.rows.map((row) => ({
-      serverId: row.server_id,
-      serverName: row.server_name,
-      totalSeconds: Number(row.total_seconds),
-      totalSessions: row.total_sessions,
-      avgSessionSeconds: Number(row.avg_session_seconds),
-      firstSeen: row.first_seen,
-      lastSeen: row.last_seen,
-    }));
+    const servers: PlayerServerPlaytime[] = this.mapRowsToEntities(result.rows);
 
     // Calculate totals
     const totals = {
@@ -349,28 +363,14 @@ export class PlayerPlaytimeSummaryQueries extends PlayerPlaytimeSummaryBaseQueri
    * // Result: 5678
    */
   async getTotalHours(serverId?: number): Promise<number> {
-    const query = serverId
-      ? `
-        SELECT 
-          FLOOR(SUM(total_seconds) / 3600) as total_hours
-        FROM ${this.table}
-        WHERE server_id = $1
-      `
-      : `
-        SELECT 
-          FLOOR(SUM(total_seconds) / 3600) as total_hours
-        FROM ${this.table}
-      `;
-
-    const result = await this.runQuery<{ total_hours: string | null }>(
+    const result = await this.runQuery<{ total_hours: number }>(
       "get total hours",
-      query,
+      `SELECT COALESCE(FLOOR(SUM(total_seconds) / 3600), 0)::float8 AS total_hours
+       FROM ${this.table}
+       ${serverId ? "WHERE server_id = $1" : ""}`,
       serverId ? [serverId] : [],
     );
-
-    // Handle null (no data) or convert string to number
-    const totalHours = result.rows[0]?.total_hours;
-    return totalHours ? parseInt(totalHours, 10) : 0;
+    return result.rows[0].total_hours;
   }
 
   /**
@@ -397,8 +397,8 @@ export class PlayerPlaytimeSummaryQueries extends PlayerPlaytimeSummaryBaseQueri
     const query = `
       SELECT
         s.server_id,
-        srv.name as server_name,
-        SUM(s.total_seconds) as total_seconds
+        srv.name AS server_name,
+        SUM(s.total_seconds)::float8 AS total_seconds
       FROM ${this.table} s
       JOIN server srv ON srv.id = s.server_id
       GROUP BY s.server_id, srv.name
@@ -408,17 +408,17 @@ export class PlayerPlaytimeSummaryQueries extends PlayerPlaytimeSummaryBaseQueri
     const result = await this.runQuery<{
       server_id: number;
       server_name: string;
-      total_seconds: string;
+      total_seconds: number;
     }>("get total hours breakdown", query);
 
     const byServer = result.rows.map((row) => ({
       serverId: row.server_id,
       serverName: row.server_name,
-      hours: Math.floor(Number(row.total_seconds) / 3600),
+      hours: Math.floor(row.total_seconds / 3600),
     }));
 
     const totalSeconds = result.rows.reduce(
-      (sum, row) => sum + Number(row.total_seconds),
+      (sum, row) => sum + row.total_seconds,
       0,
     );
     const total = Math.floor(totalSeconds / 3600);
@@ -443,7 +443,7 @@ export class PlayerPlaytimeSummaryQueries extends PlayerPlaytimeSummaryBaseQueri
         p.discord_id,
         p.minecraft_username,
         s.player_minecraft_uuid,
-        SUM(s.total_seconds)::bigint AS total_seconds
+        SUM(s.total_seconds)::float8 AS total_seconds
       FROM ${this.table} s
       JOIN player p ON p.minecraft_uuid = s.player_minecraft_uuid
       GROUP BY p.discord_id, p.minecraft_username, s.player_minecraft_uuid
@@ -455,14 +455,9 @@ export class PlayerPlaytimeSummaryQueries extends PlayerPlaytimeSummaryBaseQueri
       discord_id: string;
       minecraft_username: string;
       player_minecraft_uuid: string;
-      total_seconds: string;
+      total_seconds: number;
     }>("get global leaderboard", query, [limit ?? null]);
 
-    return result.rows.map((row) => ({
-      discordId: row.discord_id,
-      minecraftUsername: row.minecraft_username,
-      playerMinecraftUuid: row.player_minecraft_uuid,
-      totalSeconds: Number(row.total_seconds),
-    }));
+    return this.mapRowsToEntities(result.rows);
   }
 }

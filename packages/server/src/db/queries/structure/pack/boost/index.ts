@@ -13,38 +13,38 @@ export class StructurePackBoostQueries extends StructurePackBoostBaseQueries {
   async getBoostsByPackForCycle(
     cycleStart: Date,
   ): Promise<Array<{ packId: number; totalUnits: number }>> {
-    const result = await this.db.query<{
+    const result = await this.runQuery<{
       pack_id: number;
-      total_units: string;
+      total_units: number;
     }>(
-      `SELECT pack_id, SUM(units)::integer AS total_units
-      FROM structure_pack_boost
+      "get structure pack boosts for cycle",
+      `SELECT pack_id, SUM(units)::int AS total_units
+      FROM ${this.table}
       WHERE cycle_start = $1
       GROUP BY pack_id`,
       [cycleStart],
     );
-    return result.rows.map((row) => ({
-      packId: row.pack_id,
-      totalUnits: Number(row.total_units),
-    }));
+    return this.mapRowsToEntities(result.rows);
   }
 
   async getPlayerBoostsForCycle(
     discordId: string,
     cycleStart: Date,
   ): Promise<StructurePackBoost[]> {
-    const result = await this.db.query<StructurePackBoostRow>(
-      `SELECT * FROM structure_pack_boost
+    const result = await this.runQuery<StructurePackBoostRow>(
+      "get player structure pack boosts for cycle",
+      `SELECT * FROM ${this.table}
       WHERE discord_id = $1 AND cycle_start = $2
       ORDER BY created_at DESC`,
       [discordId, cycleStart],
     );
-    return result.rows.map((row) => this.mapRowToEntity(row));
+    return this.mapRowsToEntities(result.rows);
   }
 
   async clearCycleBoosts(cycleStart: Date): Promise<void> {
-    await this.db.query(
-      `DELETE FROM structure_pack_boost WHERE cycle_start = $1`,
+    await this.runQuery(
+      "clear structure pack cycle boosts",
+      `DELETE FROM ${this.table} WHERE cycle_start = $1`,
       [cycleStart],
     );
   }

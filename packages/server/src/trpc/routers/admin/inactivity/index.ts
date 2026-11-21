@@ -110,7 +110,10 @@ export const inactivityRouter = router({
         throw trpcError.conflict("Warning is already removed, cannot resolve");
       }
 
-      await Q.player.inactivity.warning.resolveWarning(input.id);
+      await Q.player.inactivity.warning.update(
+        { id: input.id },
+        { resolvedAt: new Date() },
+      );
 
       await Q.admin.log.action.logAction({
         ...auditActor(ctx),

@@ -1,9 +1,10 @@
 import type { Pool, PoolClient, QueryResult, QueryResultRow } from "pg";
 import logger from "@/logger.global";
-import { createNotFoundError } from "../utils/query-helpers";
+import { createNotFoundError, type Granularity } from "../utils/query-helpers";
 import { translateDbError } from "../utils/errors";
 import { isJsonColumn } from "../utils/jsonb-columns";
 import type { FilterValue } from "@createrington/shared/db/base.types";
+import type { CamelCaseKeys } from "@createrington/shared/types";
 import {
   QueryBuilder,
   type OrderBy,
@@ -147,10 +148,10 @@ export abstract class BaseQueries<
    * @param row - Database row object with snake_case keys
    * @returns Entity object with camelCase keys
    */
+  protected mapRowToEntity<TDbRow extends object>(
+    row: TDbRow,
+  ): CamelCaseKeys<TDbRow>;
   protected mapRowToEntity(row: TConfig["DbEntity"]): TConfig["Entity"];
-  protected mapRowToEntity<TBdRow extends Record<string, unknown>, TEntity>(
-    row: TBdRow,
-  ): TEntity;
   protected mapRowToEntity(
     row: Record<string, unknown>,
   ): Record<string, unknown> {
@@ -167,10 +168,10 @@ export abstract class BaseQueries<
    * @param rows - Array of database row objects with snake_case keys
    * @returns Array of entity objects with camelCase keys
    */
-  protected mapRowsToEntities(rows: TConfig["DbEntity"][]): TConfig["Entity"][];
-  protected mapRowsToEntities<TDbRow extends Record<string, unknown>, TEntity>(
+  protected mapRowsToEntities<TDbRow extends object>(
     rows: TDbRow[],
-  ): TEntity[];
+  ): CamelCaseKeys<TDbRow>[];
+  protected mapRowsToEntities(rows: TConfig["DbEntity"][]): TConfig["Entity"][];
   protected mapRowsToEntities(
     rows: Record<string, unknown>[],
   ): Record<string, unknown>[] {
@@ -1703,6 +1704,45 @@ export abstract class BaseQueries<
     return new Map(
       result.rows.map((row) => [row.value, Number(row.count)] as const),
     );
+  }
+
+  /**
+   * Buckets the rows whose `column` falls in [start, end) by
+   * DATE_TRUNC(granularity, column) and computes one SQL expression per
+   * output field in each bucket. Buckets without rows are absent. Each
+   * expression casts its own result (`COUNT(*)::int`); `where` is an extra
+   * parameter-free predicate on this table's columns.
+   *
+   * @example
+   * await this.aggregateByPeriod<{ count: number }>(
+   *   "get joins by period", "joinedAt", { count: "COUNT(*)::int" },
+   *   start, end, granularity,
+   * )
+   */
+  protected async aggregateByPeriod<TAggregates extends object>(
+    label: string,
+    column: keyof TConfig["Entity"] & string,
+    aggregates: { [K in keyof TAggregates]: string },
+    start: Date,
+    end: Date,
+    granularity: Granularity,
+    where = "TRUE",
+  ): Promise<CamelCaseKeys<{ period: string } & TAggregates>[]> {
+    const bucketColumn = this.getColumnName(column);
+    const selects = Object.entries<string>(aggregates)
+      .map(([name, expression]) => `${expression} AS ${name}`)
+      .join(", ");
+
+    const result = await this.runQuery<{ period: string } & TAggregates>(
+      label,
+      `SELECT DATE_TRUNC($3, ${bucketColumn})::text AS period, ${selects}
+       FROM ${this.table}
+       WHERE ${bucketColumn} >= $1 AND ${bucketColumn} < $2 AND ${where}
+       GROUP BY 1
+       ORDER BY 1`,
+      [start, end, granularity],
+    );
+    return this.mapRowsToEntities(result.rows);
   }
 
   /**

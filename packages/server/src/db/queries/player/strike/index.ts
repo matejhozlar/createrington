@@ -5,6 +5,7 @@ import type {
   StrikeClassification,
 } from "@createrington/shared/db";
 import { DatabaseTable } from "@/generated/db";
+import type { Granularity } from "@/db/utils";
 
 export interface StrikeStatistics {
   total: number;
@@ -42,7 +43,7 @@ export class PlayerStrikeQueries extends PlayerStrikeBaseQueries {
   async getCountsByPeriod(
     start: Date,
     end: Date,
-    granularity: "day" | "week" | "month" = "day",
+    granularity: Granularity = "day",
   ): Promise<
     Array<{
       period: string;
@@ -54,7 +55,7 @@ export class PlayerStrikeQueries extends PlayerStrikeBaseQueries {
         SELECT
           DATE_TRUNC($3, issued_at)::text AS period,
           classification,
-          COUNT(*)::integer AS count
+          COUNT(*)::int AS count
         FROM ${this.table}
         WHERE issued_at >= $1 AND issued_at < $2
         GROUP BY 1, classification
@@ -95,7 +96,7 @@ export class PlayerStrikeQueries extends PlayerStrikeBaseQueries {
     Array<{ severity: number; count: number }>
   > {
     const query = `
-      SELECT severity, COUNT(*)::integer AS count
+      SELECT severity, COUNT(*)::int AS count
       FROM ${this.table}
       WHERE removed = false
       GROUP BY severity
@@ -119,33 +120,13 @@ export class PlayerStrikeQueries extends PlayerStrikeBaseQueries {
   ): Promise<Record<string, number>> {
     if (playerUUids.length === 0) return {};
 
-    const query = `
-      SELECT 
-        player_minecraft_uuid,
-        COUNT(*)::integer as count
-      FROM player_strike
-      WHERE 
-        player_minecraft_uuid = ANY($1)
-        AND removed = false
-      GROUP BY player_minecraft_uuid
-      `;
-
-    const result = await this.runQuery<{
-      player_minecraft_uuid: string;
-      count: number;
-    }>("get active strike counts", query, [playerUUids]);
-
-    const counts: Record<string, number> = {};
-
-    playerUUids.forEach((uuid) => {
-      counts[uuid] = 0;
+    const counts = await this.countBy("playerMinecraftUuid", {
+      playerMinecraftUuid: { $in: playerUUids },
+      removed: false,
     });
-
-    result.rows.forEach((row) => {
-      counts[row.player_minecraft_uuid] = row.count;
-    });
-
-    return counts;
+    return Object.fromEntries(
+      playerUUids.map((uuid) => [uuid, counts.get(uuid) ?? 0]),
+    );
   }
 
   /**

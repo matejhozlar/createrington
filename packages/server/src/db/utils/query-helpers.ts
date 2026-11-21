@@ -1,5 +1,7 @@
 import { NotFoundError } from "./errors";
 
+export type Granularity = "day" | "week" | "month";
+
 export function formatCriteria(criteria: Record<string, unknown>): string {
   return Object.entries(criteria)
     .map(([k, v]) => `${k}: ${v}`)

@@ -1,5 +1,18 @@
 import type { Pool, PoolClient } from "pg";
 import { DiscordGuildMemberLeaveBaseQueries } from "@/generated/db/discord_guild_member_leave.queries";
+import type { Granularity } from "@/db/utils";
+
+export interface DepartureRow {
+  id: number;
+  discord_id: string;
+  minecraft_uuid: string;
+  minecraft_username: string;
+  notification_message_id: string | null;
+  departed_at: Date;
+}
+
+const DEPARTURE_COLUMNS =
+  "id, discord_id, minecraft_uuid, minecraft_username, notification_message_id, departed_at";
 
 /**
  * Custom queries for discord_guild_member_leave table
@@ -25,67 +38,33 @@ export class DiscordGuildMemberLeaveQueries extends DiscordGuildMemberLeaveBaseQ
   async getLeavesByPeriod(
     start: Date,
     end: Date,
-    granularity: "day" | "week" | "month" = "day",
+    granularity: Granularity = "day",
   ): Promise<Array<{ period: string; count: number }>> {
-    const query = `
-      SELECT
-        DATE_TRUNC($3, departed_at)::text AS period,
-        COUNT(*)::integer AS count
-      FROM ${this.table}
-      WHERE departed_at >= $1 AND departed_at < $2
-        AND deleted_at IS NULL
-      GROUP BY 1
-      ORDER BY 1`;
-
-    const result = await this.runQuery<{ period: string; count: number }>(
+    return this.aggregateByPeriod<{ count: number }>(
       "get leaves by period",
-      query,
-      [start, end, granularity],
+      "departedAt",
+      { count: "COUNT(*)::int" },
+      start,
+      end,
+      granularity,
+      "deleted_at IS NULL",
     );
-    return result.rows;
   }
 
   /**
    * Finds the active (non-deleted) departure record for a given Discord user
    */
-  async findActive(discordId: string): Promise<{
-    id: number;
-    discordId: string;
-    minecraftUuid: string;
-    minecraftUsername: string;
-    notificationMessageId: string | null;
-    departedAt: Date;
-  } | null> {
-    const query = `
-    SELECT id, discord_id, minecraft_uuid, minecraft_username, notification_message_id, departed_at
-    FROM ${this.table}
-    WHERE discord_id = $1
-      AND deleted_at IS NULL
-    LIMIT 1`;
-
-    try {
-      const result = await this.db.query<{
-        id: number;
-        discord_id: string;
-        minecraft_uuid: string;
-        minecraft_username: string;
-        notification_message_id: string | null;
-        departed_at: Date;
-      }>(query, [discordId]);
-      if (result.rows.length === 0) return null;
-      const row = result.rows[0];
-      return {
-        id: row.id,
-        discordId: row.discord_id,
-        minecraftUuid: row.minecraft_uuid,
-        minecraftUsername: row.minecraft_username,
-        notificationMessageId: row.notification_message_id,
-        departedAt: row.departed_at,
-      };
-    } catch (error) {
-      logger.error("Error fetching active departure record:", error);
-      throw error;
-    }
+  async findActive(discordId: string) {
+    const result = await this.runQuery<DepartureRow>(
+      "fetch active departure record",
+      `SELECT ${DEPARTURE_COLUMNS}
+       FROM ${this.table}
+       WHERE discord_id = $1
+         AND deleted_at IS NULL
+       LIMIT 1`,
+      [discordId],
+    );
+    return result.rows[0] ? this.mapRowToEntity(result.rows[0]) : null;
   }
 
   /**
@@ -94,28 +73,14 @@ export class DiscordGuildMemberLeaveQueries extends DiscordGuildMemberLeaveBaseQ
    *
    * @returns Promise resolving to an Array of departed members
    */
-  async expired(): Promise<
-    Array<{
-      id: number;
-      discordId: string;
-      minecraftUuid: string;
-      minecraftUsername: string;
-      notificationMessageId: string | null;
-      departedAt: Date;
-    }>
-  > {
-    const query = `
-    SELECT id, discord_id, minecraft_uuid, minecraft_username, notification_message_id, departed_at
-    FROM ${this.table}
-    WHERE departed_at < NOW() - INTERVAL '30 days'
-      AND deleted_at IS NULL`;
-
-    try {
-      const result = await this.db.query(query);
-      return this.mapRowsToEntities(result.rows);
-    } catch (error) {
-      logger.error("Error fetching expired members:", error);
-      throw error;
-    }
+  async expired() {
+    const result = await this.runQuery<DepartureRow>(
+      "fetch expired members",
+      `SELECT ${DEPARTURE_COLUMNS}
+       FROM ${this.table}
+       WHERE departed_at < NOW() - INTERVAL '30 days'
+         AND deleted_at IS NULL`,
+    );
+    return this.mapRowsToEntities(result.rows);
   }
 }

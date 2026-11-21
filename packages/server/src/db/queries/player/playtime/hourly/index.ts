@@ -1,6 +1,6 @@
 import type { Pool, PoolClient } from "pg";
 import { PlayerPlaytimeHourlyBaseQueries } from "@/generated/db/player_playtime_hourly.queries";
-import { splitPeriod } from "../split";
+import { creditBucketSql, splitPeriod } from "../split";
 
 type ServerHeatMapRow = {
   day: Date;
@@ -46,19 +46,19 @@ export class PlayerPlaytimeHourlyQueries extends PlayerPlaytimeHourlyBaseQueries
     periodEnd: Date,
     seconds: number,
   ): Promise<void> {
+    const query = creditBucketSql(this.table, "play_hour");
     for (const { bucket, seconds: share } of splitPeriod(
       periodStart,
       periodEnd,
       seconds,
       "hour",
     )) {
-      await this.db.query(
-        `INSERT INTO ${this.table} (player_minecraft_uuid, server_id, play_hour, seconds_played)
-         VALUES ($1, $2, $3, $4)
-         ON CONFLICT (player_minecraft_uuid, server_id, play_hour)
-         DO UPDATE SET seconds_played = ${this.table}.seconds_played + EXCLUDED.seconds_played`,
-        [playerMinecraftUuid, serverId, bucket, share],
-      );
+      await this.runQuery("credit hourly playtime", query, [
+        playerMinecraftUuid,
+        serverId,
+        bucket,
+        share,
+      ]);
     }
   }
 
@@ -99,6 +99,6 @@ export class PlayerPlaytimeHourlyQueries extends PlayerPlaytimeHourlyBaseQueries
       [serverId, days],
     );
 
-    return this.mapRowsToEntities<ServerHeatMapRow, ServerHeatMap>(result.rows);
+    return this.mapRowsToEntities(result.rows);
   }
 }

@@ -3,6 +3,7 @@ import { WorkshopModEventBaseQueries } from "@/generated/db/workshop_mod_event.q
 import { escapeLike } from "@/db/utils";
 import type {
   WorkshopModEvent,
+  WorkshopModEventRow,
   WorkshopModEventType,
 } from "@createrington/shared/db";
 
@@ -17,7 +18,7 @@ export interface WorkshopModEventListItem extends WorkshopModEvent {
   modExists: boolean;
 }
 
-interface SearchRow extends Record<string, unknown> {
+interface SearchRow extends WorkshopModEventRow {
   project_name: string | null;
   project_slug: string | null;
   project_thumbnail_url: string | null;
@@ -70,7 +71,8 @@ export class WorkshopModEventQueries extends WorkshopModEventBaseQueries {
     const countJoins = opts.search ? SEARCH_JOINS : "";
 
     const [dataResult, countResult] = await Promise.all([
-      this.db.query<SearchRow>(
+      this.runQuery<SearchRow>(
+        "search workshop mod events",
         `SELECT e.*,
            cp.name AS project_name,
            cp.slug AS project_slug,
@@ -79,16 +81,17 @@ export class WorkshopModEventQueries extends WorkshopModEventBaseQueries {
            p.minecraft_username AS actor_username,
            p.minecraft_uuid AS actor_uuid,
            (m.id IS NOT NULL) AS mod_exists
-         FROM workshop_mod_event e
+         FROM ${this.table} e
          ${ROW_JOINS}
          ${where}
          ORDER BY e.created_at DESC, e.id DESC
          LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
         [...params, opts.limit, opts.offset],
       ),
-      this.db.query<{ count: number }>(
+      this.runQuery<{ count: number }>(
+        "count workshop mod events",
         `SELECT COUNT(*)::int AS count
-         FROM workshop_mod_event e
+         FROM ${this.table} e
          ${countJoins}
          ${where}`,
         params,
@@ -113,7 +116,7 @@ export class WorkshopModEventQueries extends WorkshopModEventBaseQueries {
       ...eventRow
     } = row;
     return {
-      ...this.mapRowToEntity(eventRow as WorkshopModEvent),
+      ...this.mapRowToEntity(eventRow),
       project: {
         name: project_name,
         slug: project_slug,

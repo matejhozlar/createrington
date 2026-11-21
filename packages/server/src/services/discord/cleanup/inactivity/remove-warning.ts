@@ -37,7 +37,10 @@ export async function removeInactiveWarning(
   warning: WarningToRemove,
   reason = "Inactivity: 60+ days without logging in",
 ): Promise<void> {
-  await Q.player.inactivity.warning.markRemoved(warning.id);
+  await Q.player.inactivity.warning.update(
+    { id: warning.id },
+    { removedAt: new Date() },
+  );
 
   try {
     const mainBot = getServiceSync(Services.DISCORD_MAIN_BOT);
@@ -74,7 +77,10 @@ export async function removeInactiveWarning(
       error,
     );
     try {
-      await Q.player.inactivity.warning.clearRemoved(warning.id);
+      await Q.player.inactivity.warning.update(
+        { id: warning.id },
+        { removedAt: null },
+      );
     } catch (rollbackError) {
       logger.error(
         `Failed to roll back removed_at on warning ${warning.id}, row is now in an inconsistent state`,

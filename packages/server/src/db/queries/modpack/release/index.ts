@@ -1,6 +1,13 @@
 import type { Pool, PoolClient } from "pg";
 import { ModpackReleaseBaseQueries } from "@/generated/db/modpack_release.queries";
-import type { ModpackRelease } from "@createrington/shared/db";
+import type {
+  ModpackRelease,
+  ModpackReleaseRow,
+} from "@createrington/shared/db";
+
+export interface PrecedingReleaseRow extends ModpackReleaseRow {
+  successor_id: number;
+}
 
 export class ModpackReleaseQueries extends ModpackReleaseBaseQueries {
   constructor(db: Pool | PoolClient) {
@@ -26,7 +33,7 @@ export class ModpackReleaseQueries extends ModpackReleaseBaseQueries {
   /** Newest recorded release per modpack; packs without a release are absent from the result. */
   async latestPerModpack(modpackIds: number[]): Promise<ModpackRelease[]> {
     if (modpackIds.length === 0) return [];
-    const result = await this.runQuery(
+    const result = await this.runQuery<ModpackReleaseRow>(
       "list latest releases per modpack",
       `SELECT DISTINCT ON (modpack_id) *
        FROM ${this.table}
@@ -42,7 +49,7 @@ export class ModpackReleaseQueries extends ModpackReleaseBaseQueries {
     releaseIds: number[],
   ): Promise<Array<ModpackRelease & { successorId: number }>> {
     if (releaseIds.length === 0) return [];
-    const result = await this.runQuery<Record<string, unknown>>(
+    const result = await this.runQuery<PrecedingReleaseRow>(
       "list preceding releases",
       `SELECT prev.*, target.id AS successor_id
        FROM ${this.table} target
@@ -56,9 +63,6 @@ export class ModpackReleaseQueries extends ModpackReleaseBaseQueries {
        WHERE target.id = ANY($1::int[])`,
       [releaseIds],
     );
-    return this.mapRowsToEntities<
-      Record<string, unknown>,
-      ModpackRelease & { successorId: number }
-    >(result.rows);
+    return this.mapRowsToEntities(result.rows);
   }
 }

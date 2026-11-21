@@ -1,6 +1,12 @@
 import { Pool, type PoolClient } from "pg";
-import type { Player, PlayerFilters } from "@createrington/shared/db";
+import type {
+  Player,
+  PlayerFilters,
+  PlayerRow,
+} from "@createrington/shared/db";
 import { PlayerBaseQueries } from "@/generated/db/player.queries";
+import type { Granularity } from "@/db/utils";
+import { ACTIVE_BAN_WHERE } from "./ban/sql";
 
 export type ViolationRequirement = "strikes" | "bans" | "both" | "either";
 
@@ -11,9 +17,7 @@ const ACTIVE_STRIKE_EXISTS = `EXISTS (
 
 const ACTIVE_BAN_EXISTS = `EXISTS (
   SELECT 1 FROM player_ban b
-  WHERE b.player_minecraft_uuid = player.minecraft_uuid
-    AND b.unbanned = false
-    AND (b.expires_at IS NULL OR b.expires_at > NOW())
+  WHERE b.player_minecraft_uuid = player.minecraft_uuid AND ${ACTIVE_BAN_WHERE}
 )`;
 
 const VIOLATION_CONDITIONS: Record<ViolationRequirement, string> = {
@@ -55,7 +59,7 @@ export class PlayerQueries extends PlayerBaseQueries {
     const direction = options.orderDirection === "desc" ? "DESC" : "ASC";
 
     const [rows, count] = await Promise.all([
-      this.runQuery(
+      this.runQuery<PlayerRow>(
         "list players with violations",
         `SELECT * FROM ${this.table}
          WHERE ${where}
@@ -63,15 +67,15 @@ export class PlayerQueries extends PlayerBaseQueries {
          LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
         [...params, options.limit, options.offset],
       ),
-      this.runQuery<{ total: string }>(
+      this.runQuery<{ total: number }>(
         "count players with violations",
-        `SELECT COUNT(*) AS total FROM ${this.table} WHERE ${where}`,
+        `SELECT COUNT(*)::int AS total FROM ${this.table} WHERE ${where}`,
         params,
       ),
     ]);
     return {
       rows: this.mapRowsToEntities(rows.rows),
-      total: Number(count.rows[0]?.total ?? 0),
+      total: count.rows[0]?.total ?? 0,
     };
   }
 
@@ -86,10 +90,7 @@ export class PlayerQueries extends PlayerBaseQueries {
       SELECT minecraft_uuid AS uuid, minecraft_username AS name
       FROM ${this.table}
       WHERE minecraft_uuid NOT IN (
-        SELECT player_minecraft_uuid
-        FROM player_ban
-        WHERE unbanned = false
-          AND (expires_at IS NULL OR expires_at > NOW())
+        SELECT player_minecraft_uuid FROM player_ban WHERE ${ACTIVE_BAN_WHERE}
       )
       ORDER BY minecraft_username`;
 
@@ -113,22 +114,15 @@ export class PlayerQueries extends PlayerBaseQueries {
   async getRegistrationsByPeriod(
     start: Date,
     end: Date,
-    granularity: "day" | "week" | "month" = "day",
+    granularity: Granularity = "day",
   ): Promise<Array<{ period: string; count: number }>> {
-    const query = `
-      SELECT
-        DATE_TRUNC($3, created_at)::text AS period,
-        COUNT(*)::integer AS count
-      FROM ${this.table}
-      WHERE created_at >= $1 AND created_at < $2
-      GROUP BY 1
-      ORDER BY 1`;
-
-    const result = await this.runQuery<{ period: string; count: number }>(
+    return this.aggregateByPeriod<{ count: number }>(
       "get registrations by period",
-      query,
-      [start, end, granularity],
+      "createdAt",
+      { count: "COUNT(*)::int" },
+      start,
+      end,
+      granularity,
     );
-    return result.rows;
   }
 }

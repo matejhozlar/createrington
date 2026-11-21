@@ -99,10 +99,7 @@ export class WorkshopProjectDependencyQueries extends WorkshopProjectDependencyB
       relationType,
       modpackId,
     ]);
-    return result.rows.map((row) => ({
-      curseforgeProjectId: row.curseforge_project_id,
-      dependsOnProjectId: row.depends_on_project_id,
-    }));
+    return this.mapRowsToEntities(result.rows);
   }
 
   /**
@@ -156,10 +153,6 @@ export class WorkshopProjectDependencyQueries extends WorkshopProjectDependencyB
       required_by_project_ids: number[];
       optional_by_count: number;
     }>("workshop dependency groups", query, [workshopId, requiredRelationType]);
-    return result.rows.map((row) => ({
-      dependsOnProjectId: row.depends_on_project_id,
-      requiredByProjectIds: row.required_by_project_ids,
-      optionalByCount: row.optional_by_count,
-    }));
+    return this.mapRowsToEntities(result.rows);
   }
 }

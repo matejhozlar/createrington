@@ -36,9 +36,10 @@ export class StructurePackQueries extends StructurePackBaseQueries {
   }
 
   async findAllWithMods(): Promise<StructurePackWithMods[]> {
-    const result = await this.db.query<PackRowWithMods>(
+    const result = await this.runQuery<PackRowWithMods>(
+      "find structure packs with mods",
       `SELECT p.*, ${MODS_AGG}
-      FROM structure_pack p
+      FROM ${this.table} p
       LEFT JOIN structure_pack_mod m ON m.pack_id = p.id
       WHERE p.deleted_at IS NULL
       GROUP BY p.id
@@ -51,9 +52,10 @@ export class StructurePackQueries extends StructurePackBaseQueries {
   }
 
   async findOneWithMods(id: number): Promise<StructurePackWithMods | null> {
-    const result = await this.db.query<PackRowWithMods>(
+    const result = await this.runQuery<PackRowWithMods>(
+      "find structure pack with mods",
       `SELECT p.*, ${MODS_AGG}
-      FROM structure_pack p
+      FROM ${this.table} p
       LEFT JOIN structure_pack_mod m ON m.pack_id = p.id
       WHERE p.id = $1 AND p.deleted_at IS NULL
       GROUP BY p.id`,
@@ -68,9 +70,10 @@ export class StructurePackQueries extends StructurePackBaseQueries {
   }
 
   async getActive(): Promise<StructurePackWithMods | null> {
-    const result = await this.db.query<PackRowWithMods>(
+    const result = await this.runQuery<PackRowWithMods>(
+      "get active structure pack",
       `SELECT p.*, ${MODS_AGG}
-      FROM structure_pack p
+      FROM ${this.table} p
       LEFT JOIN structure_pack_mod m ON m.pack_id = p.id
       WHERE p.is_active = true AND p.deleted_at IS NULL
       GROUP BY p.id
@@ -93,9 +96,10 @@ export class StructurePackQueries extends StructurePackBaseQueries {
       params.push(excludePackId);
       excludeClause = `AND p.id != $${params.length}`;
     }
-    const result = await this.db.query<StructurePackRow>(
+    const result = await this.runQuery<StructurePackRow>(
+      "get structure packs eligible for rotation",
       `SELECT p.*
-      FROM structure_pack p
+      FROM ${this.table} p
       LEFT JOIN structure_pack_mod m ON m.pack_id = p.id
       WHERE p.enabled = true
         AND p.deleted_at IS NULL
@@ -105,6 +109,6 @@ export class StructurePackQueries extends StructurePackBaseQueries {
       ORDER BY p.last_activated_at ASC NULLS FIRST`,
       params,
     );
-    return result.rows.map((row) => this.mapRowToEntity(row));
+    return this.mapRowsToEntities(result.rows);
   }
 }

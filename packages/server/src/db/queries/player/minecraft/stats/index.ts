@@ -48,13 +48,13 @@ export class PlayerMinecraftStatsQueries extends PlayerMinecraftStatsBaseQueries
       const statsIdx = values.push(JSON.stringify(entry.stats));
       const versionIdx = values.push(entry.dataVersion);
       rows.push(
-        `($${uuidIdx}::uuid, $${statsIdx}::jsonb, $${versionIdx}::integer)`,
+        `($${uuidIdx}::uuid, $${statsIdx}::jsonb, $${versionIdx}::int)`,
       );
     }
 
     const query = `
       INSERT INTO ${this.table} (minecraft_uuid, server_id, stats, data_version)
-      SELECT v.minecraft_uuid, $1::integer, v.stats, v.data_version
+      SELECT v.minecraft_uuid, $1::int, v.stats, v.data_version
       FROM (VALUES ${rows.join(", ")}) AS v(minecraft_uuid, stats, data_version)
       JOIN player p ON p.minecraft_uuid = v.minecraft_uuid
       ON CONFLICT (minecraft_uuid, server_id) DO UPDATE SET
