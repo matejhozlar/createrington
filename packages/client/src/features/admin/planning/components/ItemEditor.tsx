@@ -20,50 +20,19 @@ import {
   PLANNING_ITEM_STATUSES,
   PLANNING_TEXT_MAX_LENGTH,
   PLANNING_TITLE_MAX_LENGTH,
-  type PlanningCategory,
   type PlanningItemStatus,
 } from "@createrington/shared/planning";
 import { STATUS_CONFIG } from "../constants";
+import {
+  afterSave,
+  changedFields,
+  isNewerThan,
+  toEditBase,
+  type Draft,
+} from "../editing";
 import type { PlanningItemDetail, PlanningSubcategory } from "../types";
 import { AssigneePicker } from "./AssigneePicker";
 import { CategoryFields } from "./CategoryFields";
-
-interface Draft {
-  title: string;
-  body: string;
-  category: PlanningCategory;
-  subcategoryId: number | null;
-  status: PlanningItemStatus;
-  decision: string;
-}
-
-const DRAFT_FIELDS = [
-  "title",
-  "body",
-  "category",
-  "subcategoryId",
-  "status",
-  "decision",
-] as const satisfies readonly (keyof Draft)[];
-
-function toDraft(item: PlanningItemDetail): Draft {
-  return {
-    title: item.title,
-    body: item.body ?? "",
-    category: item.category,
-    subcategoryId: item.subcategoryId,
-    status: item.status,
-    decision: item.decision ?? "",
-  };
-}
-
-function changedFields(draft: Draft, base: Draft): Partial<Draft> {
-  return Object.fromEntries(
-    DRAFT_FIELDS.filter((field) => draft[field] !== base[field]).map(
-      (field) => [field, draft[field]],
-    ),
-  );
-}
 
 interface ItemEditorProps {
   item: PlanningItemDetail;
@@ -76,10 +45,7 @@ export function ItemEditor({
   subcategories,
   onDeleted,
 }: ItemEditorProps) {
-  const [base, setBase] = useState(() => ({
-    revision: item.revision,
-    draft: toDraft(item),
-  }));
+  const [base, setBase] = useState(() => toEditBase(item));
   const [draft, setDraft] = useState(base.draft);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
@@ -87,13 +53,13 @@ export function ItemEditor({
   const dirty = Object.keys(patch).length > 0;
 
   const loadLatest = () => {
-    const latest = { revision: item.revision, draft: toDraft(item) };
+    const latest = toEditBase(item);
     setBase(latest);
     setDraft(latest.draft);
   };
 
-  if (item.revision !== base.revision && !dirty) loadLatest();
-  const outdated = item.revision !== base.revision;
+  const outdated = isNewerThan(item, base);
+  if (outdated && !dirty) loadLatest();
 
   const invalidate = () =>
     queryClient.invalidateQueries(trpc.admin.planning.pathFilter());
@@ -102,10 +68,7 @@ export function ItemEditor({
     trpc.admin.planning.items.update.mutationOptions(
       useMutationToast({
         success: "Card saved",
-        onSuccess: ({ revision }) => {
-          setBase({ revision, draft });
-          void invalidate();
-        },
+        onSuccess: () => void invalidate(),
         onError: () => void invalidate(),
       }),
     ),
@@ -139,7 +102,13 @@ export function ItemEditor({
         onSubmit={(event) => {
           event.preventDefault();
           if (!dirty || !draft.title.trim()) return;
-          save.mutate({ id: item.id, revision: base.revision, ...patch });
+          save.mutate(
+            { id: item.id, revision: base.revision, ...patch },
+            {
+              onSuccess: ({ revision }) =>
+                setBase(afterSave(base, patch, revision)),
+            },
+          );
         }}
       >
         {outdated && (
