@@ -14,7 +14,6 @@ import {
   DEFAULT_GAME_VERSION,
   MINECRAFT_GAME_ID,
   MOD_CLASS_ID,
-  MODPACK_PROJECT_ID,
   NEOFORGE_LOADER_TYPE,
   cfRead,
   logoUrlOf,
@@ -22,7 +21,6 @@ import {
 } from "./client";
 import { searchProjects, type CurseForgeProjectHit } from "./content";
 import { LOADERLESS_CLASSES } from "./loader";
-import { getModpackModIds } from "./modpack-manifest";
 
 const dependencyModSchema = z.looseObject({
   id: z.number(),
@@ -41,7 +39,7 @@ export interface CurseForgeSearchOptions {
   gameVersion?: string;
   modLoaderType?: number | null;
   classId?: number;
-  packProjectId?: number | null;
+  packModIds?: () => Promise<Set<number>>;
 }
 
 export type CurseForgeSearchResult = CurseForgeProjectHit & {
@@ -99,25 +97,10 @@ export interface ResolvedDependency {
   bestFile: { id: number; fileName: string } | null;
 }
 
-async function loadPackModIds(
-  packProjectId: number | null,
-): Promise<Set<number>> {
-  if (packProjectId === null) return new Set();
-  try {
-    return await getModpackModIds(packProjectId);
-  } catch (error) {
-    logger.warn(
-      `Modpack manifest fetch failed for pack ${packProjectId}, search results will report inModpack: false`,
-      error,
-    );
-    return new Set();
-  }
-}
-
 /**
  * First page of `searchProjects` targeting the current server setup unless
  * told otherwise (NeoForge mods for the default game version), each hit
- * annotated with whether the modpack already ships it.
+ * annotated with whether it is among `packModIds` (none when not given).
  */
 export async function searchMods(
   query: string,
@@ -128,7 +111,7 @@ export async function searchMods(
     gameVersion = DEFAULT_GAME_VERSION,
     modLoaderType = NEOFORGE_LOADER_TYPE,
     classId = MOD_CLASS_ID,
-    packProjectId = MODPACK_PROJECT_ID,
+    packModIds: loadPackModIds = () => Promise.resolve(new Set<number>()),
   } = options;
 
   const [{ projects }, packModIds] = await Promise.all([
@@ -140,7 +123,7 @@ export async function searchMods(
       index: 0,
       pageSize,
     }),
-    loadPackModIds(packProjectId),
+    loadPackModIds(),
   ]);
 
   return projects.map((project) => ({

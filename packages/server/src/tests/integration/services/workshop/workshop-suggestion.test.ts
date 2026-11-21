@@ -19,7 +19,7 @@ vi.mock("@/services/curseforge/mods", async () =>
 vi.mock("@/services/curseforge/files", async () =>
   (await import("@/tests/helpers/mocks/curseforge")).curseforgeMocks.files(),
 );
-vi.mock("@/services/curseforge/modpack-manifest", async () =>
+vi.mock("@/services/modpack/manifest", async () =>
   (
     await import("@/tests/helpers/mocks/curseforge")
   ).curseforgeMocks.modpackManifest(),
@@ -41,6 +41,7 @@ import { issueBan, liftBan } from "@/services/workshop/bans";
 import { CurseForgeClass } from "@/services/curseforge/client";
 import { searchMods } from "@/services/curseforge/mods";
 import { ingestProjects } from "@/services/curseforge/ingest";
+import { findModpackModIds } from "@/services/modpack/manifest";
 import {
   createWorkshopTestContext,
   cleanupWorkshopTestContext,
@@ -533,7 +534,6 @@ describe("WorkshopSuggestionService.searchProjects", () => {
       gameVersion: GAME_VERSION,
       modLoaderType: null,
       classId: CurseForgeClass.resourcePacks,
-      packProjectId: null,
     });
   });
 
@@ -546,8 +546,25 @@ describe("WorkshopSuggestionService.searchProjects", () => {
       gameVersion: GAME_VERSION,
       modLoaderType: MOD_LOADER_TYPE,
       classId: CurseForgeClass.mods,
-      packProjectId: null,
     });
+  });
+
+  it("marks hits against the base modpack's mods, and against none without a base modpack", async () => {
+    const based = await seedWorkshop(ctx, {
+      baseModpackProjectId: 990_123_456,
+    });
+    const unbased = await seedWorkshop(ctx);
+    vi.mocked(findModpackModIds).mockResolvedValueOnce(new Set([42]));
+
+    await workshopSuggestionService.searchProjects(based.id, "create");
+    await workshopSuggestionService.searchProjects(unbased.id, "create");
+
+    const [withBase, withoutBase] = vi
+      .mocked(searchMods)
+      .mock.calls.map(([, , options]) => options?.packModIds);
+    expect(await withBase?.()).toEqual(new Set([42]));
+    expect(findModpackModIds).toHaveBeenCalledExactlyOnceWith(990_123_456);
+    expect(withoutBase).toBeUndefined();
   });
 
   it("rejects a class the workshop cannot take", async () => {

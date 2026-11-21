@@ -1,15 +1,13 @@
 import { describe, it, expect, vi } from "vitest";
 import {
+  fromStoredModpackManifest,
   manifestDisabledModIds,
   mergeManifestFiles,
   resolveModpackRelease,
+  toStoredModpackManifest,
   type ModpackManifest,
   type ModpackReadContext,
 } from "@/services/curseforge/modpack";
-import {
-  fromStoredModpackManifest,
-  toStoredModpackManifest,
-} from "@/services/curseforge/modpack-manifest";
 import type { CurseForgeFile } from "@/services/curseforge/client";
 import { curseforgeFile as file } from "@/tests/helpers/curseforge-file";
 

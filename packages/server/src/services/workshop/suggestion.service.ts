@@ -3,6 +3,7 @@ import { BadRequestError, NotFoundError } from "@/errors";
 import { UniqueViolationError } from "@/db/utils/errors";
 import type { Workshop, WorkshopMod } from "@createrington/shared/db";
 import { LOADERLESS_CLASSES } from "@/services/curseforge/loader";
+import { findModpackModIds } from "@/services/modpack/manifest";
 import {
   searchMods,
   type CurseForgeSearchResult,
@@ -57,13 +58,16 @@ export class WorkshopSuggestionService {
         "That project type cannot be added to this workshop",
       );
     }
+    const basePackProjectId = workshop.baseModpackProjectId;
     const results = await searchMods(query, 20, {
       gameVersion: workshop.gameVersion,
       modLoaderType: LOADERLESS_CLASSES.has(classId)
         ? null
         : workshop.modLoaderType,
       classId,
-      packProjectId: workshop.baseModpackProjectId ?? null,
+      packModIds: basePackProjectId
+        ? () => findModpackModIds(basePackProjectId)
+        : undefined,
     });
     if (results.length === 0) return [];
 

@@ -11,7 +11,7 @@ import {
   manifestDisabledModIds,
   type ModpackManifestEntry,
 } from "@/services/curseforge/modpack";
-import { getModpackManifest } from "@/services/curseforge/modpack-manifest";
+import { getModpackManifest } from "@/services/modpack/manifest";
 import { launcherPackReleaseService } from "@/services/launcher/pack/pack-release.service";
 import { findSandboxSnapshotUrl } from "@/services/launcher/pack/sandbox-files";
 import { modpackService } from "./modpack.service";

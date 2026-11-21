@@ -23,7 +23,7 @@ vi.mock("@/services/gallery/discord", () => ({
   galleryPageUrl: vi.fn(() => "https://example.test/gallery"),
 }));
 
-vi.mock("@/services/storage", () => {
+vi.mock("@/services/storage/object-storage.service", () => {
   const objects = new Map<string, { contentType: string; size: number }>();
   return {
     objectStorage: {
@@ -53,19 +53,19 @@ import sharp from "sharp";
 import pool, { balanceRepo, Q } from "@/db";
 import { BadRequestError, ConflictError, NotFoundError } from "@/errors";
 import { settings } from "@/services/settings";
-import { objectStorage } from "@/services/storage";
+import { objectStorage } from "@/services/storage/object-storage.service";
 import {
   announceApproval,
   deleteAnnouncement,
   markSourceMessage,
 } from "@/services/gallery/discord";
 import type { DiscordStickyMessageService } from "@/services/discord/sticky-message";
-import {
-  GalleryService,
-  galleryImageUrls,
-  type IntakeAttachment,
-  type IntakeMessage,
-} from "@/services/gallery";
+import { GalleryService } from "@/services/gallery/gallery.service";
+import type {
+  IntakeAttachment,
+  IntakeMessage,
+} from "@/services/gallery/intake";
+import { galleryImageUrls } from "@/services/gallery/urls";
 
 const RUN = Date.now().toString();
 let seq = 0;

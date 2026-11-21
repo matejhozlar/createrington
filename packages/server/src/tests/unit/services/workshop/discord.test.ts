@@ -242,6 +242,7 @@ describe("announceReview", () => {
     expect(state.calls.map(([name]) => name)).toEqual(["edit", "send"]);
     expect(warn).toHaveBeenCalledWith(
       expect.stringContaining("Could not close thread for mod #42"),
+      expect.objectContaining({ message: "Missing Permissions" }),
     );
     warn.mockRestore();
   });

@@ -2,14 +2,16 @@ import { z } from "zod";
 import { adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
 import { httpUrlSchema } from "@createrington/shared/api/embed";
-import { structurePackService } from "@/services/structure-pack";
+import { structurePackService } from "@/services/structure-pack/structure-pack.service";
 import {
   DEFAULT_GAME_VERSION,
+  MODPACK_PROJECT_ID,
   NEOFORGE_LOADER_TYPE,
 } from "@/services/curseforge/client";
 import { listProjectFiles } from "@/services/curseforge/content";
 import { getFilesDependencies } from "@/services/curseforge/files";
 import { resolveDependencies, searchMods } from "@/services/curseforge/mods";
+import { findModpackModIds } from "@/services/modpack/manifest";
 import { auditActor } from "@/trpc/utils";
 import { getRotationService } from "./helpers";
 import { structurePackModFileName } from "@createrington/shared/structure-pack";
@@ -69,7 +71,9 @@ export const structurePackModProcedures = {
     .meta({ description: "Search CurseForge for mods" })
     .input(z.object({ query: z.string().min(1).max(100) }))
     .query(async ({ input }) => {
-      return searchMods(input.query);
+      return searchMods(input.query, undefined, {
+        packModIds: () => findModpackModIds(MODPACK_PROJECT_ID),
+      });
     }),
 
   getModFiles: adminProcedure

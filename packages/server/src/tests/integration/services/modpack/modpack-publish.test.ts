@@ -23,7 +23,7 @@ vi.mock("@/services/curseforge/files", async () =>
 vi.mock("@/services/curseforge/modpack", async () =>
   (await import("@/tests/helpers/mocks/curseforge")).curseforgeMocks.modpack(),
 );
-vi.mock("@/services/curseforge/modpack-manifest", async () =>
+vi.mock("@/services/modpack/manifest", async () =>
   (
     await import("@/tests/helpers/mocks/curseforge")
   ).curseforgeMocks.modpackManifest(),
@@ -50,7 +50,7 @@ import { BadRequestError, NotFoundError } from "@/errors";
 import { modpackPublishService } from "@/services/modpack/publish.service";
 import { modpackReleaseService } from "@/services/modpack/release.service";
 import { getModpackFile } from "@/services/curseforge/modpack";
-import { getModpackManifest } from "@/services/curseforge/modpack-manifest";
+import { getModpackManifest } from "@/services/modpack/manifest";
 import { launcherPackReleaseService } from "@/services/launcher/pack/pack-release.service";
 import { findSandboxSnapshotUrl } from "@/services/launcher/pack/sandbox-files";
 import {

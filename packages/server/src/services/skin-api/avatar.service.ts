@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { getSkinApiClient } from "./index";
+import { getSkinApiClient } from "./client";
 import { RenderMemo } from "./render-memo";
 
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000;

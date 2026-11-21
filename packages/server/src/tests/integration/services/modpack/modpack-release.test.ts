@@ -22,7 +22,7 @@ vi.mock("@/services/curseforge/files", async () =>
 vi.mock("@/services/curseforge/modpack", async () =>
   (await import("@/tests/helpers/mocks/curseforge")).curseforgeMocks.modpack(),
 );
-vi.mock("@/services/curseforge/modpack-manifest", async () =>
+vi.mock("@/services/modpack/manifest", async () =>
   (
     await import("@/tests/helpers/mocks/curseforge")
   ).curseforgeMocks.modpackManifest(),
@@ -48,7 +48,7 @@ import pool, { Q } from "@/db";
 import { modpackSyncService } from "@/services/modpack/sync.service";
 import { modpackReleaseService } from "@/services/modpack/release.service";
 import { getFilesDetails } from "@/services/curseforge/files";
-import { getModpackManifest } from "@/services/curseforge/modpack-manifest";
+import { getModpackManifest } from "@/services/modpack/manifest";
 import { launcherPackReleaseService } from "@/services/launcher/pack/pack-release.service";
 import {
   createWorkshopTestContext,

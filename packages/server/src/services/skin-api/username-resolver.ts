@@ -1,56 +1,29 @@
 import { SkinApiError } from "createrington-skin-api";
-import { getSkinApiClient } from "./index";
+import { createKeyValueStore, readThrough } from "@/services/key-value-store";
+import { getSkinApiClient } from "./client";
 
+const KEY_PREFIX = "skin-api:username:v1";
 const HIT_TTL_MS = 24 * 60 * 60 * 1000;
 const MISS_TTL_MS = 60 * 60 * 1000;
-const MAX_ENTRIES = 1000;
+const MAX_MEMORY_ENTRIES = 1000;
 
-interface CacheEntry {
-  username: string | null;
-  expiresAt: number;
-}
+const usernames = createKeyValueStore(MAX_MEMORY_ENTRIES);
 
-const cache = new Map<string, CacheEntry>();
-
-function cacheGet(uuid: string): string | null | undefined {
-  const entry = cache.get(uuid);
-  if (!entry) return undefined;
-  if (entry.expiresAt < Date.now()) {
-    cache.delete(uuid);
-    return undefined;
-  }
-  cache.delete(uuid);
-  cache.set(uuid, entry);
-  return entry.username;
-}
-
-function cacheSet(uuid: string, username: string | null): void {
-  if (cache.size >= MAX_ENTRIES) {
-    const oldestKey = cache.keys().next().value;
-    if (oldestKey !== undefined) cache.delete(oldestKey);
-  }
-  cache.set(uuid, {
-    username,
-    expiresAt: Date.now() + (username === null ? MISS_TTL_MS : HIT_TTL_MS),
-  });
-}
-
-export async function resolveUsername(
-  minecraftUuid: string,
-): Promise<string | null> {
-  const uuid = minecraftUuid.toLowerCase();
-  const cached = cacheGet(uuid);
-  if (cached !== undefined) return cached;
-
+async function fetchUsername(uuid: string): Promise<string | null> {
   try {
-    const profile = await getSkinApiClient().resolve({ uuid });
-    cacheSet(uuid, profile.username);
-    return profile.username;
+    return (await getSkinApiClient().resolve({ uuid })).username;
   } catch (error) {
-    if (error instanceof SkinApiError && error.status === 404) {
-      cacheSet(uuid, null);
-      return null;
-    }
+    if (error instanceof SkinApiError && error.status === 404) return null;
     throw error;
   }
+}
+
+export function resolveUsername(minecraftUuid: string): Promise<string | null> {
+  const uuid = minecraftUuid.toLowerCase();
+  return readThrough<string | null>(
+    usernames,
+    `${KEY_PREFIX}:${uuid}`,
+    (username) => (username === null ? MISS_TTL_MS : HIT_TTL_MS),
+    () => fetchUsername(uuid),
+  );
 }

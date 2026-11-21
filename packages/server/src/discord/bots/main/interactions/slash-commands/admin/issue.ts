@@ -22,7 +22,7 @@ import {
   IssueTriageError,
   issueTriageService,
   type IssueTriageStatus,
-} from "@/services/issue-triage";
+} from "@/services/issue-triage/issue-triage.service";
 
 const DEFAULT_MESSAGE_COUNT = 50;
 

@@ -4,6 +4,7 @@ import {
   MemoryKeyValueStore,
   RedisKeyValueStore,
   createKeyValueStore,
+  forgetStored,
   readStored,
   readStoredMany,
   readThrough,
@@ -108,6 +109,17 @@ describe("MemoryKeyValueStore", () => {
     expect(await store.get("a")).toBe("1");
     expect(await store.get("b")).toBe("3");
   });
+
+  it("forgets deleted keys and keeps the rest", async () => {
+    const store = new MemoryKeyValueStore();
+    await store.set("a", "1", 1000);
+    await store.set("b", "2", 1000);
+
+    await store.delete(["a", "missing"]);
+
+    expect(await store.get("a")).toBeNull();
+    expect(await store.get("b")).toBe("2");
+  });
 });
 
 describe("RedisKeyValueStore", () => {
@@ -191,6 +203,20 @@ describe("RedisKeyValueStore", () => {
       "Redis is not connected",
     );
   });
+
+  it("deletes many keys in one DEL and asks nothing for no keys", async () => {
+    const redis = fakeRedis(2);
+    const store = new RedisKeyValueStore(redis);
+
+    await store.delete(["a", "b"]);
+    await store.delete([]);
+
+    expect(redis.sendCommand).toHaveBeenCalledExactlyOnceWith([
+      "DEL",
+      "a",
+      "b",
+    ]);
+  });
 });
 
 describe("FallbackKeyValueStore", () => {
@@ -202,6 +228,9 @@ describe("FallbackKeyValueStore", () => {
       throw new Error("store down");
     },
     set: async () => {
+      throw new Error("store down");
+    },
+    delete: async () => {
       throw new Error("store down");
     },
   };
@@ -260,6 +289,34 @@ describe("FallbackKeyValueStore", () => {
 
     expect(await store.get("key")).toBe("written while up");
     expect(await primary.get("key")).toBe("written while up");
+  });
+
+  it("deletes from both stores, so a value written while the primary was down cannot come back", async () => {
+    const primary = new MemoryKeyValueStore();
+    const fallback = new MemoryKeyValueStore();
+    let up = false;
+    const store = new FallbackKeyValueStore(primary, fallback, () => up);
+    await store.set("key", "written while down", 1000);
+    up = true;
+    await store.set("key", "written while up", 1000);
+
+    await store.delete(["key"]);
+    up = false;
+
+    expect(await store.get("key")).toBeNull();
+    expect(await primary.get("key")).toBeNull();
+  });
+
+  it("still deletes from the fallback when the primary fails", async () => {
+    const fallback = new MemoryKeyValueStore();
+    await fallback.set("key", "value", 1000);
+    const store = new FallbackKeyValueStore(failing, fallback, () => true);
+    const warn = vi.spyOn(logger, "warn").mockImplementation(() => logger);
+
+    await expect(store.delete(["key"])).resolves.toBeUndefined();
+
+    expect(await fallback.get("key")).toBeNull();
+    warn.mockRestore();
   });
 
   it("keeps a cache working through readThrough while the primary is down", async () => {
@@ -368,6 +425,9 @@ describe("a store that fails", () => {
     set: async () => {
       throw new Error("store down");
     },
+    delete: async () => {
+      throw new Error("store down");
+    },
   };
 
   it("reads as nothing stored", async () => {
@@ -386,6 +446,10 @@ describe("a store that fails", () => {
     expect(await readThrough(failing, "down", 1000, load)).toBe("value");
     expect(await readThrough(failing, "down", 1000, load)).toBe("value");
     expect(load).toHaveBeenCalledTimes(2);
+  });
+
+  it("forgets without failing", async () => {
+    await expect(forgetStored(failing, ["key"])).resolves.toBeUndefined();
   });
 });
 
@@ -437,6 +501,9 @@ describe("readStoredMany", () => {
         throw new Error("store down");
       },
       set: async () => {
+        throw new Error("store down");
+      },
+      delete: async () => {
         throw new Error("store down");
       },
     };

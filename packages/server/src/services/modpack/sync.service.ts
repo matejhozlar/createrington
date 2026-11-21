@@ -11,9 +11,9 @@ import {
   manifestDisabledModIds,
   type ModpackManifest,
 } from "@/services/curseforge/modpack";
-import { getModpackManifest } from "@/services/curseforge/modpack-manifest";
+import { getModpackManifest } from "@/services/modpack/manifest";
 import { refreshProjects } from "@/services/curseforge/ingest";
-import { REQUIRED_DEPENDENCY } from "@/services/workshop/dependencies";
+import { REQUIRED_DEPENDENCY } from "@createrington/shared/workshop";
 import {
   announcePackDropOut,
   announceReview,

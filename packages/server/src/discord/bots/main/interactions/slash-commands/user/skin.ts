@@ -6,7 +6,8 @@ import {
 } from "@/discord/utils/interaction-reply";
 import { CooldownType } from "@/discord/utils/cooldown";
 import { InteractionError } from "@/discord/utils/interaction-error";
-import { getSkinApiClient, MAX_QUALITY_RENDER } from "@/services/skin-api";
+import { getSkinApiClient } from "@/services/skin-api/client";
+import { MAX_QUALITY_RENDER } from "@/services/skin-api/quality";
 import {
   KNOWN_POSES,
   type KnownPose,

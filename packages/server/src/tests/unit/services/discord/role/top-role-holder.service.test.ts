@@ -88,12 +88,12 @@ vi.mock("@/db", () => ({
   },
 }));
 
-vi.mock("@/services/storage", () => ({ objectStorage: storage }));
+vi.mock("@/services/storage/object-storage.service", () => ({
+  objectStorage: storage,
+}));
 
-vi.mock("@/services/skin-api", () => ({
+vi.mock("@/services/skin-api/client", () => ({
   getSkinApiClient: () => skinApi,
-  MAX_QUALITY_RENDER: { width: 1366, height: 2048 },
-  POSE_RENDER_STYLE: "cel",
 }));
 
 vi.mock("@napi-rs/canvas", () => ({

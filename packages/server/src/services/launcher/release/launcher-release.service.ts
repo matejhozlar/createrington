@@ -15,10 +15,22 @@ import {
   newestFirst,
   newestVersion,
 } from "./release-rules";
+import {
+  createKeyValueStore,
+  forgetStored,
+  readThrough,
+} from "@/services/key-value-store";
 import { parseStructuredNotes } from "./structured-notes";
 
 const DOWNLOAD_CHECK_TIMEOUT_MS = 5000;
+const RELEASED_KEY_PREFIX = "launcher:released:v1";
 const RELEASED_TTL_MS = 60 * 1000;
+
+const releasedStore = createKeyValueStore(LAUNCHER_PLATFORMS.length);
+
+function releasedKey(platform: string): string {
+  return `${RELEASED_KEY_PREFIX}:${platform}`;
+}
 
 export type LauncherReleaseErrorCode =
   | "CHANNEL_MISMATCH"
@@ -70,7 +82,10 @@ export interface LauncherUpdate {
 }
 
 interface ReleasedVersions {
-  newest: LauncherRelease | null;
+  newest: Pick<
+    LauncherUpdate,
+    "version" | "notes" | "pub_date" | "url" | "signature"
+  > | null;
   minimumVersion: string | null;
 }
 
@@ -84,24 +99,10 @@ interface ReleasedVersions {
  * released as required: the newest released required version of a platform is the oldest
  * launcher the app still serves. The app stores the description of a release, never the
  * installer or a signing key. The newest released version and that minimum are cached per
- * platform in memory for a minute and dropped on every release, withdraw and prune.
- * Singleton.
+ * platform in the key-value store for a minute and dropped on every release, withdraw and
+ * prune, so every process of the app stops offering a withdrawn version at once.
  */
 class LauncherReleaseService {
-  private static instance: LauncherReleaseService;
-
-  private readonly released = new Map<
-    string,
-    ReleasedVersions & { expiresAt: number }
-  >();
-
-  static getInstance(): LauncherReleaseService {
-    if (!LauncherReleaseService.instance) {
-      LauncherReleaseService.instance = new LauncherReleaseService();
-    }
-    return LauncherReleaseService.instance;
-  }
-
   /** True when `LAUNCHER_PUBLISH_TOKEN_HASH` is configured and versions can be published. */
   isEnabled(): boolean {
     return config.launcher.publishTokenHash.length > 0;
@@ -215,11 +216,7 @@ class LauncherReleaseService {
     }
 
     return {
-      version: newest.version,
-      notes: newest.notes,
-      pub_date: newest.pubDate.toISOString(),
-      url: newest.url,
-      signature: newest.signature,
+      ...newest,
       required:
         minimumVersion !== null &&
         isNewerVersion(minimumVersion, currentVersion),
@@ -325,7 +322,7 @@ class LauncherReleaseService {
       { status: "pruned", prunedAt },
       { id: { $in: gone.map((release) => release.id) } },
     );
-    this.clearCache();
+    await this.clearCache();
 
     const pruned = gone.map((release) => ({
       ...release,
@@ -339,8 +336,8 @@ class LauncherReleaseService {
   }
 
   /** Drops the cached released versions; the next update check reads the database. */
-  clearCache(): void {
-    this.released.clear();
+  async clearCache(): Promise<void> {
+    await forgetStored(releasedStore, LAUNCHER_PLATFORMS.map(releasedKey));
   }
 
   private async requireChanged(
@@ -358,37 +355,45 @@ class LauncherReleaseService {
         `A ${release.status} release cannot be ${target}`,
       );
     }
-    this.clearCache();
+    await this.clearCache();
     return release;
   }
 
-  private async getReleased(platform: string): Promise<ReleasedVersions> {
-    const cached = this.released.get(platform);
-    if (cached && cached.expiresAt > Date.now()) return cached;
-
-    const stored = await Q.launcher.release.findAll({
-      platform,
-      status: { $in: ["released", "pruned"] },
-    });
-    const versions: ReleasedVersions = {
-      newest: newestVersion(
-        stored.filter((release) => release.status === "released"),
-      ),
-      minimumVersion:
-        newestVersion(
-          stored.filter(
-            (release) =>
-              release.required &&
-              release.releasedAt !== null &&
-              release.withdrawnAt === null,
-          ),
-        )?.version ?? null,
-    };
-    this.released.set(platform, {
-      ...versions,
-      expiresAt: Date.now() + RELEASED_TTL_MS,
-    });
-    return versions;
+  private getReleased(platform: string): Promise<ReleasedVersions> {
+    return readThrough(
+      releasedStore,
+      releasedKey(platform),
+      RELEASED_TTL_MS,
+      async (): Promise<ReleasedVersions> => {
+        const stored = await Q.launcher.release.findAll({
+          platform,
+          status: { $in: ["released", "pruned"] },
+        });
+        const newest = newestVersion(
+          stored.filter((release) => release.status === "released"),
+        );
+        return {
+          newest: newest
+            ? {
+                version: newest.version,
+                notes: newest.notes,
+                pub_date: newest.pubDate.toISOString(),
+                url: newest.url,
+                signature: newest.signature,
+              }
+            : null,
+          minimumVersion:
+            newestVersion(
+              stored.filter(
+                (release) =>
+                  release.required &&
+                  release.releasedAt !== null &&
+                  release.withdrawnAt === null,
+              ),
+            )?.version ?? null,
+        };
+      },
+    );
   }
 
   private async downloadAnswers(url: string): Promise<boolean> {
@@ -405,4 +410,4 @@ class LauncherReleaseService {
   }
 }
 
-export const launcherReleaseService = LauncherReleaseService.getInstance();
+export const launcherReleaseService = new LauncherReleaseService();

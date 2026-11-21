@@ -61,6 +61,7 @@ vi.mock("@/services/key-value-store", async (importOriginal) => {
       get: (key) => current().get(key),
       getMany: (keys) => current().getMany(keys),
       set: (key, value, ttlMs) => current().set(key, value, ttlMs),
+      delete: (keys) => current().delete(keys),
     }),
   };
 });

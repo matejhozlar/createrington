@@ -3,7 +3,7 @@ import { adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
 import { structurePackImportSchema } from "@createrington/shared/structure-pack";
 import { ConflictError } from "@/errors";
-import { structurePackService } from "@/services/structure-pack";
+import { structurePackService } from "@/services/structure-pack/structure-pack.service";
 import { auditActor, assertPatchNotEmpty } from "@/trpc/utils";
 
 export const structurePackCrudProcedures = {

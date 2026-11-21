@@ -12,7 +12,7 @@ import {
 } from "@/discord/bots/main/registration-cleanup";
 import { RoleManager } from "@/discord/utils/roles/role-manager";
 import { minecraftRcon, WhitelistAction } from "@/utils/rcon";
-import { getSkinApiClient } from "@/services/skin-api";
+import { getSkinApiClient } from "@/services/skin-api/client";
 import { BadRequestError } from "@/errors";
 import { SkinApiError, type ResolvedPlayer } from "createrington-skin-api";
 import type { GuildMember, GuildTextBasedChannel } from "discord.js";

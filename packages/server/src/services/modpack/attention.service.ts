@@ -6,12 +6,14 @@ import type {
   WorkshopMod,
 } from "@createrington/shared/db";
 import type { ModpackManifest } from "@/services/curseforge/modpack";
-import { getModpackManifest } from "@/services/curseforge/modpack-manifest";
+import { getModpackManifest } from "@/services/modpack/manifest";
 import {
   REQUIRED_DEPENDENCY,
+  type DependencyCoverage,
+} from "@createrington/shared/workshop";
+import {
   loadDependencyContext,
   pruneStaleDependencyEdges,
-  type DependencyCoverage,
 } from "@/services/workshop/dependencies";
 import { announceReview } from "@/services/workshop/discord";
 import { recordModEvent } from "@/services/workshop/events";
@@ -80,7 +82,11 @@ export class ModpackAttentionService {
     if (modpack.curseforgeProjectId) {
       try {
         manifest = await getModpackManifest(modpack.curseforgeProjectId);
-      } catch {
+      } catch (error) {
+        logger.warn(
+          `Modpack #${modpack.id} attention: manifest of CurseForge project #${modpack.curseforgeProjectId} could not be read, manifest checks skipped:`,
+          error,
+        );
         manifest = null;
       }
       if (modpack.shipsServerPack && manifest?.serverPackFileId === null) {

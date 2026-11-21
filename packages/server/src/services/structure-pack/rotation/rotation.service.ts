@@ -9,7 +9,7 @@ import {
   fileExists,
 } from "@/services/mc-server/file-ops";
 import { getModFileDownloadUrl } from "@/services/curseforge/downloads";
-import type { StructurePackService } from "../index";
+import type { StructurePackService } from "../structure-pack.service";
 import type { StructurePackWithMods } from "@/db/queries/structure/pack";
 import type {
   StructurePackMod,
