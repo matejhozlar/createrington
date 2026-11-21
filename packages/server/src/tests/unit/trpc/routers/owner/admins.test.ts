@@ -68,8 +68,8 @@ vi.mock("@/discord/constants", () => ({
   Discord: { Roles: { ADMIN: "admin-role" } },
 }));
 vi.mock("@/utils/rcon", () => ({ minecraftRcon: { sendAll } }));
-vi.mock("@/services/playtime/config", () => ({
-  MINECRAFT_SERVERS: { 1: {} },
+vi.mock("@/services/mc-server/servers", () => ({
+  SERVERS: [{}],
 }));
 
 import { TRPCError } from "@trpc/server";

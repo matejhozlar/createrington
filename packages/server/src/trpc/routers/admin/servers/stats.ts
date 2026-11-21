@@ -2,7 +2,7 @@ import { z } from "zod";
 import { adminProcedure } from "@/trpc/trpc";
 import { Q, playtimeRepo } from "@/db";
 import { getService, Services } from "@/services";
-import { MINECRAFT_SERVERS, getServerById } from "@/services/playtime/config";
+import { SERVERS, getServerById } from "@/services/mc-server/servers";
 import { buildPagination, paginationInput, trpcError } from "@/trpc/utils";
 import { buildServerStatus } from "@/services/playtime/server-status";
 import type { ServerStatus } from "@/services/playtime/server-status";
@@ -24,10 +24,8 @@ export const serverStatsProcedures = {
         }
       > = [];
 
-      for (const [serverId, serverConfig] of Object.entries(
-        MINECRAFT_SERVERS,
-      )) {
-        const id = parseInt(serverId, 10);
+      for (const serverConfig of SERVERS) {
+        const { id } = serverConfig;
         const service = manager.getService(id);
         const status = buildServerStatus(id, serverConfig, service);
 

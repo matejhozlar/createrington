@@ -1,10 +1,8 @@
 import { describe, it, expect, vi } from "vitest";
 
-vi.mock("@/services/playtime/config", () => ({
+vi.mock("@/services/mc-server/servers", () => ({
   getServerByIp: (ip: string) =>
-    ip === "10.0.0.5"
-      ? { serverId: 1, serverName: "Rails", ip, port: 26980 }
-      : undefined,
+    ip === "10.0.0.5" ? { id: 1, name: "Rails", ip, port: 26980 } : undefined,
   isValidServerId: (id: number) => id === 1 || id === 2,
 }));
 

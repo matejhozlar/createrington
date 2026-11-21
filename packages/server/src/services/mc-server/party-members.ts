@@ -4,6 +4,7 @@ import {
   stripFormatting,
   type RconSend,
 } from "@/utils/rcon";
+import { MC_UUID_REGEX } from "@/utils/zod-schemas";
 
 export type PartyCommandFailure =
   "unknown_command" | "not_reporting" | "unexpected_reply";
@@ -26,13 +27,12 @@ export type PartyRemoval =
   | { outcome: "owner"; playerName: string; partyName: string }
   | { outcome: "not_in_party"; playerName: string };
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const NOT_REPORTING = /party_sync is off/i;
 const SYNC_STARTED = /^Sending the parties to the app/;
 
 function requireUuid(uuid: string): string {
   const value = uuid.trim().toLowerCase();
-  if (!UUID.test(value)) {
+  if (!MC_UUID_REGEX.test(value)) {
     throw new Error(`Invalid Minecraft UUID: ${JSON.stringify(uuid)}`);
   }
   return value;

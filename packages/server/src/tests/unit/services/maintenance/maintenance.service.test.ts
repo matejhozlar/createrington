@@ -99,7 +99,7 @@ vi.mock("@/services", () => ({
   },
 }));
 
-vi.mock("@/services/playtime/config", () => ({
+vi.mock("@/services/mc-server/servers", () => ({
   getServerById: () => ({ id: 1, name: "Test Server" }),
 }));
 

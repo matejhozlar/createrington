@@ -1,6 +1,6 @@
 import { Q } from "@/db";
 import { getService, Services } from "@/services";
-import { getServerById } from "@/services/playtime/config";
+import { getServerById } from "@/services/mc-server/servers";
 import type { ServerMaintenanceSchedule } from "@createrington/shared/db/server_maintenance_schedule.types";
 import { MaintenanceModeClient, MaintenanceModeCommandError } from "./mmode";
 import {
@@ -74,7 +74,7 @@ export class MaintenanceService {
   private reconcileTimer: NodeJS.Timeout | null = null;
   private reconciling = new Set<number>();
   private locks = new Map<number, Promise<unknown>>();
-  private serverIds: number[] = [];
+  private serverIds: readonly number[] = [];
 
   constructor(
     private readonly mmode: MaintenanceModeClient = new MaintenanceModeClient(),
@@ -86,7 +86,7 @@ export class MaintenanceService {
   }
 
   /** Subscribe to server online events, run the first reconcile, and start the periodic one. */
-  async initialize(serverIds: number[]): Promise<void> {
+  async initialize(serverIds: readonly number[]): Promise<void> {
     this.serverIds = serverIds;
 
     try {

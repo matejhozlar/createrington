@@ -1,5 +1,6 @@
 import { EmbedPresets } from "@/discord/embeds";
 import { getService, Services } from "@/services";
+import { SERVERS } from "@/services/mc-server/servers";
 import {
   type ChatInputCommandInteraction,
   MessageFlags,
@@ -15,7 +16,12 @@ const data = new SlashCommandBuilder()
       .setName("server")
       .setDescription("Server to fetch players from")
       .setRequired(true)
-      .addChoices({ name: "Rails 'n Sails", value: "1" }),
+      .addChoices(
+        ...SERVERS.map((server) => ({
+          name: server.name,
+          value: String(server.id),
+        })),
+      ),
   );
 
 async function execute(

@@ -15,6 +15,7 @@ import { RoleManager } from "@/discord/utils/roles/role-manager";
 import { minecraftRcon, WhitelistAction } from "@/utils/rcon";
 import { getSkinApiClient } from "@/services/skin-api/client";
 import { BadRequestError } from "@/errors";
+import { MC_USERNAME_REGEX } from "@/utils/zod-schemas";
 import { SkinApiError, type ResolvedPlayer } from "createrington-skin-api";
 import type { GuildMember, GuildTextBasedChannel } from "discord.js";
 import type { WaitlistEntry } from "@createrington/shared/db";
@@ -84,12 +85,12 @@ export async function runRegistration(params: {
     RegistrationComponentPresets.progress(mcName, steps, currentStep),
   );
 
-  if (!/^[a-zA-Z0-9_]{3,16}$/.test(mcName)) {
+  if (!MC_USERNAME_REGEX.test(mcName)) {
     await render(
       RegistrationComponentPresets.idle({
         memberMention: userMention(discordId),
         errorMessage:
-          "Minecraft usernames can only contain letters, numbers, and underscores (3-16 characters).",
+          "Minecraft usernames can only contain letters, numbers, and underscores (1-16 characters).",
       }),
     );
     return { ok: false, errorMessage: "invalid mc name" };

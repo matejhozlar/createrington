@@ -1,8 +1,8 @@
-import config from "@/config";
+import { getServerById, SERVER_IDS } from "@/services/mc-server/servers";
 import { ServerRconConnection } from "./connection";
 import { WhitelistAction } from "./enums";
 import { RconCommandError, ServerNotFoundError } from "./errors";
-import type { MultiServerResult, ServerId, ServerInfo } from "./types";
+import type { MultiServerResult, ServerId } from "./types";
 
 const IDLE_TIMEOUT_MS = 5 * 60 * 1000;
 const CLEANUP_INTERVAL_MS = 60 * 1000;
@@ -16,11 +16,9 @@ function requirePlayerName(playerName: string): void {
 export class MinecraftRconManager {
   private static instance: MinecraftRconManager | null = null;
   private readonly connections = new Map<ServerId, ServerRconConnection>();
-  private readonly serverConfigs = new Map<ServerId, ServerInfo>();
   private cleanupInterval: NodeJS.Timeout | null = null;
 
   private constructor() {
-    this.loadServerConfigs();
     this.startCleanupInterval();
   }
 
@@ -31,40 +29,17 @@ export class MinecraftRconManager {
     return MinecraftRconManager.instance;
   }
 
-  private loadServerConfigs(): void {
-    if (config.servers?.rails?.rcon && config.servers.rails.id) {
-      this.serverConfigs.set(config.servers.rails.id, {
-        id: config.servers.rails.id,
-        name: config.servers.rails.name,
-        rcon: {
-          host: config.servers.rails.rcon.host,
-          port: config.servers.rails.rcon.port,
-          password: config.servers.rails.rcon.password,
-        },
-      });
-    }
-
-    logger.info(
-      `Loaded RCON configs for ${this.serverConfigs.size} server(s):`,
-      Array.from(this.serverConfigs.values()).map((s) => `${s.id} (${s.name})`),
-    );
-  }
-
   private getConnection(serverId: ServerId): ServerRconConnection {
-    const serverInfo = this.serverConfigs.get(serverId);
+    const server = getServerById(serverId);
 
-    if (!serverInfo) {
+    if (!server) {
       throw new ServerNotFoundError(serverId);
     }
 
     let connection = this.connections.get(serverId);
 
     if (!connection) {
-      connection = new ServerRconConnection(
-        serverId,
-        serverInfo.name,
-        serverInfo.rcon,
-      );
+      connection = new ServerRconConnection(serverId, server.name, server.rcon);
       this.connections.set(serverId, connection);
     }
 
@@ -106,7 +81,7 @@ export class MinecraftRconManager {
   }
 
   public getServerIds(): ServerId[] {
-    return Array.from(this.serverConfigs.keys());
+    return [...SERVER_IDS];
   }
 
   public async send(serverId: ServerId, command: string): Promise<string> {
@@ -196,8 +171,7 @@ export class MinecraftRconManager {
     }> = [];
 
     for (const [serverId, result] of results.entries()) {
-      const serverInfo = this.serverConfigs.get(serverId);
-      const serverName = serverInfo?.name || `Server ${serverId}`;
+      const serverName = getServerById(serverId)?.name ?? `Server ${serverId}`;
 
       if (!result.success) {
         logger.error(

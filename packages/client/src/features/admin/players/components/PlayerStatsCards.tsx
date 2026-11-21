@@ -4,10 +4,9 @@ import { Coins, Clock, AlertTriangle, Ticket, Users } from "lucide-react";
 import { formatMoney } from "@/lib/format";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { useQuery } from "@tanstack/react-query";
+import { MAIN_SERVER_ID } from "@/lib/minecraft";
 
 type PlayerDetailed = RouterOutput["admin"]["players"]["players"]["get"];
-
-const SERVER_ID = 1;
 
 interface PlayerStatsCardsProps {
   player: PlayerDetailed;
@@ -29,7 +28,7 @@ export function PlayerStatsCards({
 
   const partyQuery = useQuery(
     trpc.admin.parties.playerStatus.queryOptions({
-      serverId: SERVER_ID,
+      serverId: MAIN_SERVER_ID,
       playerUuid,
     }),
   );

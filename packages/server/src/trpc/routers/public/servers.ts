@@ -1,6 +1,6 @@
 import { router, publicProcedure } from "@/trpc/trpc";
 import { getService, Services } from "@/services";
-import { getServerById, MINECRAFT_SERVERS } from "@/services/playtime/config";
+import { getServerById, SERVERS } from "@/services/mc-server/servers";
 import { buildServerStatus } from "@/services/playtime/server-status";
 import type { ServerStatus } from "@/services/playtime/server-status";
 import { z } from "zod";
@@ -19,10 +19,8 @@ export const serversRouter = router({
       let totalPlayers = 0;
       let onlineServers = 0;
 
-      for (const [serverId, serverConfig] of Object.entries(
-        MINECRAFT_SERVERS,
-      )) {
-        const id = parseInt(serverId, 10);
+      for (const serverConfig of SERVERS) {
+        const { id } = serverConfig;
         const service = manager.getService(id);
         const status = buildServerStatus(id, serverConfig, service);
 

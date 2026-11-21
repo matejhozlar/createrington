@@ -2,7 +2,7 @@ import { z } from "zod";
 import { adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
 import { whitelistService } from "@/services/whitelist";
-import { getServerById } from "@/services/playtime/config";
+import { getServerById } from "@/services/mc-server/servers";
 import { trpcError, auditActor } from "@/trpc/utils";
 
 export const serverWhitelistProcedures = {

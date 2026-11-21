@@ -30,7 +30,8 @@ import { WebSocketService } from "./websocket";
 import { PlayerBanService } from "./player/ban";
 import { playerDeletionService } from "./player/deletion";
 import { isPartyPurgeAllowed, partyPurgeService } from "./party";
-import { StatsImportService, STATS_IMPORT_SERVERS } from "./stats-import";
+import { StatsImportService } from "./stats-import";
+import { SERVERS, SERVER_IDS } from "./mc-server/servers";
 import { FaqService } from "./discord/faq";
 import { DiscordStickyMessageService } from "./discord/sticky-message";
 import { GalleryService } from "./gallery/gallery.service";
@@ -408,10 +409,7 @@ export function registerServices(): void {
       Services.STATS_IMPORT_SERVICE,
       async (c) => {
         const playtimeManager = await c.get(Services.PLAYTIME_MANAGER_SERVICE);
-        const service = new StatsImportService(
-          playtimeManager,
-          STATS_IMPORT_SERVERS,
-        );
+        const service = new StatsImportService(playtimeManager, SERVERS);
         service.initialize();
         return service;
       },
@@ -516,7 +514,7 @@ export function registerServices(): void {
       }
 
       maintenanceService
-        .initialize([config.servers.rails.id])
+        .initialize(SERVER_IDS)
         .catch((error) =>
           logger.warn(`Maintenance service init failed: ${error}`),
         );
@@ -556,7 +554,7 @@ export function registerServices(): void {
       async (c) => {
         const playtimeManager = await c.get(Services.PLAYTIME_MANAGER_SERVICE);
         const service = new VoteRewardService(playtimeManager, undefined, {
-          rewardServerIds: [config.servers.rails.id],
+          rewardServerIds: SERVER_IDS,
         });
         service.initialize();
         return service;

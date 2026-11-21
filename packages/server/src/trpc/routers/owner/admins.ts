@@ -9,7 +9,7 @@ import { adminStatusService } from "@/services/auth/admin-status/admin-status.se
 import { RoleManager } from "@/discord/utils/roles/role-manager";
 import { Discord } from "@/discord/constants";
 import { minecraftRcon } from "@/utils/rcon";
-import { MINECRAFT_SERVERS } from "@/services/playtime/config";
+import { SERVERS } from "@/services/mc-server/servers";
 import { discordId, DISCORD_ID_REGEX } from "@/utils/zod-schemas";
 
 const ACTION_PROMOTE = "admin_promote";
@@ -111,7 +111,7 @@ export const ownerAdminsRouter = router({
         inDb,
         hasDiscordRole,
         activeSessions: activeSessions.length,
-        serverCount: Object.keys(MINECRAFT_SERVERS).length,
+        serverCount: SERVERS.length,
         minecraftUsername: player?.minecraftUsername ?? null,
       };
     }),

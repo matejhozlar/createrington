@@ -1,7 +1,7 @@
 import type { MessageCacheService } from "../discord/message/cache";
 import type { PlaytimeManagerService } from "../playtime/playtime-manager.service";
 import { maintenanceService } from "../maintenance";
-import { MINECRAFT_SERVERS } from "../playtime/config";
+import { getServerById, SERVERS } from "../mc-server/servers";
 import type {
   InitialDataPayload,
   PlayerData,
@@ -29,20 +29,12 @@ export class WebSocketDataProvider {
    * Get current status for all servers
    */
   getAllServerStatuses(): ServerStatus[] {
-    const statuses: ServerStatus[] = [];
-
-    for (const [serverId, _config] of Object.entries(MINECRAFT_SERVERS)) {
-      const id = parseInt(serverId);
-      const status = this.getServerStatus(id);
-      statuses.push(status);
-    }
-
-    return statuses;
+    return SERVERS.map((server) => this.getServerStatus(server.id));
   }
 
   /** Get current status for a specific server */
   getServerStatus(serverId: number): ServerStatus {
-    const config = MINECRAFT_SERVERS[serverId];
+    const config = getServerById(serverId);
     if (!config) {
       throw new Error(`Server ${serverId} not found`);
     }
@@ -78,15 +70,7 @@ export class WebSocketDataProvider {
    * Get all online players across all servers
    */
   getAllPlayers(): PlayerData[] {
-    const players: PlayerData[] = [];
-
-    for (const [serverId] of Object.entries(MINECRAFT_SERVERS)) {
-      const id = parseInt(serverId);
-      const serverPlayers = this.getServerPlayers(id);
-      players.push(...serverPlayers);
-    }
-
-    return players;
+    return SERVERS.flatMap((server) => this.getServerPlayers(server.id));
   }
 
   /** Get online players for a specific server */
@@ -112,10 +96,8 @@ export class WebSocketDataProvider {
   getAllMessages(limit: number = 50): Record<number, CachedMessage[]> {
     const messages: Record<number, CachedMessage[]> = {};
 
-    for (const [serverId] of Object.entries(MINECRAFT_SERVERS)) {
-      const id = parseInt(serverId);
-      const serverMessages = this.getServerMessages(id, limit);
-      messages[id] = serverMessages;
+    for (const server of SERVERS) {
+      messages[server.id] = this.getServerMessages(server.id, limit);
     }
 
     return messages;

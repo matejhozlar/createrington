@@ -51,8 +51,8 @@ describe("getIdType", () => {
   });
 
   describe("Minecraft username", () => {
-    it("detects a 3-char username (minimum length)", () => {
-      expect(getIdType("abc")).toBe("minecraftUsername");
+    it("detects a 1-char username (minimum length)", () => {
+      expect(getIdType("a")).toBe("minecraftUsername");
     });
 
     it("detects a 16-char username (maximum length)", () => {
@@ -63,8 +63,8 @@ describe("getIdType", () => {
       expect(getIdType("Notch_2024")).toBe("minecraftUsername");
     });
 
-    it("rejects usernames shorter than 3 chars", () => {
-      expect(getIdType("ab")).toBe("invalid");
+    it("rejects an empty string", () => {
+      expect(getIdType("")).toBe("invalid");
     });
 
     it("rejects usernames with disallowed characters", () => {

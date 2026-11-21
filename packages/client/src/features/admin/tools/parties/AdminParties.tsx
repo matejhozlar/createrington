@@ -31,8 +31,7 @@ import {
   type PartySortKey,
 } from "./components/PartiesTable";
 import { useMutation, useQuery } from "@tanstack/react-query";
-
-const SERVER_ID = 1;
+import { MAIN_SERVER_ID } from "@/lib/minecraft";
 
 const PAGE_COPY = {
   title: "Parties",
@@ -121,10 +120,10 @@ export function AdminParties() {
   );
 
   const statsQuery = useQuery(
-    trpc.admin.parties.stats.queryOptions({ serverId: SERVER_ID }),
+    trpc.admin.parties.stats.queryOptions({ serverId: MAIN_SERVER_ID }),
   );
   const listQuery = useQuery(
-    trpc.admin.parties.list.queryOptions({ serverId: SERVER_ID }),
+    trpc.admin.parties.list.queryOptions({ serverId: MAIN_SERVER_ID }),
   );
   const parties = listQuery.data ?? NO_PARTIES;
 
@@ -253,7 +252,7 @@ export function AdminParties() {
         onOpenChange={(open) => {
           if (!open) setClaimsDialog(null);
         }}
-        serverId={SERVER_ID}
+        serverId={MAIN_SERVER_ID}
         initialPartyId={claimsDialog?.partyId ?? null}
       />
 
@@ -264,7 +263,9 @@ export function AdminParties() {
         description={PURGE_COPY.description}
         confirmLabel={PURGE_COPY.confirm}
         variant="destructive"
-        onConfirm={() => purgeMutation.mutateAsync({ serverId: SERVER_ID })}
+        onConfirm={() =>
+          purgeMutation.mutateAsync({ serverId: MAIN_SERVER_ID })
+        }
       />
     </div>
   );

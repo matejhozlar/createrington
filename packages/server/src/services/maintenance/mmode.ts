@@ -1,11 +1,11 @@
 import {
-  MINECRAFT_USERNAME,
   defaultRconSend,
   isUnknownCommand,
   requireUsername,
   stripFormatting,
   type RconSend,
 } from "@/utils/rcon";
+import { MC_USERNAME_REGEX } from "@/utils/zod-schemas";
 
 export interface MaintenanceAllowList {
   players: string[];
@@ -48,9 +48,9 @@ function matchList(text: string, pattern: RegExp): string[] {
 export function parseAllowList(response: string): MaintenanceAllowList {
   const tokens = matchList(response, PLAYER_LIST);
   return {
-    players: tokens.filter((name) => MINECRAFT_USERNAME.test(name)),
+    players: tokens.filter((name) => MC_USERNAME_REGEX.test(name)),
     groups: matchList(response, GROUP_LIST),
-    ignored: tokens.filter((name) => !MINECRAFT_USERNAME.test(name)),
+    ignored: tokens.filter((name) => !MC_USERNAME_REGEX.test(name)),
   };
 }
 
@@ -70,7 +70,7 @@ export function toPhrase(text: string): string {
  * concatenated text of every message the command emitted (RCON has no
  * separators), which is why matching is substring based and list parsing
  * stops at the next message start. Usernames sent to the mod must match
- * MINECRAFT_USERNAME; names read back from the mod that do not are reported
+ * MC_USERNAME_REGEX; names read back from the mod that do not are reported
  * as `ignored` rather than echoed into further commands. MOTD and kick
  * message are sent as legacy `§` formatted text with real newlines: the mod's
  * MiniMessage path drops unstyled runs and downgrades hex colours, whereas

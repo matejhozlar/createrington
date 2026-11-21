@@ -1,3 +1,5 @@
+export const MAIN_SERVER_ID = 1;
+
 export const DIMENSIONS = [
   { id: "minecraft:overworld", label: "Overworld" },
   { id: "minecraft:the_nether", label: "Nether" },

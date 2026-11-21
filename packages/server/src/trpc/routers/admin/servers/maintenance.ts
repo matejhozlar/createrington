@@ -3,7 +3,7 @@ import { adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
 import { getService, Services } from "@/services";
 import { maintenanceService } from "@/services/maintenance";
-import { getServerById } from "@/services/playtime/config";
+import { getServerById } from "@/services/mc-server/servers";
 import { trpcError, auditActor } from "@/trpc/utils";
 import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";

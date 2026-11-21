@@ -1,7 +1,7 @@
 import { getValidated } from "@/app/middleware/validation.middleware";
 import { NotFoundError } from "@/errors";
 import { getService, Services } from "@/services";
-import { MINECRAFT_SERVERS } from "@/services/playtime/config";
+import { SERVERS } from "@/services/mc-server/servers";
 import {
   buildServerStatusSummary,
   type ServerStatusSummary,
@@ -47,9 +47,9 @@ export class ServersController {
       query: { server: slug },
     } = getValidated<{ query: ServerStatusQuery }>(res);
 
-    const configs = Object.values(MINECRAFT_SERVERS)
-      .filter((server) => !slug || server.slug === slug)
-      .sort((a, b) => a.id - b.id);
+    const configs = SERVERS.filter(
+      (server) => !slug || server.slug === slug,
+    ).sort((a, b) => a.id - b.id);
 
     if (slug && configs.length === 0) {
       throw new NotFoundError(`Server "${slug}" not found`);

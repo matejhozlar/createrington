@@ -19,7 +19,7 @@ import { SocketEvent, SubscriptionType } from "./types";
 import type { MessageCacheService } from "../discord/message/cache";
 import type { PlaytimeManagerService } from "../playtime/playtime-manager.service";
 import { RoomManager } from "./room-manager";
-import { isValidServerId } from "../playtime/config";
+import { isValidServerId } from "../mc-server/servers";
 import { WebSocketDataProvider } from "./data-provider";
 import {
   parseInitialDataRequest,

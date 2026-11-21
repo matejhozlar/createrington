@@ -13,13 +13,14 @@ import {
 import { TicketType } from "@/services/discord/tickets";
 import { getService, Services } from "@/services";
 import { Q } from "@/db";
+import config from "@/config";
 import type {
   CommandCooldown,
   CommandModule,
   CommandPermissions,
 } from "@/discord/bots/common/loaders/command-loader";
 
-const TICKET_PARTY_SERVER_ID = 1;
+const TICKET_PARTY_SERVER_ID = config.servers.rails.id;
 
 const data = new SlashCommandBuilder()
   .setName("ticket")
