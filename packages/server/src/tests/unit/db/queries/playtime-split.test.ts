@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { splitPeriod } from "@/db/queries/player/playtime/split";
+import {
+  creditBucketSql,
+  splitPeriod,
+} from "@/db/queries/player/playtime/split";
 
 const at = (iso: string) => new Date(iso);
 const sum = (buckets: Array<{ seconds: number }>) =>
@@ -109,5 +112,22 @@ describe("splitPeriod", () => {
       { bucket: at("2026-09-14T00:00:00"), seconds: 3600 },
       { bucket: at("2026-09-15T00:00:00"), seconds: 3600 },
     ]);
+  });
+});
+
+describe("creditBucketSql", () => {
+  it("inserts one bucket and adds to its seconds on conflict", () => {
+    const sql = creditBucketSql("player_playtime_hourly", "hour");
+
+    expect(sql).toContain(
+      "INSERT INTO player_playtime_hourly (player_minecraft_uuid, server_id, hour, seconds_played)",
+    );
+    expect(sql).toContain("VALUES ($1, $2, $3, $4)");
+    expect(sql).toContain(
+      "ON CONFLICT (player_minecraft_uuid, server_id, hour)",
+    );
+    expect(sql).toContain(
+      "DO UPDATE SET seconds_played = player_playtime_hourly.seconds_played + EXCLUDED.seconds_played",
+    );
   });
 });
