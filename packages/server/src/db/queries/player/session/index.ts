@@ -57,7 +57,7 @@ export class PlayerSessionQueries extends PlayerSessionBaseQueries {
   async findOpenWithUsername(serverId: number): Promise<OpenSessionEntry[]> {
     const query = `
       SELECT s.id, s.player_minecraft_uuid, s.server_id, s.session_start,
-             s.last_seen_at, s.last_play_ticks, s.active_seconds::int AS active_seconds,
+             s.last_seen_at, s.last_play_ticks, s.active_seconds::float8 AS active_seconds,
              p.minecraft_username
       FROM ${this.table} s
       JOIN player p ON p.minecraft_uuid = s.player_minecraft_uuid
@@ -184,7 +184,7 @@ export class PlayerSessionQueries extends PlayerSessionBaseQueries {
       this.runQuery<ServerSessionRow>(
         "get server sessions",
         `SELECT s.id, s.player_minecraft_uuid, s.server_id, s.session_start, s.session_end,
-                s.seconds_played::int AS seconds_played, p.minecraft_username
+                s.seconds_played::float8 AS seconds_played, p.minecraft_username
          FROM ${this.table} s
          JOIN player p ON p.minecraft_uuid = s.player_minecraft_uuid
          WHERE s.server_id = $1
