@@ -68,8 +68,6 @@ export function EditPlayerModal({
 
     if (minecraftUsername.trim().length === 0) {
       newErrors.minecraftUsername = "Minecraft username is required";
-    } else if (minecraftUsername.trim().length < 3) {
-      newErrors.minecraftUsername = "Username must be at least 3 characters";
     } else if (minecraftUsername.trim().length > 16) {
       newErrors.minecraftUsername = "Username must not exceed 16 characters";
     } else if (!/^[a-zA-Z0-9_]+$/.test(minecraftUsername.trim())) {
@@ -172,7 +170,7 @@ export function EditPlayerModal({
             disabled={updatePlayer.isPending}
           />
           <FieldDescription>
-            3-16 characters, letters, numbers, and underscores only
+            1-16 characters, letters, numbers, and underscores only
           </FieldDescription>
           {errors.minecraftUsername && (
             <FieldError>{errors.minecraftUsername}</FieldError>
