@@ -72,8 +72,6 @@ export const planningSubcategoriesRouter = router({
       await Q.planning.subcategory
         .update({ id: input.id }, { name: input.name })
         .catch(rethrowDuplicate);
-
-      return { message: "Subcategory renamed" };
     }),
 
   delete: adminProcedure
@@ -88,7 +86,5 @@ export const planningSubcategoriesRouter = router({
         "Subcategory not found",
       );
       await planningRepo.deleteSubcategory(input.id, ctx.user.discordId);
-
-      return { message: "Subcategory deleted" };
     }),
 });

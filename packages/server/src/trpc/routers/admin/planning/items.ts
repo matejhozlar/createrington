@@ -218,40 +218,40 @@ export const planningItemsRouter = router({
       return { id: item.id, revision: item.revision };
     }),
 
-  setAssignees: adminProcedure
-    .meta({ description: "Replace the admins assigned to a planning item" })
-    .input(z.object({ id: id(), discordIds: assigneeIds }))
-    .mutation(async ({ input, ctx }) => {
-      await planningRepo.setAssignees(
-        input.id,
-        input.discordIds,
-        ctx.user.discordId,
-      );
-
-      return { message: "Assignees updated" };
-    }),
-
-  addComment: adminProcedure
-    .meta({ description: "Add a comment to a planning item" })
-    .input(
-      z.object({
-        id: id(),
-        body: z.string().trim().min(1).max(PLANNING_COMMENT_MAX_LENGTH),
+  assignees: router({
+    set: adminProcedure
+      .meta({ description: "Replace the admins assigned to a planning item" })
+      .input(z.object({ id: id(), discordIds: assigneeIds }))
+      .mutation(async ({ input, ctx }) => {
+        await planningRepo.setAssignees(
+          input.id,
+          input.discordIds,
+          ctx.user.discordId,
+        );
       }),
-    )
-    .mutation(async ({ input, ctx }) => {
-      await findOrThrow(
-        Q.planning.item.find({ id: input.id }),
-        "Planning item not found",
-      );
-      await Q.planning.item.comment.create({
-        itemId: input.id,
-        authorDiscordId: ctx.user.discordId,
-        body: input.body,
-      });
+  }),
 
-      return { message: "Comment added" };
-    }),
+  comments: router({
+    create: adminProcedure
+      .meta({ description: "Add a comment to a planning item" })
+      .input(
+        z.object({
+          id: id(),
+          body: z.string().trim().min(1).max(PLANNING_COMMENT_MAX_LENGTH),
+        }),
+      )
+      .mutation(async ({ input, ctx }) => {
+        await findOrThrow(
+          Q.planning.item.find({ id: input.id }),
+          "Planning item not found",
+        );
+        await Q.planning.item.comment.create({
+          itemId: input.id,
+          authorDiscordId: ctx.user.discordId,
+          body: input.body,
+        });
+      }),
+  }),
 
   delete: adminProcedure
     .meta({
@@ -270,7 +270,5 @@ export const planningItemsRouter = router({
         actionType: "planning_item_delete",
         description: `Deleted planning item "${item.title}"`,
       });
-
-      return { message: "Planning item deleted" };
     }),
 });

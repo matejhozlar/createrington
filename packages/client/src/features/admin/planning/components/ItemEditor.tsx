@@ -75,7 +75,7 @@ export function ItemEditor({
   );
 
   const setAssignees = useMutation(
-    trpc.admin.planning.items.setAssignees.mutationOptions(
+    trpc.admin.planning.items.assignees.set.mutationOptions(
       useMutationToast({ onSuccess: () => void invalidate() }),
     ),
   );

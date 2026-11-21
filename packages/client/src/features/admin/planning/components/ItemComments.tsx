@@ -18,7 +18,7 @@ export function ItemComments({ itemId, comments }: ItemCommentsProps) {
   const [body, setBody] = useState("");
 
   const addComment = useMutation(
-    trpc.admin.planning.items.addComment.mutationOptions(
+    trpc.admin.planning.items.comments.create.mutationOptions(
       useMutationToast({
         onSuccess: () => {
           void queryClient.invalidateQueries(trpc.admin.planning.pathFilter());
