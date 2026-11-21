@@ -3,6 +3,7 @@ import { AdminLogActionBaseQueries } from "@/generated/db/admin_log_action.queri
 import { escapeLike } from "@/db/utils";
 import type {
   AdminLogAction,
+  AdminLogActionCreate,
   AdminLogActionRow,
 } from "@createrington/shared/db/admin_log_action.types";
 import type { WorkshopModReviewAction } from "@createrington/shared/workshop";
@@ -91,9 +92,41 @@ export type AdminActionType =
   | "workshop_update"
   | `workshop_mod_${WorkshopModReviewAction}`;
 
+type AdminLogActionInsert = AdminLogActionCreate & {
+  actionType: AdminActionType;
+};
+
 export class AdminLogActionQueries extends AdminLogActionBaseQueries {
   constructor(db: Pool | PoolClient) {
     super(db);
+  }
+
+  /** Inserts one audit row; `actionType` must be a known AdminActionType. */
+  override async create(data: AdminLogActionInsert): Promise<void> {
+    return super.create(data);
+  }
+
+  /** Inserts one audit row and returns it; `actionType` must be a known AdminActionType. */
+  override async createAndReturn(
+    data: AdminLogActionInsert,
+  ): Promise<AdminLogAction> {
+    return super.createAndReturn(data);
+  }
+
+  /** Inserts several audit rows; every `actionType` must be a known AdminActionType. */
+  override async createMany(
+    rows: AdminLogActionInsert[],
+    options?: { onConflict?: "ignore" },
+  ): Promise<void> {
+    return super.createMany(rows, options);
+  }
+
+  /** Inserts several audit rows and returns them; every `actionType` must be a known AdminActionType. */
+  override async createManyAndReturn(
+    rows: AdminLogActionInsert[],
+    options?: { onConflict?: "ignore" },
+  ): Promise<AdminLogAction[]> {
+    return super.createManyAndReturn(rows, options);
   }
 
   /**
