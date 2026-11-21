@@ -54,17 +54,17 @@ async function respondDenied(
   }
 }
 
-const TICKET_ACTIONS: Record<
+const TICKET_ACTIONS = new Map<
   string,
   (interaction: ButtonInteraction, ticketId: number) => Promise<void>
-> = {
-  close: handleClose,
-  "confirm-close": handleConfirmClose,
-  "cancel-close": handleCancelClose,
-  reopen: handleReopen,
-  delete: handleDelete,
-  transcript: handleTranscript,
-};
+>([
+  ["close", handleClose],
+  ["confirm-close", handleConfirmClose],
+  ["cancel-close", handleCancelClose],
+  ["reopen", handleReopen],
+  ["delete", handleDelete],
+  ["transcript", handleTranscript],
+]);
 
 async function execute(interaction: ButtonInteraction): Promise<void> {
   const parsed = CustomIds.ticket.parse(interaction.customId);
@@ -79,7 +79,7 @@ async function execute(interaction: ButtonInteraction): Promise<void> {
 
   const { action, target } = parsed;
   const ticketId = Number(target);
-  const handler = TICKET_ACTIONS[action];
+  const handler = TICKET_ACTIONS.get(action);
 
   if (action === "create" && isTicketType(target)) {
     await handleCreate(interaction, target);
