@@ -1730,7 +1730,14 @@ export abstract class BaseQueries<
   ): Promise<CamelCaseKeys<{ period: string } & TAggregates>[]> {
     const bucketColumn = this.getColumnName(column);
     const selects = Object.entries<string>(aggregates)
-      .map(([name, expression]) => `${expression} AS ${name}`)
+      .map(([name, expression]) => {
+        if (!/^[a-z_][a-z0-9_]*$/.test(name)) {
+          throw new Error(
+            `Invalid aggregate name "${name}": use a snake_case column alias`,
+          );
+        }
+        return `${expression} AS ${name}`;
+      })
       .join(", ");
 
     const result = await this.runQuery<{ period: string } & TAggregates>(
