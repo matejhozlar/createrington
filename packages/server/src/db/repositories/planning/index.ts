@@ -159,6 +159,31 @@ export class PlanningRepository {
     });
   }
 
+  /**
+   * Delete a subcategory. Each item filed under it first loses it as a new
+   * revision, so the item's history records who removed it and its revision
+   * number moves on for anyone editing it.
+   */
+  async deleteSubcategory(id: number, actor: string): Promise<void> {
+    await db.inTransaction(async (tx) => {
+      const filed = await tx.planning.item.findAll(
+        { subcategoryId: id },
+        { orderBy: "id", orderDirection: "asc" },
+      );
+      for (const { id: itemId } of filed) {
+        const current = await tx.planning.item.getForUpdate(itemId);
+        if (current.subcategoryId !== id) continue;
+        await this.save(
+          tx,
+          current,
+          { ...contentOf(current), subcategoryId: null },
+          actor,
+        );
+      }
+      await tx.planning.subcategory.delete({ id });
+    });
+  }
+
   private async lockAtRevision(
     tx: DatabaseQueries,
     id: number,

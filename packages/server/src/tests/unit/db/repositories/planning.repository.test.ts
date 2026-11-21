@@ -43,8 +43,15 @@ vi.mock("@/db", () => {
       subcategory: {
         find: async ({ id }: { id: number }) =>
           state.subcategories.get(id) ?? null,
+        delete: async ({ id }: { id: number }) => {
+          state.subcategories.delete(id);
+        },
       },
       item: {
+        findAll: async ({ subcategoryId }: { subcategoryId: number }) =>
+          [...state.items.values()]
+            .filter((item) => item.subcategoryId === subcategoryId)
+            .map((item) => ({ ...item })),
         getForUpdate: async (id: number) => {
           const item = state.items.get(id);
           if (!item) throw new Error(`planning_item ${id} not found`);
@@ -292,5 +299,40 @@ describe("PlanningRepository.setAssignees", () => {
       repo.setAssignees(item.id, ["admin-a", "player-x"], "admin-a"),
     ).rejects.toBeInstanceOf(BadRequestError);
     expect(state.assignees).toHaveLength(1);
+  });
+});
+
+describe("PlanningRepository.deleteSubcategory", () => {
+  it("clears the subcategory from its items as a revision by the deleting admin", async () => {
+    const filed = await repo.createItem(draft, "admin-a");
+    const other = await repo.createItem(
+      { ...draft, subcategoryId: null },
+      "admin-a",
+    );
+
+    await repo.deleteSubcategory(ECONOMY, "admin-b");
+
+    expect(state.subcategories.has(ECONOMY)).toBe(false);
+    expect(state.items.get(filed.id)).toMatchObject({
+      subcategoryId: null,
+      revision: 2,
+      updatedBy: "admin-b",
+    });
+    expect(revisionsOf(filed.id)[1]).toMatchObject({
+      subcategoryId: null,
+      revision: 2,
+      editedBy: "admin-b",
+    });
+    expect(revisionsOf(other.id)).toHaveLength(1);
+  });
+
+  it("makes a save that started before the deletion conflict", async () => {
+    const item = await repo.createItem(draft, "admin-a");
+
+    await repo.deleteSubcategory(ECONOMY, "admin-b");
+
+    await expect(
+      repo.updateItem(item.id, 1, { title: "Edited meanwhile" }, "admin-a"),
+    ).rejects.toBeInstanceOf(ConflictError);
   });
 });

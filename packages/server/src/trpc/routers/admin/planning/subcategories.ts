@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
-import { Q } from "@/db";
+import { Q, planningRepo } from "@/db";
 import { UniqueViolationError } from "@/db/utils/errors";
 import { findOrThrow, id, trpcError } from "@/trpc/utils";
 import {
@@ -79,15 +79,15 @@ export const planningSubcategoriesRouter = router({
   delete: adminProcedure
     .meta({
       description:
-        "Delete a planning subcategory; its items stay in the category without one",
+        "Delete a planning subcategory; its items stay in the category without one, each with a new revision",
     })
     .input(z.object({ id: id() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       await findOrThrow(
         Q.planning.subcategory.find({ id: input.id }),
         "Subcategory not found",
       );
-      await Q.planning.subcategory.delete({ id: input.id });
+      await planningRepo.deleteSubcategory(input.id, ctx.user.discordId);
 
       return { message: "Subcategory deleted" };
     }),
