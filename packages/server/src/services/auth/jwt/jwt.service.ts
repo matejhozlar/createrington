@@ -5,6 +5,14 @@ import { AuthRole, type JWTPayload } from "@createrington/shared/auth";
 
 export const JWT_AUDIENCE_WEB = "createrington.web";
 
+/** Thrown when a web or launcher access token is past its expiry. */
+export class TokenExpiredError extends Error {
+  constructor() {
+    super("Token expired");
+    this.name = "TokenExpiredError";
+  }
+}
+
 /** Thrown when a token verifies cryptographically but the payload shape is wrong. */
 export class InvalidJwtPayloadError extends Error {
   constructor(message = "Invalid token payload") {
@@ -93,7 +101,7 @@ export class JWTService {
 
   /**
    * Verifies signature, audience, and payload shape, returning the decoded payload.
-   * Throws `Error("Token expired")`, `Error("Invalid token")`, or
+   * Throws `TokenExpiredError`, `Error("Invalid token")`, or
    * `InvalidJwtPayloadError` depending on the failure (the shape check exists because
    * `jwt.verify` only validates signature/exp, not payload structure).
    */
@@ -106,7 +114,7 @@ export class JWTService {
       return assertWebJwtPayload(decoded);
     } catch (error) {
       if (error instanceof jwt.TokenExpiredError) {
-        throw new Error("Token expired");
+        throw new TokenExpiredError();
       }
       if (error instanceof jwt.JsonWebTokenError) {
         throw new Error("Invalid token");

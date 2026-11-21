@@ -1,5 +1,6 @@
 import config from "@/config";
 import type { Request, Response } from "express";
+import { baseCookieOptions } from "./cookie-options";
 
 /**
  * Sets and clears the short-lived access token as an httpOnly cookie scoped to the
@@ -40,17 +41,9 @@ class AccessCookieService {
    */
   setCookie(res: Response, token: string): void {
     if (!this.cookieDomain) return;
-    res.clearCookie(this.cookieName, {
-      httpOnly: true,
-      secure: config.envMode.isProd,
-      sameSite: "lax",
-      path: "/",
-    });
+    res.clearCookie(this.cookieName, baseCookieOptions("/"));
     res.cookie(this.cookieName, token, {
-      httpOnly: true,
-      secure: config.envMode.isProd,
-      sameSite: "lax",
-      path: "/",
+      ...baseCookieOptions("/"),
       maxAge: this.maxAgeMs,
       domain: this.cookieDomain,
     });
@@ -63,17 +56,9 @@ class AccessCookieService {
    */
   clearCookie(res: Response): void {
     if (!this.cookieDomain) return;
+    res.clearCookie(this.cookieName, baseCookieOptions("/"));
     res.clearCookie(this.cookieName, {
-      httpOnly: true,
-      secure: config.envMode.isProd,
-      sameSite: "lax",
-      path: "/",
-    });
-    res.clearCookie(this.cookieName, {
-      httpOnly: true,
-      secure: config.envMode.isProd,
-      sameSite: "lax",
-      path: "/",
+      ...baseCookieOptions("/"),
       domain: this.cookieDomain,
     });
   }

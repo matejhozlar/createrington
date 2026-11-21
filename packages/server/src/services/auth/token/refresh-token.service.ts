@@ -1,6 +1,9 @@
 import crypto from "node:crypto";
 import config from "@/config";
 import type { Request, Response } from "express";
+import { baseCookieOptions } from "./cookie-options";
+
+const COOKIE_PATH = "/api/auth";
 
 /**
  * Generates, hashes, and ferries opaque refresh tokens between the database and the
@@ -49,21 +52,10 @@ class RefreshTokenService {
    * and trip the rotation system's theft detection.
    */
   setCookie(res: Response, token: string): void {
-    if (this.cookieDomain) {
-      res.clearCookie(this.cookieName, {
-        httpOnly: true,
-        secure: config.envMode.isProd,
-        sameSite: "lax",
-        path: "/api/auth",
-      });
-    }
+    this.clearHostOnlyCookie(res);
     res.cookie(this.cookieName, token, {
-      httpOnly: true,
-      secure: config.envMode.isProd,
-      sameSite: "lax",
-      path: "/api/auth",
+      ...this.cookieOptions(),
       maxAge: this.expiresInDays * 86_400_000,
-      ...(this.cookieDomain ? { domain: this.cookieDomain } : {}),
     });
   }
 
@@ -73,27 +65,27 @@ class RefreshTokenService {
    * matches and removes them.
    */
   clearCookie(res: Response): void {
-    if (this.cookieDomain) {
-      res.clearCookie(this.cookieName, {
-        httpOnly: true,
-        secure: config.envMode.isProd,
-        sameSite: "lax",
-        path: "/api/auth",
-      });
-    }
-    res.clearCookie(this.cookieName, {
-      httpOnly: true,
-      secure: config.envMode.isProd,
-      sameSite: "lax",
-      path: "/api/auth",
-      ...(this.cookieDomain ? { domain: this.cookieDomain } : {}),
-    });
+    this.clearHostOnlyCookie(res);
+    res.clearCookie(this.cookieName, this.cookieOptions());
   }
 
   /** Reads the raw refresh token from the request's cookies, or `undefined` if absent. */
   extractFromRequest(req: Request): string | undefined {
     const value: unknown = req.cookies?.[this.cookieName];
     return typeof value === "string" ? value : undefined;
+  }
+
+  private cookieOptions() {
+    return {
+      ...baseCookieOptions(COOKIE_PATH),
+      ...(this.cookieDomain ? { domain: this.cookieDomain } : {}),
+    };
+  }
+
+  private clearHostOnlyCookie(res: Response): void {
+    if (this.cookieDomain) {
+      res.clearCookie(this.cookieName, baseCookieOptions(COOKIE_PATH));
+    }
   }
 }
 

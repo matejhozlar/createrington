@@ -1,6 +1,9 @@
 import { Q, db } from "@/db";
 import { refreshTokenService } from "@/services/auth/token/refresh-token.service";
-import type { AuthSessionRow } from "@createrington/shared/db/auth_session.types";
+import type {
+  AuthSession,
+  AuthSessionFilters,
+} from "@createrington/shared/db/auth_session.types";
 
 interface CreateSessionParams {
   discordId: string;
@@ -66,12 +69,11 @@ class SessionService {
     const tokenHash = refreshTokenService.hash(rawToken);
     const expiresAt = refreshTokenService.getExpiresAt();
 
-    await Q.auth.session.insertSession({
+    await Q.auth.session.create({
       discordId: params.discordId,
       discordUsername: params.username,
       discordAvatar: params.avatar ?? null,
       tokenHash,
-      familyId: null,
       ipAddress: params.ip ?? null,
       userAgent: params.userAgent ?? null,
       expiresAt,
@@ -105,11 +107,11 @@ class SessionService {
       const result = await recent.promise;
       if (!result) return null;
 
-      const successor = await Q.auth.session.findByTokenHash(
-        refreshTokenService.hash(result.rawToken),
-      );
+      const successor = await Q.auth.session.find({
+        tokenHash: refreshTokenService.hash(result.rawToken),
+      });
       if (!successor) return null;
-      if (successor.revoked_at) {
+      if (successor.revokedAt) {
         const next = this.recentRotations.get(
           refreshTokenService.hash(result.rawToken),
         );
@@ -153,21 +155,21 @@ class SessionService {
     ip?: string,
     userAgent?: string,
   ): Promise<RotateResult | null> {
-    const session = await Q.auth.session.findByTokenHash(tokenHash);
+    const session = await Q.auth.session.find({ tokenHash });
 
     if (!session) {
       logger.warn("Refresh token rotation failed: token not found");
       return null;
     }
 
-    if (session.revoked_at) {
+    if (session.revokedAt) {
       await this.revokeFamilyAsTheft(session);
       return null;
     }
 
-    if (new Date(session.expires_at) < new Date()) {
+    if (session.expiresAt < new Date()) {
       logger.debug(
-        `Refresh token expired for user ${session.discord_id}, revoking`,
+        `Refresh token expired for user ${session.discordId}, revoking`,
       );
       await Q.auth.session.revokeById(session.id);
       return null;
@@ -179,12 +181,12 @@ class SessionService {
       const claimed = await tx.auth.session.revokeById(session.id);
       if (!claimed) return false;
 
-      await tx.auth.session.insertSession({
-        discordId: session.discord_id,
-        discordUsername: session.discord_username,
-        discordAvatar: session.discord_avatar,
+      await tx.auth.session.create({
+        discordId: session.discordId,
+        discordUsername: session.discordUsername,
+        discordAvatar: session.discordAvatar,
         tokenHash: refreshTokenService.hash(newRawToken),
-        familyId: session.family_id,
+        familyId: session.familyId,
         ipAddress: ip ?? null,
         userAgent: userAgent ?? null,
         expiresAt: refreshTokenService.getExpiresAt(),
@@ -198,39 +200,47 @@ class SessionService {
     }
 
     logger.debug(
-      `Rotated refresh token for user ${session.discord_id} (family: ${session.family_id})`,
+      `Rotated refresh token for user ${session.discordId} (family: ${session.familyId})`,
     );
 
     return {
       rawToken: newRawToken,
-      discordId: session.discord_id,
-      discordUsername: session.discord_username,
-      discordAvatar: session.discord_avatar,
+      discordId: session.discordId,
+      discordUsername: session.discordUsername,
+      discordAvatar: session.discordAvatar,
     };
   }
 
-  private async revokeFamilyAsTheft(session: AuthSessionRow): Promise<void> {
+  private async revokeFamilyAsTheft(session: AuthSession): Promise<void> {
     logger.warn(
-      `Refresh token theft detected for user ${session.discord_id}, revoking family ${session.family_id}`,
+      `Refresh token theft detected for user ${session.discordId}, revoking family ${session.familyId}`,
     );
-    await Q.auth.session.revokeByFamily(session.family_id);
+    await this.revokeLive({ familyId: session.familyId });
+  }
+
+  private async revokeLive(filters: AuthSessionFilters): Promise<void> {
+    await Q.auth.session.updateAll(
+      { revokedAt: new Date() },
+      { ...filters, revokedAt: { $exists: false } },
+    );
   }
 
   /** Revokes the single session identified by the given raw refresh token (normal logout). */
   async revokeByToken(rawToken: string): Promise<void> {
-    const tokenHash = refreshTokenService.hash(rawToken);
-    await Q.auth.session.revokeByTokenHash(tokenHash);
+    await this.revokeLive({ tokenHash: refreshTokenService.hash(rawToken) });
   }
 
   /** Revokes every active session for the given user (logout-all or forced sign-out). */
   async revokeAllForUser(discordId: string): Promise<void> {
-    await Q.auth.session.revokeAllForUser(discordId);
+    await this.revokeLive({ discordId });
     logger.info(`Revoked all sessions for user ${discordId}`);
   }
 
   /** Deletes expired sessions from the database; invoked hourly, also safe to call on demand. */
   async cleanupExpired(): Promise<void> {
-    const deleted = await Q.auth.session.deleteExpired();
+    const deleted = await Q.auth.session.deleteAll({
+      expiresAt: { $lt: new Date() },
+    });
     if (deleted > 0) {
       logger.info(`Cleaned up ${deleted} expired auth sessions`);
     }
