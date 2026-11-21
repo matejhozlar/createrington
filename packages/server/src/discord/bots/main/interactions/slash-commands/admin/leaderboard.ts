@@ -1,22 +1,26 @@
 import { Q } from "@/db";
-import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
 import { InteractionError } from "@/discord/utils/interaction-error";
 import { replyError } from "@/discord/utils/interaction-reply";
 import { getService, Services } from "@/services";
 import {
   getAllLeaderboardTypes,
+  isValidLeaderboardType,
   type LeaderboardService,
-  type LeaderboardType,
 } from "@/services/discord/leaderboard";
 import {
   type ChatInputCommandInteraction,
   MessageFlags,
   PermissionFlagsBits,
   SlashCommandBuilder,
+  channelMention,
 } from "discord.js";
+import type {
+  CommandModule,
+  CommandPermissions,
+} from "@/discord/bots/common/loaders/command-loader";
 
-export const data = new SlashCommandBuilder()
+const data = new SlashCommandBuilder()
   .setName("leaderboard")
   .setDescription("Manage leaderboards")
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
@@ -58,11 +62,11 @@ export const data = new SlashCommandBuilder()
     sub.setName("refresh-all").setDescription("Refresh all leaderboards"),
   );
 
-export const permissions = {
+const permissions: CommandPermissions = {
   requireAdmin: true,
 };
 
-export async function execute(
+async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
   const subcommand = interaction.options.getSubcommand();
@@ -82,7 +86,15 @@ async function handleCreate(
   interaction: ChatInputCommandInteraction,
   leaderboardService: LeaderboardService,
 ): Promise<void> {
-  const type = interaction.options.getString("type", true) as LeaderboardType;
+  const type = interaction.options.getString("type", true);
+  if (!isValidLeaderboardType(type)) {
+    await replyError(
+      interaction,
+      "Unknown Leaderboard",
+      `There is no ${type} leaderboard.`,
+    );
+    return;
+  }
 
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
@@ -90,9 +102,7 @@ async function handleCreate(
 
   const embed = EmbedPresets.success(
     "Leaderboard Created",
-    `Created ${type} leaderboard in ${Discord.Channels.mention(
-      result.channelId,
-    )}`,
+    `Created ${type} leaderboard in ${channelMention(result.channelId)}`,
   );
 
   await interaction.editReply({
@@ -104,7 +114,15 @@ async function handleRefresh(
   interaction: ChatInputCommandInteraction,
   leaderboardService: LeaderboardService,
 ): Promise<void> {
-  const type = interaction.options.getString("type", true) as LeaderboardType;
+  const type = interaction.options.getString("type", true);
+  if (!isValidLeaderboardType(type)) {
+    await replyError(
+      interaction,
+      "Unknown Leaderboard",
+      `There is no ${type} leaderboard.`,
+    );
+    return;
+  }
 
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
@@ -165,3 +183,9 @@ async function handleRefreshAll(
     embeds: [embed.build()],
   });
 }
+
+export default {
+  data,
+  permissions,
+  execute,
+} satisfies CommandModule;

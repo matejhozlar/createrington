@@ -6,33 +6,18 @@ import {
   Routes,
 } from "discord.js";
 import path from "node:path";
-import fs from "node:fs";
-import { fileURLToPath, pathToFileURL } from "node:url";
-import type { CommandModule } from "../bots/common/loaders/command-loader";
+import { fileURLToPath } from "node:url";
+import { isCommandModule } from "../bots/common/loaders/command-loader";
+import {
+  collectModuleFiles,
+  importDefaultExport,
+} from "../bots/common/loaders/module-files";
 
 const BOT_TOKEN = config.discord.bots.main.token;
 const BOT_ID = config.discord.bots.main.id;
 const GUILD_ID = config.discord.guild.id;
 
 const rest = new REST({ version: "10" }).setToken(BOT_TOKEN);
-
-function collectCommandFiles(dir: string): string[] {
-  if (!fs.existsSync(dir)) return [];
-
-  const ext = ".ts";
-  const files: string[] = [];
-
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    const fullPath = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
-      files.push(...collectCommandFiles(fullPath));
-    } else if (entry.name.endsWith(ext)) {
-      files.push(fullPath);
-    }
-  }
-
-  return files;
-}
 
 async function loadCommandData(): Promise<
   RESTPostAPIApplicationCommandsJSONBody[]
@@ -48,32 +33,26 @@ async function loadCommandData(): Promise<
     "slash-commands",
   );
 
-  if (!fs.existsSync(commandsPath)) {
-    logger.warn("Commands directory not found");
-    return [];
-  }
-
-  const commandFiles = collectCommandFiles(commandsPath);
+  const commandFiles = collectModuleFiles(commandsPath, ".ts");
   const commands: RESTPostAPIApplicationCommandsJSONBody[] = [];
+
+  if (commandFiles.length === 0) {
+    logger.warn(`No command modules found in ${commandsPath}`);
+  }
 
   for (const filePath of commandFiles) {
     const file = path.basename(filePath);
     try {
-      const commandModule = (await import(
-        pathToFileURL(filePath).href
-      )) as CommandModule;
+      const command = await importDefaultExport(filePath);
 
-      if (!commandModule.data) {
-        logger.warn(`Skipped ${file}: missing 'data' export`);
+      if (!isCommandModule(command)) {
+        logger.warn(
+          `Skipped ${file}: default export is not a command (needs data and execute)`,
+        );
         continue;
       }
 
-      if (typeof commandModule.data.toJSON !== "function") {
-        logger.warn(`Skipped ${file}: 'data' does not have toJSON method`);
-        continue;
-      }
-
-      commands.push(commandModule.data.toJSON());
+      commands.push(command.data.toJSON());
       logger.debug(`Loaded command data from ${file}`);
     } catch (error) {
       logger.error(`Failed to load command data from ${file}:`, error);

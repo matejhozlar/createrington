@@ -4,11 +4,11 @@ import {
   RESTJSONErrorCodes,
   type AnyThreadChannel,
   type ForumChannel,
+  userMention,
 } from "discord.js";
 import config from "@/config";
 import { getService, Services } from "@/services";
 import { BadRequestError } from "@/errors";
-import { Discord } from "@/discord/constants";
 import { Q } from "@/db";
 import type {
   CurseforgeProject,
@@ -232,7 +232,7 @@ export async function announceSuggestion(
     const note = mod.note ? `: ${mod.note}` : "";
     const lines = [
       `**${mod.project.name}**${author}`,
-      `Suggested by ${Discord.Users.mention(mod.submittedBy)}${note}`,
+      `Suggested by ${userMention(mod.submittedBy)}${note}`,
     ];
     if (mod.project.websiteUrl) lines.push(mod.project.websiteUrl);
 

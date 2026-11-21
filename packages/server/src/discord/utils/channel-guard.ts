@@ -1,10 +1,11 @@
-import type {
-  DMChannel,
-  NewsChannel,
-  PrivateThreadChannel,
-  PublicThreadChannel,
-  TextChannel,
-  Channel,
+import {
+  type Channel,
+  ChannelType,
+  type DMChannel,
+  type NewsChannel,
+  type PrivateThreadChannel,
+  type PublicThreadChannel,
+  type TextChannel,
 } from "discord.js";
 
 export type SendableChannel =
@@ -19,5 +20,16 @@ export function isSendableChannel(
 ): channel is SendableChannel {
   return (
     channel !== null && "send" in channel && typeof channel.send === "function"
+  );
+}
+
+export type GuildTextChannel = TextChannel | NewsChannel;
+
+export function isGuildTextChannel(
+  channel: Channel | null,
+): channel is GuildTextChannel {
+  return (
+    channel?.type === ChannelType.GuildText ||
+    channel?.type === ChannelType.GuildAnnouncement
   );
 }

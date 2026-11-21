@@ -1,3 +1,4 @@
+import { userMention } from "discord.js";
 import { Q, waitlistRepo } from "@/db";
 import { WaitlistComponentPresets } from "@/discord/components/presets/waitlist";
 import { getGuild, lookupChannel, lookupMember } from "./discord-lookup";
@@ -115,7 +116,7 @@ export class WaitlistCleanupService {
             entry.discordId,
           );
           const card = WaitlistComponentPresets.waiting({
-            memberMention: `<@${entry.discordId}>`,
+            memberMention: userMention(entry.discordId),
             position,
             total,
             queuedAt: new Date(),
@@ -130,7 +131,7 @@ export class WaitlistCleanupService {
         }
 
         await channel.send({
-          content: `⌛ <@${entry.discordId}> Your registration window expired, so the spot went to the next person in line. You're back in the queue and we'll ping you again when a spot opens.`,
+          content: `⌛ ${userMention(entry.discordId)} Your registration window expired, so the spot went to the next person in line. You're back in the queue and we'll ping you again when a spot opens.`,
         });
       } catch (error) {
         logger.warn(

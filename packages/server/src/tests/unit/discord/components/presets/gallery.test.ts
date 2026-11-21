@@ -8,7 +8,7 @@ import {
   buildComponentsMessage,
   validateComponentsV2,
 } from "@/discord/components";
-import { ComponentColors } from "@/discord/components/colors";
+import { EmbedColors } from "@/discord/embeds/colors";
 import type {
   ComponentContainer,
   ComponentsData,
@@ -67,7 +67,7 @@ describe("GalleryComponentPresets.approvalAnnouncement", () => {
     const [image] = root(message).components;
 
     expect(validateComponentsV2(message)).toBeNull();
-    expect(root(message).accentColor).toBe(ComponentColors.Success);
+    expect(root(message).accentColor).toBe(EmbedColors.Success);
     expect(image).toMatchObject({
       type: "media_gallery",
       items: [

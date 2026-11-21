@@ -1,3 +1,4 @@
+import { CustomIds } from "@/discord/custom-ids";
 import config from "@/config";
 import { siteUrl } from "@/config/site-url";
 import { encodeStatParam } from "@createrington/shared/minecraft-stats";
@@ -63,7 +64,7 @@ export const ButtonPresets = {
   departedMember: {
     deleteNow(departedId: number): ButtonBuilder {
       return new ButtonBuilder()
-        .setCustomId(`departed:delete-now:${departedId}`)
+        .setCustomId(CustomIds.departedDeleteNow.build({ departedId }))
         .setLabel("Yeet from Database 🚀")
         .setStyle(ButtonStyle.Danger);
     },

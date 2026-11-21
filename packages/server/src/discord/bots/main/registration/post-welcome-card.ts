@@ -1,3 +1,4 @@
+import { userMention } from "discord.js";
 import type { GuildMember } from "discord.js";
 import config from "@/config";
 import { Q } from "@/db";
@@ -38,7 +39,7 @@ export async function postRegistrationWelcomeCard(params: {
     });
 
     await channel.send({
-      content: `<@${params.discordId}>`,
+      content: userMention(params.discordId),
       files: [card],
     });
 

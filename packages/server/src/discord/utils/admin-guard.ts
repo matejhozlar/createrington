@@ -7,17 +7,7 @@ import { Discord } from "../constants";
 function resolveGuildMember(
   interaction: ChatInputCommandInteraction,
 ): GuildMember | null {
-  const member = interaction.member as GuildMember | null;
-
-  if (
-    !member ||
-    typeof member.roles === "string" ||
-    Array.isArray(member.roles)
-  ) {
-    return null;
-  }
-
-  return member;
+  return interaction.inCachedGuild() ? interaction.member : null;
 }
 
 export async function isAdmin(member: GuildMember): Promise<boolean> {

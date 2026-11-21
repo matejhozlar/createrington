@@ -1,9 +1,12 @@
 import "@/logger.global";
-import type { CommandModule } from "@/discord/bots/common/loaders/command-loader";
-import fs from "node:fs";
+import { isCommandModule } from "@/discord/bots/common/loaders/command-loader";
+import {
+  collectModuleFiles,
+  importDefaultExport,
+} from "@/discord/bots/common/loaders/module-files";
 import fsp from "node:fs/promises";
 import path from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 
 // Prevent process.exit() calls from killing the script during command imports.
 // Some command files transitively import @/db which eagerly connects to PostgreSQL
@@ -87,23 +90,6 @@ interface CommandData {
     type: string;
     message?: string;
   };
-}
-
-/** Recursively collect all .ts files from a directory */
-function collectFiles(dir: string): string[] {
-  if (!fs.existsSync(dir)) return [];
-  const files: string[] = [];
-
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    const fullPath = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
-      files.push(...collectFiles(fullPath));
-    } else if (entry.name.endsWith(".ts")) {
-      files.push(fullPath);
-    }
-  }
-
-  return files;
 }
 
 /** Determine category from file path */
@@ -260,7 +246,7 @@ function renderCommand(cmd: CommandData): string {
 async function main(): Promise<void> {
   console.log("Scanning command files...");
 
-  const files = collectFiles(COMMANDS_PATH);
+  const files = collectModuleFiles(COMMANDS_PATH, ".ts");
   const commands: CommandData[] = [];
 
   // Intercept process.exit during imports (DB module calls it when offline)
@@ -268,10 +254,10 @@ async function main(): Promise<void> {
   for (const filePath of files) {
     const fileName = path.basename(filePath);
     try {
-      const mod = (await import(pathToFileURL(filePath).href)) as CommandModule;
+      const mod = await importDefaultExport(filePath);
 
-      if (!mod.data?.name) {
-        console.warn(`Skipped ${fileName}: missing data export`);
+      if (!isCommandModule(mod)) {
+        console.warn(`Skipped ${fileName}: default export is not a command`);
         continue;
       }
 

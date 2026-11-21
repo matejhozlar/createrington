@@ -23,10 +23,13 @@ vi.mock("@/services", () => ({
 }));
 vi.mock("@/services/discord/leaderboard", () => ({
   getAllLeaderboardTypes: () => ["playtime"],
+  isValidLeaderboardType: (type: string) => type === "playtime",
 }));
 
-import { execute } from "@/discord/bots/main/interactions/slash-commands/admin/leaderboard";
+import handler from "@/discord/bots/main/interactions/slash-commands/admin/leaderboard";
 import { InteractionError } from "@/discord/utils/interaction-error";
+
+const { execute } = handler;
 
 function refreshInteraction() {
   const fake = {

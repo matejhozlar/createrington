@@ -3,15 +3,13 @@ import {
   ButtonBuilder,
   type ButtonInteraction,
   ButtonStyle,
-  type GuildMember,
   MessageFlags,
+  channelMention,
 } from "discord.js";
-import {
-  parseTicketButtonId,
-  type TicketType,
-} from "@/services/discord/tickets";
+import { isTicketType, type TicketType } from "@/services/discord/tickets";
+import type { ButtonModule } from "@/discord/bots/common/loaders/component-loader";
+import { CustomIds } from "@/discord/custom-ids";
 import { EmbedColors, EmbedPresets } from "@/discord/embeds";
-import { Discord } from "@/discord/constants";
 import { Q } from "@/db";
 import { isSendableChannel } from "@/discord/utils/channel-guard";
 import { isAdmin } from "@/discord/utils/admin-guard";
@@ -34,13 +32,7 @@ async function authorizeTicketAction(
     return ticket;
   }
 
-  const member = interaction.member as GuildMember | null;
-  if (
-    member &&
-    typeof member.roles !== "string" &&
-    !Array.isArray(member.roles) &&
-    (await isAdmin(member))
-  ) {
+  if (interaction.inCachedGuild() && (await isAdmin(interaction.member))) {
     return ticket;
   }
 
@@ -62,10 +54,20 @@ async function respondDenied(
   }
 }
 
-export const pattern = "ticket:*";
+const TICKET_ACTIONS = new Map<
+  string,
+  (interaction: ButtonInteraction, ticketId: number) => Promise<void>
+>([
+  ["close", handleClose],
+  ["confirm-close", handleConfirmClose],
+  ["cancel-close", handleCancelClose],
+  ["reopen", handleReopen],
+  ["delete", handleDelete],
+  ["transcript", handleTranscript],
+]);
 
-export async function execute(interaction: ButtonInteraction): Promise<void> {
-  const parsed = parseTicketButtonId(interaction.customId);
+async function execute(interaction: ButtonInteraction): Promise<void> {
+  const parsed = CustomIds.ticket.parse(interaction.customId);
 
   if (!parsed) {
     await interaction.reply({
@@ -75,22 +77,14 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
     return;
   }
 
-  const { action, ticketId, type } = parsed;
+  const { action, target } = parsed;
+  const ticketId = Number(target);
+  const handler = TICKET_ACTIONS.get(action);
 
-  if (action === "create" && type) {
-    await handleCreate(interaction, type);
-  } else if (action === "close" && ticketId) {
-    await handleClose(interaction, ticketId);
-  } else if (action === "confirm-close" && ticketId) {
-    await handleConfirmClose(interaction, ticketId);
-  } else if (action === "cancel-close" && ticketId) {
-    await handleCancelClose(interaction, ticketId);
-  } else if (action === "reopen" && ticketId) {
-    await handleReopen(interaction, ticketId);
-  } else if (action === "delete" && ticketId) {
-    await handleDelete(interaction, ticketId);
-  } else if (action === "transcript" && ticketId) {
-    await handleTranscript(interaction, ticketId);
+  if (action === "create" && isTicketType(target)) {
+    await handleCreate(interaction, target);
+  } else if (handler && Number.isInteger(ticketId) && ticketId > 0) {
+    await handler(interaction, ticketId);
   } else {
     await interaction.reply({
       content: "Unknown action",
@@ -111,7 +105,7 @@ async function handleTranscript(
   const { generated } = await ticketService.ensureTranscript(ticketId);
   await ticketService.sendTranscript(ticketId, interaction.user.id);
 
-  const channel = Discord.Channels.mention(TicketSystemIds.TRANSCRIPT_CHANNEL);
+  const channel = channelMention(TicketSystemIds.TRANSCRIPT_CHANNEL);
   const embed = generated
     ? EmbedPresets.success(
         "Transcript generated",
@@ -145,7 +139,7 @@ async function handleCreate(
     await replyError(
       interaction,
       "Ticket Already Open",
-      `You already have an open ticket ${Discord.Channels.mention(
+      `You already have an open ticket ${channelMention(
         existingTicket[0].channelId,
       )}. Please close it before creating a new one.`,
     );
@@ -159,7 +153,7 @@ async function handleCreate(
 
   const embed = EmbedPresets.success(
     "Ticket Created",
-    `Your ticket has been created: <#${channel.id}>`,
+    `Your ticket has been created: ${channelMention(channel.id)}`,
   );
 
   await interaction.editReply({
@@ -181,11 +175,15 @@ async function handleClose(
 
   const confirmRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
-      .setCustomId(`ticket:confirm-close:${ticketId}`)
+      .setCustomId(
+        CustomIds.ticket.build({ action: "confirm-close", target: ticketId }),
+      )
       .setLabel("Confirm")
       .setStyle(ButtonStyle.Success),
     new ButtonBuilder()
-      .setCustomId(`ticket:cancel-close:${ticketId}`)
+      .setCustomId(
+        CustomIds.ticket.build({ action: "cancel-close", target: ticketId }),
+      )
       .setLabel("Cancel")
       .setStyle(ButtonStyle.Danger),
   );
@@ -277,3 +275,8 @@ async function handleDelete(
     });
   }, 5000);
 }
+
+export default {
+  customId: CustomIds.ticket,
+  execute,
+} satisfies ButtonModule;

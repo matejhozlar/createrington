@@ -3,6 +3,7 @@ import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
 import { ButtonPresets } from "@/discord/embeds/presets/buttons";
 import { ActionRowBuilder, type ButtonBuilder } from "discord.js";
+import { getService, Services } from "@/services";
 import { settings } from "@/services/settings";
 import { DatabaseTable } from "@/generated/db";
 import { AdminEdit } from "@/types";
@@ -130,7 +131,8 @@ export class WaitlistRepository {
       let player = null;
 
       try {
-        discordUser = await Discord.Users.fetch(entry.discordId);
+        const client = await getService(Services.DISCORD_MAIN_BOT);
+        discordUser = await client.users.fetch(entry.discordId);
       } catch (error) {
         logger.warn(`Failed to fetch Discord user ${entry.discordId}:`, error);
       }

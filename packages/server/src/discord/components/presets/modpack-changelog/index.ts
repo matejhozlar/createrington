@@ -11,7 +11,7 @@ import {
   text,
   thumbnail,
 } from "../../component-builder";
-import { ComponentColors } from "../../colors";
+import { EmbedColors } from "@/discord/embeds/colors";
 import { discordTimestamp, pluralize } from "@/utils/format";
 import {
   CURSEFORGE_CLASSES,
@@ -276,7 +276,7 @@ export const ModpackChangelogComponentPresets = {
               ...children,
               ...(last ? footer(input.release) : []),
             ],
-            { accentColor: ComponentColors.Info },
+            { accentColor: EmbedColors.Info },
           ),
         ],
       };

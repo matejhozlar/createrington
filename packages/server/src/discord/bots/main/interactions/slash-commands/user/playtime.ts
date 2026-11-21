@@ -9,8 +9,12 @@ import {
   MessageFlags,
   SlashCommandBuilder,
 } from "discord.js";
+import type {
+  CommandCooldown,
+  CommandModule,
+} from "@/discord/bots/common/loaders/command-loader";
 
-export const data = new SlashCommandBuilder()
+const data = new SlashCommandBuilder()
   .setName("playtime")
   .setDescription("Check playtime of a user")
   .addUserOption((opt) =>
@@ -20,13 +24,13 @@ export const data = new SlashCommandBuilder()
       .setRequired(false),
   );
 
-export const cooldown = {
+const cooldown: CommandCooldown = {
   duration: 5,
   type: CooldownType.USER,
   message: "Please wait before checking playtime again!",
 };
 
-export async function execute(interaction: ChatInputCommandInteraction) {
+async function execute(interaction: ChatInputCommandInteraction) {
   const userOption = interaction.options.getUser("user", false);
   const targetUser = userOption || interaction.user;
 
@@ -70,3 +74,9 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     flags: MessageFlags.Ephemeral,
   });
 }
+
+export default {
+  data,
+  cooldown,
+  execute,
+} satisfies CommandModule;

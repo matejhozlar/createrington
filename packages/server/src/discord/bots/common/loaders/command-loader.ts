@@ -1,98 +1,85 @@
 import config from "@/config";
-import fs from "node:fs";
 import type { CooldownType } from "@/discord/utils/cooldown";
 import {
   type AutocompleteInteraction,
   type ChatInputCommandInteraction,
   Collection,
-  type SlashCommandBuilder,
+  type RESTPostAPIChatInputApplicationCommandsJSONBody,
 } from "discord.js";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
+import { collectModuleFiles, importDefaultExport } from "./module-files";
 
-const isDev = config.envMode.isDev;
+const extension = config.envMode.isDev ? ".ts" : ".js";
 
-export interface CommandModule {
-  data: SlashCommandBuilder;
-  execute: (interaction: ChatInputCommandInteraction) => Promise<void>;
-  autocomplete?: (interaction: AutocompleteInteraction) => Promise<void>;
-
-  permissions?: {
-    requireAdmin?: boolean;
-    requireOwner?: boolean;
-  };
-
-  cooldown?: {
-    duration: number;
-    type: CooldownType;
-    message?: string;
-  };
+export interface CommandData {
+  readonly name: string;
+  toJSON(): RESTPostAPIChatInputApplicationCommandsJSONBody;
 }
 
-function collectCommandFiles(dir: string): string[] {
-  if (!fs.existsSync(dir)) return [];
+export interface CommandPermissions {
+  requireAdmin?: boolean;
+  requireOwner?: boolean;
+}
 
-  const ext = isDev ? ".ts" : ".js";
-  const files: string[] = [];
+export interface CommandCooldown {
+  duration: number;
+  type: CooldownType;
+  message?: string;
+}
 
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    const fullPath = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
-      files.push(...collectCommandFiles(fullPath));
-    } else if (entry.name.endsWith(ext)) {
-      files.push(fullPath);
-    }
-  }
+export interface CommandModule {
+  data: CommandData;
+  execute: (interaction: ChatInputCommandInteraction) => Promise<void>;
+  autocomplete?: (interaction: AutocompleteInteraction) => Promise<void>;
+  permissions?: CommandPermissions;
+  cooldown?: CommandCooldown;
+}
 
-  return files;
+export function isCommandModule(value: unknown): value is CommandModule {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as Partial<CommandModule>;
+  return (
+    typeof candidate.data?.name === "string" &&
+    typeof candidate.data.toJSON === "function" &&
+    typeof candidate.execute === "function"
+  );
 }
 
 export async function loadCommandHandlers(
   commandsPath: string,
 ): Promise<Collection<string, CommandModule>> {
-  if (!fs.existsSync(commandsPath)) {
-    logger.warn(`Commands directory not found: ${commandsPath}`);
-    return new Collection();
-  }
-
-  const commandFiles = collectCommandFiles(commandsPath);
+  const commandFiles = collectModuleFiles(commandsPath, extension);
   const commandHandlers = new Collection<string, CommandModule>();
+
+  if (commandFiles.length === 0) {
+    logger.warn(`No command modules found in ${commandsPath}`);
+  }
 
   for (const filePath of commandFiles) {
     const file = path.basename(filePath);
     try {
-      const commandModule = (await import(
-        pathToFileURL(filePath).href
-      )) as CommandModule;
+      const command = await importDefaultExport(filePath);
 
-      if (!commandModule.data) {
-        logger.warn(`Skipped ${file}: missing 'data' export`);
+      if (!isCommandModule(command)) {
+        logger.warn(
+          `Skipped ${file}: default export is not a command (needs data and execute)`,
+        );
         continue;
       }
 
-      if (typeof commandModule.execute !== "function") {
-        logger.warn(`Skipped ${file}: 'execute' is not a function`);
-        continue;
+      commandHandlers.set(command.data.name, command);
+
+      if (command.permissions?.requireAdmin) {
+        logger.debug(`Command ${command.data.name} requires admin`);
       }
 
-      if (!commandModule.data.name) {
-        logger.warn(`Skipped ${file}: command has no name`);
-        continue;
+      if (command.permissions?.requireOwner) {
+        logger.debug(`Command ${command.data.name} requires owner`);
       }
 
-      commandHandlers.set(commandModule.data.name, commandModule);
-
-      if (commandModule.permissions?.requireAdmin) {
-        logger.debug(`Command ${commandModule.data.name} requires admin`);
-      }
-
-      if (commandModule.permissions?.requireOwner) {
-        logger.debug(`Command ${commandModule.data.name} requires owner`);
-      }
-
-      if (commandModule.cooldown) {
+      if (command.cooldown) {
         logger.debug(
-          `Command ${commandModule.data.name} has ${commandModule.cooldown.type} cooldown: ${commandModule.cooldown.duration}`,
+          `Command ${command.data.name} has ${command.cooldown.type} cooldown: ${command.cooldown.duration}`,
         );
       }
     } catch (error) {

@@ -4,18 +4,22 @@ import { getService, Services } from "@/services";
 import { getAllServerIds, getServerById } from "@/services/playtime/config";
 import { ServerState } from "@/services/playtime/types";
 import { ChatInputCommandInteraction, SlashCommandBuilder } from "discord.js";
+import type {
+  CommandCooldown,
+  CommandModule,
+} from "@/discord/bots/common/loaders/command-loader";
 
-export const data = new SlashCommandBuilder()
+const data = new SlashCommandBuilder()
   .setName("status")
   .setDescription("Show game server status and online player counts");
 
-export const cooldown = {
+const cooldown: CommandCooldown = {
   duration: 10,
   type: CooldownType.USER,
   message: "Please wait before checking status again!",
 };
 
-export async function execute(
+async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
   const playtimeManager = await getService(Services.PLAYTIME_MANAGER_SERVICE);
@@ -55,3 +59,9 @@ export async function execute(
 
   await interaction.reply({ embeds: [embed.build()] });
 }
+
+export default {
+  data,
+  cooldown,
+  execute,
+} satisfies CommandModule;

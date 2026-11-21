@@ -6,8 +6,12 @@ import {
   PermissionFlagsBits,
   SlashCommandBuilder,
 } from "discord.js";
+import type {
+  CommandModule,
+  CommandPermissions,
+} from "@/discord/bots/common/loaders/command-loader";
 
-export const data = new SlashCommandBuilder()
+const data = new SlashCommandBuilder()
   .setName("purge")
   .setDescription("Purge up to 100 recent messages")
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
@@ -26,11 +30,11 @@ export const data = new SlashCommandBuilder()
       .setRequired(false),
   );
 
-export const permissions = {
+const permissions: CommandPermissions = {
   requireAdmin: true,
 };
 
-export async function execute(
+async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
   const count = interaction.options.getInteger("count", true);
@@ -76,3 +80,9 @@ export async function execute(
     `${interaction.user.tag} purged ${deletedMessages.size} messages${userSuffix} in ${interaction.channel.name}`,
   );
 }
+
+export default {
+  data,
+  permissions,
+  execute,
+} satisfies CommandModule;

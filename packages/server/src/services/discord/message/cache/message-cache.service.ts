@@ -10,14 +10,11 @@ import type {
   SystemMessageData,
 } from "./types";
 import { MessageSource } from "./types";
-import type {
-  Client,
-  Embed,
-  Message,
-  PartialMessage,
-  TextChannel,
-} from "discord.js";
-import { isSendableChannel } from "@/discord/utils/channel-guard";
+import type { Client, Embed, Message, PartialMessage } from "discord.js";
+import {
+  type GuildTextChannel,
+  isGuildTextChannel,
+} from "@/discord/utils/channel-guard";
 import { Q } from "@/db";
 import config from "@/config";
 
@@ -150,18 +147,17 @@ export class MessageCacheService extends (EventEmitter as new () => TypedEventEm
     try {
       const channel = await this.bot.channels.fetch(serverConfig.channelId);
 
-      if (!channel || !isSendableChannel(channel)) {
+      if (!isGuildTextChannel(channel)) {
         logger.warn(
           `Channel ${serverConfig.channelId} not found or not text-based`,
         );
         return;
       }
 
-      const textChannel = channel as TextChannel;
       const maxMessages = serverConfig.maxMessages || 100;
 
-      const messages = await textChannel.messages.fetch({ limit: maxMessages });
-      await this.loadAuthorMembers(textChannel, messages.values());
+      const messages = await channel.messages.fetch({ limit: maxMessages });
+      await this.loadAuthorMembers(channel, messages.values());
 
       const cachedMessages = Array.from(messages.values())
         .map((msg) => this.convertToCachedMessage(msg, serverConfig.serverId))
@@ -181,7 +177,7 @@ export class MessageCacheService extends (EventEmitter as new () => TypedEventEm
   }
 
   private async loadAuthorMembers(
-    channel: TextChannel,
+    channel: GuildTextChannel,
     messages: Iterable<Message>,
   ): Promise<void> {
     const missing = new Set<string>();

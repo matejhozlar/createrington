@@ -21,6 +21,10 @@ import {
   escapeMarkdown,
   type User,
 } from "discord.js";
+import type {
+  CommandCooldown,
+  CommandModule,
+} from "@/discord/bots/common/loaders/command-loader";
 
 type TagCard = {
   code: string;
@@ -34,7 +38,7 @@ type TagLookup =
 
 const ATTACHMENT_NAME = "team-tag.png";
 
-export const data = new SlashCommandBuilder()
+const data = new SlashCommandBuilder()
   .setName("tag")
   .setDescription("Render a team tag")
   .addSubcommand((sub) =>
@@ -72,13 +76,13 @@ export const data = new SlashCommandBuilder()
       ),
   );
 
-export const cooldown = {
+const cooldown: CommandCooldown = {
   duration: 5,
   type: CooldownType.USER,
   message: "Please wait before rendering team tags again!",
 };
 
-export async function autocomplete(
+async function autocomplete(
   interaction: AutocompleteInteraction,
 ): Promise<void> {
   const focused = interaction.options.getFocused(true);
@@ -218,7 +222,7 @@ function lookup(interaction: ChatInputCommandInteraction): Promise<TagLookup> {
   }
 }
 
-export async function execute(
+async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
   const result = await lookup(interaction);
@@ -254,3 +258,10 @@ export async function execute(
     components: [links],
   });
 }
+
+export default {
+  data,
+  cooldown,
+  autocomplete,
+  execute,
+} satisfies CommandModule;

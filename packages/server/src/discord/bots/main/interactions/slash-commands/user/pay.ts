@@ -8,8 +8,12 @@ import {
   MessageFlags,
   SlashCommandBuilder,
 } from "discord.js";
+import type {
+  CommandCooldown,
+  CommandModule,
+} from "@/discord/bots/common/loaders/command-loader";
 
-export const data = new SlashCommandBuilder()
+const data = new SlashCommandBuilder()
   .setName("pay")
   .setDescription("Send money to another player")
   .addUserOption((option) =>
@@ -33,13 +37,13 @@ export const data = new SlashCommandBuilder()
       .setMaxLength(200),
   );
 
-export const cooldown = {
+const cooldown: CommandCooldown = {
   duration: 3,
   type: CooldownType.USER,
   message: "Please wait before sending money again!",
 };
 
-export async function execute(interaction: ChatInputCommandInteraction) {
+async function execute(interaction: ChatInputCommandInteraction) {
   const sender = interaction.user;
   const recipient = interaction.options.getUser("recipient", true);
   const amount = interaction.options.getInteger("amount", true);
@@ -125,3 +129,9 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     `User ${sender.tag} (${sender.id}) sent $${amount} to ${recipient.tag} (${recipient.id})${note ? ` - Note: ${note}` : ""}`,
   );
 }
+
+export default {
+  data,
+  cooldown,
+  execute,
+} satisfies CommandModule;

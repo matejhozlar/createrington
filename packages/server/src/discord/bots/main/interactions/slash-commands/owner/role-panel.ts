@@ -1,3 +1,4 @@
+import { CustomIds } from "@/discord/custom-ids";
 import { createEmbed, EmbedColors, EmbedPresets } from "@/discord/embeds";
 import { isSendableChannel } from "@/discord/utils/channel-guard";
 import { replyError } from "@/discord/utils/interaction-reply";
@@ -15,11 +16,14 @@ import {
 } from "discord.js";
 import {
   getRolePanelPreset,
-  ROLE_PANEL_BUTTON_PREFIX,
   ROLE_PANEL_MAX_ROLES,
   ROLE_PANEL_PRESETS,
   type RolePanelPreset,
 } from "../../../config/role-panel";
+import type {
+  CommandModule,
+  CommandPermissions,
+} from "@/discord/bots/common/loaders/command-loader";
 
 const BUTTONS_PER_ROW = 5;
 const BUTTON_LABEL_MAX_LENGTH = 80;
@@ -83,9 +87,9 @@ builder
       ),
   );
 
-export const data = builder;
+const data = builder;
 
-export const permissions = {
+const permissions: CommandPermissions = {
   requireOwner: true,
 };
 
@@ -140,7 +144,7 @@ function buildRows(
 ): ActionRowBuilder<ButtonBuilder>[] {
   const built = buttons.map(({ roleId, label, emoji }) => {
     const button = new ButtonBuilder()
-      .setCustomId(`${ROLE_PANEL_BUTTON_PREFIX}:${roleId}`)
+      .setCustomId(CustomIds.rolePanel.build({ roleId }))
       .setLabel(label.slice(0, BUTTON_LABEL_MAX_LENGTH))
       .setStyle(style);
     return emoji ? button.setEmoji(emoji) : button;
@@ -200,7 +204,7 @@ function buildRolePanel(
   };
 }
 
-export async function execute(
+async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
   if (!interaction.inCachedGuild()) {
@@ -342,3 +346,9 @@ export async function execute(
     );
   }
 }
+
+export default {
+  data,
+  permissions,
+  execute,
+} satisfies CommandModule;

@@ -17,29 +17,14 @@ import { requireAdmin, requireOwner } from "@/discord/utils/admin-guard";
 import type { CommandModule } from "../../common/loaders/command-loader";
 import {
   type ButtonModule,
-  findButtonHandler,
-} from "../../common/loaders/button-loader";
-import * as registrationModal from "../interactions/modals/registration";
-import * as promptSubmitModal from "../interactions/modals/prompt-submit";
-import * as workshopSuggestModal from "../interactions/modals/workshop-suggest";
+  findComponentHandler,
+  type ModalModule,
+} from "../../common/loaders/component-loader";
 
-type ModalHandler = {
-  customId: string;
-  execute: (interaction: ModalSubmitInteraction) => Promise<void>;
-};
-
-const MODAL_HANDLERS: ModalHandler[] = [
-  registrationModal,
-  promptSubmitModal,
-  workshopSuggestModal,
-];
-
-function modalHandlerMatches(handler: ModalHandler, customId: string): boolean {
-  if (handler.customId.endsWith(":*")) {
-    const prefix = handler.customId.slice(0, -1);
-    return customId.startsWith(prefix);
-  }
-  return handler.customId === customId;
+export interface InteractionHandlers {
+  commands: Collection<string, CommandModule>;
+  buttons: readonly ButtonModule[];
+  modals: readonly ModalModule[];
 }
 
 const FAILURE_TITLE = "Something Went Wrong";
@@ -200,9 +185,9 @@ async function handleChatCommands(
 
 async function handleButtonInteractions(
   interaction: ButtonInteraction,
-  buttonHandlers: Collection<string, ButtonModule>,
+  buttonHandlers: readonly ButtonModule[],
 ): Promise<void> {
-  const handler = findButtonHandler(interaction.customId, buttonHandlers);
+  const handler = findComponentHandler(interaction.customId, buttonHandlers);
 
   if (!handler) {
     logger.debug(`No handler found for button: ${interaction.customId}`);
@@ -251,30 +236,26 @@ async function handleButtonInteractions(
 
 export function registerInteractionHandler(
   discordClient: Client,
-  commandHandlers: Collection<string, CommandModule>,
-  buttonHandlers: Collection<string, ButtonModule>,
+  handlers: InteractionHandlers,
 ): void {
   discordClient.on("interactionCreate", (interaction: Interaction) => {
-    routeInteraction(interaction, commandHandlers, buttonHandlers).catch(
-      (error: unknown) => {
-        logger.error("Unhandled error while routing an interaction:", error);
-      },
-    );
+    routeInteraction(interaction, handlers).catch((error: unknown) => {
+      logger.error("Unhandled error while routing an interaction:", error);
+    });
   });
 }
 
 async function routeInteraction(
   interaction: Interaction,
-  commandHandlers: Collection<string, CommandModule>,
-  buttonHandlers: Collection<string, ButtonModule>,
+  handlers: InteractionHandlers,
 ): Promise<void> {
   if (interaction.isChatInputCommand()) {
-    await handleChatCommands(interaction, commandHandlers);
+    await handleChatCommands(interaction, handlers.commands);
     return;
   }
 
   if (interaction.isAutocomplete()) {
-    const command = commandHandlers.get(interaction.commandName);
+    const command = handlers.commands.get(interaction.commandName);
     if (command?.autocomplete) {
       try {
         await command.autocomplete(interaction);
@@ -289,22 +270,21 @@ async function routeInteraction(
   }
 
   if (interaction.isButton()) {
-    await handleButtonInteractions(interaction, buttonHandlers);
+    await handleButtonInteractions(interaction, handlers.buttons);
     return;
   }
 
   if (interaction.isModalSubmit()) {
-    await handleModalSubmit(interaction);
+    await handleModalSubmit(interaction, handlers.modals);
     return;
   }
 }
 
 async function handleModalSubmit(
   interaction: ModalSubmitInteraction,
+  modalHandlers: readonly ModalModule[],
 ): Promise<void> {
-  const handler = MODAL_HANDLERS.find((h) =>
-    modalHandlerMatches(h, interaction.customId),
-  );
+  const handler = findComponentHandler(interaction.customId, modalHandlers);
 
   if (!handler) {
     logger.debug(`No handler for modal: ${interaction.customId}`);

@@ -9,13 +9,17 @@ import {
   PermissionFlagsBits,
   SlashCommandBuilder,
 } from "discord.js";
+import type {
+  CommandModule,
+  CommandPermissions,
+} from "@/discord/bots/common/loaders/command-loader";
 
 const ROLE_CHOICES = getTopRoleRules().map((rule) => ({
   name: rule.label,
   value: rule.gameRankId,
 }));
 
-export const data = new SlashCommandBuilder()
+const data = new SlashCommandBuilder()
   .setName("force-update")
   .setDescription("Force an automatic update to run now")
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
@@ -34,7 +38,7 @@ export const data = new SlashCommandBuilder()
       ),
   );
 
-export const permissions = {
+const permissions: CommandPermissions = {
   requireOwner: true,
 };
 
@@ -85,7 +89,7 @@ async function handleRoles(
   );
 }
 
-export async function execute(
+async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
@@ -105,3 +109,9 @@ export async function execute(
       );
   }
 }
+
+export default {
+  data,
+  permissions,
+  execute,
+} satisfies CommandModule;

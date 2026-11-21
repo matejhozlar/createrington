@@ -2,7 +2,7 @@ import type { Client } from "discord.js";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadCommandHandlers } from "../common/loaders/command-loader";
-import { loadButtonHandlers } from "../common/loaders/button-loader";
+import { loadComponentHandlers } from "../common/loaders/component-loader";
 import { registerInteractionHandler } from "./handlers/interaction-handler";
 import { loadEventHandlers } from "../common/loaders/event-loader";
 import { sweepRegistrationChannels } from "./registration-cleanup";
@@ -14,12 +14,14 @@ export async function setupMainBotHandlers(bot: Client): Promise<void> {
 
   const commandsPath = path.join(__dirname, "interactions", "slash-commands");
   const buttonsPath = path.join(__dirname, "interactions", "buttons");
+  const modalsPath = path.join(__dirname, "interactions", "modals");
   const eventsPath = path.join(__dirname, "events");
 
-  const commandHandlers = await loadCommandHandlers(commandsPath);
-  const buttonHandlers = await loadButtonHandlers(buttonsPath);
-
-  registerInteractionHandler(bot, commandHandlers, buttonHandlers);
+  registerInteractionHandler(bot, {
+    commands: await loadCommandHandlers(commandsPath),
+    buttons: await loadComponentHandlers(buttonsPath),
+    modals: await loadComponentHandlers(modalsPath),
+  });
   await loadEventHandlers(bot, eventsPath);
 
   sweepRegistrationChannels(bot).catch((err) =>

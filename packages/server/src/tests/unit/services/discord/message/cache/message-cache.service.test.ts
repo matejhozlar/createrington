@@ -1,6 +1,6 @@
 import { EventEmitter } from "node:events";
 import { describe, it, expect, vi } from "vitest";
-import type { Client } from "discord.js";
+import { ChannelType, type Client } from "discord.js";
 import type { CachedMessage } from "@createrington/shared/socket";
 
 vi.mock("@/config", () => ({
@@ -73,8 +73,8 @@ function fakeBot(guild: FakeGuild, history: ReturnType<typeof fakeMessage>[]) {
   bot.channels = {
     fetch: vi.fn(async () => ({
       id: CHANNEL_ID,
+      type: ChannelType.GuildText,
       guild,
-      send: () => {},
       messages: {
         fetch: vi.fn(async () => new Map(history.map((m) => [m.id, m]))),
       },

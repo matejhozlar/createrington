@@ -8,18 +8,16 @@ import {
   SeparatorBuilder,
   SeparatorSpacingSize,
   TextDisplayBuilder,
+  channelMention,
 } from "discord.js";
-import { ComponentColors } from "../../colors";
+import { EmbedColors } from "@/discord/embeds/colors";
 import {
   buildComponentsMessage,
   type TopLevelComponent,
 } from "../../component-builder";
 import { CommonComponentPresets } from "../common";
 import { Discord } from "@/discord/constants";
-
-export const REGISTER_BUTTON_ID = "registration:open";
-
-export const REGISTER_CLOSE_BUTTON_ID = "registration:close";
+import { CustomIds } from "@/discord/custom-ids";
 
 const PROGRESS_BAR_LENGTH = 12;
 
@@ -55,7 +53,7 @@ function termsLine(): TextDisplayBuilder {
 
 function registerRow(): ActionRowBuilder<ButtonBuilder> {
   const button = new ButtonBuilder()
-    .setCustomId(REGISTER_BUTTON_ID)
+    .setCustomId(CustomIds.registrationOpen.build())
     .setLabel("Register")
     .setStyle(ButtonStyle.Primary);
   return new ActionRowBuilder<ButtonBuilder>().addComponents(button);
@@ -69,7 +67,7 @@ export const RegistrationComponentPresets = {
   }): RegistrationMessage {
     const container = new ContainerBuilder()
       .setAccentColor(
-        params.errorMessage ? ComponentColors.Error : ComponentColors.Success,
+        params.errorMessage ? EmbedColors.Error : EmbedColors.Success,
       )
       .addTextDisplayComponents(
         text("## 🎉 Welcome to Createrington!"),
@@ -118,9 +116,7 @@ export const RegistrationComponentPresets = {
       .join("\n");
 
     const container = new ContainerBuilder()
-      .setAccentColor(
-        percent === 100 ? ComponentColors.Success : ComponentColors.Info,
-      )
+      .setAccentColor(percent === 100 ? EmbedColors.Success : EmbedColors.Info)
       .addTextDisplayComponents(
         text("## 🔄 Registering your Minecraft account..."),
         text(`**Username** \`${username}\``),
@@ -140,25 +136,24 @@ export const RegistrationComponentPresets = {
     autoCloseAt: number,
   ): RegistrationMessage {
     const ch = Discord.Channels;
-    const m = ch.mention.bind(ch);
 
     const channels = [
-      m(ch.createringtonOfficial.DOWNLOAD),
-      m(ch.createringtonOfficial.RULES),
-      m(ch.createringtonOfficial.ROLES),
-      m(ch.createringtonOfficial.ANNOUNCEMENTS),
-      m(ch.general.COMMANDS),
-      m(ch.createringtonOfficial.SUPPORT),
+      channelMention(ch.createringtonOfficial.DOWNLOAD),
+      channelMention(ch.createringtonOfficial.RULES),
+      channelMention(ch.createringtonOfficial.ROLES),
+      channelMention(ch.createringtonOfficial.ANNOUNCEMENTS),
+      channelMention(ch.general.COMMANDS),
+      channelMention(ch.createringtonOfficial.SUPPORT),
     ].join("  ");
 
     const closeButton = new ButtonBuilder()
-      .setCustomId(REGISTER_CLOSE_BUTTON_ID)
+      .setCustomId(CustomIds.registrationClose.build())
       .setLabel("Close")
       .setStyle(ButtonStyle.Danger)
       .setEmoji("🗑️");
 
     const container = new ContainerBuilder()
-      .setAccentColor(ComponentColors.Success)
+      .setAccentColor(EmbedColors.Success)
       .addTextDisplayComponents(
         text("## ✅ Registration Complete!"),
         text(`Welcome to Createrington, **${username}**!`),
@@ -167,9 +162,9 @@ export const RegistrationComponentPresets = {
       .addTextDisplayComponents(
         text(
           `**Getting started**\n` +
-            `1. Check out the ${m(ch.createringtonOfficial.RULES)} before jumping in\n` +
-            `2. Pick your ${m(ch.createringtonOfficial.ROLES)} to customize your experience\n` +
-            `3. Download the modpack in ${m(ch.createringtonOfficial.DOWNLOAD)}\n` +
+            `1. Check out the ${channelMention(ch.createringtonOfficial.RULES)} before jumping in\n` +
+            `2. Pick your ${channelMention(ch.createringtonOfficial.ROLES)} to customize your experience\n` +
+            `3. Download the modpack in ${channelMention(ch.createringtonOfficial.DOWNLOAD)}\n` +
             `4. Join the server and have fun!`,
         ),
         text(`**Useful channels**\n${channels}`),
@@ -195,7 +190,7 @@ export const RegistrationComponentPresets = {
 
   closing(): RegistrationMessage {
     const container = new ContainerBuilder()
-      .setAccentColor(ComponentColors.Error)
+      .setAccentColor(EmbedColors.Error)
       .addTextDisplayComponents(
         text("## 🗑️ Channel Deletion"),
         text("This channel will be deleted in a few seconds..."),

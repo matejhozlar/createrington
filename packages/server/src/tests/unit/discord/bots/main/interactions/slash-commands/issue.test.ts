@@ -11,7 +11,6 @@ const messages = vi.hoisted(() => ({ send: vi.fn() }));
 vi.mock("@/discord/constants", () => ({
   Discord: {
     Channels: { administration: { NOTIFICATIONS: "900" } },
-    Users: { mention: (id: string) => `<@${id}>` },
     Messages: messages,
   },
 }));
@@ -53,8 +52,10 @@ vi.mock("@/services/issue-triage/issue-triage.service", () => ({
   issueTriageService: triage,
 }));
 
-import { execute } from "@/discord/bots/main/interactions/slash-commands/admin/issue";
+import handler from "@/discord/bots/main/interactions/slash-commands/admin/issue";
 import { ChannelUnavailableError } from "@/services/discord/message/errors";
+
+const { execute } = handler;
 
 const FILED = {
   status: "completed",

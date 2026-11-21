@@ -5,20 +5,16 @@ import {
   TextInputBuilder,
   TextInputStyle,
 } from "discord.js";
-import {
-  REGISTER_MODAL_ID,
-  REGISTER_MODAL_INPUT_ID,
-} from "@/discord/bots/main/registration/constants";
-import { REGISTER_BUTTON_ID } from "@/discord/components/presets/registration";
+import { REGISTER_MODAL_INPUT_ID } from "@/discord/bots/main/registration/constants";
+import type { ButtonModule } from "@/discord/bots/common/loaders/component-loader";
+import { CustomIds } from "@/discord/custom-ids";
 import { denyForeignVerificationChannel } from "@/discord/bots/main/registration/verification-channel";
 
-export const pattern = REGISTER_BUTTON_ID;
-
-export async function execute(interaction: ButtonInteraction): Promise<void> {
+async function execute(interaction: ButtonInteraction): Promise<void> {
   if (await denyForeignVerificationChannel(interaction)) return;
 
   const modal = new ModalBuilder()
-    .setCustomId(REGISTER_MODAL_ID)
+    .setCustomId(CustomIds.registrationSubmit.build())
     .setTitle("Register your Minecraft account");
 
   const mcNameInput = new TextInputBuilder()
@@ -36,3 +32,8 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
 
   await interaction.showModal(modal);
 }
+
+export default {
+  customId: CustomIds.registrationOpen,
+  execute,
+} satisfies ButtonModule;

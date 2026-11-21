@@ -11,9 +11,14 @@ import {
   MessageFlags,
   PermissionFlagsBits,
   SlashCommandBuilder,
+  roleMention,
 } from "discord.js";
+import type {
+  CommandModule,
+  CommandPermissions,
+} from "@/discord/bots/common/loaders/command-loader";
 
-export const data = new SlashCommandBuilder()
+const data = new SlashCommandBuilder()
   .setName("donate-panel")
   .setDescription("Create or update the donation panel")
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
@@ -26,11 +31,11 @@ export const data = new SlashCommandBuilder()
       .setRequired(false),
   );
 
-export const permissions = {
+const permissions: CommandPermissions = {
   requireOwner: true,
 };
 
-export async function execute(
+async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
   if (!isSendableChannel(interaction.channel)) {
@@ -50,7 +55,7 @@ export async function execute(
       "If you enjoy playing on Createrington, you can help keep the server running by donating.\n\n" +
         "**Donating is completely optional** and does not give you any advantages over other players. " +
         "All donations go directly towards server maintenance and upgrades.\n\n" +
-        `By donating you will get the ${Discord.Roles.mention(Discord.Roles.SUPPORTER)} role.\n` +
+        `By donating you will get the ${roleMention(Discord.Roles.SUPPORTER)} role.\n` +
         "Thank you for being part of the community!",
     )
     .color(EmbedColors.Info);
@@ -109,3 +114,9 @@ export async function execute(
     logger.info(`${interaction.user.tag} created donation panel`);
   }
 }
+
+export default {
+  data,
+  permissions,
+  execute,
+} satisfies CommandModule;

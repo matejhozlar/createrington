@@ -7,15 +7,21 @@ import {
   MessageFlags,
   PermissionFlagsBits,
   SlashCommandBuilder,
+  channelMention,
+  userMention,
 } from "discord.js";
 import { TicketType } from "@/services/discord/tickets";
-import { Discord } from "@/discord/constants";
 import { getService, Services } from "@/services";
 import { Q } from "@/db";
+import type {
+  CommandCooldown,
+  CommandModule,
+  CommandPermissions,
+} from "@/discord/bots/common/loaders/command-loader";
 
 const TICKET_PARTY_SERVER_ID = 1;
 
-export const data = new SlashCommandBuilder()
+const data = new SlashCommandBuilder()
   .setName("ticket")
   .setDescription("Manage tickets")
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
@@ -62,17 +68,17 @@ export const data = new SlashCommandBuilder()
       ),
   );
 
-export const cooldown = {
+const cooldown: CommandCooldown = {
   duration: 5,
   type: CooldownType.USER,
   message: "Please wait before using the ticket command again!",
 };
 
-export const permissions = {
+const permissions: CommandPermissions = {
   requireAdmin: true,
 };
 
-export async function autocomplete(
+async function autocomplete(
   interaction: AutocompleteInteraction,
 ): Promise<void> {
   const focused = interaction.options.getFocused(true);
@@ -95,7 +101,7 @@ export async function autocomplete(
   );
 }
 
-export async function execute(
+async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
   const ticketService = await getService(Services.TICKET_SERVICE);
@@ -120,11 +126,9 @@ export async function execute(
 
     const embed = EmbedPresets.success(
       "Ticket Created",
-      `The ticket for user ${Discord.Users.mention(
+      `The ticket for user ${userMention(
         user.id,
-      )} has been created: ${Discord.Channels.mention(
-        result.ticket.channelId,
-      )}`,
+      )} has been created: ${channelMention(result.ticket.channelId)}`,
     );
 
     await interaction.reply({
@@ -201,11 +205,11 @@ export async function execute(
         user.id,
       );
       if (result.added) {
-        added.push(Discord.Users.mention(user.id));
+        added.push(userMention(user.id));
       } else if (result.reason === "not-in-guild") {
-        skippedNotInGuild.push(Discord.Users.mention(user.id));
+        skippedNotInGuild.push(userMention(user.id));
       } else {
-        skippedChannelError.push(Discord.Users.mention(user.id));
+        skippedChannelError.push(userMention(user.id));
       }
     }
 
@@ -242,8 +246,8 @@ export async function execute(
           linkedPlayers.map((p) => [
             p.discordId,
             p.minecraftUsername
-              ? `${Discord.Users.mention(p.discordId)} (${p.minecraftUsername})`
-              : Discord.Users.mention(p.discordId),
+              ? `${userMention(p.discordId)} (${p.minecraftUsername})`
+              : userMention(p.discordId),
           ]),
         );
 
@@ -254,7 +258,7 @@ export async function execute(
 
         for (const [discordId, result] of results) {
           const label =
-            labelByDiscordId.get(discordId) ?? Discord.Users.mention(discordId);
+            labelByDiscordId.get(discordId) ?? userMention(discordId);
           if (result.added) {
             added.push(label);
           } else if (result.reason === "not-in-guild") {
@@ -309,7 +313,7 @@ export async function execute(
       await replyError(
         interaction,
         "Ticket Owner",
-        `${Discord.Users.mention(user.id)} owns this ticket and cannot be removed from it. Close the ticket instead.`,
+        `${userMention(user.id)} owns this ticket and cannot be removed from it. Close the ticket instead.`,
       );
       return;
     }
@@ -324,20 +328,20 @@ export async function execute(
     if (result.removed) {
       const embed = EmbedPresets.success(
         "Removed from Ticket",
-        `${Discord.Users.mention(user.id)} no longer has access to this ticket.`,
+        `${userMention(user.id)} no longer has access to this ticket.`,
       );
       await interaction.editReply({ embeds: [embed.build()] });
     } else if (result.reason === "not-participant") {
       const embed = EmbedPresets.info(
         "Nothing Removed",
-        `${Discord.Users.mention(user.id)} was never added to this ticket.`,
+        `${userMention(user.id)} was never added to this ticket.`,
       );
       await interaction.editReply({ embeds: [embed.build()] });
     } else {
       await replyError(
         interaction,
         "Ticket Error",
-        `Could not remove ${Discord.Users.mention(user.id)} from this ticket. Please try again.`,
+        `Could not remove ${userMention(user.id)} from this ticket. Please try again.`,
       );
     }
   } else {
@@ -345,3 +349,11 @@ export async function execute(
     return;
   }
 }
+
+export default {
+  data,
+  permissions,
+  cooldown,
+  autocomplete,
+  execute,
+} satisfies CommandModule;

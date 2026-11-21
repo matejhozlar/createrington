@@ -20,10 +20,6 @@ vi.mock("@/discord/embeds", () => {
 
 vi.mock("@/discord/utils/cooldown", () => ({ CooldownType: { USER: "user" } }));
 
-vi.mock("@/discord/constants", () => ({
-  Discord: { Users: { mention: (id: string) => `<@${id}>` } },
-}));
-
 vi.mock("@/services/discord/tickets", () => ({
   TicketType: { GENERAL: "general" },
 }));
@@ -33,11 +29,10 @@ vi.mock("@/services", () => ({
   getService: async () => ({ removeParticipant }),
 }));
 
-import {
-  data,
-  execute,
-} from "@/discord/bots/main/interactions/slash-commands/admin/ticket";
+import handler from "@/discord/bots/main/interactions/slash-commands/admin/ticket";
 import type { ChatInputCommandInteraction } from "discord.js";
+
+const { data, execute } = handler;
 
 interface SentEmbed {
   kind: string;

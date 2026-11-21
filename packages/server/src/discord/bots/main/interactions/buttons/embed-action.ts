@@ -1,25 +1,17 @@
 import { Q } from "@/db";
-import { ChannelType, type ButtonInteraction, MessageFlags } from "discord.js";
+import {
+  ChannelType,
+  type ButtonInteraction,
+  MessageFlags,
+  channelMention,
+  userMention,
+} from "discord.js";
 import type { EmbedActionButton } from "@createrington/shared/api/embed";
-
-export const pattern = "embed-action:*";
+import type { ButtonModule } from "@/discord/bots/common/loaders/component-loader";
+import { CustomIds } from "@/discord/custom-ids";
 
 const cooldowns = new Map<string, number>();
 const COOLDOWN_MS = 10_000;
-
-function parseCustomId(customId: string): {
-  presetId: number;
-  buttonIndex: number;
-} | null {
-  const parts = customId.split(":");
-  if (parts.length !== 3) return null;
-
-  const presetId = parseInt(parts[1], 10);
-  const buttonIndex = parseInt(parts[2], 10);
-
-  if (isNaN(presetId) || isNaN(buttonIndex)) return null;
-  return { presetId, buttonIndex };
-}
 
 function applyTemplate(
   template: string,
@@ -27,7 +19,7 @@ function applyTemplate(
   username: string,
 ): string {
   return template
-    .replace(/\{user\}/g, `<@${userId}>`)
+    .replace(/\{user\}/g, userMention(userId))
     .replace(/\{username\}/g, username)
     .replace(
       /\{date\}/g,
@@ -39,18 +31,18 @@ function applyTemplate(
     );
 }
 
-export async function execute(interaction: ButtonInteraction): Promise<void> {
-  const parsed = parseCustomId(interaction.customId);
+async function execute(interaction: ButtonInteraction): Promise<void> {
+  const parsed = CustomIds.embedAction.parse(interaction.customId);
+  const presetId = Number(parsed?.presetId);
+  const buttonIndex = Number(parsed?.buttonIndex);
 
-  if (!parsed) {
+  if (!Number.isInteger(presetId) || !Number.isInteger(buttonIndex)) {
     await interaction.reply({
       content: "Invalid button.",
       flags: MessageFlags.Ephemeral,
     });
     return;
   }
-
-  const { presetId, buttonIndex } = parsed;
 
   const preset = await Q.discord.embed.preset.find({ id: presetId });
   if (!preset) {
@@ -137,7 +129,7 @@ async function handleCreateThread(
     await thread.send(threadMessage);
 
     await interaction.editReply({
-      content: `Thread created: <#${thread.id}>`,
+      content: `Thread created: ${channelMention(thread.id)}`,
     });
 
     logger.info(
@@ -151,7 +143,7 @@ async function handleCreateThread(
     });
 
     await interaction.editReply({
-      content: `Post created: <#${thread.id}>`,
+      content: `Post created: ${channelMention(thread.id)}`,
     });
 
     logger.info(
@@ -163,3 +155,8 @@ async function handleCreateThread(
     });
   }
 }
+
+export default {
+  customId: CustomIds.embedAction,
+  execute,
+} satisfies ButtonModule;

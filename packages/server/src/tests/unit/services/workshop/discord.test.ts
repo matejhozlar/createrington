@@ -39,9 +39,6 @@ vi.mock("@/services", () => ({
 vi.mock("@/errors", () => ({
   BadRequestError: class extends Error {},
 }));
-vi.mock("@/discord/constants", () => ({
-  Discord: { Users: { mention: (id: string) => `<@${id}>` } },
-}));
 vi.mock("@/db", () => ({
   Q: {
     workshop: {

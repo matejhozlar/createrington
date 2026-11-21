@@ -1,3 +1,4 @@
+import { roleMention, userMention } from "discord.js";
 import { db, Q, waitlistRepo } from "@/db";
 import { waitlistService } from "@/services/waitlist/waitlist.service";
 import { Discord } from "@/discord/constants";
@@ -69,20 +70,6 @@ export async function runRegistration(params: {
   const steps = STEPS.map((s) => ({ ...s }));
   let currentStep = 0;
 
-  if (
-    !member ||
-    typeof member.roles === "string" ||
-    Array.isArray(member.roles)
-  ) {
-    await render(
-      RegistrationComponentPresets.errorWithAdmin(
-        "Registration Failed",
-        "Could not verify your roles. Please try again.",
-      ),
-    );
-    return { ok: false, errorMessage: "roles unavailable" };
-  }
-
   if (!RoleManager.has(member, Discord.Roles.UNVERIFIED)) {
     await render(
       RegistrationComponentPresets.error(
@@ -100,7 +87,7 @@ export async function runRegistration(params: {
   if (!/^[a-zA-Z0-9_]{3,16}$/.test(mcName)) {
     await render(
       RegistrationComponentPresets.idle({
-        memberMention: `<@${discordId}>`,
+        memberMention: userMention(discordId),
         errorMessage:
           "Minecraft usernames can only contain letters, numbers, and underscores (3-16 characters).",
       }),
@@ -300,7 +287,7 @@ export async function runRegistration(params: {
     await Discord.Messages.send({
       channelId: Discord.Channels.administration.NOTIFICATIONS,
       embeds: adminEmbed.build(),
-      content: Discord.Roles.mention(Discord.Roles.ADMIN),
+      content: roleMention(Discord.Roles.ADMIN),
     }).catch((error: unknown) => {
       logger.error(
         "Could not alert admins about the failed registration:",
@@ -310,7 +297,7 @@ export async function runRegistration(params: {
 
     await render(
       RegistrationComponentPresets.idle({
-        memberMention: `<@${discordId}>`,
+        memberMention: userMention(discordId),
         errorMessage: memberMessage,
         failedStep,
       }),

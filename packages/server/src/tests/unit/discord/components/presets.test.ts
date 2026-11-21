@@ -3,7 +3,7 @@ import { componentsDataSchema } from "@createrington/shared/api/embed";
 import type { ComponentsData } from "@createrington/shared/api/embed";
 import { MessageFlags } from "discord.js";
 import { buildComponentsMessage } from "@/discord/components";
-import { ComponentColors } from "@/discord/components/colors";
+import { EmbedColors } from "@/discord/embeds/colors";
 import { CommonComponentPresets } from "@/discord/components/presets/common";
 import { AnnouncementComponentPresets } from "@/discord/components/presets/announcements";
 
@@ -43,14 +43,14 @@ describe("CommonComponentPresets", () => {
     const accented = CommonComponentPresets.success("Done", undefined, {
       accent: true,
     });
-    expect(topContainer(accented).accentColor).toBe(ComponentColors.Success);
+    expect(topContainer(accented).accentColor).toBe(EmbedColors.Success);
   });
 
   it("loading uses the gray Loading stripe when accented", () => {
     const accented = CommonComponentPresets.loading("Working", {
       accent: true,
     });
-    expect(topContainer(accented).accentColor).toBe(ComponentColors.Loading);
+    expect(topContainer(accented).accentColor).toBe(EmbedColors.Loading);
   });
 
   it("omits the description text node when none is provided", () => {
@@ -109,7 +109,7 @@ describe("AnnouncementComponentPresets.maintenance", () => {
       ...base,
       accent: true,
     });
-    expect(topContainer(tree).accentColor).toBe(ComponentColors.Warning);
+    expect(topContainer(tree).accentColor).toBe(EmbedColors.Warning);
   });
 });
 

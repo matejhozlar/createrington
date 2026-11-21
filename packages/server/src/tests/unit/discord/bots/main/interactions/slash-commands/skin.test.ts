@@ -30,13 +30,12 @@ vi.mock("@/services/skin-api/client", () => ({
   getSkinApiClient: () => ({ render: sdkRender }),
 }));
 
-import {
-  data,
-  execute,
-} from "@/discord/bots/main/interactions/slash-commands/user/skin";
+import handler from "@/discord/bots/main/interactions/slash-commands/user/skin";
 import { MAX_QUALITY_RENDER } from "@/services/skin-api/quality";
 import { SkinApiError } from "createrington-skin-api";
 import type { ChatInputCommandInteraction } from "discord.js";
+
+const { data, execute } = handler;
 
 interface SentEmbed {
   kind: string;

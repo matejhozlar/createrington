@@ -6,6 +6,7 @@ import {
   PermissionFlagsBits,
   SlashCommandBuilder,
   channelMention,
+  userMention,
 } from "discord.js";
 import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
@@ -23,6 +24,10 @@ import {
   issueTriageService,
   type IssueTriageStatus,
 } from "@/services/issue-triage/issue-triage.service";
+import type {
+  CommandModule,
+  CommandPermissions,
+} from "@/discord/bots/common/loaders/command-loader";
 
 const DEFAULT_MESSAGE_COUNT = 50;
 
@@ -49,7 +54,7 @@ const FAILURE_REASONS: Record<string, string> = {
   closed: "The session was stopped before it finished.",
 };
 
-export const data = new SlashCommandBuilder()
+const data = new SlashCommandBuilder()
   .setName("issue")
   .setDescription(
     "Have Claude file a Gitea issue from the recent messages here",
@@ -80,7 +85,7 @@ export const data = new SlashCommandBuilder()
       .setMaxLength(1000),
   );
 
-export const permissions = {
+const permissions: CommandPermissions = {
   requireAdmin: true,
 };
 
@@ -180,7 +185,7 @@ async function reportOutcome(
     interaction.editReply({ embeds: [outcomeEmbed(outcome).build()] }),
     Discord.Messages.send({
       channelId: Discord.Channels.administration.NOTIFICATIONS,
-      content: `${Discord.Users.mention(interaction.user.id)} \`/issue\` in ${channelMention(channelId)}`,
+      content: `${userMention(interaction.user.id)} \`/issue\` in ${channelMention(channelId)}`,
       embeds: outcomeEmbed(outcome).build(),
       allowedMentions: { users: [interaction.user.id] },
     }),
@@ -204,7 +209,7 @@ async function reportOutcome(
   );
 }
 
-export async function execute(
+async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
   const channel = resolveChannel(interaction);
@@ -297,3 +302,9 @@ export async function execute(
     logger.error(`/issue session #${sessionId} could not report back:`, error),
   );
 }
+
+export default {
+  data,
+  permissions,
+  execute,
+} satisfies CommandModule;

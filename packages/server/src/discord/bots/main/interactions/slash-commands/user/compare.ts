@@ -18,8 +18,12 @@ import {
   ChatInputCommandInteraction,
   SlashCommandBuilder,
 } from "discord.js";
+import type {
+  CommandCooldown,
+  CommandModule,
+} from "@/discord/bots/common/loaders/command-loader";
 
-export const data = new SlashCommandBuilder()
+const data = new SlashCommandBuilder()
   .setName("compare")
   .setDescription("Compare stats between two players")
   .addUserOption((opt) =>
@@ -32,13 +36,13 @@ export const data = new SlashCommandBuilder()
       .setRequired(false),
   );
 
-export const cooldown = {
+const cooldown: CommandCooldown = {
   duration: 5,
   type: CooldownType.USER,
   message: "Please wait before comparing again!",
 };
 
-export async function execute(
+async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
   const user1 = interaction.options.getUser("player1", true);
@@ -121,3 +125,9 @@ export async function execute(
     });
   }
 }
+
+export default {
+  data,
+  cooldown,
+  execute,
+} satisfies CommandModule;

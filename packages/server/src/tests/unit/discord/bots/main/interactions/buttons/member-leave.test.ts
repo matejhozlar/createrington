@@ -24,8 +24,9 @@ vi.mock("@/services/player/deletion", () => ({
   },
 }));
 
-const { execute } =
-  await import("@/discord/bots/main/interactions/buttons/member-leave");
+const { execute } = (
+  await import("@/discord/bots/main/interactions/buttons/member-leave")
+).default;
 
 const DEPARTED = {
   id: 7,

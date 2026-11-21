@@ -19,6 +19,10 @@ import {
   ChatInputCommandInteraction,
   SlashCommandBuilder,
 } from "discord.js";
+import type {
+  CommandCooldown,
+  CommandModule,
+} from "@/discord/bots/common/loaders/command-loader";
 
 const RENDER_STYLES = [
   "default",
@@ -43,7 +47,7 @@ function titleCasePose(pose: string): string {
   return pose.replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-export const data = new SlashCommandBuilder()
+const data = new SlashCommandBuilder()
   .setName("skin")
   .setDescription("Display a player's Minecraft skin")
   .addUserOption((opt) =>
@@ -64,13 +68,13 @@ export const data = new SlashCommandBuilder()
       .addChoices(...STYLE_CHOICES),
   );
 
-export const cooldown = {
+const cooldown: CommandCooldown = {
   duration: 5,
   type: CooldownType.USER,
   message: "Please wait before checking skins again!",
 };
 
-export async function autocomplete(
+async function autocomplete(
   interaction: AutocompleteInteraction,
 ): Promise<void> {
   const focused = interaction.options.getFocused().trim().toLowerCase();
@@ -86,7 +90,7 @@ export async function autocomplete(
   );
 }
 
-export async function execute(
+async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
   const userOption = interaction.options.getUser("user", false);
@@ -149,3 +153,10 @@ export async function execute(
 
   await interaction.editReply({ embeds: [embed], files: [attachment] });
 }
+
+export default {
+  data,
+  cooldown,
+  autocomplete,
+  execute,
+} satisfies CommandModule;

@@ -10,6 +10,7 @@ import {
   type Client,
   type GuildMember,
   type PartialGuildMember,
+  roleMention,
 } from "discord.js";
 
 export const eventName: EventModule<"guildMemberRemove">["eventName"] =
@@ -81,7 +82,7 @@ export async function execute(
       channelId: Discord.Channels.administration.NOTIFICATIONS,
       embeds: embed.build(),
       components: [actionRow],
-      content: `${Discord.Roles.mention(Discord.Roles.ADMIN)} 👋 Member left`,
+      content: `${roleMention(Discord.Roles.ADMIN)} 👋 Member left`,
     });
 
     await Q.discord.guild.member.leave.update(

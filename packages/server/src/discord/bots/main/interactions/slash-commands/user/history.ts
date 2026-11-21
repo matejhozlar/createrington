@@ -9,6 +9,10 @@ import {
   MessageFlags,
   SlashCommandBuilder,
 } from "discord.js";
+import type {
+  CommandCooldown,
+  CommandModule,
+} from "@/discord/bots/common/loaders/command-loader";
 
 const TRANSACTION_LIMIT = 10;
 
@@ -30,17 +34,17 @@ const typeLabels: Record<string, string> = {
   other: "Other",
 };
 
-export const data = new SlashCommandBuilder()
+const data = new SlashCommandBuilder()
   .setName("history")
   .setDescription("View your recent balance transactions");
 
-export const cooldown = {
+const cooldown: CommandCooldown = {
   duration: 5,
   type: CooldownType.USER,
   message: "Please wait before checking history again!",
 };
 
-export async function execute(
+async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
   const playerEntry = await Q.player.find({ discordId: interaction.user.id });
@@ -88,3 +92,9 @@ export async function execute(
     flags: MessageFlags.Ephemeral,
   });
 }
+
+export default {
+  data,
+  cooldown,
+  execute,
+} satisfies CommandModule;

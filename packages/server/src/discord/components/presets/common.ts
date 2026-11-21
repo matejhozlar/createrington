@@ -1,5 +1,6 @@
+import { roleMention } from "discord.js";
 import { container, text } from "../component-builder";
-import { ComponentColors } from "../colors";
+import { EmbedColors } from "@/discord/embeds/colors";
 import { Discord } from "@/discord/constants";
 import type {
   ComponentContainer,
@@ -24,7 +25,7 @@ export const CommonComponentPresets = {
     if (description) children.push(text(description));
     return {
       components: [
-        container(children, stripe(ComponentColors.Success, options.accent)),
+        container(children, stripe(EmbedColors.Success, options.accent)),
       ],
     };
   },
@@ -40,7 +41,7 @@ export const CommonComponentPresets = {
     if (description) children.push(text(description));
     return {
       components: [
-        container(children, stripe(ComponentColors.Error, options.accent)),
+        container(children, stripe(EmbedColors.Error, options.accent)),
       ],
     };
   },
@@ -50,7 +51,7 @@ export const CommonComponentPresets = {
     description?: string,
     options: AccentOptions = {},
   ): ComponentsData {
-    const contact = `If this issue persists, please contact ${Discord.Roles.mention(
+    const contact = `If this issue persists, please contact ${roleMention(
       Discord.Roles.ADMIN,
     )}`;
     const children: ComponentContainer["components"] = [
@@ -60,7 +61,7 @@ export const CommonComponentPresets = {
     children.push(text(contact));
     return {
       components: [
-        container(children, stripe(ComponentColors.Error, options.accent)),
+        container(children, stripe(EmbedColors.Error, options.accent)),
       ],
     };
   },
@@ -76,7 +77,7 @@ export const CommonComponentPresets = {
     if (description) children.push(text(description));
     return {
       components: [
-        container(children, stripe(ComponentColors.Info, options.accent)),
+        container(children, stripe(EmbedColors.Info, options.accent)),
       ],
     };
   },
@@ -110,7 +111,7 @@ export const CommonComponentPresets = {
       components: [
         container(
           [text("⏳ **Please wait**"), text(message)],
-          stripe(ComponentColors.Loading, options.accent),
+          stripe(EmbedColors.Loading, options.accent),
         ),
       ],
     };

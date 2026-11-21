@@ -1,3 +1,4 @@
+import { userMention } from "discord.js";
 import config from "@/config";
 import { Q } from "@/db";
 import type { CurseforgeFileWithProject } from "@/db/queries/curseforge/file";
@@ -496,7 +497,7 @@ export class LauncherPackReleaseService {
     try {
       await Discord.Messages.send({
         channelId: Discord.Channels.administration.NOTIFICATIONS,
-        content: `<@${ownerId}>`,
+        content: userMention(ownerId),
         embeds: embed.build(),
         allowedMentions: { users: [ownerId] },
       });

@@ -1,3 +1,4 @@
+import { CustomIds } from "@/discord/custom-ids";
 import {
   ActionRowBuilder,
   ButtonBuilder,
@@ -9,9 +10,10 @@ import {
   SeparatorBuilder,
   SeparatorSpacingSize,
   TextDisplayBuilder,
+  roleMention,
 } from "discord.js";
 import { assetUrl } from "@/config";
-import { ComponentColors } from "../../colors";
+import { EmbedColors } from "@/discord/embeds/colors";
 import { discordTimestamp, formatSeconds, pluralize } from "@/utils/format";
 import type { TopLevelComponent } from "../../component-builder";
 import type { PlayerPrompt } from "@createrington/shared/db/player_prompt.types";
@@ -70,7 +72,9 @@ function buttonRow(
   state: "open" | "closed",
 ): ActionRowBuilder<ButtonBuilder> {
   const isMulti = prompt.entryMode === "multi";
-  const button = new ButtonBuilder().setCustomId(`prompt:respond:${prompt.id}`);
+  const button = new ButtonBuilder().setCustomId(
+    CustomIds.promptRespond.build({ promptId: prompt.id }),
+  );
 
   if (state === "open") {
     button
@@ -87,7 +91,9 @@ function buttonRow(
 }
 
 function mentionLine(prompt: PlayerPrompt): TextDisplayBuilder[] {
-  return prompt.rolePingId ? [text(`||<@&${prompt.rolePingId}>||`)] : [];
+  return prompt.rolePingId
+    ? [text(`||${roleMention(prompt.rolePingId)}||`)]
+    : [];
 }
 
 export const PlayerPromptComponentPresets = {
@@ -100,7 +106,7 @@ export const PlayerPromptComponentPresets = {
     );
 
     const container = new ContainerBuilder()
-      .setAccentColor(ComponentColors.Premium)
+      .setAccentColor(EmbedColors.Premium)
       .addMediaGalleryComponents(banner())
       .addTextDisplayComponents(heading(prompt))
       .addSeparatorComponents(divider())
@@ -122,7 +128,7 @@ export const PlayerPromptComponentPresets = {
         : `**${entryCount} ${pluralize(entryCount, "response")}** received`;
 
     const container = new ContainerBuilder()
-      .setAccentColor(ComponentColors.Neutral)
+      .setAccentColor(EmbedColors.Neutral)
       .addMediaGalleryComponents(banner())
       .addTextDisplayComponents(heading(prompt, "Closed"))
       .addSeparatorComponents(divider())

@@ -15,6 +15,10 @@ import {
   PermissionFlagsBits,
   SlashCommandBuilder,
 } from "discord.js";
+import type {
+  CommandModule,
+  CommandPermissions,
+} from "@/discord/bots/common/loaders/command-loader";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const JSON_PATH = path.join(
@@ -57,7 +61,7 @@ function formatCommand(cmd: RawCommand): string {
   return `</${cmd.name}:0> - ${cmd.description}`;
 }
 
-export const data = new SlashCommandBuilder()
+const data = new SlashCommandBuilder()
   .setName("command-docs-panel")
   .setDescription("Create or update the command docs panel")
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
@@ -70,11 +74,11 @@ export const data = new SlashCommandBuilder()
       .setRequired(false),
   );
 
-export const permissions = {
+const permissions: CommandPermissions = {
   requireOwner: true,
 };
 
-export async function execute(
+async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
   if (!isSendableChannel(interaction.channel)) {
@@ -188,3 +192,9 @@ export async function execute(
     logger.info(`${interaction.user.tag} created command docs panel`);
   }
 }
+
+export default {
+  data,
+  permissions,
+  execute,
+} satisfies CommandModule;

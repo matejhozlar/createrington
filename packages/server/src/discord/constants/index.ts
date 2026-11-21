@@ -1,5 +1,4 @@
 import type { DiscordMessageService } from "@/services/discord/message/message.service";
-import { DiscordUsers } from "./users";
 import { DiscordRolesNamespace } from "./roles";
 import { DiscordChannelsNamespace } from "./channels";
 import { DiscordCategoriesNamespace } from "./categories";
@@ -10,7 +9,6 @@ export const Discord = {
   Roles: DiscordRolesNamespace,
   Channels: DiscordChannelsNamespace,
   Categories: DiscordCategoriesNamespace,
-  Users: DiscordUsers,
 
   get Messages(): DiscordMessageService {
     if (!messageService) {

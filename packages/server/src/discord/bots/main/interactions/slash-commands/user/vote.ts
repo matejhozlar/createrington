@@ -9,18 +9,22 @@ import {
   MessageFlags,
   SlashCommandBuilder,
 } from "discord.js";
+import type {
+  CommandCooldown,
+  CommandModule,
+} from "@/discord/bots/common/loaders/command-loader";
 
-export const data = new SlashCommandBuilder()
+const data = new SlashCommandBuilder()
   .setName("vote")
   .setDescription("Get your personal link to vote for the server");
 
-export const cooldown = {
+const cooldown: CommandCooldown = {
   duration: 5,
   type: CooldownType.USER,
   message: "Please wait a moment before requesting another vote link!",
 };
 
-export async function execute(
+async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
   const voter = await Q.player.find({ discordId: interaction.user.id });
@@ -42,3 +46,9 @@ export async function execute(
     flags: MessageFlags.Ephemeral,
   });
 }
+
+export default {
+  data,
+  cooldown,
+  execute,
+} satisfies CommandModule;

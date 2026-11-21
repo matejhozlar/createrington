@@ -66,8 +66,10 @@ vi.mock("@/discord/utils/render-screenshot", () => ({
   renderScreenshot: async () => null,
 }));
 
-import { execute } from "@/discord/bots/main/interactions/slash-commands/user/tag";
+import handler from "@/discord/bots/main/interactions/slash-commands/user/tag";
 import type { ChatInputCommandInteraction } from "discord.js";
+
+const { execute } = handler;
 
 interface SentEmbed {
   kind: string;

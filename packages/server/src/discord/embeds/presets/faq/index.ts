@@ -1,3 +1,4 @@
+import { channelMention } from "discord.js";
 import { createEmbed } from "@/discord/embeds/embed-builder";
 import { EmbedColors } from "@/discord/embeds/colors";
 import { Discord } from "@/discord/constants";
@@ -5,15 +6,14 @@ import { Discord } from "@/discord/constants";
 export const FaqEmbedPresets = {
   welcomeMessage() {
     const ch = Discord.Channels;
-    const m = ch.mention.bind(ch);
 
     const channels = [
-      m(ch.createringtonOfficial.SUPPORT),
-      m(ch.createringtonOfficial.RULES),
-      m(ch.general.COMMANDS),
-      m(ch.createringtonOfficial.ANNOUNCEMENTS),
-      m(ch.createringtonOfficial.DOWNLOAD),
-      m(ch.createringtonOfficial.ROLES),
+      channelMention(ch.createringtonOfficial.SUPPORT),
+      channelMention(ch.createringtonOfficial.RULES),
+      channelMention(ch.general.COMMANDS),
+      channelMention(ch.createringtonOfficial.ANNOUNCEMENTS),
+      channelMention(ch.createringtonOfficial.DOWNLOAD),
+      channelMention(ch.createringtonOfficial.ROLES),
     ].join("  ");
 
     return createEmbed()

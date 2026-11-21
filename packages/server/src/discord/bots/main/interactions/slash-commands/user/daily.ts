@@ -9,18 +9,22 @@ import {
   MessageFlags,
   SlashCommandBuilder,
 } from "discord.js";
+import type {
+  CommandCooldown,
+  CommandModule,
+} from "@/discord/bots/common/loaders/command-loader";
 
-export const data = new SlashCommandBuilder()
+const data = new SlashCommandBuilder()
   .setName("daily")
   .setDescription("Claim your daily reward");
 
-export const cooldown = {
+const cooldown: CommandCooldown = {
   duration: 10,
   type: CooldownType.USER,
   message: "Please wait before trying to claim your daily reward again!",
 };
 
-export async function execute(
+async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
   const discordId = interaction.user.id;
@@ -85,3 +89,9 @@ export async function execute(
     `User ${interaction.user.tag} (${discordId}) claimd daily reward: ${result.amount}`,
   );
 }
+
+export default {
+  data,
+  cooldown,
+  execute,
+} satisfies CommandModule;

@@ -6,8 +6,12 @@ import {
 } from "discord.js";
 import { EmbedPresets } from "@/discord/embeds";
 import { cooldownManager } from "@/discord/utils/cooldown/cooldown-manager";
+import type {
+  CommandModule,
+  CommandPermissions,
+} from "@/discord/bots/common/loaders/command-loader";
 
-export const data = new SlashCommandBuilder()
+const data = new SlashCommandBuilder()
   .setName("cooldown")
   .setDescription("Manage command cooldowns")
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
@@ -37,11 +41,11 @@ export const data = new SlashCommandBuilder()
     sub.setName("stats").setDescription("View cooldown statistics"),
   );
 
-export const permissions = {
+const permissions: CommandPermissions = {
   requireAdmin: true,
 };
 
-export async function execute(
+async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
   const subcommand = interaction.options.getSubcommand();
@@ -97,3 +101,9 @@ export async function execute(
     }
   }
 }
+
+export default {
+  data,
+  permissions,
+  execute,
+} satisfies CommandModule;
