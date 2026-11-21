@@ -5,10 +5,10 @@ export type AdminWorkshopMod =
 export type PackMod =
   RouterOutput["admin"]["workshops"]["listPackMods"][number];
 export type AttentionItem =
-  RouterOutput["admin"]["workshops"]["getAttention"][number];
+  RouterOutput["admin"]["workshops"]["attention"][number];
 export type WorkshopDependency =
   RouterOutput["admin"]["workshops"]["listDependencies"][number];
 export type ReleaseMod =
   RouterOutput["admin"]["modpacks"]["listReleaseMods"][number];
 export type WorkshopEvent =
-  RouterOutput["admin"]["workshops"]["listEvents"]["events"][number];
+  RouterOutput["admin"]["workshops"]["listEvents"]["items"][number];

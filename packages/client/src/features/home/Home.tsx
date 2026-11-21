@@ -235,7 +235,7 @@ export function Home() {
     data: playtimeData,
     isLoading: isLoadingPlaytime,
     isError: playtimeFailed,
-  } = useQuery(trpc.public.metrics.playtime.getTotalHours.queryOptions({}));
+  } = useQuery(trpc.public.metrics.playtime.totalHours.queryOptions({}));
 
   const playersUnavailable = playersFailed && !playerCount;
   const playtimeUnavailable = playtimeFailed && !playtimeData;

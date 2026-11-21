@@ -1,28 +1,31 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { playerTicketRepo } from "@/db";
-import { parsePlayerId, paginationInput, buildPagination } from "@/trpc/utils";
+import {
+  paginationInput,
+  buildPagination,
+  playerId,
+  pageOffset,
+} from "@/trpc/utils";
 
 export const ticketsRouter = router({
   list: adminProcedure
     .meta({ description: "Get paginated tickets for a player" })
     .input(
       z.object({
-        id: z.string().min(1),
+        id: playerId(),
         ...paginationInput(),
       }),
     )
     .query(async ({ input }) => {
-      const identifier = parsePlayerId(input.id);
-
       const { tickets, total } = await playerTicketRepo.getPage(
-        identifier,
+        input.id,
         input.limit,
-        input.page * input.limit,
+        pageOffset(input),
       );
 
       return {
-        tickets,
+        items: tickets,
         pagination: buildPagination(input.page, input.limit, total),
       };
     }),

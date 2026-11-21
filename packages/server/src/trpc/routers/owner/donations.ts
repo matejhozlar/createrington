@@ -56,7 +56,7 @@ export const ownerDonationsRouter = router({
       );
 
       return {
-        donations: rows.map((d) => ({
+        items: rows.map((d) => ({
           id: d.id,
           playerDiscordId: d.playerDiscordId,
           type: d.type,

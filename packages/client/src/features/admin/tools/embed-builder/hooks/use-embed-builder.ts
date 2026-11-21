@@ -208,7 +208,7 @@ export function useEmbedBuilder() {
     ),
   );
   const updateAllMutation = useMutation(
-    trpc.admin.embeds.updateAll.mutationOptions(
+    trpc.admin.embeds.presets.links.updateAll.mutationOptions(
       useMutationToast({
         onSuccess: (result) => {
           if (result.failed > 0) {
@@ -226,7 +226,7 @@ export function useEmbedBuilder() {
     ),
   );
   const updateLinkMutation = useMutation(
-    trpc.admin.embeds.updateLink.mutationOptions(
+    trpc.admin.embeds.presets.links.update.mutationOptions(
       useMutationToast({ success: "Linked message updated" }),
     ),
   );

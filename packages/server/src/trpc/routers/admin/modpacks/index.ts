@@ -87,7 +87,6 @@ export const adminModpacksRouter = router({
         description: `Deleted modpack "${modpack.name}" with ${modCount} member(s) and ${releaseCount} release(s)`,
         metadata: { modpackId: modpack.id, modCount, releaseCount },
       });
-      return { deleted: true };
     }),
 
   listMods: adminProcedure
@@ -104,7 +103,7 @@ export const adminModpacksRouter = router({
       return await modpackReleaseService.listReleases(input.modpackId);
     }),
 
-  getReleaseDiff: adminProcedure
+  releaseDiff: adminProcedure
     .meta({ description: "What a release changed against the one before it" })
     .input(z.object({ releaseId: id() }))
     .query(async ({ input }) => {

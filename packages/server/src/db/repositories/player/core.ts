@@ -8,7 +8,6 @@ import type {
   WaitlistEntry,
 } from "@createrington/shared/db";
 import { BalanceUtils } from "../balance/utils";
-import { AdminEdit } from "@/types";
 import { BasePlayerRepository, type PlayerIdentifier } from "./base";
 
 /**
@@ -136,7 +135,7 @@ export class PlayerRepository extends BasePlayerRepository {
           await tx.admin.log.action.create({
             adminDiscordId,
             adminUsername,
-            actionType: AdminEdit.UPDATE_PLAYER,
+            actionType: "update_player",
             targetPlayerUuid: uuid,
             targetPlayerName: oldPlayer.minecraftUsername,
             tableName: DatabaseTable.PLAYER.TABLE,

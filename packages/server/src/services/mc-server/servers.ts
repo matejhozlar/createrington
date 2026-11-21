@@ -1,4 +1,5 @@
 import config from "@/config";
+import { NotFoundError } from "@/errors";
 
 export interface McServer {
   id: number;
@@ -40,6 +41,14 @@ export const SERVER_IDS: readonly number[] = SERVERS.map((server) => server.id);
 
 export function getServerById(id: number): McServer | undefined {
   return SERVERS.find((server) => server.id === id);
+}
+
+export function requireServer(id: number): McServer {
+  const server = getServerById(id);
+  if (!server) {
+    throw new NotFoundError(`Server with id ${id} not found`);
+  }
+  return server;
 }
 
 export function getServerByIp(ip: string): McServer | undefined {

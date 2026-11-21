@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
-import { findOrThrow, trpcError, assertPatchNotEmpty } from "@/trpc/utils";
+import { findOrThrow, trpcError, assertPatchNotEmpty, id } from "@/trpc/utils";
 
 export const embedPresetCategoriesRouter = router({
   list: adminProcedure
@@ -51,7 +51,7 @@ export const embedPresetCategoriesRouter = router({
     .meta({ description: "Update a preset category" })
     .input(
       z.object({
-        id: z.number().int().positive(),
+        id: id(),
         name: z.string().min(1).max(100).optional(),
         sortOrder: z.number().int().optional(),
       }),
@@ -77,15 +77,13 @@ export const embedPresetCategoriesRouter = router({
 
       assertPatchNotEmpty(updates);
       await Q.discord.embed.preset.category.update({ id: input.id }, updates);
-
-      return { message: "Category updated" };
     }),
 
   delete: adminProcedure
     .meta({
       description: "Delete a preset category (presets become uncategorized)",
     })
-    .input(z.object({ id: z.number().int().positive() }))
+    .input(z.object({ id: id() }))
     .mutation(async ({ input }) => {
       await findOrThrow(
         Q.discord.embed.preset.category.find({ id: input.id }),
@@ -93,7 +91,5 @@ export const embedPresetCategoriesRouter = router({
       );
 
       await Q.discord.embed.preset.category.delete({ id: input.id });
-
-      return { message: "Category deleted" };
     }),
 });

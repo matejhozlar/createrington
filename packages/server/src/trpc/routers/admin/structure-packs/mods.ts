@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { adminProcedure } from "@/trpc/trpc";
+import { adminProcedure, router } from "@/trpc/trpc";
 import { Q } from "@/db";
 import { httpUrlSchema } from "@createrington/shared/api/embed";
 import { structurePackService } from "@/services/structure-pack/structure-pack.service";
@@ -12,14 +12,14 @@ import { listProjectFiles } from "@/services/curseforge/content";
 import { getFilesDependencies } from "@/services/curseforge/files";
 import { resolveDependencies, searchMods } from "@/services/curseforge/mods";
 import { findModpackModIds } from "@/services/modpack/manifest";
-import { auditActor } from "@/trpc/utils";
+import { auditActor, id } from "@/trpc/utils";
 import { getRotationService } from "./helpers";
 import { structurePackModFileName } from "@createrington/shared/structure-pack";
 
 const MOD_FILES_PAGE_SIZE = 50;
 
-export const structurePackModProcedures = {
-  addMod: adminProcedure
+export const structurePackModsRouter = router({
+  create: adminProcedure
     .meta({ description: "Add a CurseForge mod to a structure pack" })
     .input(
       z.object({
@@ -49,7 +49,7 @@ export const structurePackModProcedures = {
       return mod;
     }),
 
-  removeMod: adminProcedure
+  delete: adminProcedure
     .meta({ description: "Remove a mod from a structure pack" })
     .input(
       z.object({
@@ -64,10 +64,9 @@ export const structurePackModProcedures = {
         actionType: "structure_pack_remove_mod",
         description: `Removed mod #${input.modId} from pack #${input.packId}`,
       });
-      return { removed: true };
     }),
 
-  searchMods: adminProcedure
+  search: adminProcedure
     .meta({ description: "Search CurseForge for mods" })
     .input(z.object({ query: z.string().min(1).max(100) }))
     .query(async ({ input }) => {
@@ -76,9 +75,9 @@ export const structurePackModProcedures = {
       });
     }),
 
-  getModFiles: adminProcedure
+  files: adminProcedure
     .meta({ description: "Get available files for a CurseForge mod" })
-    .input(z.object({ modId: z.number().int().positive() }))
+    .input(z.object({ modId: id() }))
     .query(async ({ input }) => {
       const { files } = await listProjectFiles(input.modId, {
         gameVersion: DEFAULT_GAME_VERSION,
@@ -101,7 +100,7 @@ export const structurePackModProcedures = {
     .input(
       z.object({
         packId: z.coerce.number().int().positive(),
-        modIds: z.array(z.number().int().positive()).min(1),
+        modIds: z.array(id()).min(1),
       }),
     )
     .query(async ({ input }) => {
@@ -110,7 +109,7 @@ export const structurePackModProcedures = {
       return resolveDependencies(input.modIds, packModIds);
     }),
 
-  checkRemoveDeps: adminProcedure
+  checkDeleteDeps: adminProcedure
     .meta({
       description:
         "Check which dependencies are safe to remove alongside a mod",
@@ -198,4 +197,4 @@ export const structurePackModProcedures = {
         }),
       };
     }),
-};
+});

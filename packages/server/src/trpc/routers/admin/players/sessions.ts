@@ -1,7 +1,13 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { playerSessionRepo } from "@/db";
-import { parsePlayerId, paginationInput, buildPagination } from "@/trpc/utils";
+import {
+  paginationInput,
+  buildPagination,
+  id,
+  playerId,
+  pageOffset,
+} from "@/trpc/utils";
 
 export const sessionsRouter = router({
   list: adminProcedure
@@ -11,24 +17,22 @@ export const sessionsRouter = router({
     })
     .input(
       z.object({
-        id: z.string().min(1),
-        serverId: z.number().int().positive().optional(),
+        id: playerId(),
+        serverId: id().optional(),
         ...paginationInput({ maxLimit: 200, defaultLimit: 50 }),
       }),
     )
     .query(async ({ input }) => {
-      const identifier = parsePlayerId(input.id);
-
       const { sessions, total: totalSessions } =
         await playerSessionRepo.getHistoryPage(
-          identifier,
+          input.id,
           input.serverId,
           input.limit,
-          input.page * input.limit,
+          pageOffset(input),
         );
 
       return {
-        sessions: sessions.map((s) => ({
+        items: sessions.map((s) => ({
           ...s,
           secondsPlayed: s.secondsPlayed?.toString() || null,
           activeSeconds: s.activeSeconds.toString(),

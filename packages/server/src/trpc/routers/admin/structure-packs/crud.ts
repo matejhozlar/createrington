@@ -73,7 +73,6 @@ export const structurePackCrudProcedures = {
         actionType: "structure_pack_delete",
         description: `Deleted structure pack #${input.id}`,
       });
-      return { deleted: true };
     }),
 
   toggleEnabled: adminProcedure
@@ -97,7 +96,7 @@ export const structurePackCrudProcedures = {
       return pack;
     }),
 
-  importPacks: adminProcedure
+  import: adminProcedure
     .meta({ description: "Import structure packs from exported JSON" })
     .input(structurePackImportSchema)
     .mutation(async ({ input, ctx }) => {

@@ -35,7 +35,7 @@ import {
 } from "@/components/query-states";
 import { StatCard } from "@/components/stat-card";
 
-type Donation = RouterOutput["owner"]["donations"]["list"]["donations"][number];
+type Donation = RouterOutput["owner"]["donations"]["list"]["items"][number];
 type DonationStatus = "pending" | "completed" | "refunded" | "cancelled";
 type DonationType = "one_time" | "monthly";
 
@@ -146,7 +146,7 @@ export function OwnerDonations() {
   );
 
   const stats = statsQuery.data;
-  const donations = listQuery.data?.donations ?? [];
+  const donations = listQuery.data?.items ?? [];
   const pagination = listQuery.data?.pagination;
   const total = pagination?.total ?? 0;
   const totalPages = pagination?.totalPages ?? 0;

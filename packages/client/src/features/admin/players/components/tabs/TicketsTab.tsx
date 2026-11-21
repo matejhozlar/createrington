@@ -26,7 +26,7 @@ export function TicketsTab({ playerId }: TicketsTabProps) {
     }),
   );
 
-  const tickets = ticketsQuery.data?.tickets ?? [];
+  const tickets = ticketsQuery.data?.items ?? [];
   const total = ticketsQuery.data?.pagination.total ?? 0;
   const totalPages = ticketsQuery.data?.pagination.totalPages ?? 0;
   const loading = ticketsQuery.isLoading;

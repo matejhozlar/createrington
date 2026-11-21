@@ -98,7 +98,7 @@ export function AdminStructurePacks() {
   }, [packs, searchQuery, statusFilter, activeFilter]);
 
   const importMutation = useMutation(
-    trpc.admin.structurePacks.importPacks.mutationOptions(
+    trpc.admin.structurePacks.import.mutationOptions(
       useMutationToast({
         success: (result) => {
           const parts: string[] = [];

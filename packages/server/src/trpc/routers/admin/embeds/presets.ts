@@ -8,6 +8,7 @@ import {
   findOrThrow,
   trpcError,
   assertPatchNotEmpty,
+  id,
 } from "@/trpc/utils";
 import { messagePayloadSchema } from "@createrington/shared/api/embed";
 import type { DiscordEmbedPresetFilters } from "@createrington/shared/db";
@@ -23,9 +24,7 @@ export const embedPresetsRouter = router({
     .input(
       z.object({
         search: z.string().optional(),
-        categoryId: z
-          .union([z.number().int().positive(), z.literal("uncategorized")])
-          .optional(),
+        categoryId: z.union([id(), z.literal("uncategorized")]).optional(),
         ...paginationInput(),
       }),
     )
@@ -46,12 +45,12 @@ export const embedPresetsRouter = router({
         { orderBy: "updatedAt", orderDirection: "desc" },
       );
 
-      return { presets, pagination };
+      return { items: presets, pagination };
     }),
 
   get: adminProcedure
     .meta({ description: "Get a single embed preset" })
-    .input(z.object({ id: z.number().int().positive() }))
+    .input(z.object({ id: id() }))
     .query(async ({ input }) => {
       const preset = await findOrThrow(
         Q.discord.embed.preset.find({ id: input.id }),
@@ -67,7 +66,7 @@ export const embedPresetsRouter = router({
       z
         .object({
           name: z.string().min(1).max(100),
-          categoryId: z.number().int().positive().nullish(),
+          categoryId: id().nullish(),
         })
         .and(messagePayloadSchema),
     )
@@ -89,7 +88,6 @@ export const embedPresetsRouter = router({
       });
 
       return {
-        message: "Preset created",
         id: created.id,
         name: created.name,
         kind: created.kind,
@@ -101,7 +99,7 @@ export const embedPresetsRouter = router({
     .meta({ description: "Update an existing preset" })
     .input(
       z.object({
-        id: z.number().int().positive(),
+        id: id(),
         name: z.string().min(1).max(100).optional(),
         payload: messagePayloadSchema.optional(),
       }),
@@ -134,13 +132,11 @@ export const embedPresetsRouter = router({
 
       assertPatchNotEmpty(updates);
       await Q.discord.embed.preset.update({ id: input.id }, updates);
-
-      return { message: "Preset updated" };
     }),
 
   delete: adminProcedure
     .meta({ description: "Delete an embed preset" })
-    .input(z.object({ id: z.number().int().positive() }))
+    .input(z.object({ id: id() }))
     .mutation(async ({ input }) => {
       await findOrThrow(
         Q.discord.embed.preset.find({ id: input.id }),
@@ -148,8 +144,6 @@ export const embedPresetsRouter = router({
       );
 
       await Q.discord.embed.preset.delete({ id: input.id });
-
-      return { message: "Preset deleted" };
     }),
 
   setCategory: adminProcedure
@@ -158,8 +152,8 @@ export const embedPresetsRouter = router({
     })
     .input(
       z.object({
-        presetId: z.number().int().positive(),
-        categoryId: z.number().int().positive().nullable(),
+        presetId: id(),
+        categoryId: id().nullable(),
       }),
     )
     .mutation(async ({ input }) => {
@@ -172,8 +166,6 @@ export const embedPresetsRouter = router({
         { id: input.presetId },
         { categoryId: input.categoryId },
       );
-
-      return { message: "Preset category updated" };
     }),
 
   categories: embedPresetCategoriesRouter,

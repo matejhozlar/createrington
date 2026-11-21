@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { id } from "@/trpc/utils";
 import { router, userProcedure } from "@/trpc/trpc";
 import { getService, Services } from "@/services";
 import type { StructurePackRotationService } from "@/services/structure-pack/rotation/rotation.service";
@@ -12,7 +13,7 @@ export const userStructurePacksRouter = router({
     .meta({ description: "Purchase boost units for a structure pack" })
     .input(
       z.object({
-        packId: z.number().int().positive(),
+        packId: id(),
         units: z.number().int().positive().max(100),
       }),
     )

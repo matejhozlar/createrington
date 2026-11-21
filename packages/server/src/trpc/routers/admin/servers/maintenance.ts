@@ -1,27 +1,15 @@
 import { z } from "zod";
-import { adminProcedure } from "@/trpc/trpc";
+import { adminProcedure, router } from "@/trpc/trpc";
 import { Q } from "@/db";
 import { getService, Services } from "@/services";
 import { maintenanceService } from "@/services/maintenance";
-import { getServerById } from "@/services/mc-server/servers";
-import { trpcError, auditActor } from "@/trpc/utils";
+import { getServerById, requireServer } from "@/services/mc-server/servers";
+import { trpcError, auditActor, serverIdInput } from "@/trpc/utils";
 import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
 
-const serverIdInput = z.object({
-  serverId: z.coerce.number().int().positive(),
-});
-
 const MOTD_MAX_LENGTH = 300;
 const MESSAGE_MAX_LENGTH = 600;
-
-function requireServer(serverId: number) {
-  const serverConfig = getServerById(serverId);
-  if (!serverConfig) {
-    throw trpcError.badRequest(`Server with id ${serverId} not found`);
-  }
-  return serverConfig;
-}
 
 async function broadcastStatus(serverId: number) {
   try {
@@ -46,8 +34,157 @@ function toScheduleView(
     : null;
 }
 
-export const serverMaintenanceProcedures = {
-  maintenanceStatus: adminProcedure
+const maintenanceSettingsRouter = router({
+  get: adminProcedure
+    .meta({
+      description:
+        "Maintenance MOTD, kick message, presets, and the resolved allow list for a server",
+    })
+    .input(serverIdInput)
+    .query(async ({ input }) => {
+      requireServer(input.serverId);
+      return maintenanceService.getSettings(input.serverId);
+    }),
+
+  update: adminProcedure
+    .meta({
+      description:
+        "Update the maintenance MOTD and kick message (null restores the preset) and push them to the mod",
+    })
+    .input(
+      serverIdInput.extend({
+        motd: z.string().trim().min(1).max(MOTD_MAX_LENGTH).nullable(),
+        message: z.string().trim().min(1).max(MESSAGE_MAX_LENGTH).nullable(),
+      }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      const serverConfig = requireServer(input.serverId);
+
+      const { pushed } = await maintenanceService.updateSettings(
+        input.serverId,
+        { motd: input.motd, message: input.message },
+        ctx.user.discordId,
+      );
+
+      await Q.admin.log.action.logAction({
+        ...auditActor(ctx),
+        actionType: "server_maintenance_settings_update",
+        description: `Updated maintenance presentation on ${serverConfig.name}`,
+        serverId: input.serverId,
+        metadata: {
+          motd: input.motd,
+          message: input.message,
+          pushed,
+        },
+      });
+
+      return { pushed };
+    }),
+
+  push: adminProcedure
+    .meta({
+      description:
+        "Push the stored maintenance MOTD, kick message, and allow list to the mod and re-read its state",
+    })
+    .input(serverIdInput)
+    .mutation(async ({ input, ctx }) => {
+      const serverConfig = requireServer(input.serverId);
+
+      let sync: { added: string[]; removed: string[] };
+      try {
+        sync = await maintenanceService.pushSettings(input.serverId);
+      } catch (error) {
+        throw trpcError.internal(
+          error instanceof Error
+            ? error.message
+            : "Failed to push maintenance settings",
+        );
+      }
+      await maintenanceService.reconcile(input.serverId);
+
+      await Q.admin.log.action.logAction({
+        ...auditActor(ctx),
+        actionType: "server_maintenance_settings_push",
+        description: `Pushed maintenance settings to ${serverConfig.name} (+${sync.added.length} / -${sync.removed.length} allowed)`,
+        serverId: input.serverId,
+        metadata: sync,
+      });
+
+      return sync;
+    }),
+});
+
+const maintenanceAllowedPlayersRouter = router({
+  create: adminProcedure
+    .meta({
+      description:
+        "Allow a registered player to join during maintenance and push it to the mod",
+    })
+    .input(serverIdInput.extend({ playerUuid: z.string().uuid() }))
+    .mutation(async ({ input, ctx }) => {
+      const serverConfig = requireServer(input.serverId);
+
+      let result: { username: string; pushed: boolean };
+      try {
+        result = await maintenanceService.addAllowedPlayer(
+          input.serverId,
+          input.playerUuid,
+          ctx.user.discordId,
+        );
+      } catch (error) {
+        throw trpcError.badRequest(
+          error instanceof Error ? error.message : "Failed to allow player",
+        );
+      }
+
+      await Q.admin.log.action.logAction({
+        ...auditActor(ctx),
+        actionType: "server_maintenance_allow_player",
+        description: `Allowed ${result.username} to join ${serverConfig.name} during maintenance`,
+        serverId: input.serverId,
+        targetPlayerUuid: input.playerUuid,
+        targetPlayerName: result.username,
+      });
+
+      return result;
+    }),
+
+  delete: adminProcedure
+    .meta({
+      description:
+        "Remove a manually allowed player from the maintenance allow list and push it to the mod",
+    })
+    .input(serverIdInput.extend({ playerUuid: z.string().uuid() }))
+    .mutation(async ({ input, ctx }) => {
+      const serverConfig = requireServer(input.serverId);
+
+      let result: { username: string; pushed: boolean };
+      try {
+        result = await maintenanceService.removeAllowedPlayer(
+          input.serverId,
+          input.playerUuid,
+        );
+      } catch (error) {
+        throw trpcError.badRequest(
+          error instanceof Error ? error.message : "Failed to remove player",
+        );
+      }
+
+      await Q.admin.log.action.logAction({
+        ...auditActor(ctx),
+        actionType: "server_maintenance_disallow_player",
+        description: `Removed ${result.username} from the maintenance allow list on ${serverConfig.name}`,
+        serverId: input.serverId,
+        targetPlayerUuid: input.playerUuid,
+        targetPlayerName: result.username,
+      });
+
+      return result;
+    }),
+});
+
+export const serverMaintenanceRouter = router({
+  status: adminProcedure
     .meta({ description: "Get maintenance mode status for a server" })
     .input(serverIdInput)
     .query(({ input }) => {
@@ -61,7 +198,7 @@ export const serverMaintenanceProcedures = {
       };
     }),
 
-  toggleMaintenance: adminProcedure
+  toggle: adminProcedure
     .meta({
       description:
         "Toggle maintenance mode for a server through the Maintenance Mode mod over RCON",
@@ -134,7 +271,7 @@ export const serverMaintenanceProcedures = {
       return { enabled: input.enabled, applied };
     }),
 
-  scheduleMaintenance: adminProcedure
+  schedule: adminProcedure
     .meta({
       description:
         "Schedule maintenance for a future time. Sends initial Discord announcement and sets up warning timers",
@@ -208,7 +345,7 @@ export const serverMaintenanceProcedures = {
       };
     }),
 
-  cancelScheduledMaintenance: adminProcedure
+  cancelSchedule: adminProcedure
     .meta({
       description: "Cancel a pending scheduled maintenance for a server.",
     })
@@ -234,152 +371,8 @@ export const serverMaintenanceProcedures = {
       });
 
       await broadcastStatus(input.serverId);
-
-      return { cancelled: true };
     }),
 
-  maintenanceSettings: adminProcedure
-    .meta({
-      description:
-        "Maintenance MOTD, kick message, presets, and the resolved allow list for a server",
-    })
-    .input(serverIdInput)
-    .query(async ({ input }) => {
-      requireServer(input.serverId);
-      return maintenanceService.getSettings(input.serverId);
-    }),
-
-  updateMaintenanceSettings: adminProcedure
-    .meta({
-      description:
-        "Update the maintenance MOTD and kick message (null restores the preset) and push them to the mod",
-    })
-    .input(
-      serverIdInput.extend({
-        motd: z.string().trim().min(1).max(MOTD_MAX_LENGTH).nullable(),
-        message: z.string().trim().min(1).max(MESSAGE_MAX_LENGTH).nullable(),
-      }),
-    )
-    .mutation(async ({ input, ctx }) => {
-      const serverConfig = requireServer(input.serverId);
-
-      const { pushed } = await maintenanceService.updateSettings(
-        input.serverId,
-        { motd: input.motd, message: input.message },
-        ctx.user.discordId,
-      );
-
-      await Q.admin.log.action.logAction({
-        ...auditActor(ctx),
-        actionType: "server_maintenance_settings_update",
-        description: `Updated maintenance presentation on ${serverConfig.name}`,
-        serverId: input.serverId,
-        metadata: {
-          motd: input.motd,
-          message: input.message,
-          pushed,
-        },
-      });
-
-      return { pushed };
-    }),
-
-  addMaintenanceAllowedPlayer: adminProcedure
-    .meta({
-      description:
-        "Allow a registered player to join during maintenance and push it to the mod",
-    })
-    .input(serverIdInput.extend({ playerUuid: z.string().uuid() }))
-    .mutation(async ({ input, ctx }) => {
-      const serverConfig = requireServer(input.serverId);
-
-      let result: { username: string; pushed: boolean };
-      try {
-        result = await maintenanceService.addAllowedPlayer(
-          input.serverId,
-          input.playerUuid,
-          ctx.user.discordId,
-        );
-      } catch (error) {
-        throw trpcError.badRequest(
-          error instanceof Error ? error.message : "Failed to allow player",
-        );
-      }
-
-      await Q.admin.log.action.logAction({
-        ...auditActor(ctx),
-        actionType: "server_maintenance_allow_player",
-        description: `Allowed ${result.username} to join ${serverConfig.name} during maintenance`,
-        serverId: input.serverId,
-        targetPlayerUuid: input.playerUuid,
-        targetPlayerName: result.username,
-      });
-
-      return result;
-    }),
-
-  removeMaintenanceAllowedPlayer: adminProcedure
-    .meta({
-      description:
-        "Remove a manually allowed player from the maintenance allow list and push it to the mod",
-    })
-    .input(serverIdInput.extend({ playerUuid: z.string().uuid() }))
-    .mutation(async ({ input, ctx }) => {
-      const serverConfig = requireServer(input.serverId);
-
-      let result: { username: string; pushed: boolean };
-      try {
-        result = await maintenanceService.removeAllowedPlayer(
-          input.serverId,
-          input.playerUuid,
-        );
-      } catch (error) {
-        throw trpcError.badRequest(
-          error instanceof Error ? error.message : "Failed to remove player",
-        );
-      }
-
-      await Q.admin.log.action.logAction({
-        ...auditActor(ctx),
-        actionType: "server_maintenance_disallow_player",
-        description: `Removed ${result.username} from the maintenance allow list on ${serverConfig.name}`,
-        serverId: input.serverId,
-        targetPlayerUuid: input.playerUuid,
-        targetPlayerName: result.username,
-      });
-
-      return result;
-    }),
-
-  pushMaintenanceSettings: adminProcedure
-    .meta({
-      description:
-        "Push the stored maintenance MOTD, kick message, and allow list to the mod and re-read its state",
-    })
-    .input(serverIdInput)
-    .mutation(async ({ input, ctx }) => {
-      const serverConfig = requireServer(input.serverId);
-
-      let sync: { added: string[]; removed: string[] };
-      try {
-        sync = await maintenanceService.pushSettings(input.serverId);
-      } catch (error) {
-        throw trpcError.internal(
-          error instanceof Error
-            ? error.message
-            : "Failed to push maintenance settings",
-        );
-      }
-      await maintenanceService.reconcile(input.serverId);
-
-      await Q.admin.log.action.logAction({
-        ...auditActor(ctx),
-        actionType: "server_maintenance_settings_push",
-        description: `Pushed maintenance settings to ${serverConfig.name} (+${sync.added.length} / -${sync.removed.length} allowed)`,
-        serverId: input.serverId,
-        metadata: sync,
-      });
-
-      return sync;
-    }),
-};
+  settings: maintenanceSettingsRouter,
+  allowedPlayers: maintenanceAllowedPlayersRouter,
+});

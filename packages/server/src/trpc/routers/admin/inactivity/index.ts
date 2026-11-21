@@ -7,6 +7,8 @@ import {
   paginationInput,
   trpcError,
   auditActor,
+  id,
+  pageOffset,
 } from "@/trpc/utils";
 import config from "@/config";
 import { getService, Services } from "@/services";
@@ -81,11 +83,11 @@ export const inactivityRouter = router({
           graceDays: INACTIVITY_GRACE_DAYS,
           search: input.search?.trim() || undefined,
           limit: input.limit,
-          offset: input.page * input.limit,
+          offset: pageOffset(input),
         });
 
       return {
-        warnings,
+        items: warnings,
         pagination: buildPagination(input.page, input.limit, total),
       };
     }),
@@ -95,7 +97,7 @@ export const inactivityRouter = router({
       description:
         "Manually resolve an inactivity warning (marks the player as returned)",
     })
-    .input(z.object({ id: z.number().int().positive() }))
+    .input(z.object({ id: id() }))
     .mutation(async ({ input, ctx }) => {
       const warning = await findOrThrow(
         Q.player.inactivity.warning.findByIdWithPlayer(input.id),
@@ -122,8 +124,6 @@ export const inactivityRouter = router({
           warning.minecraftUsername ?? warning.playerMinecraftUuid
         }`,
       });
-
-      return { message: "Warning resolved" };
     }),
 
   removeManual: adminProcedure
@@ -131,7 +131,7 @@ export const inactivityRouter = router({
       description:
         "Manually run the removal sequence for an inactivity warning (kick, whitelist remove, player delete)",
     })
-    .input(z.object({ id: z.number().int().positive() }))
+    .input(z.object({ id: id() }))
     .mutation(async ({ input, ctx }) => {
       if (!isManualActionsEnabled()) {
         throw trpcError.forbidden(
@@ -192,8 +192,6 @@ export const inactivityRouter = router({
         actionType: "inactivity_remove_manual",
         description: `Manually removed inactive player ${warning.minecraftUsername}`,
       });
-
-      return { message: "Player removed" };
     }),
 
   triggerCleanup: adminProcedure
@@ -225,8 +223,6 @@ export const inactivityRouter = router({
         actionType: "inactivity_trigger_cleanup",
         description: "Force-triggered inactivity cleanup cycle",
       });
-
-      return { message: "Cleanup cycle completed" };
     }),
 
   triggerResolveRemove: adminProcedure
@@ -259,7 +255,5 @@ export const inactivityRouter = router({
         description:
           "Force-ran inactivity resolve+remove phases (no new warnings)",
       });
-
-      return { message: "Overdue warnings processed" };
     }),
 });

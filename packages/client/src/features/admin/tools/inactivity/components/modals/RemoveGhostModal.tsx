@@ -31,7 +31,7 @@ export function RemoveGhostModal({
     }),
   );
   const removeGhost = useMutation(
-    trpc.admin.inactivity.ghosts.remove.mutationOptions(
+    trpc.admin.inactivity.ghosts.delete.mutationOptions(
       useMutationToast({
         success: "Ghost member removed",
         error: (error) => error.message || "Failed to remove ghost",

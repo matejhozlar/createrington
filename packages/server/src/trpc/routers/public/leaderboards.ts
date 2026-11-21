@@ -1,6 +1,11 @@
 import { z } from "zod";
 import { router, publicProcedure } from "@/trpc/trpc";
-import { buildPagination, findOrThrow, paginationInput } from "@/trpc/utils";
+import {
+  buildPagination,
+  findOrThrow,
+  paginationInput,
+  pageOffset,
+} from "@/trpc/utils";
 import { createRateLimit } from "@/trpc/middleware/rate-limit";
 import { topRoleHolderService } from "@/services/discord/role/top-role-holder.service";
 import { Q, playtimeRepo } from "@/db";
@@ -91,10 +96,10 @@ function boardPage(
         row.minecraftUsername.toLowerCase().includes(needle),
       )
     : snapshot.rows;
-  const offset = input.page * input.limit;
+  const offset = pageOffset(input);
 
   return {
-    rows: matches.slice(offset, offset + input.limit),
+    items: matches.slice(offset, offset + input.limit),
     pagination: buildPagination(input.page, input.limit, matches.length),
     contestedKeys: snapshot.contestedKeys,
     topValue: snapshot.rows[0]?.value ?? 0,
@@ -223,11 +228,11 @@ export const leaderboardsRouter = router({
           search: input.search || undefined,
           sort: input.sort,
           limit: input.limit,
-          offset: input.page * input.limit,
+          offset: pageOffset(input),
         },
       );
       return {
-        rows,
+        items: rows,
         pagination: buildPagination(input.page, input.limit, total),
       };
     }),

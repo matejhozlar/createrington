@@ -90,7 +90,7 @@ export function AdminWorkshopDetail() {
     trpc.admin.workshops.listPackMods.queryOptions({ workshopId }, { enabled }),
   );
   const attentionQuery = useQuery(
-    trpc.admin.workshops.getAttention.queryOptions({ workshopId }, { enabled }),
+    trpc.admin.workshops.attention.queryOptions({ workshopId }, { enabled }),
   );
 
   const [searchParams, setSearchParams] = useSearchParams();
@@ -180,7 +180,7 @@ export function AdminWorkshopDetail() {
         trpc.admin.workshops.listPackMods.queryFilter({ workshopId }),
       ),
       queryClient.invalidateQueries(
-        trpc.admin.workshops.getAttention.queryFilter({ workshopId }),
+        trpc.admin.workshops.attention.queryFilter({ workshopId }),
       ),
       queryClient.invalidateQueries(
         trpc.admin.workshops.listDependencies.queryFilter({ workshopId }),

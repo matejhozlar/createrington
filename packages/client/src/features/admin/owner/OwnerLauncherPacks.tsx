@@ -82,7 +82,7 @@ export function OwnerLauncherPacks() {
     ),
   );
   const removeMutation = useMutation(
-    trpc.owner.launcherPacks.remove.mutationOptions(
+    trpc.owner.launcherPacks.delete.mutationOptions(
       useMutationToast({
         success: (pack) => `No longer offering "${pack.slug}"`,
         onSuccess: refresh,

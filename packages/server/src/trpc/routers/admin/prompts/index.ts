@@ -6,6 +6,8 @@ import {
   buildPagination,
   findOrThrow,
   auditActor,
+  id,
+  pageOffset,
 } from "@/trpc/utils";
 import { getServiceSync, Services } from "@/services";
 import { Discord } from "@/discord/constants";
@@ -70,7 +72,7 @@ export const adminPromptsRouter = router({
     .query(async ({ input }) => {
       const { rows, total } = await Q.player.prompt.listWithResponseCount(
         { status: input.status },
-        { limit: input.limit, offset: input.page * input.limit },
+        { limit: input.limit, offset: pageOffset(input) },
       );
       return {
         items: rows,
@@ -83,7 +85,7 @@ export const adminPromptsRouter = router({
       description:
         "Fetch a single prompt with all its responses joined to player rows.",
     })
-    .input(z.object({ id: z.number().int().positive() }))
+    .input(z.object({ id: id() }))
     .query(async ({ input }) => {
       const prompt = await findOrThrow(
         Q.player.prompt.find({ id: input.id }),
@@ -144,7 +146,7 @@ export const adminPromptsRouter = router({
       description:
         "Manually close an active prompt and edit its Discord message to a closed state.",
     })
-    .input(z.object({ id: z.number().int().positive() }))
+    .input(z.object({ id: id() }))
     .mutation(async ({ input, ctx }) => {
       const service = getServiceSync(Services.PLAYER_PROMPT_SERVICE);
       await service.closePrompt(input.id);
@@ -155,8 +157,6 @@ export const adminPromptsRouter = router({
         description: `Manually closed player prompt #${input.id}`,
         metadata: { promptId: input.id },
       });
-
-      return { ok: true };
     }),
 
   delete: adminProcedure
@@ -164,7 +164,7 @@ export const adminPromptsRouter = router({
       description:
         "Delete a prompt along with its responses and its Discord announcement.",
     })
-    .input(z.object({ id: z.number().int().positive() }))
+    .input(z.object({ id: id() }))
     .mutation(async ({ input, ctx }) => {
       const service = getServiceSync(Services.PLAYER_PROMPT_SERVICE);
       const totals = await Q.player.prompt.response.countByPrompt(input.id);
@@ -185,7 +185,5 @@ export const adminPromptsRouter = router({
           responderCount: totals.responderCount,
         },
       });
-
-      return { ok: true };
     }),
 });

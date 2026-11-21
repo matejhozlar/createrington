@@ -21,7 +21,7 @@ interface SessionsTabProps {
 }
 
 type ServerSession =
-  RouterOutput["admin"]["servers"]["sessions"]["sessions"][number];
+  RouterOutput["admin"]["servers"]["sessions"]["items"][number];
 
 const COLUMNS: DataTableColumn<ServerSession>[] = [
   {
@@ -95,7 +95,7 @@ export function SessionsTab({ serverId }: SessionsTabProps) {
     ),
   );
 
-  const sessions = sessionsQuery.data?.sessions ?? [];
+  const sessions = sessionsQuery.data?.items ?? [];
   const pagination = sessionsQuery.data?.pagination;
   const totalPages = pagination?.totalPages ?? 0;
   const total = pagination?.total ?? 0;

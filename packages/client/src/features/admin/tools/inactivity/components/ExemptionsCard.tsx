@@ -29,7 +29,7 @@ import { RemoveExemptionModal } from "./modals/RemoveExemptionModal";
 import { EmptyState, ErrorState } from "@/components/query-states";
 
 type Exemption =
-  RouterOutput["admin"]["inactivity"]["exemptions"]["list"]["exemptions"][number];
+  RouterOutput["admin"]["inactivity"]["exemptions"]["list"]["items"][number];
 
 export function ExemptionsCard() {
   const [page, setPage] = useState(0);
@@ -53,7 +53,7 @@ export function ExemptionsCard() {
   );
 
   const addExemption = useMutation(
-    trpc.admin.inactivity.exemptions.add.mutationOptions(
+    trpc.admin.inactivity.exemptions.create.mutationOptions(
       useMutationToast({
         success: (data) =>
           data.resolvedWarnings > 0
@@ -71,7 +71,7 @@ export function ExemptionsCard() {
     ),
   );
 
-  const exemptions = listQuery.data?.exemptions ?? [];
+  const exemptions = listQuery.data?.items ?? [];
   const total = listQuery.data?.pagination.total ?? 0;
   const totalPages = listQuery.data?.pagination.totalPages ?? 0;
   const loading = listQuery.isLoading || listQuery.isPlaceholderData;

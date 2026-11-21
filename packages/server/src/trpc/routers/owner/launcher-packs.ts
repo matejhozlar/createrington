@@ -17,11 +17,6 @@ import {
 
 const launcherOwnerProcedure = ownerProcedure.use(launcherAvailable);
 
-const ACTION_ADD = "launcher_pack_add";
-const ACTION_ENABLE = "launcher_pack_enable";
-const ACTION_REORDER = "launcher_pack_reorder";
-const ACTION_REMOVE = "launcher_pack_remove";
-
 const slug = z
   .string()
   .trim()
@@ -75,7 +70,7 @@ export const ownerLauncherPacksRouter = router({
       modpacks: await launcherPackAdminService.listCandidates(),
     })),
 
-  add: launcherOwnerProcedure
+  create: launcherOwnerProcedure
     .meta({
       description:
         "Offer a modpack to the launcher under a new slug; a pack served from CurseForge gets its recorded releases prepared right away",
@@ -94,7 +89,7 @@ export const ownerLauncherPacksRouter = router({
       }
       await Q.admin.log.action.logAction({
         ...auditActor(ctx),
-        actionType: ACTION_ADD,
+        actionType: "launcher_pack_add",
         description: `Offered modpack #${pack.modpackId} to the launcher as "${pack.slug}" (${pack.source})`,
         metadata: { launcherPackId: pack.id, ...input },
       });
@@ -114,7 +109,7 @@ export const ownerLauncherPacksRouter = router({
       );
       await Q.admin.log.action.logAction({
         ...auditActor(ctx),
-        actionType: ACTION_ENABLE,
+        actionType: "launcher_pack_enable",
         description: `${pack.enabled ? "Enabled" : "Disabled"} the launcher pack "${pack.slug}"`,
         metadata: { launcherPackId: pack.id, enabled: pack.enabled },
       });
@@ -131,14 +126,14 @@ export const ownerLauncherPacksRouter = router({
       const packs = await launcherPackAdminService.reorderPacks(input.ids);
       await Q.admin.log.action.logAction({
         ...auditActor(ctx),
-        actionType: ACTION_REORDER,
+        actionType: "launcher_pack_reorder",
         description: `Reordered the launcher packs: ${packs.map((pack) => pack.slug).join(", ")}`,
         metadata: { ids: input.ids },
       });
       return { packs: packs.map(toDto) };
     }),
 
-  remove: launcherOwnerProcedure
+  delete: launcherOwnerProcedure
     .meta({
       description:
         "Stop offering a pack; launchers that stored its slug lose it",
@@ -148,7 +143,7 @@ export const ownerLauncherPacksRouter = router({
       const pack = await launcherPackAdminService.removePack(input.id);
       await Q.admin.log.action.logAction({
         ...auditActor(ctx),
-        actionType: ACTION_REMOVE,
+        actionType: "launcher_pack_remove",
         description: `Stopped offering the launcher pack "${pack.slug}" (modpack #${pack.modpackId})`,
         metadata: { launcherPackId: pack.id, slug: pack.slug },
       });

@@ -57,9 +57,6 @@ vi.mock("@/discord/embeds/presets/buttons", () => ({
 vi.mock("@/generated/db", () => ({
   DatabaseTable: { WAITLIST_ENTRY: { TABLE: "waitlist_entry" } },
 }));
-vi.mock("@/types", () => ({
-  AdminEdit: { DELETE_WAITLIST: "delete_waitlist" },
-}));
 
 import { WaitlistRepository } from "@/db/repositories/waitlist";
 

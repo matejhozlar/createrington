@@ -33,7 +33,7 @@ export function RemoveModDialog({
   const [removingBatch, setRemovingBatch] = useState(false);
 
   const checkRemoveDepsQuery = useQuery(
-    trpc.admin.structurePacks.checkRemoveDeps.queryOptions(
+    trpc.admin.structurePacks.mods.checkDeleteDeps.queryOptions(
       { packId, modId: target?.modId ?? 0 },
       { enabled: target !== null },
     ),
@@ -50,7 +50,7 @@ export function RemoveModDialog({
   const selectedRemoveDeps = removeDepOverrides ?? defaultRemoveSelection;
 
   const removeModMutation = useMutation(
-    trpc.admin.structurePacks.removeMod.mutationOptions({
+    trpc.admin.structurePacks.mods.delete.mutationOptions({
       onSuccess: () => {
         void queryClient.invalidateQueries(
           trpc.admin.structurePacks.get.queryFilter({ id: packId }),

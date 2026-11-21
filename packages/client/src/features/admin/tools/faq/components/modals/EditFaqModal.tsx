@@ -14,7 +14,7 @@ import { DiscordMarkdown } from "@/features/admin/tools/embed-builder/components
 import { useMutation } from "@tanstack/react-query";
 import { Textarea } from "@/components/ui/textarea";
 
-type FaqEntry = RouterOutput["admin"]["faq"]["list"]["entries"][number];
+type FaqEntry = RouterOutput["admin"]["faq"]["list"]["items"][number];
 type MatchMode = "keywords" | "regex";
 
 interface EditFaqModalProps {

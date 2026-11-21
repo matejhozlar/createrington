@@ -49,7 +49,7 @@ import { IntakeSettingsCard } from "./components/IntakeSettingsCard";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 
 type WaitlistEntry =
-  RouterOutput["admin"]["waitlists"]["list"]["entries"][number];
+  RouterOutput["admin"]["waitlists"]["list"]["items"][number];
 
 type SortField = "createdAt" | "queuedAt" | "promotedAt" | "discordUsername";
 type StatusFilter = "all" | WaitlistStatus;
@@ -114,7 +114,7 @@ export function AdminWaitlists() {
     ),
   );
 
-  const entries = entriesQuery.data?.entries ?? [];
+  const entries = entriesQuery.data?.items ?? [];
   const total = entriesQuery.data?.pagination.total ?? 0;
   const totalPages = entriesQuery.data?.pagination.totalPages ?? 0;
   const loading = entriesQuery.isLoading || entriesQuery.isPlaceholderData;

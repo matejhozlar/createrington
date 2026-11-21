@@ -7,6 +7,7 @@ import {
   buildPagination,
   id,
   paginationInput,
+  pageOffset,
 } from "@/trpc/utils";
 import { createRateLimit } from "@/trpc/middleware/rate-limit";
 import { workshopService } from "@/services/workshop/workshop.service";
@@ -136,7 +137,6 @@ export const adminWorkshopsRouter = router({
         description: `Deleted workshop "${workshop.name}"`,
         metadata: { workshopId: workshop.id, slug: workshop.slug },
       });
-      return { deleted: true };
     }),
 
   listMods: adminProcedure
@@ -280,7 +280,7 @@ export const adminWorkshopsRouter = router({
       return await workshopService.getPackMods(input.workshopId);
     }),
 
-  getAttention: adminProcedure
+  attention: adminProcedure
     .meta({
       description:
         "Contradictions between the workshop and the published pack that need an admin decision",
@@ -316,7 +316,6 @@ export const adminWorkshopsRouter = router({
           workshopModId: result.mod?.id ?? null,
         },
       });
-      return { removed: true };
     }),
 
   listDependencies: adminProcedure
@@ -349,11 +348,11 @@ export const adminWorkshopsRouter = router({
           eventType: input.eventType,
           search: input.search || undefined,
           limit: input.limit,
-          offset: input.page * input.limit,
+          offset: pageOffset(input),
         },
       );
       return {
-        events,
+        items: events,
         pagination: buildPagination(input.page, input.limit, total),
       };
     }),

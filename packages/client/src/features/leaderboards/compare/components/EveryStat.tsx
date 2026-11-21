@@ -59,7 +59,7 @@ export function EveryStat({
       { staleTime: 60 * 1000, placeholderData: (previous) => previous },
     ),
   );
-  const rows = statsQuery.data?.rows ?? [];
+  const rows = statsQuery.data?.items ?? [];
   const total = statsQuery.data?.pagination.total ?? 0;
   const canShowMore = rows.length < total && limit < MAX_ROWS;
 
