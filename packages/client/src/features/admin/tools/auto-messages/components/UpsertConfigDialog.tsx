@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field, FieldLabel, FieldDescription } from "@/components/ui/field";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ChoiceField } from "@/components/choice-field";
 import { FormDialog } from "@/components/form-dialog";
 import {
   Select,
@@ -18,6 +18,12 @@ import { useMutation } from "@tanstack/react-query";
 
 type Config = RouterOutput["admin"]["autoMessages"]["configs"]["list"][number];
 type ChannelGroup = RouterOutput["admin"]["autoMessages"]["channels"][number];
+type RotationMode = Config["rotationMode"];
+
+const ROTATION_MODE_OPTIONS: { value: RotationMode; label: string }[] = [
+  { value: "sequential", label: "Sequential" },
+  { value: "random", label: "Random" },
+];
 
 interface UpsertConfigDialogProps {
   open: boolean;
@@ -58,7 +64,7 @@ export function UpsertConfigDialog({
   const [intervalMinutes, setIntervalMinutes] = useState(
     config?.intervalMinutes ?? 60,
   );
-  const [rotationMode, setRotationMode] = useState<"sequential" | "random">(
+  const [rotationMode, setRotationMode] = useState<RotationMode>(
     config?.rotationMode ?? "sequential",
   );
   const [enabled, setEnabled] = useState(config?.enabled ?? false);
@@ -161,24 +167,11 @@ export function UpsertConfigDialog({
 
       <Field>
         <FieldLabel>Rotation Mode</FieldLabel>
-        <div className="flex gap-2">
-          <Button
-            type="button"
-            size="sm"
-            variant={rotationMode === "sequential" ? "default" : "outline"}
-            onClick={() => setRotationMode("sequential")}
-          >
-            Sequential
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant={rotationMode === "random" ? "default" : "outline"}
-            onClick={() => setRotationMode("random")}
-          >
-            Random
-          </Button>
-        </div>
+        <ChoiceField
+          value={rotationMode}
+          options={ROTATION_MODE_OPTIONS}
+          onChange={setRotationMode}
+        />
         <FieldDescription>
           Sequential cycles in order, random picks any message
         </FieldDescription>

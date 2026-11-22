@@ -18,6 +18,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { insertAtCursor } from "@/lib/insertAtCursor";
 import type { EmbedField } from "@createrington/shared/api/embed";
 import {
   AIButton,
@@ -170,17 +171,9 @@ function FieldRow({
   }, [focused]);
 
   function insertIntoValue(text: string) {
-    const el = valueRef.current;
-    const pos = el?.selectionStart ?? field.value.length;
-    const next = field.value.slice(0, pos) + text + field.value.slice(pos);
-    onChange({ value: next });
-    requestAnimationFrame(() => {
-      if (el) {
-        const after = pos + text.length;
-        el.selectionStart = el.selectionEnd = after;
-        el.focus();
-      }
-    });
+    insertAtCursor(valueRef.current, field.value, text, (value) =>
+      onChange({ value }),
+    );
   }
 
   return (

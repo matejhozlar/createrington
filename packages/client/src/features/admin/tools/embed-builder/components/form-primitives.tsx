@@ -8,6 +8,7 @@ import {
 } from "react";
 import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { insertAtCursor } from "@/lib/insertAtCursor";
 import { Input } from "@/components/ui/input";
 import {
   Popover,
@@ -45,19 +46,8 @@ function useInsertable(
     ref,
     () => ({
       focus: () => inputRef.current?.focus(),
-      insertAtCursor: (text: string) => {
-        const el = inputRef.current;
-        const pos = el?.selectionStart ?? value.length;
-        const next = value.slice(0, pos) + text + value.slice(pos);
-        onChange(next);
-        requestAnimationFrame(() => {
-          if (el) {
-            const after = pos + text.length;
-            el.selectionStart = el.selectionEnd = after;
-            el.focus();
-          }
-        });
-      },
+      insertAtCursor: (text: string) =>
+        insertAtCursor(inputRef.current, value, text, onChange),
     }),
     [inputRef, onChange, value],
   );

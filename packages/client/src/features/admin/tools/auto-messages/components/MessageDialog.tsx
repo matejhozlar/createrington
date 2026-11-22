@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { FormDialog } from "@/components/form-dialog";
 import { useToastActions } from "@/hooks/use-toast";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
+import { insertAtCursor } from "@/lib/insertAtCursor";
 import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
 import { InsertMenu } from "@/features/admin/components/InsertMenu";
 import { CharCount } from "@/features/admin/components/CharCount";
@@ -155,20 +156,9 @@ export function MessageDialog({
         <div className="flex items-center gap-1">
           <FieldLabel htmlFor="msg-content">Message</FieldLabel>
           <InsertMenu
-            onInsert={(mention) => {
-              const el = contentRef.current;
-              const pos = el?.selectionStart ?? content.length;
-              const next = content.slice(0, pos) + mention + content.slice(pos);
-              setContent(next);
-              requestAnimationFrame(() => {
-                if (el) {
-                  const newPos = pos + mention.length;
-                  el.selectionStart = newPos;
-                  el.selectionEnd = newPos;
-                  el.focus();
-                }
-              });
-            }}
+            onInsert={(mention) =>
+              insertAtCursor(contentRef.current, content, mention, setContent)
+            }
           />
         </div>
         <Textarea

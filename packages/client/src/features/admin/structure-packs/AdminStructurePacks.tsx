@@ -40,6 +40,7 @@ import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { HeaderActions } from "@/features/admin/components/HeaderActions";
 import { FilterBar } from "@/features/admin/components/FilterBar";
+import { EnabledBadge } from "@/features/admin/components/EnabledBadge";
 import { RotationConfig } from "./components/RotationConfig";
 import { RotationHistory } from "./components/RotationHistory";
 import { structurePackImportSchema } from "@createrington/shared/structure-pack";
@@ -235,18 +236,7 @@ export function AdminStructurePacks() {
       header: "Status",
       width: 110,
       skeleton: () => <BadgeCellSkeleton />,
-      render: (pack) => (
-        <Badge
-          variant="outline"
-          className={
-            pack.enabled
-              ? "border-success bg-success/10 text-success"
-              : "border-muted-foreground bg-muted-foreground/10 text-muted-foreground"
-          }
-        >
-          {pack.enabled ? "Enabled" : "Disabled"}
-        </Badge>
-      ),
+      render: (pack) => <EnabledBadge enabled={pack.enabled} />,
     },
     {
       key: "mods",
