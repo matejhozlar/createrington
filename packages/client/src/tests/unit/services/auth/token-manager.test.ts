@@ -1,12 +1,22 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   getAccessToken,
+  refreshDelayMs,
   retryAfterRefresh,
   SESSION_EXPIRED_EVENT,
   setAccessToken,
 } from "@/services/auth/token-manager";
 
 const REFRESH_URL = "https://createrington.test/api/auth/refresh";
+const MINUTE_MS = 60 * 1000;
+
+function tokenWith(claims: Record<string, unknown>): string {
+  const payload = btoa(JSON.stringify(claims))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+  return `header.${payload}.signature`;
+}
 
 function responseFrom(url: string, status: number, body?: unknown): Response {
   const response = new Response(body ? JSON.stringify(body) : null, { status });
@@ -110,8 +120,11 @@ describe("retryAfterRefresh", () => {
     expect(retry).not.toHaveBeenCalled();
   });
 
-  it("never refreshes or retries a 401 from the refresh endpoint", async () => {
-    const response = responseFrom(REFRESH_URL, 401);
+  it.each([
+    REFRESH_URL,
+    "https://createrington.test/api/auth/discord/callback",
+  ])("never refreshes or retries a 401 from %s", async (url) => {
+    const response = responseFrom(url, 401);
 
     await expect(retryAfterRefresh(response, retry)).resolves.toBe(response);
 
@@ -140,5 +153,34 @@ describe("retryAfterRefresh", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(retry).toHaveBeenCalledTimes(2);
     expect(retry).toHaveBeenCalledWith("fresh-token");
+  });
+});
+
+describe("refreshDelayMs", () => {
+  it("refreshes two minutes before a 15 minute token expires", () => {
+    expect(refreshDelayMs(tokenWith({ iat: 1000, exp: 1000 + 15 * 60 }))).toBe(
+      13 * MINUTE_MS,
+    );
+  });
+
+  it("refreshes halfway through a token shorter than four minutes", () => {
+    expect(refreshDelayMs(tokenWith({ iat: 1000, exp: 1000 + 60 }))).toBe(
+      MINUTE_MS / 2,
+    );
+  });
+
+  it("reads base64url payloads", () => {
+    const token = tokenWith({ iat: 1000, exp: 1000 + 15 * 60, name: "~~~?" });
+
+    expect(token).toMatch(/[-_]/);
+    expect(refreshDelayMs(token)).toBe(13 * MINUTE_MS);
+  });
+
+  it.each([
+    ["no token", null],
+    ["a malformed token", "not-a-jwt"],
+    ["a token without exp", tokenWith({ iat: 1000 })],
+  ])("returns null for %s", (_label, token) => {
+    expect(refreshDelayMs(token)).toBeNull();
   });
 });

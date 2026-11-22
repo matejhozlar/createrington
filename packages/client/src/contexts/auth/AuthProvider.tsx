@@ -2,12 +2,15 @@ import type React from "react";
 import { useEffect, useState, useCallback } from "react";
 import type { User, AuthContextType } from "./types";
 import { AuthContext } from "./context";
+import type { AuthSession, DiscordAuthUrl } from "@createrington/shared/auth";
 import {
+  getAccessToken,
   setAccessToken,
   refreshAccessToken,
+  refreshDelayMs,
   SESSION_EXPIRED_EVENT,
 } from "@/services/auth/token-manager";
-import { api } from "@/services/api/client";
+import { api, type ApiError } from "@/services/api/client";
 import { writePlayerHint } from "@/lib/skin-runner/player-hint";
 import { toast } from "sonner";
 
@@ -27,27 +30,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const login = useCallback(async () => {
     try {
-      const response = await fetch("/api/auth/discord");
-      const data = await response.json();
+      const { data } = await api.get<{ data: DiscordAuthUrl }>(
+        "api/auth/discord",
+      );
 
-      if (data.success && data.data?.url) {
-        if (data.data.state) {
-          sessionStorage.setItem("oauth_state", data.data.state);
-        }
+      sessionStorage.setItem("oauth_state", data.state);
+      sessionStorage.setItem(
+        "oauth_redirect",
+        window.location.pathname +
+          window.location.search +
+          window.location.hash,
+      );
 
-        sessionStorage.setItem(
-          "oauth_redirect",
-          window.location.pathname +
-            window.location.search +
-            window.location.hash,
-        );
-
-        window.location.href = data.data.url;
-      } else {
-        toast.error("Could not start login. Please try again.");
-      }
+      window.location.href = data.url;
     } catch (error) {
-      toast.error("Could not reach the authentication server.");
+      toast.error("Could not start login. Please try again.");
       if (import.meta.env.DEV) console.error("Login error:", error);
     }
   }, []);
@@ -60,35 +57,26 @@ export function AuthProvider({ children }: AuthProviderProps) {
       return;
     }
 
-    fetch("/api/auth/discord/callback", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      credentials: "include",
-      body: JSON.stringify({ code, state }),
-    })
-      .then((response) => response.json())
-      .then((data) => {
-        if (data.success && data.data?.accessToken) {
-          setAccessToken(data.data.accessToken);
-          setUser(data.data.user);
-
-          sessionStorage.removeItem("oauth_state");
-          const redirectPath = sessionStorage.getItem("oauth_redirect") || "/";
-          sessionStorage.removeItem("oauth_redirect");
-
-          window.location.href = redirectPath;
-          return;
-        }
-
-        const reason =
-          data.error?.code === "UNVERIFIED" ? "unverified" : "auth_failed";
-        window.location.href = `/?error=${reason}`;
+    api
+      .post<{ data: AuthSession }>("api/auth/discord/callback", {
+        code,
+        state,
       })
-      .catch((error: unknown) => {
+      .then(({ data }) => {
+        setAccessToken(data.accessToken);
+        setUser(data.user);
+
+        sessionStorage.removeItem("oauth_state");
+        const redirectPath = sessionStorage.getItem("oauth_redirect") || "/";
+        sessionStorage.removeItem("oauth_redirect");
+
+        window.location.href = redirectPath;
+      })
+      .catch((error: ApiError) => {
         if (import.meta.env.DEV) console.error("Callback error:", error);
-        window.location.href = "/?error=auth_failed";
+        const reason =
+          error.code === "UNVERIFIED" ? "unverified" : "auth_failed";
+        window.location.href = `/?error=${reason}`;
       })
       .finally(() => {
         setLoading(false);
@@ -178,14 +166,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
   useEffect(() => {
     if (!user) return;
 
-    const refreshInterval = setInterval(
-      () => {
-        void silentRefresh();
-      },
-      13 * 60 * 1000,
-    );
+    const delay = refreshDelayMs(getAccessToken());
+    if (delay === null) return;
 
-    return () => clearInterval(refreshInterval);
+    const refreshTimer = setTimeout(() => {
+      void silentRefresh();
+    }, delay);
+
+    return () => clearTimeout(refreshTimer);
   }, [user, silentRefresh]);
 
   useEffect(() => {

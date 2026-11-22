@@ -1,4 +1,4 @@
-import ky, { type KyInstance, type Options } from "ky";
+import ky, { type HTTPError, type KyInstance, type Options } from "ky";
 import {
   getAccessToken,
   retryAfterRefresh,
@@ -6,18 +6,17 @@ import {
 
 interface ApiErrorResponse {
   message?: string;
-  code?: string;
-  [key: string]: unknown;
+  error?: { code?: string };
 }
+
+export type ApiError = HTTPError & { code?: string };
 
 class ApiClient {
   private client: KyInstance;
 
   constructor() {
-    const apiUrl = this.getApiUrl();
-
     this.client = ky.create({
-      prefixUrl: apiUrl,
+      prefixUrl: "/",
       timeout: 30000,
       credentials: "include",
       retry: {
@@ -52,7 +51,7 @@ class ApiClient {
               try {
                 const errorBody = await response.json<ApiErrorResponse>();
                 error.message = errorBody.message || error.message;
-                (error as Error & { code?: string }).code = errorBody.code;
+                (error as ApiError).code = errorBody.error?.code;
               } catch {}
             }
 
@@ -81,19 +80,6 @@ class ApiClient {
         ],
       },
     });
-  }
-
-  private getApiUrl(): string {
-    const envApiUrl = import.meta.env.VITE_API_URL;
-
-    if (import.meta.env.DEV) {
-      console.log(
-        "[API Client] Development mode: Using Vite proxy for /api routes",
-      );
-      return envApiUrl || "/";
-    }
-
-    return envApiUrl || "";
   }
 
   async get<T>(

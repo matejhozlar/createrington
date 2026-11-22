@@ -1,12 +1,14 @@
-import type { RefreshResponse } from "@createrington/shared/auth";
+import type { AuthSession } from "@createrington/shared/auth";
 
 const REFRESH_PATH = "/api/auth/refresh";
+const NO_RETRY_PATHS = [REFRESH_PATH, "/api/auth/discord"];
+const REFRESH_LEAD_MS = 2 * 60 * 1000;
 
 export const SESSION_EXPIRED_EVENT = "auth:session-expired";
 
 let accessToken: string | null = null;
 
-let refreshPromise: Promise<RefreshResponse | null> | null = null;
+let refreshPromise: Promise<AuthSession | null> | null = null;
 
 export function getAccessToken(): string | null {
   return accessToken;
@@ -16,7 +18,30 @@ export function setAccessToken(token: string | null): void {
   accessToken = token;
 }
 
-export async function refreshAccessToken(): Promise<RefreshResponse | null> {
+export function refreshDelayMs(token: string | null): number | null {
+  const claims = token ? readClaims(token) : null;
+  if (!claims) return null;
+
+  const lifetimeMs = (claims.exp - claims.iat) * 1000;
+  return Math.max(lifetimeMs - REFRESH_LEAD_MS, lifetimeMs / 2);
+}
+
+function readClaims(token: string): { iat: number; exp: number } | null {
+  try {
+    const payload = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    const { iat, exp } = JSON.parse(atob(payload)) as {
+      iat?: unknown;
+      exp?: unknown;
+    };
+    return typeof iat === "number" && typeof exp === "number" && exp > iat
+      ? { iat, exp }
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function refreshAccessToken(): Promise<AuthSession | null> {
   if (refreshPromise) {
     return refreshPromise;
   }
@@ -34,7 +59,10 @@ export async function retryAfterRefresh(
   response: Response,
   retry: (accessToken: string) => Promise<Response>,
 ): Promise<Response> {
-  if (response.status !== 401 || response.url.includes(REFRESH_PATH)) {
+  if (
+    response.status !== 401 ||
+    NO_RETRY_PATHS.some((path) => response.url.includes(path))
+  ) {
     return response;
   }
 
@@ -47,7 +75,7 @@ export async function retryAfterRefresh(
   return retry(result.accessToken);
 }
 
-async function doRefresh(): Promise<RefreshResponse | null> {
+async function doRefresh(): Promise<AuthSession | null> {
   try {
     const response = await fetch(REFRESH_PATH, {
       method: "POST",
@@ -61,7 +89,7 @@ async function doRefresh(): Promise<RefreshResponse | null> {
 
     const data = (await response.json()) as {
       success?: boolean;
-      data?: RefreshResponse;
+      data?: AuthSession;
     };
 
     if (data.success && data.data?.accessToken) {
