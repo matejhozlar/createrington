@@ -169,6 +169,12 @@ describe("refreshDelayMs", () => {
     );
   });
 
+  it("caps the delay at the longest timeout a browser can schedule", () => {
+    expect(
+      refreshDelayMs(tokenWith({ iat: 1000, exp: 1000 + 30 * 24 * 60 * 60 })),
+    ).toBe(2 ** 31 - 1);
+  });
+
   it("reads base64url payloads", () => {
     const token = tokenWith({ iat: 1000, exp: 1000 + 15 * 60, name: "~~~?" });
 

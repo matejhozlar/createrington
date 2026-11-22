@@ -3,6 +3,7 @@ import type { AuthSession } from "@createrington/shared/auth";
 const REFRESH_PATH = "/api/auth/refresh";
 const NO_RETRY_PATHS = [REFRESH_PATH, "/api/auth/discord"];
 const REFRESH_LEAD_MS = 2 * 60 * 1000;
+const MAX_TIMER_MS = 2 ** 31 - 1;
 
 export const SESSION_EXPIRED_EVENT = "auth:session-expired";
 
@@ -23,7 +24,10 @@ export function refreshDelayMs(token: string | null): number | null {
   if (!claims) return null;
 
   const lifetimeMs = (claims.exp - claims.iat) * 1000;
-  return Math.max(lifetimeMs - REFRESH_LEAD_MS, lifetimeMs / 2);
+  return Math.min(
+    Math.max(lifetimeMs - REFRESH_LEAD_MS, lifetimeMs / 2),
+    MAX_TIMER_MS,
+  );
 }
 
 function readClaims(token: string): { iat: number; exp: number } | null {
