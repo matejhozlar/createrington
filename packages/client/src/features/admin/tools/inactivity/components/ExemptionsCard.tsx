@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { CardDescription, CardTitle } from "@/components/ui/card";
 import { SearchInput } from "@/components/search-input";
@@ -52,15 +52,12 @@ export function ExemptionsCard() {
     ),
   );
 
-  const handleAdd = useCallback(
-    (e: React.FormEvent) => {
-      e.preventDefault();
-      const player = playerInput.trim();
-      if (!player) return;
-      addExemption.mutate({ player, reason: reasonInput.trim() || undefined });
-    },
-    [addExemption, playerInput, reasonInput],
-  );
+  const handleAdd = (e: React.FormEvent) => {
+    e.preventDefault();
+    const player = playerInput.trim();
+    if (!player) return;
+    addExemption.mutate({ player, reason: reasonInput.trim() || undefined });
+  };
 
   const columns: DataTableColumn<Exemption>[] = [
     {

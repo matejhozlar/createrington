@@ -26,7 +26,7 @@ import {
   RowIconButton,
 } from "../form-primitives";
 import type { TabProps } from "./types";
-import { useDragSensors } from "./use-drag-sensors";
+import { useDragSensors } from "../../hooks/use-drag-sensors";
 
 type ButtonItem =
   | { kind: "link"; btn: EmbedLinkButton; idx: number }

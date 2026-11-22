@@ -1,4 +1,3 @@
-import { useCallback } from "react";
 import { useMutation } from "@tanstack/react-query";
 import type {
   ComponentNode,
@@ -92,118 +91,98 @@ export function usePresetActions({
     ),
   );
 
-  const handleDuplicatePreset = useCallback(
-    async (preset: {
-      id: number;
-      name: string;
-      kind?: PresetKind;
-      data: unknown;
-      categoryId?: number | null;
-    }) => {
-      const presetKind: PresetKind = preset.kind ?? "embed";
-      const baseName = preset.name.replace(/ \(copy(?: \d+)?\)$/, "");
-      let copyName = `${baseName} (copy)`;
+  const handleDuplicatePreset = async (preset: {
+    id: number;
+    name: string;
+    kind?: PresetKind;
+    data: unknown;
+    categoryId?: number | null;
+  }) => {
+    const presetKind: PresetKind = preset.kind ?? "embed";
+    const baseName = preset.name.replace(/ \(copy(?: \d+)?\)$/, "");
+    let copyName = `${baseName} (copy)`;
 
-      const existing = await queryClient.fetchQuery(
-        trpc.admin.embeds.presets.list.queryOptions({
-          search: baseName,
-          limit: 50,
-        }),
-      );
-      const copyNames = new Set(existing.items.map((p) => p.name));
-      if (copyNames.has(copyName)) {
-        let n = 2;
-        while (copyNames.has(`${baseName} (copy ${n})`)) n++;
-        copyName = `${baseName} (copy ${n})`;
-      }
+    const existing = await queryClient.fetchQuery(
+      trpc.admin.embeds.presets.list.queryOptions({
+        search: baseName,
+        limit: 50,
+      }),
+    );
+    const copyNames = new Set(existing.items.map((p) => p.name));
+    if (copyNames.has(copyName)) {
+      let n = 2;
+      while (copyNames.has(`${baseName} (copy ${n})`)) n++;
+      copyName = `${baseName} (copy ${n})`;
+    }
 
-      const payload: MessagePayload =
-        presetKind === "components"
-          ? {
-              kind: "components",
-              components: {
-                components:
-                  (preset.data as { components?: ComponentNode[] })
-                    ?.components ?? [],
-              },
-            }
-          : {
-              kind: "embed",
-              embed: toExternalData(
-                normalizeLoadedEmbed(preset.data as EmbedData),
-              ),
-            };
+    const payload: MessagePayload =
+      presetKind === "components"
+        ? {
+            kind: "components",
+            components: {
+              components:
+                (preset.data as { components?: ComponentNode[] })?.components ??
+                [],
+            },
+          }
+        : {
+            kind: "embed",
+            embed: toExternalData(
+              normalizeLoadedEmbed(preset.data as EmbedData),
+            ),
+          };
 
-      duplicatePresetMutation.mutate({
-        name: copyName,
-        categoryId: preset.categoryId ?? null,
-        ...payload,
-      });
-    },
-    [duplicatePresetMutation],
-  );
+    duplicatePresetMutation.mutate({
+      name: copyName,
+      categoryId: preset.categoryId ?? null,
+      ...payload,
+    });
+  };
 
-  const handleDeletePreset = useCallback(
-    async (id: number, name: string) => {
-      try {
-        await deletePresetMutation.mutateAsync({ id });
-      } catch {
-        return;
-      }
-      toast.success(`Preset "${name}" deleted`);
-      if (activePreset?.id === id) {
-        resetBuilder();
-      }
-      invalidatePresetLists();
-    },
-    [deletePresetMutation, activePreset, resetBuilder, toast],
-  );
+  const handleDeletePreset = async (id: number, name: string) => {
+    try {
+      await deletePresetMutation.mutateAsync({ id });
+    } catch {
+      return;
+    }
+    toast.success(`Preset "${name}" deleted`);
+    if (activePreset?.id === id) {
+      resetBuilder();
+    }
+    invalidatePresetLists();
+  };
 
-  const handleCreateCategory = useCallback(
-    async (name: string) => {
-      try {
-        return await createCategoryMutation.mutateAsync({ name });
-      } catch {
-        return null;
-      }
-    },
-    [createCategoryMutation],
-  );
+  const handleCreateCategory = async (name: string) => {
+    try {
+      return await createCategoryMutation.mutateAsync({ name });
+    } catch {
+      return null;
+    }
+  };
 
-  const handleUpdateCategory = useCallback(
-    (id: number, updates: { name?: string; sortOrder?: number }) =>
-      updateCategoryMutation.mutate({ id, ...updates }),
-    [updateCategoryMutation],
-  );
+  const handleUpdateCategory = (
+    id: number,
+    updates: { name?: string; sortOrder?: number },
+  ) => updateCategoryMutation.mutate({ id, ...updates });
 
-  const handleDeleteCategory = useCallback(
-    async (id: number, name: string) => {
-      try {
-        await deleteCategoryMutation.mutateAsync({ id });
-      } catch {
-        return;
-      }
-      invalidatePresetLists();
-      if (activePreset?.categoryId === id) {
-        setActivePreset({ ...activePreset, categoryId: null });
-        setSelectedCategoryId(null);
-      }
-      toast.success(`Category "${name}" deleted`);
-    },
-    [
-      deleteCategoryMutation,
-      activePreset,
-      setActivePreset,
-      setSelectedCategoryId,
-      toast,
-    ],
-  );
+  const handleDeleteCategory = async (id: number, name: string) => {
+    try {
+      await deleteCategoryMutation.mutateAsync({ id });
+    } catch {
+      return;
+    }
+    invalidatePresetLists();
+    if (activePreset?.categoryId === id) {
+      setActivePreset({ ...activePreset, categoryId: null });
+      setSelectedCategoryId(null);
+    }
+    toast.success(`Category "${name}" deleted`);
+  };
 
-  const handleSetPresetCategory = useCallback(
-    (presetId: number, categoryId: number | null) =>
-      setCategoryMutation.mutate({ presetId, categoryId }),
-    [setCategoryMutation],
-  );
+  const handleSetPresetCategory = (
+    presetId: number,
+    categoryId: number | null,
+  ) => setCategoryMutation.mutate({ presetId, categoryId });
 
   return {
     handleDuplicatePreset,

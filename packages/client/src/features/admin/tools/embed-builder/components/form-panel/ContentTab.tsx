@@ -19,16 +19,11 @@ export function ContentTab({ data, set, focused, setFocused }: TabProps) {
   const contentRef = useRef<InsertableInputHandle | null>(null);
 
   useEffect(() => {
-    if (focused === "author" && data.author === undefined) {
-      set({ author: "" });
-      return;
-    }
     if (focused === "title") titleRef.current?.focus();
     else if (focused === "description") descRef.current?.focus();
     else if (focused === "author") authorRef.current?.focus();
     else if (focused === "content") contentRef.current?.focus();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [focused, data.author]);
+  }, [focused]);
 
   const showAuthor = data.author !== undefined;
 

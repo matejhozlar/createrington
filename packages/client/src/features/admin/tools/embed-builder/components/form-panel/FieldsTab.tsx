@@ -31,7 +31,7 @@ import { InsertMenu } from "@/features/admin/components/InsertMenu";
 import type { FocusTarget } from "../../focus";
 import { Textarea } from "@/components/ui/textarea";
 import type { TabProps } from "./types";
-import { useDragSensors } from "./use-drag-sensors";
+import { useDragSensors } from "../../hooks/use-drag-sensors";
 
 export function FieldsTab({ data, set, focused, setFocused }: TabProps) {
   const fields = data.fields;

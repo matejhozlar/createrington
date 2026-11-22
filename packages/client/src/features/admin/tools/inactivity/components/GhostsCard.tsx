@@ -48,6 +48,27 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
     ),
   );
 
+  const verifyGhost = useMutation(
+    trpc.admin.inactivity.ghosts.verify.mutationOptions({
+      onSuccess: ({ stillGone }) => {
+        if (!stillGone)
+          void queryClient.invalidateQueries(
+            trpc.admin.inactivity.ghosts.pathFilter(),
+          );
+      },
+    }),
+  );
+
+  const openRemove = (ghost: GhostMember) => {
+    setRemoveTarget(ghost);
+    verifyGhost.mutate({ discordId: ghost.discordId });
+  };
+
+  const closeRemove = () => {
+    setRemoveTarget(null);
+    verifyGhost.reset();
+  };
+
   const lastRefreshedAt =
     capabilitiesQuery.data?.lastRefreshedAt ??
     ghosts.query.data?.lastRefreshedAt ??
@@ -170,7 +191,7 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
             icon: Trash2,
             variant: "destructive",
             disabled: !canMutate,
-            onClick: () => setRemoveTarget(ghost),
+            onClick: () => openRemove(ghost),
           },
         ]}
         actionSlots={1}
@@ -178,7 +199,8 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
 
       <RemoveGhostModal
         ghost={removeTarget}
-        onClose={() => setRemoveTarget(null)}
+        verification={verifyGhost}
+        onClose={closeRemove}
         canMutate={canMutate}
       />
     </>
