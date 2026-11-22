@@ -14,7 +14,12 @@ export interface JWTPayload {
   minecraftUsername: string;
 }
 
-export interface RefreshResponse {
+export interface AuthSession {
   accessToken: string;
   user: JWTPayload;
+}
+
+export interface DiscordAuthUrl {
+  url: string;
+  state: string;
 }

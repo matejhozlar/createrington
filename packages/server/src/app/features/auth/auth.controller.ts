@@ -43,8 +43,9 @@ import { siteUrl } from "@/config/site-url";
 import { Q } from "@/db";
 import {
   AuthRole,
+  type AuthSession,
+  type DiscordAuthUrl,
   type JWTPayload,
-  type RefreshResponse,
 } from "@createrington/shared/auth";
 
 const STATE_COOKIE_NAME = "oauth_state";
@@ -70,13 +71,8 @@ export class AuthController {
       maxAge: OAUTH_STATE_TTL_MS,
     });
 
-    res.json({
-      success: true,
-      data: {
-        url: authUrl,
-        state,
-      },
-    });
+    const data: DiscordAuthUrl = { url: authUrl, state };
+    res.json({ success: true, data });
   }
 
   static async handleDiscordCallback(
@@ -108,11 +104,8 @@ export class AuthController {
 
       logger.info(`User ${user.discordId} logged in successfully`);
 
-      res.json({
-        success: true,
-        data: { accessToken, user: toUserDto(user) },
-        message: "Authentication successful",
-      });
+      const data: AuthSession = { accessToken, user: toUserDto(user) };
+      res.json({ success: true, data, message: "Authentication successful" });
     } catch (error) {
       if (error instanceof UnverifiedUserError) {
         logger.warn("Unverified user attempted to login");
@@ -169,7 +162,7 @@ export class AuthController {
     refreshTokenService.setCookie(res, result.rawToken);
     accessCookieService.setCookie(res, accessToken);
 
-    const data: RefreshResponse = { accessToken, user: payload };
+    const data: AuthSession = { accessToken, user: payload };
     res.json({ success: true, data });
   }
 

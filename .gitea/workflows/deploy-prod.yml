@@ -15,7 +15,6 @@ jobs:
       APP_DIR: ${{ vars.PROD_APP_DIR }}
       WWW_DIR: ${{ vars.PROD_WWW_DIR }}
       DEPLOY_OWNER: ${{ vars.DEPLOY_OWNER }}
-      API_URL: ${{ vars.PROD_API_URL }}
       BLUEMAP_URL: ${{ vars.PROD_BLUEMAP_URL }}
     steps:
       - uses: actions/checkout@v4
@@ -25,7 +24,7 @@ jobs:
       - name: Validate deploy variables
         run: |
           : "${INFISICAL_PROJECT_ID:?}" "${APP_DIR:?}" "${WWW_DIR:?}" "${DEPLOY_OWNER:?}"
-          : "${API_URL:?}" "${BLUEMAP_URL:?}"
+          : "${BLUEMAP_URL:?}"
 
       - name: Detect scope of change
         id: scope
@@ -97,7 +96,6 @@ jobs:
       - name: Build
         env:
           VITE_APP_VERSION: ${{ env.APP_VERSION }}
-          VITE_API_URL: ${{ env.API_URL }}
           VITE_BLUEMAP_URL: ${{ env.BLUEMAP_URL }}
         run: pnpm build
 
