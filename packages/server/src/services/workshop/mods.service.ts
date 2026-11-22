@@ -58,11 +58,6 @@ export type WorkshopSuggestionHistoryItem = WorkshopModListItem & {
   workshopSlug: string;
 };
 
-/**
- * Suggestions as the workshop pages show them: rows decorated with project
- * summaries, upvotes, submitter, Discord thread, dependency coverage and the
- * version the pack shipped them in, plus the workshop-wide dependency list.
- */
 export interface WorkshopModDetail {
   mod: WorkshopMod & {
     submitterName: string | null;
@@ -76,6 +71,11 @@ export interface WorkshopModDetail {
   upvoteCount: number;
 }
 
+/**
+ * Suggestions as the workshop pages show them: rows decorated with project
+ * summaries, upvotes, submitter, Discord thread, dependency coverage and the
+ * version the pack shipped them in, plus the workshop-wide dependency list.
+ */
 export class WorkshopModService {
   /** Suggestions in a workshop with project summaries and upvote counts. */
   async getWorkshopMods(
