@@ -7,6 +7,20 @@ import type {
 } from "@createrington/shared/db";
 import type { StructurePackWithMods } from "@/db/queries/structure/pack";
 import type { StructurePackImportEntry } from "@createrington/shared/structure-pack";
+import { getFilesDependencies } from "@/services/curseforge/files";
+import { resolveDependencies } from "@/services/curseforge/mods";
+
+export interface ModDependent {
+  modName: string;
+  relationType: number;
+}
+
+export interface RemovableDependency {
+  modId: number;
+  modName: string;
+  safe: boolean;
+  neededBy: string[];
+}
 
 export class StructurePackService {
   async createPack(
@@ -116,6 +130,69 @@ export class StructurePackService {
       throw new NotFoundError(`Mod ${modId} not found in pack ${packId}`);
     }
     await Q.structure.pack.mod.delete({ id: modId });
+  }
+
+  /** For removing a mod from a pack: the pack mods that depend on it, and which of its in-pack dependencies no other mod needs. */
+  async checkDeleteDependencies(
+    packId: number,
+    modId: number,
+  ): Promise<{ deps: RemovableDependency[]; dependents: ModDependent[] }> {
+    const pack = await this.getPack(packId);
+    const target = pack.mods.find((m) => m.id === modId);
+    if (!target) return { deps: [], dependents: [] };
+
+    const modNames = new Map<number, string>();
+    for (const mod of pack.mods) {
+      if (!modNames.has(mod.curseforgeModId)) {
+        modNames.set(mod.curseforgeModId, mod.modName);
+      }
+    }
+
+    const files = await getFilesDependencies(
+      pack.mods.map((m) => m.curseforgeFileId),
+    );
+    const otherFiles = files.filter(
+      (file) => file.modId !== target.curseforgeModId,
+    );
+
+    const dependents = otherFiles.flatMap((file) => {
+      const modName = modNames.get(file.modId);
+      if (modName === undefined) return [];
+      return file.dependencies
+        .filter((dep) => dep.modId === target.curseforgeModId)
+        .map((dep) => ({ modName, relationType: dep.relationType }));
+    });
+
+    const targetFile = files.find((f) => f.fileId === target.curseforgeFileId);
+    const inPackDepIds = [
+      ...new Set((targetFile?.dependencies ?? []).map((d) => d.modId)),
+    ].filter((id) => modNames.has(id));
+    if (inPackDepIds.length === 0) return { deps: [], dependents };
+
+    const resolved = await resolveDependencies(
+      inPackDepIds,
+      new Set(modNames.keys()),
+    );
+
+    const deps = resolved.map((dep) => {
+      const neededBy = [
+        ...new Set(
+          otherFiles
+            .filter((file) =>
+              file.dependencies.some((d) => d.modId === dep.modId),
+            )
+            .map((file) => file.modId),
+        ),
+      ];
+      return {
+        modId: dep.modId,
+        modName: dep.modName,
+        safe: neededBy.length === 0,
+        neededBy: neededBy.map((id) => modNames.get(id) ?? "").filter(Boolean),
+      };
+    });
+
+    return { deps, dependents };
   }
 
   async getActivePack(): Promise<StructurePackWithMods | null> {
