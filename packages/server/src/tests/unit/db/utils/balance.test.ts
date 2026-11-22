@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { BalanceUtils } from "@/db/repositories/balance/utils";
+import { BalanceUtils } from "@/db/utils/balance";
 
 const MAX_BALANCE = 9_223_372_036_854_775n;
 

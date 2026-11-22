@@ -7,7 +7,7 @@ import {
   playerId,
 } from "@/trpc/utils";
 import { Q } from "@/db";
-import { BalanceUtils } from "@/db/repositories/balance/utils";
+import { BalanceUtils } from "@/db/utils/balance";
 
 export const transactionsRouter = router({
   list: adminProcedure

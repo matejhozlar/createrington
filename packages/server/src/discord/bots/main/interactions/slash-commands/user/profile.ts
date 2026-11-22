@@ -1,6 +1,6 @@
 import { playerRepo } from "@/db";
 import { nullIfNotFound } from "@/db/utils";
-import { BalanceUtils } from "@/db/repositories/balance/utils";
+import { BalanceUtils } from "@/db/utils/balance";
 import { EmbedPresets } from "@/discord/embeds";
 import { replyNotRegistered } from "@/discord/utils/interaction-reply";
 import { CooldownType } from "@/discord/utils/cooldown";

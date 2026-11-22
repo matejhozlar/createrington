@@ -1,4 +1,4 @@
-import { db, Q } from "@/db";
+import { db, Q } from "@/db/pool";
 import { DatabaseTable, type DatabaseQueries } from "@/generated/db";
 import type { PlayerBan } from "@createrington/shared/db";
 import { BasePlayerRepository, type PlayerIdentifier } from "../base";

@@ -1,6 +1,6 @@
 import config from "@/config";
 import { Q, db, balanceRepo } from "@/db";
-import { BalanceTransactionType } from "@/db/repositories/balance";
+import { BalanceTransactionType } from "@/db/utils/balance";
 import { BadRequestError, errorMessage } from "@/errors";
 import {
   isFileOpsAllowed,

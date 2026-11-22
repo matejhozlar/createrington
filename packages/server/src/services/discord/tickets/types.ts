@@ -5,14 +5,6 @@ export enum TicketType {
   REPORT = "report",
 }
 
-export enum TicketUserAction {
-  CREATED = "created",
-  CLOSED = "closed",
-  REOPENED = "reopened",
-  DELETED = "deleted",
-  TRANSCRIPT_GENERATED = "transcript_generated",
-}
-
 export interface TicketTypeConfig {
   type: TicketType;
   label: string;

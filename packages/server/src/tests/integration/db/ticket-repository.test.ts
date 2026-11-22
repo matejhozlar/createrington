@@ -1,7 +1,8 @@
 import { describe, it, expect, afterEach, afterAll } from "vitest";
 import { db, Q, ticketRepo } from "@/db";
 import { UniqueViolationError } from "@/db/utils/errors";
-import { TicketType, TicketUserAction } from "@/services/discord/tickets";
+import { TicketType } from "@/services/discord/tickets";
+import { TicketUserAction } from "@/db/utils/ticket";
 import { cleanupTestPool } from "@/tests/helpers/db";
 
 const CREATOR = "900000000000000777";

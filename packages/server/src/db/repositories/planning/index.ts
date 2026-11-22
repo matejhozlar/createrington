@@ -1,4 +1,4 @@
-import { db } from "@/db";
+import { db } from "@/db/pool";
 import type { DatabaseQueries, PlanningItem } from "@/generated/db";
 import { BadRequestError, ConflictError } from "@/errors";
 import type {

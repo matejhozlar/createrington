@@ -1,7 +1,7 @@
 import { getAuthedPlayer, respondSuccess } from "@/app/middleware";
 import { BadRequestError } from "@/errors";
 import { Q, balanceRepo } from "@/db";
-import { BalanceTransactionType } from "@/db/repositories/balance";
+import { BalanceTransactionType } from "@/db/utils/balance";
 import { dailyRewardService } from "@/services/reward/daily-reward.service";
 import { formatDuration } from "@/utils/format";
 import { MC_UUID_REGEX } from "@/utils/zod-schemas";

@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from "vitest";
 import { Q, balanceRepo } from "@/db";
-import { BalanceTransactionType } from "@/db/repositories/balance";
-import { BalanceUtils } from "@/db/repositories/balance/utils";
+import { BalanceTransactionType, BalanceUtils } from "@/db/utils/balance";
 import {
   getTestPool,
   truncateTable,

@@ -18,10 +18,6 @@ vi.mock("@/db", () => ({
   balanceRepo: { add: addBalance },
 }));
 
-vi.mock("@/db/repositories/balance", () => ({
-  BalanceTransactionType: { REWARD: "reward" },
-}));
-
 import { DailyRewardService } from "@/services/reward/daily-reward.service";
 import { translateDbError } from "@/db/utils/errors";
 

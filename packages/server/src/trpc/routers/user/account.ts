@@ -4,7 +4,7 @@ import { router, userProcedure } from "@/trpc/trpc";
 import { findOrThrow, trpcError, id } from "@/trpc/utils";
 import { createRateLimit } from "@/trpc/middleware/rate-limit";
 import { Q } from "@/db";
-import { BalanceUtils } from "@/db/repositories/balance/utils";
+import { BalanceUtils } from "@/db/utils/balance";
 import { playerDeletionService } from "@/services/player/deletion";
 import config from "@/config";
 import type { AuthSession } from "@createrington/shared/db/auth_session.types";

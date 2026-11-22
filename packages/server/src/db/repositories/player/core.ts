@@ -1,4 +1,4 @@
-import { db, Q } from "@/db";
+import { db, Q } from "@/db/pool";
 import { DatabaseTable } from "@/generated/db";
 import type {
   Player,
@@ -7,7 +7,7 @@ import type {
   PlayerPlaytimeSummary,
   WaitlistEntry,
 } from "@createrington/shared/db";
-import { BalanceUtils } from "../balance/utils";
+import { BalanceUtils } from "@/db/utils/balance";
 import { BasePlayerRepository, type PlayerIdentifier } from "./base";
 
 /**

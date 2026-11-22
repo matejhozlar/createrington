@@ -1,4 +1,4 @@
-import { db, Q } from "@/db";
+import { db, Q } from "@/db/pool";
 import { NotFoundError } from "@/db/utils";
 import { DatabaseTable, type DatabaseQueries } from "@/generated/db";
 import type {
@@ -7,7 +7,7 @@ import type {
   PlayerBalanceTransaction,
 } from "@/generated/db";
 import { BasePlayerRepository, type PlayerIdentifier } from "../player/base";
-import { BalanceUtils } from "./utils";
+import { BalanceTransactionType, BalanceUtils } from "@/db/utils/balance";
 
 export interface BalanceMutationOptions {
   metadata?: Record<string, unknown>;
@@ -16,22 +16,6 @@ export interface BalanceMutationOptions {
 }
 
 type LockedOptions = Omit<BalanceMutationOptions, "tx">;
-
-export enum BalanceTransactionType {
-  TRANSFER_SEND = "transfer_send",
-  TRANSFER_RECEIVE = "transfer_receive",
-  DEPOSIT = "deposit",
-  WITHDRAW = "withdraw",
-  ADMIN_GRANT = "admin_grant",
-  ADMIN_DEDUCT = "admin_deduct",
-  ADMIN_SET = "admin_set",
-  PURCHASE = "purchase",
-  REWARD = "reward",
-  REFUND = "refund",
-  GALLERY_REWARD = "gallery_reward",
-  CRYPTO_BUY = "crypto_buy",
-  CRYPTO_SELL = "crypto_sell",
-}
 
 const ADMIN_BALANCE_ACTIONS = {
   grant: {

@@ -1,5 +1,6 @@
 import { roleMention, userMention } from "discord.js";
-import { db, Q, waitlistRepo } from "@/db";
+import { db, Q } from "@/db";
+import { updateProgressEmbed } from "@/services/waitlist/progress-embed";
 import { waitlistService } from "@/services/waitlist/waitlist.service";
 import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
@@ -202,7 +203,7 @@ export async function runRegistration(params: {
     });
     reservedHere = false;
 
-    await waitlistRepo.updateProgressEmbed(entryId);
+    await updateProgressEmbed(entryId);
 
     steps[currentStep].completed = true;
     currentStep++;

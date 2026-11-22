@@ -1,4 +1,5 @@
-import { Q, waitlistRepo } from "@/db";
+import { Q } from "@/db";
+import { updateProgressEmbed } from "./progress-embed";
 import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
 import type { WaitlistEntry } from "@createrington/shared/db";
@@ -37,7 +38,7 @@ export async function expireEntry(
     { id: entryId },
     { status: "expired", expiredAt: new Date() },
   );
-  await waitlistRepo.updateProgressEmbed(entryId);
+  await updateProgressEmbed(entryId);
   logger.info(`Expired waitlist entry #${entryId}: ${reason}`);
 }
 
@@ -55,5 +56,5 @@ export async function requeueEntry(
       ...changes,
     },
   );
-  await waitlistRepo.updateProgressEmbed(entryId);
+  await updateProgressEmbed(entryId);
 }

@@ -31,7 +31,7 @@ const state = vi.hoisted(() => ({
   nextId: 1,
 }));
 
-vi.mock("@/db", () => {
+vi.mock("@/db/pool", () => {
   const tx = {
     admin: {
       findAll: async (filters: { discordId: { $in: string[] } }) =>

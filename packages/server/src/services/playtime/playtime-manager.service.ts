@@ -1,4 +1,5 @@
 import { Q, playtimeRepo } from "@/db";
+import { PlaytimePersistence } from "./persistence";
 import { SERVERS } from "@/services/mc-server/servers";
 import { getPlaytimeForwarder } from "./forwarder.service";
 import { PlaytimeService } from "./playtime.service";
@@ -37,6 +38,7 @@ export class PlaytimeManagerService {
   private pendingServices: Map<number, Promise<PlaytimeService>> = new Map();
   private serviceListeners: ServiceListener[] = [];
   private stopped = false;
+  private readonly persistence = new PlaytimePersistence(playtimeRepo);
 
   /** Brings up a PlaytimeService for each entry in SERVERS in parallel. Throws if none succeed. */
   async initialize(): Promise<void> {
@@ -135,7 +137,7 @@ export class PlaytimeManagerService {
     const service = new PlaytimeService({ serverId });
     service.hydrate(openSessions);
 
-    playtimeRepo.connectToService(service, serverId);
+    this.persistence.connect(service, serverId);
     if (options.forward) {
       getPlaytimeForwarder()?.connectToService(service, serverId);
     }
@@ -166,7 +168,7 @@ export class PlaytimeManagerService {
     }
 
     this.playtimeServices.clear();
-    await playtimeRepo.flush(SHUTDOWN_FLUSH_TIMEOUT_MS);
+    await this.persistence.flush(SHUTDOWN_FLUSH_TIMEOUT_MS);
     logger.info("All PlaytimeServices shut down");
   }
 

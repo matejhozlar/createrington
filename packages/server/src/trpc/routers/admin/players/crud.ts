@@ -4,7 +4,7 @@ import { router, adminProcedure } from "@/trpc/trpc";
 import { playerDeletionService } from "@/services/player/deletion";
 import { Q, playerBanRepo, playerRepo, playerStrikeRepo } from "@/db";
 import { ilikeContains } from "@/db/utils";
-import { BalanceUtils } from "@/db/repositories/balance/utils";
+import { BalanceUtils } from "@/db/utils/balance";
 import {
   paginationInput,
   paginateQuery,

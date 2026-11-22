@@ -1,4 +1,4 @@
-import { db, Q } from "@/db";
+import { db, Q } from "@/db/pool";
 import { DatabaseTable } from "@/generated/db";
 import type {
   PlayerStrike,

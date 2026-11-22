@@ -18,7 +18,6 @@ const state = vi.hoisted((): State => ({
 }));
 
 vi.mock("@/db", () => ({
-  db: {},
   Q: {
     player: { count: async () => state.playerCount },
     waitlist: {
@@ -40,25 +39,7 @@ vi.mock("@/services/settings", () => ({
   },
 }));
 
-vi.mock("@/discord/constants", () => ({
-  Discord: {
-    Channels: { administration: { NOTIFICATIONS: "notifications" } },
-    Messages: { edit: async () => ({ success: true }) },
-  },
-}));
-vi.mock("@/discord/embeds", () => ({ EmbedPresets: {} }));
-vi.mock("@/services", () => ({
-  Services: { DISCORD_MAIN_BOT: "discord-main-bot" },
-  getService: async () => ({ users: { fetch: async () => null } }),
-}));
-vi.mock("@/discord/embeds/presets/buttons", () => ({
-  ButtonPresets: { links: { adminPanel: () => ({}) } },
-}));
-vi.mock("@/generated/db", () => ({
-  DatabaseTable: { WAITLIST_ENTRY: { TABLE: "waitlist_entry" } },
-}));
-
-import { WaitlistRepository } from "@/db/repositories/waitlist";
+import { WaitlistCapacityService } from "@/services/waitlist/capacity.service";
 
 beforeEach(() => {
   state.intakeMode = "auto";
@@ -68,41 +49,43 @@ beforeEach(() => {
   state.failLimitRead = false;
 });
 
-describe("WaitlistRepository.getFreeSlots", () => {
+describe("WaitlistCapacityService.getFreeSlots", () => {
   it("subtracts players and outstanding promotions from the limit", async () => {
     state.playerCount = 6;
     state.promotedCount = 3;
-    const repo = new WaitlistRepository();
-    expect(await repo.getFreeSlots()).toBe(1);
-    expect(await repo.hasCapacity()).toBe(true);
+    const capacity = new WaitlistCapacityService();
+    expect(await capacity.getFreeSlots()).toBe(1);
+    expect(await capacity.hasCapacity()).toBe(true);
   });
 
   it("treats reserved slots as taken", async () => {
     state.playerCount = 9;
     state.promotedCount = 1;
-    const repo = new WaitlistRepository();
-    expect(await repo.getFreeSlots()).toBe(0);
-    expect(await repo.hasCapacity()).toBe(false);
+    const capacity = new WaitlistCapacityService();
+    expect(await capacity.getFreeSlots()).toBe(0);
+    expect(await capacity.hasCapacity()).toBe(false);
   });
 
   it("never goes negative when the limit is lowered below the player count", async () => {
     state.playerLimit = 5;
     state.playerCount = 8;
-    const repo = new WaitlistRepository();
-    expect(await repo.getFreeSlots()).toBe(0);
+    const capacity = new WaitlistCapacityService();
+    expect(await capacity.getFreeSlots()).toBe(0);
   });
 
   it("reports zero while intake is closed regardless of capacity", async () => {
     state.intakeMode = "closed";
-    const repo = new WaitlistRepository();
-    expect(await repo.getFreeSlots()).toBe(0);
-    expect(await repo.hasCapacity()).toBe(false);
+    const capacity = new WaitlistCapacityService();
+    expect(await capacity.getFreeSlots()).toBe(0);
+    expect(await capacity.hasCapacity()).toBe(false);
   });
 
   it("fails closed when the settings read throws", async () => {
     state.failLimitRead = true;
-    const repo = new WaitlistRepository();
-    await expect(repo.getFreeSlots()).rejects.toThrow("settings unavailable");
-    expect(await repo.hasCapacity()).toBe(false);
+    const capacity = new WaitlistCapacityService();
+    await expect(capacity.getFreeSlots()).rejects.toThrow(
+      "settings unavailable",
+    );
+    expect(await capacity.hasCapacity()).toBe(false);
   });
 });

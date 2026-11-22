@@ -2,7 +2,7 @@ import type { CooldownStats } from "@/discord/utils/cooldown/cooldown-manager";
 import { pluralize } from "@/utils/format";
 import { createEmbed, DiscordEmbedBuilder } from "../../embed-builder";
 import { EmbedColors } from "../../colors";
-import { type ActiveSession, PlaytimeService } from "@/services/playtime";
+import type { ActiveSession, PlaytimeService } from "@/services/playtime";
 import { formatPlaytime } from "@createrington/shared/format";
 
 export const CommandEmbedPresets = {
