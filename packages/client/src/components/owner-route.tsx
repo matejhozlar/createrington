@@ -1,4 +1,5 @@
 import type React from "react";
+import { Outlet } from "react-router";
 import { useAuth } from "@/contexts/auth/";
 import { LoadingScreen } from "@/components/query-states";
 import { NotFound } from "@/components/not-found";
@@ -6,7 +7,7 @@ import { trpc } from "@/lib/trpc";
 import { useQuery } from "@tanstack/react-query";
 
 interface OwnerRouteProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
 }
 
 export function OwnerRoute({ children }: OwnerRouteProps) {
@@ -25,5 +26,5 @@ export function OwnerRoute({ children }: OwnerRouteProps) {
     return <NotFound />;
   }
 
-  return <>{children}</>;
+  return children ?? <Outlet />;
 }

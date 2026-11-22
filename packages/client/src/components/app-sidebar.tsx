@@ -17,6 +17,7 @@ import {
   ServerIcon,
   ShieldIcon,
   SquarePenIcon,
+  StarIcon,
   TrophyIcon,
   UserCogIcon,
   UserPlusIcon,
@@ -24,7 +25,7 @@ import {
   WrenchIcon,
 } from "@createrington/icons";
 
-import { NavMain } from "@/components/nav-main";
+import { NavMain, type NavMainItem } from "@/components/nav-main";
 import { NavDiscordLogin } from "@/components/nav-discord-login";
 import { Logo } from "@/components/logo";
 import {
@@ -43,10 +44,65 @@ import { ServerStatus } from "./server-status";
 import { usePlayerData } from "@/contexts/player-data";
 import { NavUser } from "./nav-user";
 import { NavAdmin } from "./nav-admin";
-import { NavOwner } from "./nav-owner";
+import { NavSection, type NavSectionItem } from "./nav-section";
 import { trpc } from "@/lib/trpc";
 import { LAUNCHER_ENABLED } from "@/lib/launcher";
 import { useQuery } from "@tanstack/react-query";
+
+type NavFeature = "workshop" | "gallery";
+
+const OWNER_NAV: NavSectionItem[] = [
+  { title: "Admins", url: "/owner/admins", icon: UserCogIcon },
+  { title: "Donations", url: "/owner/donations", icon: HeartIcon },
+  ...(LAUNCHER_ENABLED
+    ? [
+        {
+          title: "Launcher",
+          url: "/owner/launcher-releases",
+          icon: RocketIcon,
+        },
+        {
+          title: "Launcher packs",
+          url: "/owner/launcher-packs",
+          icon: BoxIcon,
+        },
+      ]
+    : []),
+];
+
+const ADMIN_NAV: NavSectionItem[] = [
+  { title: "Dashboard", url: "/admin/dashboard", icon: DashboardIcon },
+  { title: "Players", url: "/admin/players", icon: UsersIcon },
+  { title: "Waitlist", url: "/admin/waitlist", icon: UserPlusIcon },
+  { title: "Servers", url: "/admin/servers", icon: ServerIcon },
+  { title: "Workshop", url: "/admin/tools/workshop", icon: HammerIcon },
+  { title: "Planning", url: "/admin/planning", icon: SquarePenIcon },
+  ...(LAUNCHER_ENABLED
+    ? [{ title: "Launcher", url: "/admin/launcher", icon: DownloadIcon }]
+    : []),
+  { title: "Tools", url: "/admin/tools", icon: WrenchIcon },
+  { title: "Logs", url: "/admin/logs", icon: ClipboardIcon },
+];
+
+const MAIN_NAV: (NavMainItem & { feature?: NavFeature })[] = [
+  { title: "Home", url: "/", icon: HomeIcon },
+  { title: "Dimensions", url: "/structure-packs", icon: BoxIcon },
+  {
+    title: "Workshop",
+    url: "/workshop",
+    icon: HammerIcon,
+    feature: "workshop",
+  },
+  { title: "Chat", url: "/chat", icon: MessageCircleIcon },
+  { title: "Players", url: "/online-players", icon: UsersIcon },
+  { title: "Map", url: "/blue-map", icon: MapPinnedIcon },
+  { title: "Leaderboards", url: "/leaderboards", icon: TrophyIcon },
+  { title: "Gallery", url: "/gallery", icon: ImageIcon, feature: "gallery" },
+  { title: "Apply", url: "/apply-to-join", icon: UserPlusIcon },
+  { title: "Team", url: "/team", icon: ShieldIcon },
+  { title: "Rules", url: "/rules", icon: InfoIcon },
+  { title: "Guides", url: "/guides", icon: BookOpenIcon },
+];
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user } = useAuth();
@@ -73,156 +129,17 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   );
   const galleryEnabled = galleryEnabledQuery.data?.enabled ?? false;
 
-  const data = {
-    ownerNav: [
-      {
-        title: "Admins",
-        url: "/owner/admins",
-        icon: UserCogIcon,
-      },
-      {
-        title: "Donations",
-        url: "/owner/donations",
-        icon: HeartIcon,
-      },
-      ...(LAUNCHER_ENABLED
-        ? [
-            {
-              title: "Launcher",
-              url: "/owner/launcher-releases",
-              icon: RocketIcon,
-            },
-            {
-              title: "Launcher packs",
-              url: "/owner/launcher-packs",
-              icon: BoxIcon,
-            },
-          ]
-        : []),
-    ],
-    adminNav: [
-      {
-        title: "Dashboard",
-        url: "/admin/dashboard",
-        icon: DashboardIcon,
-      },
-      {
-        title: "Players",
-        url: "/admin/players",
-        icon: UsersIcon,
-      },
-      {
-        title: "Waitlist",
-        url: "/admin/waitlist",
-        icon: UserPlusIcon,
-      },
-      {
-        title: "Servers",
-        url: "/admin/servers",
-        icon: ServerIcon,
-      },
-      {
-        title: "Workshop",
-        url: "/admin/tools/workshop",
-        icon: HammerIcon,
-      },
-      {
-        title: "Planning",
-        url: "/admin/planning",
-        icon: SquarePenIcon,
-      },
-      ...(LAUNCHER_ENABLED
-        ? [
-            {
-              title: "Launcher",
-              url: "/admin/launcher",
-              icon: DownloadIcon,
-            },
-          ]
-        : []),
-      {
-        title: "Tools",
-        url: "/admin/tools",
-        icon: WrenchIcon,
-      },
-      {
-        title: "Logs",
-        url: "/admin/logs",
-        icon: ClipboardIcon,
-      },
-    ],
-    navMain: [
-      {
-        title: "Home",
-        url: "/",
-        icon: HomeIcon,
-      },
-      {
-        title: "Dimensions",
-        url: "/structure-packs",
-        icon: BoxIcon,
-      },
-      ...(workshopEnabled
-        ? [
-            {
-              title: "Workshop",
-              url: "/workshop",
-              icon: HammerIcon,
-            },
-          ]
-        : []),
-      {
-        title: "Chat",
-        url: "/chat",
-        icon: MessageCircleIcon,
-      },
-      {
-        title: "Players",
-        url: "/online-players",
-        icon: UsersIcon,
-        badge: onlinePlayers.length > 0 ? onlinePlayers.length : undefined,
-      },
-      {
-        title: "Map",
-        url: "/blue-map",
-        icon: MapPinnedIcon,
-      },
-      {
-        title: "Leaderboards",
-        url: "/leaderboards",
-        icon: TrophyIcon,
-      },
-      ...(galleryEnabled
-        ? [
-            {
-              title: "Gallery",
-              url: "/gallery",
-              icon: ImageIcon,
-            },
-          ]
-        : []),
-      {
-        title: "Apply",
-        url: "/apply-to-join",
-        icon: UserPlusIcon,
-      },
-      {
-        title: "Team",
-        url: "/team",
-        icon: ShieldIcon,
-      },
-      {
-        title: "Rules",
-        url: "/rules",
-        icon: InfoIcon,
-      },
-      {
-        title: "Guides",
-        url: "/guides",
-        icon: BookOpenIcon,
-      },
-    ],
+  const features: Record<NavFeature, boolean> = {
+    workshop: workshopEnabled,
+    gallery: galleryEnabled,
   };
+  const mainNav = MAIN_NAV.filter(
+    ({ feature }) => !feature || features[feature],
+  ).map((item) =>
+    item.url === "/online-players" && onlinePlayers.length > 0
+      ? { ...item, badge: onlinePlayers.length }
+      : item,
+  );
 
   return (
     <Sidebar collapsible="icon" {...props}>
@@ -250,12 +167,20 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
       <SidebarContent>
         <NavMain
-          items={data.navMain}
+          items={mainNav}
           prepend={
             isOwner || user?.isAdmin ? (
               <>
-                {isOwner && <NavOwner items={data.ownerNav} />}
-                {user?.isAdmin && <NavAdmin items={data.adminNav} />}
+                {isOwner && (
+                  <NavSection
+                    label="Owner"
+                    tooltip="Owner Panel"
+                    icon={StarIcon}
+                    tone="amber"
+                    items={OWNER_NAV}
+                  />
+                )}
+                {user?.isAdmin && <NavAdmin items={ADMIN_NAV} />}
               </>
             ) : undefined
           }
