@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q, playerBanRepo } from "@/db";
-import { getService, Services } from "@/services";
+import { playerBanService } from "@/services/player/ban";
 import {
   ADMIN_REASON_MAX_LENGTH,
   BAN_REASON_MAX_LENGTH,
@@ -54,9 +54,8 @@ export const bansRouter = router({
       }),
     )
     .mutation(async ({ input, ctx }) => {
-      const banService = await getService(Services.PLAYER_BAN_SERVICE);
       const { id: identifier, ...details } = input;
-      const ban = await banService.issueTemporary(
+      const ban = await playerBanService.issueTemporary(
         identifier,
         details,
         ctx.user,
@@ -81,9 +80,8 @@ export const bansRouter = router({
       }),
     )
     .mutation(async ({ input, ctx }) => {
-      const banService = await getService(Services.PLAYER_BAN_SERVICE);
       const { id: identifier, ...details } = input;
-      const ban = await banService.issuePermanent(
+      const ban = await playerBanService.issuePermanent(
         identifier,
         details,
         ctx.user,
@@ -106,8 +104,11 @@ export const bansRouter = router({
       }),
     )
     .mutation(async ({ input, ctx }) => {
-      const banService = await getService(Services.PLAYER_BAN_SERVICE);
-      const ban = await banService.unban(input.banId, input.reason, ctx.user);
+      const ban = await playerBanService.unban(
+        input.banId,
+        input.reason,
+        ctx.user,
+      );
       return { ban };
     }),
 

@@ -32,13 +32,12 @@ vi.mock("@/services/player/deletion", () => ({
   playerDeletionService: { delete: deletePlayer },
 }));
 vi.mock("@/services", () => ({
-  getService: vi.fn(async (key: string) => {
-    if (key === "bot") return { guilds: { cache: { first: () => undefined } } };
-    const { PlayerBanService } = await import("@/services/player/ban");
-    return new PlayerBanService();
+  getService: vi.fn().mockResolvedValue({
+    guilds: { cache: { first: () => undefined } },
   }),
-  Services: { DISCORD_MAIN_BOT: "bot", PLAYER_BAN_SERVICE: "bans" },
+  Services: {},
 }));
+
 vi.mock("@/services/auth/session/session.service", () => ({
   sessionService: { revokeAllForUser },
 }));
@@ -72,6 +71,7 @@ vi.mock("@/discord/embeds", () => {
   };
 });
 
+import { getService } from "@/services";
 import { bansRouter } from "@/trpc/routers/admin/players/bans";
 import { BAN_REASON_MAX_LENGTH } from "@createrington/shared/admin-reason";
 import { adminContext } from "@/tests/helpers/trpc";
@@ -90,6 +90,9 @@ const caller = bansRouter.createCaller(
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(getService).mockResolvedValue({
+    guilds: { cache: { first: () => undefined } },
+  } as never);
   Q.player.get.mockResolvedValue(PLAYER);
   Q.player.ban.get.mockResolvedValue({
     id: 1,
@@ -167,6 +170,15 @@ describe("admin.players.bans.issueTemporary", () => {
 
     await expect(caller.issueTemporary(input)).rejects.toThrow("commit failed");
     expect(rcon.pardonAll).toHaveBeenCalledWith(PLAYER.minecraftUsername);
+  });
+
+  it("bans while the Discord bot is unavailable", async () => {
+    vi.mocked(getService).mockRejectedValue(new Error("bot offline"));
+
+    await expect(caller.issueTemporary(input)).resolves.toMatchObject({
+      ban: { id: 1 },
+    });
+    expect(rcon.banAll).toHaveBeenCalled();
   });
 
   it("leaves the game alone when the ban is refused before the in-game step", async () => {

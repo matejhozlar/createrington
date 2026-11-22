@@ -68,7 +68,9 @@ async function recordWithInGame<T>(
  * inside the DB transaction (a failed RCON step rolls the record back, a
  * failed commit undoes the RCON step), followed by session revocation,
  * Discord kick and an admin notification as needed. Also auto-unbans expired
- * temporary bans on a 5-minute interval driven by `initialize()` / `shutdown()`.
+ * temporary bans on a 5-minute interval driven by `initialize()` / `shutdown()`;
+ * the ban methods do not depend on that lifecycle. Singleton, also registered
+ * in the container for the interval.
  */
 export class PlayerBanService {
   private unbanCheckInterval: NodeJS.Timeout | null = null;
@@ -389,3 +391,5 @@ export class PlayerBanService {
     logger.info("PlayerBanService shutdown");
   }
 }
+
+export const playerBanService = new PlayerBanService();

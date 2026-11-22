@@ -27,7 +27,7 @@ import { AppEmojiService } from "./discord/emojis";
 import { PlaytimeManagerService } from "./playtime/playtime-manager.service";
 import { RoleManagementService } from "./discord/role/role-management.service";
 import { WebSocketService } from "./websocket";
-import { PlayerBanService } from "./player/ban";
+import { playerBanService } from "./player/ban";
 import { playerDeletionService } from "./player/deletion";
 import { isPartyPurgeAllowed, partyPurgeService } from "./party";
 import { StatsImportService } from "./stats-import";
@@ -351,9 +351,8 @@ export function registerServices(): void {
     Services.PLAYER_BAN_SERVICE,
     [Services.DISCORD_MAIN_BOT, Services.MESSAGE_SERVICE],
     async () => {
-      const service = new PlayerBanService();
-      await service.initialize();
-      return service;
+      await playerBanService.initialize();
+      return playerBanService;
     },
   );
 
