@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from "vitest";
-import { verifyMojangJoin } from "@/utils/mojang-has-joined";
+import { verifyMojangJoin } from "@/services/auth/launcher/mojang-has-joined";
 
 const SERVER_ID = "a".repeat(40);
 

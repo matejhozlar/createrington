@@ -1,4 +1,5 @@
 import { db, Q } from "@/db";
+import type { DatabaseQueries } from "@/generated/db";
 import { BadRequestError, NotFoundError } from "@/errors";
 import { UniqueViolationError } from "@/db/utils/errors";
 import type { Workshop, WorkshopMod } from "@createrington/shared/db";
@@ -18,7 +19,6 @@ import {
   findProjectClaims,
   mapConstraintError,
   prepareEntries,
-  type TxQueries,
   type WorkshopModEntry,
 } from "./entries";
 import { workshopModService, type WorkshopModListItem } from "./mods.service";
@@ -264,7 +264,7 @@ export class WorkshopSuggestionService {
   }
 
   private async assertSuggestionSlot(
-    queries: Pick<TxQueries, "workshop">,
+    queries: Pick<DatabaseQueries, "workshop">,
     workshop: Workshop,
     discordId: string,
   ): Promise<void> {

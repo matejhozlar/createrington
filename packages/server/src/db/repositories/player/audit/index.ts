@@ -8,10 +8,6 @@ import { BasePlayerRepository, type PlayerIdentifier } from "../base";
  * Used by the admin panel audit-log views.
  */
 export class PlayerAuditRepository extends BasePlayerRepository {
-  constructor() {
-    super();
-  }
-
   /** Paginated admin actions targeting the player, newest first. */
   async getLog(
     identifier: PlayerIdentifier,

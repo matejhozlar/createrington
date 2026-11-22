@@ -20,7 +20,7 @@ import {
   launcherJwtService,
 } from "@/services/auth/launcher/launcher-jwt.service";
 import { launcherSessionService } from "@/services/auth/launcher/launcher-session.service";
-import { verifyMojangJoin } from "@/utils/mojang-has-joined";
+import { verifyMojangJoin } from "@/services/auth/launcher/mojang-has-joined";
 import type { RefreshTokenBody, VerifyBody } from "./launcher-auth.schemas";
 
 function launcherError(

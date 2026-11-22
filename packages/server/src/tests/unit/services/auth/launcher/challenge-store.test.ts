@@ -1,13 +1,15 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import {
-  __resetLauncherChallengesForTests,
-  consumeLauncherChallenge,
-  issueLauncherChallenge,
-} from "@/services/auth/launcher/challenge-store";
 
-beforeEach(() => {
+type ChallengeStore = typeof import("@/services/auth/launcher/challenge-store");
+
+let issueLauncherChallenge: ChallengeStore["issueLauncherChallenge"];
+let consumeLauncherChallenge: ChallengeStore["consumeLauncherChallenge"];
+
+beforeEach(async () => {
   vi.useFakeTimers();
-  __resetLauncherChallengesForTests();
+  vi.resetModules();
+  ({ issueLauncherChallenge, consumeLauncherChallenge } =
+    await import("@/services/auth/launcher/challenge-store"));
 });
 
 afterEach(() => {

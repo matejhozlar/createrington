@@ -58,6 +58,19 @@ export type WorkshopSuggestionHistoryItem = WorkshopModListItem & {
   workshopSlug: string;
 };
 
+export interface WorkshopModDetail {
+  mod: WorkshopMod & {
+    submitterName: string | null;
+    submitterUuid: string | null;
+    reviewerName: string | null;
+    discordThreadUrl: string | null;
+    dependencies: WorkshopModDependencyInfo[];
+    liveInVersion: string | null;
+  };
+  project: CurseforgeProject;
+  upvoteCount: number;
+}
+
 /**
  * Suggestions as the workshop pages show them: rows decorated with project
  * summaries, upvotes, submitter, Discord thread, dependency coverage and the
@@ -105,18 +118,7 @@ export class WorkshopModService {
   async getModDetail(
     workshopModId: number,
     options: { includeHidden?: boolean } = {},
-  ): Promise<{
-    mod: WorkshopMod & {
-      submitterName: string | null;
-      submitterUuid: string | null;
-      reviewerName: string | null;
-      discordThreadUrl: string | null;
-      dependencies: WorkshopModDependencyInfo[];
-      liveInVersion: string | null;
-    };
-    project: CurseforgeProject;
-    upvoteCount: number;
-  }> {
+  ): Promise<WorkshopModDetail> {
     const mod = await Q.workshop.mod.find({ id: workshopModId });
     if (!mod) {
       throw new NotFoundError(`Mod #${workshopModId} not found`);

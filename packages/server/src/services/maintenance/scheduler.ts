@@ -1,4 +1,5 @@
 import { Q } from "@/db";
+import { formatCount } from "@/utils/format";
 import { Discord } from "@/discord/constants";
 import type { DiscordMessageService } from "@/services/discord/message/message.service";
 import type { ServerMaintenanceSchedule } from "@createrington/shared/db/server_maintenance_schedule.types";
@@ -263,8 +264,8 @@ export class MaintenanceScheduler {
   ): Promise<void> {
     const label =
       minutesBefore >= 60
-        ? `${Math.floor(minutesBefore / 60)} hour${minutesBefore >= 120 ? "s" : ""}`
-        : `${minutesBefore} minute${minutesBefore !== 1 ? "s" : ""}`;
+        ? formatCount(Math.floor(minutesBefore / 60), "hour")
+        : formatCount(minutesBefore, "minute");
 
     const duration =
       schedule.estimatedMinutes !== null

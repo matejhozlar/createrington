@@ -7,7 +7,8 @@ import { BadRequestError } from "@/errors";
 import type { WaitlistEntry } from "@createrington/shared/db";
 import type { GuildMember } from "discord.js";
 import { getGuild, lookupChannel, lookupMember } from "./discord-lookup";
-import { expireEntry } from "./entries";
+import { expireEntry, PROMOTION_TTL_DAYS } from "./entries";
+import { formatCount } from "@/utils/format";
 import { withSlotLock } from "./slot-lock";
 
 const PROMOTION_BATCH = 100;
@@ -123,7 +124,7 @@ export class WaitlistPromotionService {
     try {
       await Discord.Messages.send({
         channelId: Discord.Channels.administration.NOTIFICATIONS,
-        content: `⚠️ Waitlist entry #${entry.id} (${userMention(entry.discordId)}) was promoted but could not be pinged in their verification channel. They hold a reserved slot for 7 days; reach out to them or delete the entry from the admin panel to free it.`,
+        content: `⚠️ Waitlist entry #${entry.id} (${userMention(entry.discordId)}) was promoted but could not be pinged in their verification channel. They hold a reserved slot for ${formatCount(PROMOTION_TTL_DAYS, "day")}; reach out to them or delete the entry from the admin panel to free it.`,
       });
     } catch (error) {
       logger.error(

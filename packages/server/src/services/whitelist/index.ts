@@ -1,4 +1,4 @@
-import { MinecraftRconManager, WhitelistAction } from "@/utils/rcon";
+import { minecraftRcon, WhitelistAction } from "@/utils/rcon";
 import { isFileOpsAllowed, writeFile } from "@/services/mc-server/file-ops";
 import { Q } from "@/db";
 
@@ -29,8 +29,7 @@ export class WhitelistService {
 
     await writeFile(WHITELIST_FILE, JSON.stringify(entries, null, 2));
 
-    const rcon = MinecraftRconManager.getInstance();
-    await rcon.whitelist(serverId, WhitelistAction.RELOAD);
+    await minecraftRcon.whitelist(serverId, WhitelistAction.RELOAD);
 
     logger.info(
       `Whitelist resynced for server ${serverId} (${entries.length} players)`,

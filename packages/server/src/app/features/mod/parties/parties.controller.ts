@@ -1,4 +1,5 @@
 import { getValidated } from "@/app/middleware/validation.middleware";
+import { formatCount } from "@/utils/format";
 import { respondSuccess } from "@/app/middleware/api-envelope";
 import type { Request, Response } from "express";
 import { resolveServerId } from "../shared/resolve-server-id";
@@ -38,7 +39,7 @@ export class PartiesController {
     });
 
     logger.info(
-      `Party claims sync for server ${serverId}: ${result.stored} chunk${result.stored === 1 ? "" : "s"} ${result.changed ? "stored" : "unchanged"}`,
+      `Party claims sync for server ${serverId}: ${formatCount(result.stored, "chunk")} ${result.changed ? "stored" : "unchanged"}`,
     );
 
     res.json({ success: true, stored: result.stored });

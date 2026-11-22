@@ -1,4 +1,5 @@
 import { db, Q } from "@/db";
+import { NIL_UUID } from "@/utils/player-identifier";
 import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
 import { ButtonPresets } from "@/discord/embeds/presets/buttons";
@@ -90,7 +91,7 @@ export class WaitlistRepository {
         adminDiscordId,
         adminUsername,
         actionType: "delete_waitlist",
-        targetPlayerUuid: "00000000-0000-0000-0000-000000000000",
+        targetPlayerUuid: NIL_UUID,
         targetPlayerName: entry.discordUsername,
         tableName: DatabaseTable.WAITLIST_ENTRY.TABLE,
         fieldName: "deleted",

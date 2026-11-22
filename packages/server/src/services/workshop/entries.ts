@@ -1,4 +1,5 @@
-import { Q, type db } from "@/db";
+import { Q } from "@/db";
+import type { DatabaseQueries } from "@/generated/db";
 import { BadRequestError, ConflictError } from "@/errors";
 import { UniqueViolationError, DatabaseError } from "@/db/utils/errors";
 import type {
@@ -27,8 +28,6 @@ interface PreparedEntry {
   fileName: string | null;
   fileReleaseType: number | null;
 }
-
-export type TxQueries = Parameters<Parameters<typeof db.inTransaction>[0]>[0];
 
 interface CreateModOptions {
   submittedBy: string;
@@ -182,7 +181,7 @@ function snapshotFile(
 }
 
 export async function createMod(
-  tx: TxQueries,
+  tx: DatabaseQueries,
   workshop: Workshop,
   entry: PreparedEntry,
   options: CreateModOptions,
@@ -191,7 +190,7 @@ export async function createMod(
 }
 
 export async function createMods(
-  tx: TxQueries,
+  tx: DatabaseQueries,
   workshop: Workshop,
   entries: PreparedEntry[],
   options: CreateModOptions,

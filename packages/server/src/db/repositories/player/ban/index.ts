@@ -12,10 +12,6 @@ import type { BanStatistics } from "@/db/queries/player/ban";
  * transaction. Permanent bans cascade-delete the player row.
  */
 export class PlayerBanRepository extends BasePlayerRepository {
-  constructor() {
-    super();
-  }
-
   /**
    * Issue a temporary ban that expires at the given timestamp. Rejects if the
    * player already has an active ban or if expiresAt is not in the future.

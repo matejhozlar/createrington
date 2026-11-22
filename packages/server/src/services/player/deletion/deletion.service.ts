@@ -1,4 +1,5 @@
 import { db, Q } from "@/db";
+import { SYSTEM_AUDIT_ACTOR } from "@/db/queries/admin/log/action";
 import { DatabaseTable, type DatabaseQueries } from "@/generated/db";
 import { NotFoundError } from "@/errors";
 import { minecraftRcon, WhitelistAction } from "@/utils/rcon";
@@ -15,7 +16,10 @@ export function deletionAuditIdentity(actor: DeletionActor): {
   username: string;
 } {
   return actor.type === "system"
-    ? { discordId: "system", username: actor.username ?? "System" }
+    ? {
+        discordId: SYSTEM_AUDIT_ACTOR.discordId,
+        username: actor.username ?? SYSTEM_AUDIT_ACTOR.username,
+      }
     : { discordId: actor.discordId, username: actor.username };
 }
 

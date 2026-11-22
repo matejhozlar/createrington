@@ -1,4 +1,4 @@
-import EventEmitter from "node:events";
+import { typedEmitter } from "@/utils/typed-emitter";
 import type {
   CachedMessage,
   MessageCacheServiceConfig,
@@ -27,14 +27,6 @@ export interface MessageCacheEvents {
   serverClosed: (serverId: number) => void;
 }
 
-interface TypedEventEmitter<T> {
-  on<K extends keyof T>(event: K, listener: T[K]): this;
-  emit<K extends keyof T>(
-    event: K,
-    ...args: T[K] extends (...args: infer A) => unknown ? A : never
-  ): boolean;
-}
-
 /**
  * In-memory ring buffer of recent Discord messages per configured server.
  *
@@ -47,8 +39,7 @@ interface TypedEventEmitter<T> {
  * downstream WebSocket fanout. The per-server buffer is bounded by
  * `maxMessages` (default 100) and trims oldest-first on overflow.
  */
-export class MessageCacheService extends (EventEmitter as new () => TypedEventEmitter<MessageCacheEvents> &
-  EventEmitter) {
+export class MessageCacheService extends typedEmitter<MessageCacheEvents>() {
   private cache: Map<number, CachedMessage[]> = new Map();
   private serverConfig: Map<number, ServerCacheConfig> = new Map();
   private isInitialized = false;

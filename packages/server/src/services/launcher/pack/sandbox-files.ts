@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { errorMessage } from "@/errors";
 import config from "@/config";
 import { siteUrl } from "@/config/site-url";
 import { findFileUrls } from "./file-lookup";
@@ -249,7 +250,7 @@ export async function openSandboxFile(
   } catch (error) {
     signal.removeEventListener("abort", abortUpstream);
     throw new SandboxUnavailableError(
-      `The sandbox could not be reached for ${path}: ${error instanceof Error ? error.message : String(error)}`,
+      `The sandbox could not be reached for ${path}: ${errorMessage(error)}`,
     );
   } finally {
     clearTimeout(headersTimer);

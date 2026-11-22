@@ -1,6 +1,8 @@
 import { Q } from "@/db";
+import { SYSTEM_AUDIT_ACTOR } from "@/db/queries/admin/log/action";
+import { DatabaseTable } from "@/generated/db";
 import { minecraftRcon } from "@/utils/rcon";
-import { discordTimestamp } from "@/utils/format";
+import { discordTimestamp, formatDuration } from "@/utils/format";
 import { Discord } from "@/discord/constants";
 import { EmbedColors, EmbedPresets } from "@/discord/embeds";
 import type { PlayerBan } from "@createrington/shared/db";
@@ -64,20 +66,20 @@ export class PlayerBanService {
       { id: ban.id },
       {
         unbanned: true,
-        unbannedByDiscordId: "system",
-        unbannedByUsername: "System",
+        unbannedByDiscordId: SYSTEM_AUDIT_ACTOR.discordId,
+        unbannedByUsername: SYSTEM_AUDIT_ACTOR.username,
         unbannedAt: new Date(),
         unbanReason: "Temporary ban expired",
       },
     );
 
     await Q.admin.log.action.create({
-      adminDiscordId: "system",
-      adminUsername: "System",
+      adminDiscordId: SYSTEM_AUDIT_ACTOR.discordId,
+      adminUsername: SYSTEM_AUDIT_ACTOR.username,
       actionType: "unban_player",
       targetPlayerUuid: ban.playerMinecraftUuid,
       targetPlayerName: minecraftUsername,
-      tableName: "player_ban",
+      tableName: DatabaseTable.PLAYER_BAN.TABLE,
       fieldName: "unbanned",
       oldValue: "false",
       newValue: "true",
@@ -122,7 +124,7 @@ export class PlayerBanService {
         `**Player**: ${minecraftUsername}`,
         `**Original ban reason**: ${ban.reason}`,
         `**Banned at**: ${discordTimestamp(ban.bannedAt, "F")}`,
-        `**Ban duration**: ${this.calculateDuration(ban.bannedAt, ban.expiresAt!)}`,
+        `**Ban duration**: ${formatDuration(ban.bannedAt, ban.expiresAt!)}`,
       ].join("\n"),
       color: EmbedColors.Success,
     });
@@ -131,22 +133,6 @@ export class PlayerBanService {
       channelId: Discord.Channels.administration.NOTIFICATIONS,
       embeds: embed.build(),
     });
-  }
-
-  private calculateDuration(start: Date, end: Date): string {
-    const durationMs = end.getTime() - start.getTime();
-    const days = Math.floor(durationMs / (24 * 60 * 60 * 1000));
-    const hours = Math.floor(
-      (durationMs % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000),
-    );
-
-    if (days > 0) {
-      return hours > 0
-        ? `${days} day${days !== 1 ? "s" : ""} and ${hours} hour${hours !== 1 ? "s" : ""}`
-        : `${days} day${days !== 1 ? "s" : ""}`;
-    }
-
-    return `${hours} hour${hours !== 1 ? "s" : ""}`;
   }
 
   /** Clears the recurring expired-ban interval. Safe to call multiple times. */

@@ -14,7 +14,7 @@ import {
 import { RoleManager } from "@/discord/utils/roles/role-manager";
 import { minecraftRcon, WhitelistAction } from "@/utils/rcon";
 import { getSkinApiClient } from "@/services/skin-api/client";
-import { BadRequestError } from "@/errors";
+import { BadRequestError, errorMessage } from "@/errors";
 import { MC_USERNAME_REGEX } from "@/utils/zod-schemas";
 import { SkinApiError, type ResolvedPlayer } from "createrington-skin-api";
 import type { GuildMember, GuildTextBasedChannel } from "discord.js";
@@ -258,7 +258,7 @@ export async function runRegistration(params: {
 
     return { ok: true };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
+    const failure = errorMessage(error);
     const memberMessage =
       error instanceof RegistrationError || error instanceof BadRequestError
         ? error.message
@@ -281,7 +281,7 @@ export async function runRegistration(params: {
       mcName,
       userTag,
       discordId,
-      errorMessage,
+      failure,
       failedStep,
     );
 

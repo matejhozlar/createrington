@@ -275,7 +275,8 @@ function remember(key: string, image: ChangelogRowImage): void {
       : Date.now() + CHANGELOG_ROW_RETRY_MS,
   });
   if (rendered.size > CACHE_MAX) {
-    rendered.delete(rendered.keys().next().value as string);
+    const oldest = rendered.keys().next();
+    if (!oldest.done) rendered.delete(oldest.value);
   }
 }
 

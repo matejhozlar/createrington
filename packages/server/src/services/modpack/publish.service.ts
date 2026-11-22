@@ -1,5 +1,5 @@
 import { Q, db } from "@/db";
-import { BadRequestError, NotFoundError } from "@/errors";
+import { BadRequestError, NotFoundError, errorMessage } from "@/errors";
 import { UniqueViolationError } from "@/db/utils/errors";
 import type {
   Modpack,
@@ -123,7 +123,7 @@ export class ModpackPublishService {
         error = `CurseForge lists file ${read.fileId} as newer than ${client.id}, so the main app read that release instead; the report is kept for when ${client.id} is read`;
       }
     } catch (caught) {
-      error = caught instanceof Error ? caught.message : String(caught);
+      error = errorMessage(caught);
       logger.warn(
         `Modpack #${modpack.id} reconcile after publish report ${client.id}/${server.id} failed:`,
         caught,
@@ -228,7 +228,7 @@ export class ModpackPublishService {
       }
       if (outcome.status === "blocked") error = outcome.reason;
     } catch (caught) {
-      error = caught instanceof Error ? caught.message : String(caught);
+      error = errorMessage(caught);
       logger.warn(
         `Modpack #${modpack.id} snapshot ${report.snapshotId} could not be prepared for the launcher:`,
         caught,

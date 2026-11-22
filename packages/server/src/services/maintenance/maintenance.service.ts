@@ -1,4 +1,5 @@
 import { Q } from "@/db";
+import { createKeyedLock } from "@/utils/keyed-lock";
 import { getService, Services } from "@/services";
 import { getServerById } from "@/services/mc-server/servers";
 import type { ServerMaintenanceSchedule } from "@createrington/shared/db/server_maintenance_schedule.types";
@@ -73,7 +74,7 @@ export class MaintenanceService {
   private scheduler: MaintenanceScheduler | null = null;
   private reconcileTimer: NodeJS.Timeout | null = null;
   private reconciling = new Set<number>();
-  private locks = new Map<number, Promise<unknown>>();
+  private withLock = createKeyedLock<number>();
   private serverIds: readonly number[] = [];
 
   constructor(
@@ -627,16 +628,6 @@ export class MaintenanceService {
       throw new Error("Maintenance scheduler not initialized");
     }
     return this.scheduler;
-  }
-
-  private withLock<T>(serverId: number, fn: () => Promise<T>): Promise<T> {
-    const previous = this.locks.get(serverId) ?? Promise.resolve();
-    const run = previous.then(fn, fn);
-    this.locks.set(
-      serverId,
-      run.catch(() => undefined),
-    );
-    return run;
   }
 
   private async broadcast(serverId: number): Promise<void> {

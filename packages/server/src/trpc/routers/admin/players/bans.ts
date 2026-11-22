@@ -13,7 +13,7 @@ import type { PlayerBan } from "@createrington/shared/db";
 import { Discord } from "@/discord/constants";
 import { EmbedColors, EmbedPresets } from "@/discord/embeds";
 import { minecraftRcon, WhitelistAction } from "@/utils/rcon";
-import { discordTimestamp } from "@/utils/format";
+import { discordTimestamp, formatCount } from "@/utils/format";
 import { id, playerId } from "@/trpc/utils";
 import { sessionService } from "@/services/auth/session/session.service";
 import { launcherSessionService } from "@/services/auth/launcher/launcher-session.service";
@@ -143,7 +143,7 @@ export const bansRouter = router({
             `**Player**: ${player.minecraftUsername}`,
             `**Reason**: ${input.reason}`,
             `**Banned by**: ${userMention(ctx.user.discordId)}`,
-            `**Duration**: ${input.durationDays} day${input.durationDays !== 1 ? "s" : ""}`,
+            `**Duration**: ${formatCount(input.durationDays, "day")}`,
             `**Expires**: ${discordTimestamp(expiresAt)}`,
           ].join("\n"),
           color: 0xffa500,

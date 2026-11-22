@@ -1,4 +1,5 @@
 import { EmbedPresets } from "@/discord/embeds";
+import { pluralize } from "@/utils/format";
 import { replyError } from "@/discord/utils/interaction-reply";
 import {
   type ChatInputCommandInteraction,
@@ -67,9 +68,7 @@ async function execute(
 
   const embed = EmbedPresets.success(
     "Messages purged",
-    `Successfully purged **${deletedMessages.size}** message${
-      deletedMessages.size === 1 ? "" : "s"
-    }${userSuffix}.`,
+    `Successfully purged **${deletedMessages.size}** ${pluralize(deletedMessages.size, "message")}${userSuffix}.`,
   );
 
   await interaction.editReply({

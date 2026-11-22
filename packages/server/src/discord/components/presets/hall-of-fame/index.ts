@@ -7,7 +7,7 @@ import {
   thumbnail,
 } from "../../component-builder";
 import { formatMoney, formatPlaytime } from "@createrington/shared/format";
-import { formatDaysCount } from "@/utils/format";
+import { formatCount } from "@/utils/format";
 import type {
   ComponentContainer,
   ComponentsData,
@@ -56,7 +56,7 @@ function stat(metric: RankUpMetric): string {
     case "balance":
       return `${formatMoney(metric.amount)} balance`;
     case "membership":
-      return `${formatDaysCount(metric.days)} in the server`;
+      return `${formatCount(metric.days, "day")} in the server`;
     case "records":
       return `${metric.count.toLocaleString("en-US")} first-place ${metric.count === 1 ? "stat" : "stats"}`;
   }

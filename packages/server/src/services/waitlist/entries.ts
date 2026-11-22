@@ -3,6 +3,8 @@ import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
 import type { WaitlistEntry } from "@createrington/shared/db";
 
+export const PROMOTION_TTL_DAYS = 7;
+
 export async function notifyAdmins(entry: WaitlistEntry): Promise<void> {
   try {
     const { embed, components } = EmbedPresets.waitlist.queueNotification({
@@ -37,4 +39,21 @@ export async function expireEntry(
   );
   await waitlistRepo.updateProgressEmbed(entryId);
   logger.info(`Expired waitlist entry #${entryId}: ${reason}`);
+}
+
+export async function requeueEntry(
+  entryId: number,
+  changes: Partial<WaitlistEntry> = {},
+): Promise<void> {
+  await Q.waitlist.entry.update(
+    { id: entryId },
+    {
+      status: "queued",
+      queuedAt: new Date(),
+      promotedAt: null,
+      promotedBy: null,
+      ...changes,
+    },
+  );
+  await waitlistRepo.updateProgressEmbed(entryId);
 }

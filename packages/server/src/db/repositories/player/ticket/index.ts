@@ -9,10 +9,6 @@ import { BasePlayerRepository, type PlayerIdentifier } from "../base";
  * uniformly. Ticket lifecycle writes live in TicketRepository.
  */
 export class PlayerTicketRepository extends BasePlayerRepository {
-  constructor() {
-    super();
-  }
-
   /** One page of the player's tickets, newest first, with the total count. */
   async getPage(
     identifier: PlayerIdentifier,

@@ -4,6 +4,8 @@ import {
   MC_UUID_REGEX,
 } from "@/utils/zod-schemas";
 
+export const NIL_UUID = "00000000-0000-0000-0000-000000000000";
+
 export function getIdType(
   id: string,
 ): "minecraftUuid" | "minecraftUsername" | "discord" | "invalid" {

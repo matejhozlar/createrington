@@ -1,4 +1,5 @@
 import { db, Q, waitlistRepo } from "@/db";
+import { NIL_UUID } from "@/utils/player-identifier";
 import { calendarDay } from "@/db/utils";
 import type { DatabaseQueries } from "@/generated/db";
 import type { ServerActivity } from "@/db/queries/player/playtime/daily";
@@ -16,8 +17,6 @@ import type {
   SessionStartEvent,
 } from "@/services/playtime";
 import { computeCredit, TICKS_PER_SECOND } from "@/services/playtime/credit";
-
-const NIL_UUID = "00000000-0000-0000-0000-000000000000";
 
 const RECONCILE_SUSPICIOUS_DROP_RATIO = 0.5;
 const RECONCILE_SUSPICIOUS_MIN_TOTAL_SECONDS = 3600;
@@ -115,8 +114,6 @@ export interface StatsReconcileResult {
  */
 export class PlaytimeRepository {
   private pending = new Set<Promise<unknown>>();
-
-  constructor() {}
 
   /**
    * Persist a session start. Closes any orphaned active sessions for the same
