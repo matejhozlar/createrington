@@ -51,6 +51,9 @@ export const planningItem = pgTable(
     status: planningItemStatusEnum("status").notNull().default("inbox"),
     decision: text("decision"),
     revision: integer("revision").notNull().default(1),
+    // Discord message the item was captured from by /idea; null when it was
+    // written on the website
+    sourceUrl: text("source_url"),
     createdBy: text("created_by").notNull(),
     updatedBy: text("updated_by").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
@@ -109,6 +112,9 @@ export const planningItemComment = pgTable(
       .references(() => planningItem.id, { onDelete: "cascade" }),
     authorDiscordId: text("author_discord_id").notNull(),
     body: text("body").notNull(),
+    // Set when the comment is a summary of a Discord discussion; the author
+    // is then the admin who ran /idea
+    sourceUrl: text("source_url"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

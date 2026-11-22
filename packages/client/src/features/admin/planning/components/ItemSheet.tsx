@@ -17,6 +17,7 @@ import type { PlanningSubcategory } from "../types";
 import { ItemComments } from "./ItemComments";
 import { ItemEditor } from "./ItemEditor";
 import { ItemHistory } from "./ItemHistory";
+import { SourceLink } from "./SourceLink";
 
 interface ItemSheetProps {
   itemId: number | null;
@@ -59,6 +60,13 @@ export function ItemSheet({ itemId, onClose, subcategories }: ItemSheetProps) {
               ? `Added by ${personName(data.item.createdBy)} ${formatRelativeDate(data.item.createdAt)}, last edited by ${personName(data.item.updatedBy)} ${formatRelativeDate(data.item.updatedAt)}`
               : "Loading the card"}
           </SheetDescription>
+          {data?.item.sourceUrl && (
+            <SourceLink
+              url={data.item.sourceUrl}
+              label="Captured from Discord"
+              className="-ml-2 self-start"
+            />
+          )}
         </SheetHeader>
 
         <div className="flex-1 overflow-y-auto p-4">

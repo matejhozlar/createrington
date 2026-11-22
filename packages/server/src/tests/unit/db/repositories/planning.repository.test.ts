@@ -147,8 +147,22 @@ describe("PlanningRepository.createItem", () => {
     ]);
   });
 
+  it("keeps the Discord message an item was captured from", async () => {
+    const url = "https://discord.com/channels/1/2/3";
+
+    const captured = await repo.createItem(draft, "admin-a", {
+      sourceUrl: url,
+    });
+    const written = await repo.createItem(draft, "admin-a");
+
+    expect(state.items.get(captured.id)).toMatchObject({ sourceUrl: url });
+    expect(state.items.get(written.id)).toMatchObject({ sourceUrl: null });
+  });
+
   it("assigns the given admins", async () => {
-    const item = await repo.createItem(draft, "admin-a", ["admin-b"]);
+    const item = await repo.createItem(draft, "admin-a", {
+      assigneeIds: ["admin-b"],
+    });
 
     expect(state.assignees).toEqual([
       { itemId: item.id, discordId: "admin-b", assignedBy: "admin-a" },
@@ -279,10 +293,9 @@ describe("PlanningRepository.restoreItem", () => {
 
 describe("PlanningRepository.setAssignees", () => {
   it("adds the new admins and removes the ones left out", async () => {
-    const item = await repo.createItem(draft, "admin-a", [
-      "admin-a",
-      "admin-b",
-    ]);
+    const item = await repo.createItem(draft, "admin-a", {
+      assigneeIds: ["admin-a", "admin-b"],
+    });
 
     await repo.setAssignees(item.id, ["admin-b", "admin-c"], "admin-c");
 
@@ -293,7 +306,9 @@ describe("PlanningRepository.setAssignees", () => {
   });
 
   it("refuses someone who is not an admin", async () => {
-    const item = await repo.createItem(draft, "admin-a", ["admin-a"]);
+    const item = await repo.createItem(draft, "admin-a", {
+      assigneeIds: ["admin-a"],
+    });
 
     await expect(
       repo.setAssignees(item.id, ["admin-a", "player-x"], "admin-a"),

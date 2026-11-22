@@ -115,6 +115,7 @@ export const planningItemsRouter = router({
           status: item.status,
           decision: item.decision,
           revision: item.revision,
+          sourceUrl: item.sourceUrl,
           createdAt: item.createdAt,
           updatedAt: item.updatedAt,
           createdBy: person(item.createdBy),
@@ -124,6 +125,7 @@ export const planningItemsRouter = router({
         comments: comments.map((comment) => ({
           id: comment.id,
           body: comment.body,
+          sourceUrl: comment.sourceUrl,
           createdAt: comment.createdAt,
           author: person(comment.authorDiscordId),
         })),
@@ -159,7 +161,7 @@ export const planningItemsRouter = router({
       const item = await planningRepo.createItem(
         { ...content, decision: null },
         ctx.user.discordId,
-        assignees,
+        { assigneeIds: assignees },
       );
 
       return { id: item.id };

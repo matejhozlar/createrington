@@ -8,6 +8,7 @@ import { queryClient, trpc } from "@/lib/trpc";
 import { PLANNING_COMMENT_MAX_LENGTH } from "@createrington/shared/planning";
 import type { PlanningComment } from "../types";
 import { PersonChip } from "./PersonChip";
+import { SourceLink } from "./SourceLink";
 
 interface ItemCommentsProps {
   itemId: number;
@@ -46,6 +47,12 @@ export function ItemComments({ itemId, comments }: ItemCommentsProps) {
                 <span className="text-xs text-muted-foreground">
                   {formatRelativeDate(comment.createdAt)}
                 </span>
+                {comment.sourceUrl && (
+                  <SourceLink
+                    url={comment.sourceUrl}
+                    label="Summary of a Discord discussion"
+                  />
+                )}
               </div>
               <p className="whitespace-pre-wrap break-words text-sm">
                 {comment.body}

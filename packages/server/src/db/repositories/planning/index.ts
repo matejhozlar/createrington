@@ -52,11 +52,14 @@ function merge(
  * refused instead of overwriting someone else's edit.
  */
 export class PlanningRepository {
-  /** Create an item with its first revision and, optionally, its assignees. */
+  /**
+   * Create an item with its first revision and, optionally, its assignees
+   * and the Discord message it was captured from.
+   */
   async createItem(
     content: PlanningItemContent,
     actor: string,
-    assigneeIds: string[] = [],
+    extra: { assigneeIds?: string[]; sourceUrl?: string | null } = {},
   ): Promise<PlanningItem> {
     return db.inTransaction(async (tx) => {
       if (
@@ -71,6 +74,7 @@ export class PlanningRepository {
       const created = await tx.planning.item.createAndReturn({
         ...content,
         revision: 1,
+        sourceUrl: extra.sourceUrl ?? null,
         createdBy: actor,
         updatedBy: actor,
       });
@@ -80,7 +84,12 @@ export class PlanningRepository {
         revision: 1,
         editedBy: actor,
       });
-      await this.replaceAssignees(tx, created.id, assigneeIds, actor);
+      await this.replaceAssignees(
+        tx,
+        created.id,
+        extra.assigneeIds ?? [],
+        actor,
+      );
 
       return created;
     });
