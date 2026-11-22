@@ -1,3 +1,4 @@
+import type { z } from "zod";
 import { Q, planningRepo } from "@/db";
 import { siteUrl } from "@/config/site-url";
 import { BadRequestError } from "@/errors";
@@ -10,6 +11,9 @@ import {
   PLANNING_COMMENT_MAX_LENGTH,
   PLANNING_TEXT_MAX_LENGTH,
   PLANNING_TITLE_MAX_LENGTH,
+  planningCommentSchema,
+  planningTextSchema,
+  planningTitleSchema,
   type PlanningCategory,
 } from "@createrington/shared/planning";
 
@@ -73,6 +77,19 @@ export interface PlanningIntakeResult {
   url: string;
 }
 
+function accepted<T>(
+  schema: z.ZodType<T>,
+  text: string,
+  maxLength: number,
+  what: string,
+): T {
+  const parsed = schema.safeParse(text.trim().slice(0, maxLength));
+  if (!parsed.success) {
+    throw new BadRequestError(`The proposed ${what} is empty`);
+  }
+  return parsed.data;
+}
+
 function isCategory(value: string): value is PlanningCategory {
   return (PLANNING_CATEGORIES as readonly string[]).includes(value);
 }
@@ -114,16 +131,34 @@ export class PlanningIntakeService {
     by: { discordId: string; sourceUrl: string | null },
   ): Promise<PlanningIntakeResult> {
     if (proposal.action === "comment") {
+      const body = accepted(
+        planningCommentSchema,
+        proposal.body,
+        PLANNING_COMMENT_MAX_LENGTH,
+        "comment",
+      );
       const item = await Q.planning.item.get({ id: proposal.cardId });
       await Q.planning.item.comment.create({
         itemId: item.id,
         authorDiscordId: by.discordId,
-        body: proposal.body.slice(0, PLANNING_COMMENT_MAX_LENGTH),
+        body,
         sourceUrl: by.sourceUrl,
       });
       return this.result("commented", item.id, item.title);
     }
 
+    const title = accepted(
+      planningTitleSchema,
+      proposal.title,
+      PLANNING_TITLE_MAX_LENGTH,
+      "title",
+    );
+    const body = accepted(
+      planningTextSchema,
+      proposal.body,
+      PLANNING_TEXT_MAX_LENGTH,
+      "details",
+    );
     if (!isCategory(proposal.category)) {
       throw new BadRequestError(
         `Unknown planning category "${proposal.category}"`,
@@ -135,8 +170,8 @@ export class PlanningIntakeService {
         : await Q.planning.subcategory.find({ id: proposal.subcategoryId });
     const item = await planningRepo.createItem(
       {
-        title: proposal.title.slice(0, PLANNING_TITLE_MAX_LENGTH),
-        body: proposal.body.slice(0, PLANNING_TEXT_MAX_LENGTH),
+        title,
+        body,
         category: proposal.category,
         subcategoryId:
           subcategory?.category === proposal.category ? subcategory.id : null,
@@ -173,11 +208,10 @@ export class PlanningIntakeService {
           ],
         },
       ),
-      Q.planning.item
-        .where({})
-        .orderBy("updatedAt", "desc")
-        .limit(MAX_CARDS)
-        .all(),
+      Q.planning.item.findAll(
+        {},
+        { orderBy: "updatedAt", orderDirection: "desc", limit: MAX_CARDS },
+      ),
     ]);
     const subcategoryName = new Map(subcategories.map((s) => [s.id, s.name]));
 

@@ -5,22 +5,15 @@ import { assertPatchNotEmpty, auditActor, findOrThrow, id } from "@/trpc/utils";
 import { discordId } from "@/utils/zod-schemas";
 import {
   PLANNING_CATEGORIES,
-  PLANNING_COMMENT_MAX_LENGTH,
   PLANNING_ITEM_STATUSES,
-  PLANNING_TEXT_MAX_LENGTH,
-  PLANNING_TITLE_MAX_LENGTH,
+  planningCommentSchema,
+  planningTextSchema,
+  planningTitleSchema,
 } from "@createrington/shared/planning";
 import { byName, loadPeople } from "./people";
 
 const MAX_ASSIGNEES = 20;
 
-const title = z.string().trim().min(1).max(PLANNING_TITLE_MAX_LENGTH);
-const longText = z
-  .string()
-  .trim()
-  .max(PLANNING_TEXT_MAX_LENGTH)
-  .transform((value) => value || null)
-  .nullable();
 const category = z.enum(PLANNING_CATEGORIES);
 const status = z.enum(PLANNING_ITEM_STATUSES);
 const subcategoryId = id().nullable();
@@ -148,8 +141,8 @@ export const planningItemsRouter = router({
     .meta({ description: "Create a planning item" })
     .input(
       z.object({
-        title,
-        body: longText.default(null),
+        title: planningTitleSchema,
+        body: planningTextSchema.default(null),
         category,
         subcategoryId: subcategoryId.default(null),
         status: status.default("inbox"),
@@ -176,12 +169,12 @@ export const planningItemsRouter = router({
       z.object({
         id: id(),
         revision: z.number().int().positive(),
-        title: title.optional(),
-        body: longText.optional(),
+        title: planningTitleSchema.optional(),
+        body: planningTextSchema.optional(),
         category: category.optional(),
         subcategoryId: subcategoryId.optional(),
         status: status.optional(),
-        decision: longText.optional(),
+        decision: planningTextSchema.optional(),
       }),
     )
     .mutation(async ({ input, ctx }) => {
@@ -239,7 +232,7 @@ export const planningItemsRouter = router({
       .input(
         z.object({
           id: id(),
-          body: z.string().trim().min(1).max(PLANNING_COMMENT_MAX_LENGTH),
+          body: planningCommentSchema,
         }),
       )
       .mutation(async ({ input, ctx }) => {

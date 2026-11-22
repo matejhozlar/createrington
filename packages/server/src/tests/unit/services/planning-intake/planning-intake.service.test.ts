@@ -42,9 +42,7 @@ vi.mock("@/db", () => ({
           board.subcategories.find((s) => s.id === id) ?? null,
       },
       item: {
-        where: () => ({
-          orderBy: () => ({ limit: () => ({ all: async () => board.items }) }),
-        }),
+        findAll: async () => board.items,
         get: async ({ id }: { id: number }) => {
           const item = board.items.find((i) => i.id === id);
           if (!item) throw new Error("planning_item not found");
@@ -173,6 +171,51 @@ describe("PlanningIntakeService.apply", () => {
       "555",
       { sourceUrl: SOURCE },
     );
+  });
+
+  it("applies the website's input rules to a proposed card", async () => {
+    await planningIntakeService.apply(
+      {
+        action: "create",
+        title: "  Rework the shops  ",
+        body: "   ",
+        category: "modpack",
+        subcategoryId: null,
+      },
+      by,
+    );
+
+    expect(board.createItem).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Rework the shops", body: null }),
+      "555",
+      { sourceUrl: SOURCE },
+    );
+  });
+
+  it("refuses a card without a title", async () => {
+    await expect(
+      planningIntakeService.apply(
+        {
+          action: "create",
+          title: "   ",
+          body: "Shops should sell claim upgrades.",
+          category: "modpack",
+          subcategoryId: null,
+        },
+        by,
+      ),
+    ).rejects.toThrow("The proposed title is empty");
+    expect(board.createItem).not.toHaveBeenCalled();
+  });
+
+  it("refuses an empty comment", async () => {
+    await expect(
+      planningIntakeService.apply(
+        { action: "comment", cardId: 7, cardTitle: "Any", body: "  " },
+        by,
+      ),
+    ).rejects.toThrow("The proposed comment is empty");
+    expect(board.createComment).not.toHaveBeenCalled();
   });
 
   it("refuses a category the board does not have", async () => {
