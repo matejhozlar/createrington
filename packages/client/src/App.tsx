@@ -414,6 +414,7 @@ function AppContent() {
                 </ProtectedRoute>
               }
             >
+              <Route index element={<NotFound />} />
               <Route path="dashboard" element={<AdminDashboard />} />
               <Route path="waitlist" element={<AdminWaitlists />} />
               <Route path="players" element={<AdminPlayers />} />
@@ -477,6 +478,7 @@ function AppContent() {
                 </OwnerRoute>
               }
             >
+              <Route index element={<NotFound />} />
               <Route path="admins" element={<OwnerAdmins />} />
               <Route path="donations" element={<OwnerDonations />} />
               {OwnerLauncherReleases && (
