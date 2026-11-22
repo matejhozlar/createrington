@@ -255,6 +255,7 @@ function createScheduler(
     schedule: async () => {
       throw new Error("not used");
     },
+    initialize: async () => undefined,
     shutdown: () => undefined,
   } as unknown as MaintenanceScheduler;
   return state;
@@ -283,7 +284,13 @@ function makeWindow(
 
 function createService(client: MaintenanceModeClient, fake: FakeScheduler) {
   const service = new MaintenanceService(client);
-  service.setScheduler(fake.scheduler);
+  service.attach({
+    scheduler: fake.scheduler,
+    playtimeManager: {
+      getService: () => playtimeEmitter,
+    } as unknown as PlaytimeManagerService,
+    serverIds: [SERVER_ID],
+  });
   return service;
 }
 
@@ -668,12 +675,10 @@ describe("MaintenanceService settings", () => {
     const { mod, client } = createMod({ allowed: [] });
     const fake = createScheduler(makeWindow({ appliedAt: null }));
     const service = createService(client, fake);
-    await service.initialize([SERVER_ID], {
-      getService: () => playtimeEmitter,
-    } as unknown as PlaytimeManagerService);
+    await service.initialize();
     service.shutdown();
 
-    expect(mod.enabled).toBe(true);
+    await vi.waitFor(() => expect(mod.enabled).toBe(true));
     mod.enabled = false;
     mod.allowed = [];
 

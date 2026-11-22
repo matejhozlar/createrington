@@ -106,7 +106,7 @@ export class PlaytimeManagerService {
       pending = this.createService(serverId, options)
         .then((service) => {
           if (this.stopped) {
-            service.stop();
+            service.shutdown();
             throw new Error(
               `PlaytimeManagerService shut down while bringing up server ${serverId}`,
             );
@@ -162,7 +162,7 @@ export class PlaytimeManagerService {
 
     for (const [serverId, service] of this.playtimeServices) {
       logger.info(`Stopping PlaytimeService for server ${serverId}...`);
-      service.stop();
+      service.shutdown();
     }
 
     this.playtimeServices.clear();

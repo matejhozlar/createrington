@@ -31,19 +31,10 @@ export interface LauncherJwtPayload extends LauncherTokenClaims {
  * verifying in that state throws.
  */
 export class LauncherJwtService {
-  private static instance: LauncherJwtService;
-
   private readonly secret: string;
 
-  private constructor() {
+  constructor() {
     this.secret = config.app.auth.launcherAccessToken.secret;
-  }
-
-  static getInstance(): LauncherJwtService {
-    if (!LauncherJwtService.instance) {
-      LauncherJwtService.instance = new LauncherJwtService();
-    }
-    return LauncherJwtService.instance;
   }
 
   /** True when `LAUNCHER_JWT_SECRET` is configured and launcher sign-in can be offered. */
@@ -103,7 +94,7 @@ export class LauncherJwtService {
   }
 }
 
-export const launcherJwtService = LauncherJwtService.getInstance();
+export const launcherJwtService = new LauncherJwtService();
 
 function assertLauncherJwtPayload(value: unknown): LauncherJwtPayload {
   if (!value || typeof value !== "object") {

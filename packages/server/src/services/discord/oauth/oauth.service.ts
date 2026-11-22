@@ -59,25 +59,15 @@ interface OAuthConfig {
  * resolves the caller's application role (ADMIN / USER / UNVERIFIED) from the
  * player and admin tables, throwing `UnverifiedUserError` when the Discord
  * account has no matching player. Required env vars are validated at
- * construction so misconfiguration fails on first `getInstance` rather than
+ * construction so misconfiguration fails when the module loads rather than
  * at first login.
  */
 export class DiscordOAuthService {
-  private static instance: DiscordOAuthService;
-
   private readonly config: OAuthConfig;
 
-  private constructor() {
+  constructor() {
     this.config = appConfig.discord.oauth;
     this.validate();
-  }
-
-  /** Returns the singleton instance, creating (and validating env) on first call. */
-  static getInstance(): DiscordOAuthService {
-    if (!DiscordOAuthService.instance) {
-      DiscordOAuthService.instance = new DiscordOAuthService();
-    }
-    return DiscordOAuthService.instance;
   }
 
   private validate(): void {
@@ -261,4 +251,4 @@ export class DiscordOAuthService {
   }
 }
 
-export const discordOAuth = DiscordOAuthService.getInstance();
+export const discordOAuth = new DiscordOAuthService();

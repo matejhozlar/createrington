@@ -9,23 +9,14 @@ import { baseCookieOptions } from "./cookie-options";
  * `COOKIE_DOMAIN` is unset; the Bearer-header transport keeps working in parallel.
  */
 class AccessCookieService {
-  private static instance: AccessCookieService;
-
   private readonly cookieName: string;
   private readonly cookieDomain: string | undefined;
   private readonly maxAgeMs: number;
 
-  private constructor() {
+  constructor() {
     this.cookieName = config.app.auth.cookie.accessName;
     this.cookieDomain = config.app.auth.cookie.domain;
     this.maxAgeMs = config.app.auth.refreshToken.expiresInDays * 86_400_000;
-  }
-
-  static getInstance(): AccessCookieService {
-    if (!AccessCookieService.instance) {
-      AccessCookieService.instance = new AccessCookieService();
-    }
-    return AccessCookieService.instance;
   }
 
   /** True when `COOKIE_DOMAIN` is set; the cookie is otherwise pointless. */
@@ -70,4 +61,4 @@ class AccessCookieService {
   }
 }
 
-export const accessCookieService = AccessCookieService.getInstance();
+export const accessCookieService = new AccessCookieService();

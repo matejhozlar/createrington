@@ -56,10 +56,6 @@ export interface DeletePlayerOptions {
 export class PlayerDeletionService {
   private readonly hooks: PostDeletionHook[] = [];
 
-  initialize(): void {
-    logger.info("PlayerDeletionService initialized");
-  }
-
   /** Register a fire-and-forget side effect that runs after every successful deletion. */
   onDeleted(hook: PostDeletionHook): void {
     this.hooks.push(hook);

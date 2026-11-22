@@ -49,6 +49,16 @@ import { StructurePackRotationService } from "./structure-pack/rotation/rotation
 import { PlayerPromptService } from "./player-prompt";
 import { redisService } from "./redis";
 import { VoteIntake, VoteRewardService, VotifierService } from "./votifier";
+import { sessionService } from "./auth/session/session.service";
+import { launcherSessionService } from "./auth/launcher/launcher-session.service";
+import { minecraftRcon } from "@/utils/rcon";
+
+function closeHttpServer(server: http.Server): Promise<void> {
+  return new Promise((resolve) => {
+    server.close(() => resolve());
+    server.closeAllConnections();
+  });
+}
 
 /**
  * Registers all application services with the shared container
@@ -62,17 +72,27 @@ import { VoteIntake, VoteRewardService, VotifierService } from "./votifier";
  * requiring a live Minecraft server connection during local development.
  */
 export function registerServices(): void {
-  container.register(Services.DATABASE, [], async () => {
-    logger.debug("Verifying database connection...");
-    await pool.query("SELECT 1");
-    return pool;
-  });
+  container.register(
+    Services.DATABASE,
+    [],
+    async () => {
+      logger.debug("Verifying database connection...");
+      await pool.query("SELECT 1");
+      return pool;
+    },
+    { shutdown: (database) => database.end() },
+  );
 
-  container.register(Services.HTTP_SERVER, [], () => {
-    logger.debug("Creating HTTP server...");
-    const app = createApp();
-    return http.createServer(app);
-  });
+  container.register(
+    Services.HTTP_SERVER,
+    [],
+    () => {
+      logger.debug("Creating HTTP server...");
+      const app = createApp();
+      return http.createServer(app);
+    },
+    { shutdown: closeHttpServer },
+  );
 
   if (redisService.enabled) {
     container.register(Services.REDIS, [], () => {
@@ -84,6 +104,25 @@ export function registerServices(): void {
       "Redis not configured, caches and rate limits stay in process memory",
     );
   }
+
+  container.register(Services.RCON_MANAGER, [], () => {
+    minecraftRcon.initialize();
+    return minecraftRcon;
+  });
+
+  container.register(Services.SESSION_SERVICE, [Services.DATABASE], () => {
+    sessionService.initialize();
+    return sessionService;
+  });
+
+  container.register(
+    Services.LAUNCHER_SESSION_SERVICE,
+    [Services.DATABASE],
+    () => {
+      launcherSessionService.initialize();
+      return launcherSessionService;
+    },
+  );
 
   container.register(
     Services.PUPPETEER_SERVICE,
@@ -102,21 +141,26 @@ export function registerServices(): void {
     logger.warn("OpenAI API key not configured, AI service disabled");
   }
 
-  container.register(Services.DISCORD_MAIN_BOT, [], async () => {
-    logger.info("Logging in main Discord bot...");
+  container.register(
+    Services.DISCORD_MAIN_BOT,
+    [],
+    async () => {
+      logger.info("Logging in main Discord bot...");
 
-    await mainBot.login(config.discord.bots.main.token);
-    await new Promise<void>((resolve) => {
-      mainBot.once("clientReady", () => {
-        logger.info(`Main bot logged in: ${mainBot.user?.tag}`);
-        resolve();
+      await mainBot.login(config.discord.bots.main.token);
+      await new Promise<void>((resolve) => {
+        mainBot.once("clientReady", () => {
+          logger.info(`Main bot logged in: ${mainBot.user?.tag}`);
+          resolve();
+        });
       });
-    });
 
-    await setupMainBotHandlers(mainBot);
+      await setupMainBotHandlers(mainBot);
 
-    return mainBot;
-  });
+      return mainBot;
+    },
+    { shutdown: (bot) => bot.destroy() },
+  );
 
   container.register(
     Services.MESSAGE_SERVICE,
@@ -314,7 +358,6 @@ export function registerServices(): void {
   );
 
   container.register(Services.PLAYER_DELETION_SERVICE, [], () => {
-    playerDeletionService.initialize();
     playerDeletionService.onDeleted(async (player) => {
       try {
         await waitlistService.expireForPlayerDeletion(player.discordId);
@@ -405,18 +448,23 @@ export function registerServices(): void {
     (httpServer, messageCacheService, playtimeManagerService) => {
       logger.info("Initializing WebSocket service...");
 
-      const websocketService = new WebSocketService(httpServer, {
-        cors: {
-          origin: config.envMode.isDev
-            ? config.app.devClientOrigin
-            : config.meta.links.website,
-          credentials: true,
+      const websocketService = new WebSocketService(
+        httpServer,
+        messageCacheService,
+        playtimeManagerService,
+        {
+          cors: {
+            origin: config.envMode.isDev
+              ? config.app.devClientOrigin
+              : config.meta.links.website,
+            credentials: true,
+          },
+          path: "/socket.io",
+          maxInitialMessages: 100,
         },
-        path: "/socket.io",
-        maxInitialMessages: 100,
-      });
+      );
 
-      websocketService.initialize(messageCacheService, playtimeManagerService);
+      websocketService.initialize();
 
       return websocketService;
     },
@@ -424,14 +472,7 @@ export function registerServices(): void {
 
   container.register(Services.STRUCTURE_PACK_ROTATION, [], async () => {
     const service = new StructurePackRotationService(structurePackService);
-
-    try {
-      await service.initialize();
-      logger.info("Structure pack rotation service initialized");
-    } catch (error) {
-      logger.warn(`Structure pack rotation scheduling failed: ${error}`);
-    }
-
+    await service.initialize();
     return service;
   });
 
@@ -439,24 +480,12 @@ export function registerServices(): void {
     Services.MAINTENANCE_SERVICE,
     [Services.MESSAGE_SERVICE, Services.PLAYTIME_MANAGER_SERVICE],
     async (messageService, playtimeManager) => {
-      try {
-        const scheduler = new MaintenanceScheduler(
-          maintenanceService,
-          messageService,
-        );
-        maintenanceService.setScheduler(scheduler);
-        await scheduler.initialize();
-        logger.info("Maintenance scheduler initialized");
-      } catch (error) {
-        logger.warn(`Maintenance scheduler init failed: ${error}`);
-      }
-
-      maintenanceService
-        .initialize(SERVER_IDS, playtimeManager)
-        .catch((error) =>
-          logger.warn(`Maintenance service init failed: ${error}`),
-        );
-
+      maintenanceService.attach({
+        scheduler: new MaintenanceScheduler(maintenanceService, messageService),
+        playtimeManager,
+        serverIds: SERVER_IDS,
+      });
+      await maintenanceService.initialize();
       return maintenanceService;
     },
   );
@@ -529,8 +558,9 @@ export async function initializeServices(): Promise<void> {
 /**
  * Gracefully shuts down all registered services in reverse order
  *
- * Delegates to `container.shutdown()`, which calls each service's `shutdown()`
- * method where available and clears the registry.
+ * Delegates to `container.shutdown()`, which runs each ready service's
+ * teardown (its own `shutdown()` or the one passed at registration) and
+ * clears the registry.
  */
 export async function shutdownServices(): Promise<void> {
   await container.shutdown();

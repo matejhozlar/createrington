@@ -35,6 +35,9 @@ import type { RedisService } from "./redis";
 import type { MaintenanceService } from "./maintenance/maintenance.service";
 import type { VotifierService } from "./votifier/votifier.service";
 import type { VoteRewardService } from "./votifier/vote-reward.service";
+import type { SessionService } from "./auth/session/session.service";
+import type { LauncherSessionService } from "./auth/launcher/launcher-session.service";
+import type { MinecraftRconManager } from "@/utils/rcon/manager";
 
 export enum ServiceState {
   UNINITIALIZED = "uninitialized",
@@ -42,6 +45,28 @@ export enum ServiceState {
   READY = "ready",
   FAILED = "failed",
 }
+
+/**
+ * What the container expects of a registered service: an optional
+ * `initialize()` the factory awaits before returning and an optional
+ * `shutdown()` the container calls at teardown, neither taking arguments
+ */
+export interface Lifecycle {
+  initialize?(): void | Promise<void>;
+  shutdown?(): void | Promise<void>;
+}
+
+type LifecycleMap<TMap> = {
+  [K in keyof TMap]: Pick<Lifecycle, Extract<keyof TMap[K], keyof Lifecycle>>;
+};
+
+type Teardown<T> = (instance: T) => void | Promise<void>;
+
+interface RegisterOptions<T> {
+  shutdown?: Teardown<T>;
+}
+
+const SHUTDOWN_TIMEOUT_MS = 10_000;
 
 type ServiceName<TMap> = keyof TMap & string;
 
@@ -58,6 +83,7 @@ interface ServiceDefinition {
   name: string;
   factory: (...dependencies: unknown[]) => unknown;
   dependencies: readonly string[];
+  teardown?: Teardown<unknown>;
   state: ServiceState;
   instance?: unknown;
   error?: Error;
@@ -74,15 +100,17 @@ interface ServiceDefinition {
  * required services. An optional one is registered only when its feature is
  * configured and is read back with `getOptional`, which returns null instead
  * of throwing when it was never registered. Dependency cycles are rejected
- * at init time.
+ * at init time. Every registered type satisfies `Lifecycle`; a handle the app
+ * does not own (pg Pool, http.Server, Discord client) passes its teardown at
+ * registration instead.
  *
  * NOTE: The singleton `container` instance exported from this module is the
  * authoritative registry: all services must be registered through it before
  * `initializeAll()` is called during server startup
  */
 export class ServiceContainer<
-  TRequired extends object,
-  TOptional extends object = Record<never, never>,
+  TRequired extends LifecycleMap<TRequired>,
+  TOptional extends LifecycleMap<TOptional> = Record<never, never>,
 > {
   private services: Map<string, ServiceDefinition> = new Map();
   private initializationPromises: Map<string, Promise<unknown>> = new Map();
@@ -91,6 +119,7 @@ export class ServiceContainer<
    * Registers a service with the services its factory receives, in order
    *
    * Duplicate registrations throw immediately to catch wiring mistakes early.
+   * `options.shutdown` replaces the instance's own `shutdown()` at teardown.
    */
   register<
     K extends ServiceName<TRequired & TOptional>,
@@ -101,6 +130,7 @@ export class ServiceContainer<
     factory: (
       ...dependencies: ResolvedDependencies<TRequired, D>
     ) => (TRequired & TOptional)[K] | Promise<(TRequired & TOptional)[K]>,
+    options: RegisterOptions<(TRequired & TOptional)[K]> = {},
   ): void {
     if (this.services.has(name)) {
       throw new Error(`Service ${name} is already registered`);
@@ -110,6 +140,7 @@ export class ServiceContainer<
       name,
       factory: factory as (...dependencies: unknown[]) => unknown,
       dependencies,
+      teardown: options.shutdown as Teardown<unknown> | undefined,
       state: ServiceState.UNINITIALIZED,
     });
 
@@ -305,35 +336,42 @@ export class ServiceContainer<
   }
 
   /**
-   * Shuts down all services in reverse registration order
+   * Shuts down all ready services in reverse registration order
    *
-   * Calls `shutdown()` on every service instance that implements it, tolerating
-   * individual failures so that all services get a chance to clean up. Clears
-   * both the service registry and any pending initialisation promises.
+   * Runs each service's registered teardown, or its own `shutdown()`, giving
+   * each one at most 10 seconds and moving on past a failure or a timeout so
+   * every service gets a chance to clean up. Clears the registry afterwards.
    */
   async shutdown(): Promise<void> {
     logger.info("Shutting down services...");
 
-    const isShutdownable = (
-      instance: unknown,
-    ): instance is { shutdown: () => Promise<void> | void } =>
-      typeof instance === "object" &&
-      instance !== null &&
-      "shutdown" in instance &&
-      typeof (instance as Record<string, unknown>).shutdown === "function";
-
-    const shutdownableServices = Array.from(this.services.values())
-      .filter((s) => isShutdownable(s.instance))
+    const ready = Array.from(this.services.values())
+      .filter((s) => s.state === ServiceState.READY)
       .reverse();
 
-    for (const service of shutdownableServices) {
+    for (const service of ready) {
+      const teardown = this.teardownOf(service);
+      if (!teardown) continue;
+
+      logger.debug(`Shutting down: ${service.name}`);
+      let timer: NodeJS.Timeout | undefined;
       try {
-        logger.debug(`Shutting down: ${service.name}`);
-        if (isShutdownable(service.instance)) {
-          await service.instance.shutdown();
-        }
+        await Promise.race([
+          teardown(),
+          new Promise<never>((_, reject) => {
+            timer = setTimeout(
+              () =>
+                reject(
+                  new Error(`timed out after ${SHUTDOWN_TIMEOUT_MS / 1000}s`),
+                ),
+              SHUTDOWN_TIMEOUT_MS,
+            );
+          }),
+        ]);
       } catch (error) {
         logger.error(`Failed to shutdown ${service.name}:`, error);
+      } finally {
+        clearTimeout(timer);
       }
     }
 
@@ -341,6 +379,16 @@ export class ServiceContainer<
     this.initializationPromises.clear();
 
     logger.info("All services shutdown");
+  }
+
+  private teardownOf(
+    service: ServiceDefinition,
+  ): (() => void | Promise<void>) | null {
+    const { instance, teardown } = service;
+    if (teardown) return () => teardown(instance);
+    const own = (instance as Lifecycle | null | undefined)?.shutdown;
+    if (typeof own === "function") return () => own.call(instance);
+    return null;
   }
 }
 
@@ -379,6 +427,9 @@ export const Services = {
   GALLERY_SERVICE: "gallery.service",
   APP_EMOJI_SERVICE: "discord.appEmojiService",
   REDIS: "infra.redisService",
+  RCON_MANAGER: "minecraft.rconManager",
+  SESSION_SERVICE: "auth.sessionService",
+  LAUNCHER_SESSION_SERVICE: "auth.launcherSessionService",
   MAINTENANCE_SERVICE: "server.maintenanceService",
   VOTIFIER_SERVICE: "server.votifierService",
   VOTE_REWARD_SERVICE: "server.voteRewardService",
@@ -387,6 +438,9 @@ export const Services = {
 export interface RequiredServiceTypeMap {
   [Services.DATABASE]: Pool;
   [Services.HTTP_SERVER]: Server;
+  [Services.RCON_MANAGER]: MinecraftRconManager;
+  [Services.SESSION_SERVICE]: SessionService;
+  [Services.LAUNCHER_SESSION_SERVICE]: LauncherSessionService;
   [Services.DISCORD_MAIN_BOT]: Client;
   [Services.MESSAGE_SERVICE]: DiscordMessageService;
   [Services.MESSAGE_CACHE]: MessageCacheService;

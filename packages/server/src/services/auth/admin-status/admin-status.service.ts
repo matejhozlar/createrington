@@ -14,17 +14,7 @@ interface CacheEntry {
  * every call. Singleton; cache lives for the process lifetime.
  */
 class AdminStatusService {
-  private static instance: AdminStatusService;
   private cache = new Map<string, CacheEntry>();
-
-  private constructor() {}
-
-  static getInstance(): AdminStatusService {
-    if (!AdminStatusService.instance) {
-      AdminStatusService.instance = new AdminStatusService();
-    }
-    return AdminStatusService.instance;
-  }
 
   /** Returns whether the user is an admin, serving cached results for up to 30s. */
   async isAdmin(discordId: string): Promise<boolean> {
@@ -52,4 +42,4 @@ class AdminStatusService {
   }
 }
 
-export const adminStatusService = AdminStatusService.getInstance();
+export const adminStatusService = new AdminStatusService();

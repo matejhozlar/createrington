@@ -77,25 +77,29 @@ export class MaintenanceService {
   private reconciling = new Set<number>();
   private withLock = createKeyedLock<number>();
   private serverIds: readonly number[] = [];
+  private playtimeManager: PlaytimeManagerService | null = null;
 
   constructor(
     private readonly mmode: MaintenanceModeClient = new MaintenanceModeClient(),
   ) {}
 
-  /** Wire the scheduler after both are constructed (avoids a circular import). */
-  setScheduler(scheduler: MaintenanceScheduler): void {
-    this.scheduler = scheduler;
+  /** Wire the scheduler and the playtime manager after all are constructed (avoids a circular import). */
+  attach(deps: {
+    scheduler: MaintenanceScheduler;
+    playtimeManager: PlaytimeManagerService;
+    serverIds: readonly number[];
+  }): void {
+    this.scheduler = deps.scheduler;
+    this.playtimeManager = deps.playtimeManager;
+    this.serverIds = deps.serverIds;
   }
 
-  /** Subscribe to server online events, run the first reconcile, and start the periodic one. */
-  async initialize(
-    serverIds: readonly number[],
-    playtimeManager: PlaytimeManagerService,
-  ): Promise<void> {
-    this.serverIds = serverIds;
+  /** Start the scheduler, subscribe to server online events, start the periodic reconcile, and kick off the first one in the background. */
+  async initialize(): Promise<void> {
+    await this.scheduler?.initialize();
 
-    for (const serverId of serverIds) {
-      playtimeManager.getService(serverId)?.on("serverOnline", () => {
+    for (const serverId of this.serverIds) {
+      this.playtimeManager?.getService(serverId)?.on("serverOnline", () => {
         this.onServerOnline(serverId).catch((error) =>
           logger.warn(
             `Maintenance sync after server ${serverId} came online failed: ${error}`,
@@ -114,15 +118,13 @@ export class MaintenanceService {
       }
     }, RECONCILE_INTERVAL_MS);
 
-    await Promise.all(
-      serverIds.map((serverId) =>
-        this.reconcile(serverId).catch((error) =>
-          logger.warn(
-            `Initial maintenance reconcile for server ${serverId} failed: ${error}`,
-          ),
+    for (const serverId of this.serverIds) {
+      this.reconcile(serverId).catch((error) =>
+        logger.warn(
+          `Initial maintenance reconcile for server ${serverId} failed: ${error}`,
         ),
-      ),
-    );
+      );
+    }
   }
 
   /** Stop the periodic reconcile and the scheduler's timers. */
