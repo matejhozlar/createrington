@@ -1,15 +1,8 @@
 import { z } from "zod";
 import { guildChannelsProcedure } from "../guild-channels";
 import { router, adminProcedure } from "@/trpc/trpc";
-import { Q, db } from "@/db";
-import type { AdminActionType } from "@createrington/shared/admin-action";
-import {
-  findOrThrow,
-  auditActor,
-  assertPatchNotEmpty,
-  trpcError,
-  id,
-} from "@/trpc/utils";
+import { Q } from "@/db";
+import { findOrThrow, assertPatchNotEmpty, trpcError, id } from "@/trpc/utils";
 import { getServiceSync, Services } from "@/services";
 
 const MAX_FOLLOWUPS_PER_MESSAGE = 5;
@@ -19,20 +12,6 @@ const followupInputSchema = z.object({
   delaySeconds: z.number().int().min(1).max(3600),
   enabled: z.boolean().default(true),
 });
-
-async function logAutoMessageAction(
-  ctx: { user: { discordId: string; minecraftUsername: string } },
-  actionType: AdminActionType,
-  description: string,
-  metadata?: Record<string, unknown>,
-) {
-  await Q.admin.log.action.logAction({
-    ...auditActor(ctx),
-    actionType,
-    description,
-    metadata,
-  });
-}
 
 export const autoMessagesRouter = router({
   channels: guildChannelsProcedure,
@@ -103,28 +82,12 @@ export const autoMessagesRouter = router({
           rotationMode: z.enum(["sequential", "random"]).default("sequential"),
         }),
       )
-      .mutation(async ({ input, ctx }) => {
-        const created = await Q.discord.auto.message.config.createAndReturn({
-          name: input.name,
-          channelId: input.channelId,
-          enabled: input.enabled,
-          intervalMinutes: input.intervalMinutes,
-          rotationMode: input.rotationMode,
-        });
-
-        if (input.enabled) {
-          const service = getServiceSync(Services.AUTO_MESSAGE_SERVICE);
-          await service.startConfig(created.id);
-        }
-
-        await logAutoMessageAction(
-          ctx,
-          "auto_message_config_create",
-          `Created auto-message config "${input.name}"`,
-        );
-
-        return created;
-      }),
+      .mutation(async ({ input, ctx }) =>
+        getServiceSync(Services.AUTO_MESSAGE_SERVICE).createConfig(
+          input,
+          ctx.user,
+        ),
+      ),
 
     update: adminProcedure
       .meta({ description: "Update an auto-message config" })
@@ -139,22 +102,12 @@ export const autoMessagesRouter = router({
         }),
       )
       .mutation(async ({ input, ctx }) => {
-        const existing = await findOrThrow(
-          Q.discord.auto.message.config.find({ id: input.id }),
-          "Config not found",
-        );
-
-        const { id, ...updates } = input;
-        assertPatchNotEmpty(updates);
-        await Q.discord.auto.message.config.update({ id }, updates);
-
-        const service = getServiceSync(Services.AUTO_MESSAGE_SERVICE);
-        await service.restartConfig(id);
-
-        await logAutoMessageAction(
-          ctx,
-          "auto_message_config_update",
-          `Updated auto-message config "${existing.name}"`,
+        const { id, ...patch } = input;
+        assertPatchNotEmpty(patch);
+        await getServiceSync(Services.AUTO_MESSAGE_SERVICE).updateConfig(
+          id,
+          patch,
+          ctx.user,
         );
       }),
 
@@ -162,20 +115,9 @@ export const autoMessagesRouter = router({
       .meta({ description: "Delete an auto-message config" })
       .input(z.object({ id: id() }))
       .mutation(async ({ input, ctx }) => {
-        const existing = await findOrThrow(
-          Q.discord.auto.message.config.find({ id: input.id }),
-          "Config not found",
-        );
-
-        const service = getServiceSync(Services.AUTO_MESSAGE_SERVICE);
-        service.stopConfig(input.id);
-
-        await Q.discord.auto.message.config.delete({ id: input.id });
-
-        await logAutoMessageAction(
-          ctx,
-          "auto_message_config_delete",
-          `Deleted auto-message config "${existing.name}"`,
+        await getServiceSync(Services.AUTO_MESSAGE_SERVICE).deleteConfig(
+          input.id,
+          ctx.user,
         );
       }),
   }),
@@ -195,33 +137,13 @@ export const autoMessagesRouter = router({
             .default([]),
         }),
       )
-      .mutation(async ({ input }) => {
-        await findOrThrow(
-          Q.discord.auto.message.config.find({ id: input.configId }),
-          "Config not found",
+      .mutation(({ input }) => {
+        const { configId, followups, ...fields } = input;
+        return getServiceSync(Services.AUTO_MESSAGE_SERVICE).createMessage(
+          configId,
+          fields,
+          followups,
         );
-
-        return await db.inTransaction(async (tx) => {
-          const created = await tx.discord.auto.message.createAndReturn({
-            configId: input.configId,
-            content: input.content,
-            sortOrder: input.sortOrder,
-            enabled: input.enabled,
-          });
-
-          for (let i = 0; i < input.followups.length; i++) {
-            const f = input.followups[i];
-            await tx.discord.auto.message.followup.create({
-              messageId: created.id,
-              content: f.content,
-              delaySeconds: f.delaySeconds,
-              enabled: f.enabled,
-              sortOrder: i,
-            });
-          }
-
-          return created;
-        });
       }),
 
     update: adminProcedure
@@ -239,35 +161,12 @@ export const autoMessagesRouter = router({
         }),
       )
       .mutation(async ({ input }) => {
-        await findOrThrow(
-          Q.discord.auto.message.find({ id: input.id }),
-          "Message not found",
+        const { id, followups, ...patch } = input;
+        await getServiceSync(Services.AUTO_MESSAGE_SERVICE).updateMessage(
+          id,
+          patch,
+          followups,
         );
-
-        const { id, followups, ...updates } = input;
-
-        await db.inTransaction(async (tx) => {
-          if (Object.keys(updates).length > 0) {
-            await tx.discord.auto.message.update({ id }, updates);
-          }
-
-          if (followups !== undefined) {
-            await tx.discord.auto.message.followup.deleteAll({
-              messageId: id,
-            });
-
-            for (let i = 0; i < followups.length; i++) {
-              const f = followups[i];
-              await tx.discord.auto.message.followup.create({
-                messageId: id,
-                content: f.content,
-                delaySeconds: f.delaySeconds,
-                enabled: f.enabled,
-                sortOrder: i,
-              });
-            }
-          }
-        });
       }),
 
     delete: adminProcedure
