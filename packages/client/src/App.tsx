@@ -214,6 +214,10 @@ const AdminPlanning = lazyNamed(
   () => import("./features/admin/planning/AdminPlanning"),
   "AdminPlanning",
 );
+const PlanDetail = lazyNamed(
+  () => import("./features/admin/planning/plan-detail/PlanDetail"),
+  "PlanDetail",
+);
 const AdminWorkshopDetail = lazyNamed(
   () =>
     import("./features/admin/workshop/workshop-admin-detail/AdminWorkshopDetail"),
@@ -439,6 +443,7 @@ function AppContent() {
                         element={<AdminPlayerDetail />}
                       />
                       <Route path="planning" element={<AdminPlanning />} />
+                      <Route path="planning/:id" element={<PlanDetail />} />
                       <Route path="servers" element={<AdminServers />} />
                       <Route
                         path="servers/:id"

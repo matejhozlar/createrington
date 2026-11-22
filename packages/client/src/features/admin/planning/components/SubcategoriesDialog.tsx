@@ -21,14 +21,13 @@ import {
   type PlanningCategory,
 } from "@createrington/shared/planning";
 import { CATEGORY_CONFIG } from "../constants";
-import type { PlanningItem, PlanningSubcategory } from "../types";
+import type { PlanningSubcategory } from "../types";
 
 interface SubcategoriesDialogProps {
   open: boolean;
   onClose: () => void;
   defaultCategory: PlanningCategory;
   subcategories: PlanningSubcategory[];
-  items: PlanningItem[];
 }
 
 export function SubcategoriesDialog({
@@ -36,7 +35,6 @@ export function SubcategoriesDialog({
   onClose,
   defaultCategory,
   subcategories,
-  items,
 }: SubcategoriesDialogProps) {
   const [category, setCategory] = useState(defaultCategory);
   const [newName, setNewName] = useState("");
@@ -78,9 +76,6 @@ export function SubcategoriesDialog({
   );
 
   const rows = subcategories.filter((s) => s.category === category);
-  const cardCount = (id: number) =>
-    items.filter((item) => item.subcategoryId === id).length;
-
   return (
     <Dialog
       open={open}
@@ -92,7 +87,7 @@ export function SubcategoriesDialog({
         <DialogHeader>
           <DialogTitle>Subcategories</DialogTitle>
           <DialogDescription>
-            The sections inside each category. Deleting one keeps its cards in
+            The sections inside each category. Deleting one keeps its plans in
             the category.
           </DialogDescription>
         </DialogHeader>
@@ -168,7 +163,7 @@ export function SubcategoriesDialog({
                   {subcategory.name}
                 </span>
                 <span className="text-xs text-muted-foreground">
-                  {pluralize(cardCount(subcategory.id), "card")}
+                  {pluralize(subcategory.itemCount, "plan")}
                 </span>
                 <Button
                   type="button"
@@ -229,7 +224,7 @@ export function SubcategoriesDialog({
             deleting && (
               <>
                 Delete <span className="font-semibold">{deleting.name}</span>?{" "}
-                {pluralize(cardCount(deleting.id), "card")} will stay in{" "}
+                {pluralize(deleting.itemCount, "plan")} will stay in{" "}
                 {CATEGORY_CONFIG[deleting.category].label} without a
                 subcategory.
               </>

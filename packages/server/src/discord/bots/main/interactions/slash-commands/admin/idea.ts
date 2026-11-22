@@ -36,22 +36,22 @@ const START_ERRORS = {
 
 const FAILURE_REASONS: Record<string, string> = {
   timeout: "Claude ran out of time before finishing.",
-  invalid_result: "Claude did not produce a usable card.",
+  invalid_result: "Claude did not produce a usable plan.",
   auth_error: "Claude automation could not authenticate.",
   orphaned: "Claude automation lost track of this session.",
   closed: "The session was stopped before it finished.",
 };
 
 const SAVED_TITLES = {
-  created: "Card added to the board",
-  commented: "Comment added to a card",
+  created: "Draft added to planning",
+  commented: "Comment added to a plan",
 } as const;
 
 const data = addTranscriptOptions(
   new SlashCommandBuilder()
     .setName("idea")
     .setDescription(
-      "Have Claude add the recent discussion here to the planning board",
+      "Have Claude write up the recent discussion here as a planning draft",
     )
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
   "What to capture, if the messages cover more than one thing",
@@ -92,14 +92,14 @@ async function settle(
       );
       return EmbedPresets.error(
         "Could not save",
-        "Claude wrote a proposal, but the board did not accept it. Try again.",
+        "Claude wrote a proposal, but it could not be saved. Try again.",
       );
     }
   }
   if (result === "no_card") {
     return EmbedPresets.info(
       "Nothing to add",
-      reason ?? "Claude found nothing in those messages to put on the board.",
+      reason ?? "Claude found nothing in those messages worth planning.",
     );
   }
   return EmbedPresets.error(

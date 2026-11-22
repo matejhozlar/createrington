@@ -1,10 +1,11 @@
-import type { PlanningItemStatus } from "@createrington/shared/planning";
 import { CATEGORY_CONFIG, STATUS_CONFIG } from "./constants";
 import type {
   PlanningPerson,
   PlanningRevision,
   PlanningSubcategory,
 } from "./types";
+
+const PREVIEW_LENGTH = 320;
 
 export function personName(person: PlanningPerson): string {
   return person.minecraftUsername ?? person.discordId;
@@ -18,18 +19,21 @@ export function subcategoryName(
   return subcategories.find((s) => s.id === id)?.name ?? "Removed subcategory";
 }
 
-export function statusLabel(status: PlanningItemStatus): string {
-  return STATUS_CONFIG[status].label;
-}
-
-function describeText(
-  field: string,
-  before: string | null,
-  after: string | null,
-): string {
-  if (!before) return `Wrote the ${field}`;
-  if (!after) return `Removed the ${field}`;
-  return `Edited the ${field}`;
+export function markdownPreview(markdown: string | null): string {
+  if (!markdown) return "";
+  return markdown
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, " ")
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/^\s*\|?[\s:|-]*-{3,}[\s:|-]*$/gm, " ")
+    .replace(/\|/g, " ")
+    .replace(/^\s{0,3}(#{1,6}|>|[-*+]|\d+\.)\s+/gm, "")
+    .replace(/^\s*\[[ xX]\]\s+/gm, "")
+    .replace(/(\*\*|__|~~|`)/g, "")
+    .replace(/(^|\s)[*_]([^*_\n]+)[*_](?=\s|[.,;:!?]|$)/g, "$1$2")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, PREVIEW_LENGTH);
 }
 
 export function describeRevision(
@@ -37,15 +41,15 @@ export function describeRevision(
   previous: PlanningRevision | undefined,
   subcategories: PlanningSubcategory[],
 ): string[] {
-  if (!previous) return ["Created the card"];
+  if (!previous) return ["Created the plan"];
 
   const changes: string[] = [];
   if (revision.status !== previous.status) {
     changes.push(
-      `Moved from ${statusLabel(previous.status)} to ${statusLabel(revision.status)}`,
+      `Moved from ${STATUS_CONFIG[previous.status].label} to ${STATUS_CONFIG[revision.status].label}`,
     );
   }
-  if (revision.title !== previous.title) changes.push("Renamed the card");
+  if (revision.title !== previous.title) changes.push("Renamed the plan");
   if (revision.category !== previous.category) {
     changes.push(
       `Moved from ${CATEGORY_CONFIG[previous.category].label} to ${CATEGORY_CONFIG[revision.category].label}`,
@@ -56,12 +60,9 @@ export function describeRevision(
     changes.push(next ? `Filed under ${next}` : "Removed the subcategory");
   }
   if (revision.body !== previous.body) {
-    changes.push(describeText("details", previous.body, revision.body));
-  }
-  if (revision.decision !== previous.decision) {
-    changes.push(
-      describeText("decision", previous.decision, revision.decision),
-    );
+    if (!previous.body) changes.push("Wrote the description");
+    else if (!revision.body) changes.push("Removed the description");
+    else changes.push("Edited the description");
   }
   return changes;
 }

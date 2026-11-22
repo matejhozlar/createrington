@@ -9,10 +9,18 @@ import {
   PENDING_COMPONENTS_KEY,
   INSERT_COMPONENTS_EVENT,
   describeAction,
+  isPlanAction,
   type AdminChatAction,
   type HighlightAction,
 } from "../actions";
+import {
+  readActionState,
+  saveActionState,
+  type ActionState,
+} from "../actionState";
+import { usePlanAction } from "../hooks/use-plan-action";
 import { EmbedActionPreview } from "./EmbedActionPreview";
+import { PlanActionPreview } from "./PlanActionPreview";
 import { ComponentsActionPreview } from "./ComponentsActionPreview";
 
 function applyHighlight(action: HighlightAction): boolean {
@@ -44,6 +52,8 @@ const TYPE_LABELS: Record<AdminChatAction["type"], string> = {
   navigate: "Navigate",
   insert_embed: "Insert embed",
   insert_components: "Insert components",
+  plan_create: "New plan",
+  plan_update: "Edit plan",
 };
 
 function sendToEmbedBuilder(
@@ -74,26 +84,19 @@ export function ActionCard({
   navigate,
 }: ActionCardProps): React.JSX.Element {
   const toast = useToastActions();
-  const persistKey = `admin-chat-action:${storageKey}`;
-  const [state, setState] = useState<"pending" | "applied" | "dismissed">(
-    () => {
-      try {
-        const v = sessionStorage.getItem(persistKey);
-        if (v === "applied" || v === "dismissed") return v;
-      } catch {}
-      return "pending";
-    },
+  const [state, setState] = useState<ActionState>(() =>
+    readActionState(action, storageKey),
   );
 
   const setPersistent = useCallback(
     (next: "applied" | "dismissed") => {
       setState(next);
-      try {
-        sessionStorage.setItem(persistKey, next);
-      } catch {}
+      saveActionState(action, storageKey, next);
     },
-    [persistKey],
+    [action, storageKey],
   );
+
+  const plan = usePlanAction();
 
   const onApply = (): void => {
     if (action.type === "highlight") {
@@ -107,6 +110,19 @@ export function ActionCard({
     if (action.type === "navigate") {
       navigate(action.path);
       setPersistent("applied");
+      return;
+    }
+    if (isPlanAction(action)) {
+      void plan.apply(action).then(
+        (id) => {
+          setPersistent("applied");
+          navigate(`/admin/planning/${id}`);
+        },
+        (error: unknown) =>
+          toast.error(
+            error instanceof Error ? error.message : "Could not save the plan",
+          ),
+      );
       return;
     }
     sendToEmbedBuilder(
@@ -140,10 +156,16 @@ export function ActionCard({
       {action.type === "insert_components" && (
         <ComponentsActionPreview components={action.components} />
       )}
+      {isPlanAction(action) && <PlanActionPreview action={action} />}
       <div className="flex items-center gap-1.5">
         {state === "pending" && (
           <>
-            <Button size="xs" onClick={onApply} type="button">
+            <Button
+              size="xs"
+              onClick={onApply}
+              type="button"
+              loading={plan.pending}
+            >
               <Check size={12} />
               Apply
             </Button>
@@ -162,10 +184,12 @@ export function ActionCard({
             <span className="text-[0.6875rem] italic text-muted-foreground">
               Applied
             </span>
-            <Button size="xs" variant="ghost" onClick={onApply} type="button">
-              <RotateCcw size={12} />
-              Re-apply
-            </Button>
+            {!isPlanAction(action) && (
+              <Button size="xs" variant="ghost" onClick={onApply} type="button">
+                <RotateCcw size={12} />
+                Re-apply
+              </Button>
+            )}
           </>
         )}
         {state === "dismissed" && (

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-22T00:11:08.380Z",
+  "generatedAt": "2026-11-22T00:59:38.110Z",
   "commands": [
     {
       "name": "cooldown",
@@ -46,7 +46,7 @@
     },
     {
       "name": "idea",
-      "description": "Have Claude add the recent discussion here to the planning board",
+      "description": "Have Claude write up the recent discussion here as a planning draft",
       "category": "admin",
       "options": [
         {

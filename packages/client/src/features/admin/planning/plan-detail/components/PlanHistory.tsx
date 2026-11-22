@@ -6,29 +6,24 @@ import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { formatRelativeDate } from "@/lib/format";
 import { queryClient, trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
-import { describeRevision } from "../format";
-import type { PlanningRevision, PlanningSubcategory } from "../types";
-import { PersonChip } from "./PersonChip";
+import { PersonChip } from "../../components/PersonChip";
+import { PlanMarkdown } from "../../components/PlanMarkdown";
+import { describeRevision } from "../../format";
+import type { PlanningRevision, PlanningSubcategory } from "../../types";
 
-interface ItemHistoryProps {
+interface PlanHistoryProps {
   itemId: number;
   currentRevision: number;
   revisions: PlanningRevision[];
   subcategories: PlanningSubcategory[];
 }
 
-const SNAPSHOT_FIELDS = [
-  { key: "title", label: "Title" },
-  { key: "body", label: "Details" },
-  { key: "decision", label: "Decision" },
-] as const;
-
-export function ItemHistory({
+export function PlanHistory({
   itemId,
   currentRevision,
   revisions,
   subcategories,
-}: ItemHistoryProps) {
+}: PlanHistoryProps) {
   const [expandedId, setExpandedId] = useState<number | null>(null);
 
   const restore = useMutation(
@@ -91,18 +86,16 @@ export function ItemHistory({
 
             {expanded && (
               <div className="flex flex-col gap-3 border-t border-border pt-3">
-                {SNAPSHOT_FIELDS.map(({ key, label }) => (
-                  <div key={key} className="flex flex-col gap-1">
-                    <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      {label}
-                    </span>
-                    <p className="whitespace-pre-wrap break-words text-sm">
-                      {revision[key] ?? (
-                        <span className="text-muted-foreground">Empty</span>
-                      )}
-                    </p>
-                  </div>
-                ))}
+                <p className="break-words text-sm font-semibold">
+                  {revision.title}
+                </p>
+                {revision.body ? (
+                  <PlanMarkdown text={revision.body} />
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    No description.
+                  </p>
+                )}
 
                 {revision.revision !== currentRevision && (
                   <Button

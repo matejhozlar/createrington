@@ -21,23 +21,30 @@ function rethrowDuplicate(error: unknown): never {
 
 export const planningSubcategoriesRouter = router({
   list: adminProcedure
-    .meta({ description: "List planning subcategories in display order" })
+    .meta({
+      description:
+        "List planning subcategories in display order, with how many items each holds",
+    })
     .query(async () => {
-      const subcategories = await Q.planning.subcategory.findAll(
-        {},
-        {
-          orderBy: [
-            { field: "position", direction: "asc" },
-            { field: "name", direction: "asc" },
-          ],
-        },
-      );
+      const [subcategories, itemCounts] = await Promise.all([
+        Q.planning.subcategory.findAll(
+          {},
+          {
+            orderBy: [
+              { field: "position", direction: "asc" },
+              { field: "name", direction: "asc" },
+            ],
+          },
+        ),
+        Q.planning.item.countBy("subcategoryId"),
+      ]);
 
       return {
         subcategories: subcategories.map((subcategory) => ({
           id: subcategory.id,
           category: subcategory.category,
           name: subcategory.name,
+          itemCount: itemCounts.get(subcategory.id) ?? 0,
         })),
       };
     }),

@@ -115,8 +115,7 @@ const draft: PlanningItemContent = {
   body: "Nothing worth buying right now",
   category: "modpack",
   subcategoryId: ECONOMY,
-  status: "inbox",
-  decision: null,
+  status: "draft",
 };
 
 const repo = new PlanningRepository();
@@ -184,15 +183,15 @@ describe("PlanningRepository.updateItem", () => {
     const updated = await repo.updateItem(
       item.id,
       1,
-      { status: "decided", decision: "Shops sell claim upgrades" },
+      { status: "approved", body: "Shops sell claim upgrades" },
       "admin-b",
     );
 
     expect(updated).toMatchObject({ revision: 2, updatedBy: "admin-b" });
     expect(revisionsOf(item.id)[1]).toMatchObject({
       ...draft,
-      status: "decided",
-      decision: "Shops sell claim upgrades",
+      status: "approved",
+      body: "Shops sell claim upgrades",
       revision: 2,
       editedBy: "admin-b",
     });

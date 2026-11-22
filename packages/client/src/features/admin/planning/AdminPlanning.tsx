@@ -1,8 +1,7 @@
 import { useState } from "react";
-import { useSearchParams } from "react-router";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { Filter, Lightbulb, Plus, Tags } from "lucide-react";
-import { LabeledSwitch } from "@/components/labeled-switch";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { Filter, Lightbulb, Plus, SearchX, Tags } from "lucide-react";
+import { Paginator } from "@/components/paginator";
 import {
   EmptyState,
   ErrorState,
@@ -23,30 +22,36 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/auth";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
-import { useToastActions } from "@/hooks/use-toast";
-import { queryClient, trpc } from "@/lib/trpc";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { trpc } from "@/lib/trpc";
+import { cn } from "@/lib/utils";
 import {
   PLANNING_CATEGORIES,
   PLANNING_ITEM_STATUSES,
   type PlanningCategory,
   type PlanningItemStatus,
 } from "@createrington/shared/planning";
-import { CreateItemDialog } from "./components/CreateItemDialog";
-import { ItemSheet } from "./components/ItemSheet";
-import { PlanningBoard } from "./components/PlanningBoard";
+import { PlanCard } from "./components/PlanCard";
+import { PlanFormDialog } from "./components/PlanFormDialog";
 import { SubcategoriesDialog } from "./components/SubcategoriesDialog";
-import { CATEGORY_CONFIG, OPEN_STATUSES } from "./constants";
-import { patchListItem } from "./listCache";
-import type { PlanningItem } from "./types";
+import {
+  CATEGORY_CONFIG,
+  PAGE_SIZE,
+  SORT_OPTIONS,
+  STATUS_CONFIG,
+  type SortValue,
+} from "./constants";
+import { subcategoryName } from "./format";
 
-type CategoryTab = "all" | PlanningCategory;
+type StatusTab = "all" | PlanningItemStatus;
+type CategoryFilter = "all" | PlanningCategory;
 type AssigneeFilter = "anyone" | "me" | "unassigned";
 
-const CATEGORY_TABS: { value: CategoryTab; label: string }[] = [
+const STATUS_TABS: { value: StatusTab; label: string }[] = [
   { value: "all", label: "All" },
-  ...PLANNING_CATEGORIES.map((value) => ({
+  ...PLANNING_ITEM_STATUSES.map((value) => ({
     value,
-    label: CATEGORY_CONFIG[value].label,
+    label: STATUS_CONFIG[value].label,
   })),
 ];
 
@@ -56,101 +61,65 @@ const ASSIGNEE_FILTERS: { value: AssigneeFilter; label: string }[] = [
   { value: "unassigned", label: "Unassigned" },
 ];
 
-const ALL_SUBCATEGORIES = "all";
-const CARD_PARAM = "card";
+const ALL = "all";
 
 export function AdminPlanning() {
   const { user } = useAuth();
-  const toast = useToastActions();
-  const [searchParams, setSearchParams] = useSearchParams();
 
-  const [category, setCategory] = useState<CategoryTab>("all");
-  const [subcategory, setSubcategory] = useState(ALL_SUBCATEGORIES);
+  const [page, setPage] = useState(0);
+  const [status, setStatus] = useState<StatusTab>(ALL);
+  const [category, setCategory] = useState<CategoryFilter>(ALL);
+  const [subcategory, setSubcategory] = useState(ALL);
   const [assignee, setAssignee] = useState<AssigneeFilter>("anyone");
+  const [sort, setSort] = useState<SortValue>("edited");
   const [search, setSearch] = useState("");
-  const [showRejected, setShowRejected] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [subcategoriesOpen, setSubcategoriesOpen] = useState(false);
-  const [movingIds, setMovingIds] = useState<number[]>([]);
 
-  const itemsQuery = useQuery(trpc.admin.planning.items.list.queryOptions());
+  const debouncedSearch = useDebouncedValue(search);
+  const sortOption =
+    SORT_OPTIONS.find((option) => option.value === sort) ?? SORT_OPTIONS[0];
+
+  const itemsQuery = useQuery(
+    trpc.admin.planning.items.list.queryOptions(
+      {
+        page,
+        limit: PAGE_SIZE,
+        orderBy: sortOption.orderBy,
+        orderDirection: sortOption.orderDirection,
+        status: status === ALL ? undefined : status,
+        category: category === ALL ? undefined : category,
+        subcategoryId: subcategory === ALL ? undefined : Number(subcategory),
+        assignee:
+          assignee === "me"
+            ? user?.discordId
+            : assignee === "unassigned"
+              ? "unassigned"
+              : undefined,
+        search: debouncedSearch.trim() || undefined,
+      },
+      { placeholderData: keepPreviousData },
+    ),
+  );
   const subcategoriesQuery = useQuery(
     trpc.admin.planning.subcategories.list.queryOptions(),
   );
 
-  const listKey = trpc.admin.planning.items.list.queryKey();
-  const move = useMutation(
-    trpc.admin.planning.items.update.mutationOptions({
-      onMutate: async ({ id, status }) => {
-        setMovingIds((ids) => [...ids, id]);
-        await queryClient.cancelQueries({ queryKey: listKey });
-        const previous = queryClient.getQueryData(listKey);
-        queryClient.setQueryData(listKey, (current) =>
-          patchListItem(current, id, status ? { status } : {}),
-        );
-        return { previous };
-      },
-      onSuccess: ({ id, revision }) => {
-        queryClient.setQueryData(listKey, (current) =>
-          patchListItem(current, id, { revision }),
-        );
-      },
-      onError: (error, _variables, context) => {
-        queryClient.setQueryData(listKey, context?.previous);
-        toast.error(error.message);
-      },
-      onSettled: (_data, _error, { id }) => {
-        setMovingIds((ids) => ids.filter((movingId) => movingId !== id));
-        return queryClient.invalidateQueries(trpc.admin.planning.pathFilter());
-      },
-    }),
-  );
-
-  const allItems = itemsQuery.data?.items ?? [];
+  const items = itemsQuery.data?.items ?? [];
+  const pagination = itemsQuery.data?.pagination;
+  const counts = itemsQuery.data?.counts;
   const subcategories = subcategoriesQuery.data?.subcategories ?? [];
-  const statuses: readonly PlanningItemStatus[] = showRejected
-    ? PLANNING_ITEM_STATUSES
-    : OPEN_STATUSES;
+  const totalPlans = counts
+    ? PLANNING_ITEM_STATUSES.reduce((sum, value) => sum + counts[value], 0)
+    : 0;
+  const isFiltered =
+    debouncedSearch.trim() !== "" || category !== ALL || assignee !== "anyone";
+  const defaultCategory = category === ALL ? "modpack" : category;
 
-  const cardParam = Number(searchParams.get(CARD_PARAM));
-  const openItemId =
-    Number.isInteger(cardParam) && cardParam > 0 ? cardParam : null;
-  const openItem = (id: number | null) =>
-    setSearchParams(
-      (params) => {
-        if (id === null) params.delete(CARD_PARAM);
-        else params.set(CARD_PARAM, String(id));
-        return params;
-      },
-      { replace: id === null },
-    );
-
-  const needle = search.trim().toLowerCase();
-  const matchesFilters = (item: PlanningItem) =>
-    (assignee === "anyone" ||
-      (assignee === "unassigned"
-        ? item.assignees.length === 0
-        : item.assignees.some((a) => a.discordId === user?.discordId))) &&
-    (!needle ||
-      item.title.toLowerCase().includes(needle) ||
-      (item.body ?? "").toLowerCase().includes(needle));
-
-  const filtered = allItems.filter(
-    (item) => statuses.includes(item.status) && matchesFilters(item),
-  );
-  const visible = filtered.filter(
-    (item) =>
-      (category === "all" || item.category === category) &&
-      (subcategory === ALL_SUBCATEGORIES ||
-        item.subcategoryId === Number(subcategory)),
-  );
-  const countFor = (tab: CategoryTab) =>
-    tab === "all"
-      ? filtered.length
-      : filtered.filter((item) => item.category === tab).length;
-
-  const defaultCategory = category === "all" ? "modpack" : category;
-  const error = itemsQuery.error ?? subcategoriesQuery.error;
+  const changeFilter = (apply: () => void) => {
+    apply();
+    setPage(0);
+  };
 
   return (
     <div className="flex flex-1 flex-col gap-4">
@@ -164,7 +133,7 @@ export function AdminPlanning() {
       <div className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-4 px-4 pb-4">
         <AdminPageTitle
           title="Planning"
-          description="Ideas, problems and decisions the team is working through, in one place."
+          description="Ideas, problems and open questions the team is working through."
           actions={
             <>
               <Button
@@ -176,30 +145,31 @@ export function AdminPlanning() {
               </Button>
               <Button onClick={() => setCreateOpen(true)}>
                 <Plus className="mr-2 size-4" />
-                New Card
+                New Plan
               </Button>
             </>
           }
         />
 
         <Tabs
-          value={category}
-          onValueChange={(value) => {
-            setCategory(value as CategoryTab);
-            setSubcategory(ALL_SUBCATEGORIES);
-          }}
+          value={status}
+          onValueChange={(value) =>
+            changeFilter(() => setStatus(value as StatusTab))
+          }
         >
           <div className="overflow-x-auto overflow-y-hidden [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <TabsList className="text-foreground/80">
-              {CATEGORY_TABS.map(({ value, label }) => (
+              {STATUS_TABS.map(({ value, label }) => (
                 <TabsTrigger key={value} value={value}>
                   {label}
-                  <Badge
-                    variant="outline"
-                    className="border-transparent bg-foreground/10"
-                  >
-                    {countFor(value)}
-                  </Badge>
+                  {counts && (
+                    <Badge
+                      variant="outline"
+                      className="border-transparent bg-foreground/10"
+                    >
+                      {value === ALL ? totalPlans : counts[value]}
+                    </Badge>
+                  )}
                 </TabsTrigger>
               ))}
             </TabsList>
@@ -217,13 +187,40 @@ export function AdminPlanning() {
             <div className="flex flex-wrap gap-2">
               <SearchInput
                 className="min-w-48 flex-1"
-                placeholder="Search cards..."
+                placeholder="Search plans..."
                 value={search}
-                onValueChange={setSearch}
+                onValueChange={(value) => changeFilter(() => setSearch(value))}
               />
 
-              {category !== "all" && (
-                <Select value={subcategory} onValueChange={setSubcategory}>
+              <Select
+                value={category}
+                onValueChange={(value) =>
+                  changeFilter(() => {
+                    setCategory(value as CategoryFilter);
+                    setSubcategory(ALL);
+                  })
+                }
+              >
+                <SelectTrigger className="w-full xs:w-44" aria-label="Category">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL}>All categories</SelectItem>
+                  {PLANNING_CATEGORIES.map((value) => (
+                    <SelectItem key={value} value={value}>
+                      {CATEGORY_CONFIG[value].label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {category !== ALL && (
+                <Select
+                  value={subcategory}
+                  onValueChange={(value) =>
+                    changeFilter(() => setSubcategory(value))
+                  }
+                >
                   <SelectTrigger
                     className="w-full xs:w-52"
                     aria-label="Subcategory"
@@ -231,9 +228,7 @@ export function AdminPlanning() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={ALL_SUBCATEGORIES}>
-                      All subcategories
-                    </SelectItem>
+                    <SelectItem value={ALL}>All subcategories</SelectItem>
                     {subcategories
                       .filter((s) => s.category === category)
                       .map((s) => (
@@ -247,7 +242,9 @@ export function AdminPlanning() {
 
               <Select
                 value={assignee}
-                onValueChange={(value) => setAssignee(value as AssigneeFilter)}
+                onValueChange={(value) =>
+                  changeFilter(() => setAssignee(value as AssigneeFilter))
+                }
               >
                 <SelectTrigger className="w-full xs:w-52" aria-label="Assignee">
                   <SelectValue />
@@ -261,73 +258,96 @@ export function AdminPlanning() {
                 </SelectContent>
               </Select>
 
-              <LabeledSwitch
-                id="planning-show-rejected"
-                checked={showRejected}
-                onCheckedChange={setShowRejected}
-                label="Show rejected"
-              />
+              <Select
+                value={sort}
+                onValueChange={(value) =>
+                  changeFilter(() => setSort(value as SortValue))
+                }
+              >
+                <SelectTrigger className="w-full xs:w-44" aria-label="Sort by">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {SORT_OPTIONS.map(({ value, label }) => (
+                    <SelectItem key={value} value={value}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </CardContent>
         </Card>
 
-        {error ? (
+        {itemsQuery.error ? (
           <ErrorState
-            message={error.message}
-            onRetry={() => {
-              void itemsQuery.refetch();
-              void subcategoriesQuery.refetch();
-            }}
+            message={itemsQuery.error.message}
+            onRetry={() => void itemsQuery.refetch()}
             bordered
           />
-        ) : itemsQuery.isLoading || subcategoriesQuery.isLoading ? (
+        ) : itemsQuery.isLoading ? (
           <LoadingState />
-        ) : allItems.length === 0 ? (
+        ) : totalPlans === 0 && !isFiltered ? (
           <EmptyState
             icon={Lightbulb}
-            message="No cards yet"
-            hint="Add the first idea, problem or open question."
+            message="No plans yet"
+            hint="Write down the first idea, problem or open question."
           >
             <Button onClick={() => setCreateOpen(true)}>
               <Plus className="mr-2 size-4" />
-              New Card
+              New Plan
             </Button>
           </EmptyState>
+        ) : items.length === 0 ? (
+          <EmptyState icon={SearchX} message="No plans match these filters" />
         ) : (
-          <PlanningBoard
-            statuses={statuses}
-            items={visible}
-            subcategories={subcategories}
-            showCategory={category === "all"}
-            lockedIds={movingIds}
-            onOpen={(item) => openItem(item.id)}
-            onMove={(item, status) =>
-              move.mutate({ id: item.id, revision: item.revision, status })
-            }
-          />
+          <>
+            <div
+              className={cn(
+                "grid auto-rows-fr gap-4 sm:grid-cols-2 xl:grid-cols-3",
+                itemsQuery.isPlaceholderData && "opacity-60",
+              )}
+            >
+              {items.map((item) => (
+                <PlanCard
+                  key={item.id}
+                  item={item}
+                  subcategory={subcategoryName(
+                    subcategories,
+                    item.subcategoryId,
+                  )}
+                />
+              ))}
+            </div>
+
+            {pagination && (
+              <Paginator
+                page={pagination.page}
+                limit={pagination.limit}
+                total={pagination.total}
+                totalPages={pagination.totalPages}
+                onPageChange={setPage}
+                itemLabel="plan"
+                className="w-full"
+              />
+            )}
+          </>
         )}
       </div>
 
-      <CreateItemDialog
-        key={`create-${defaultCategory}`}
-        open={createOpen}
-        onClose={() => setCreateOpen(false)}
-        defaultCategory={defaultCategory}
-        subcategories={subcategories}
-      />
+      {createOpen && (
+        <PlanFormDialog
+          open
+          onClose={() => setCreateOpen(false)}
+          defaultCategory={defaultCategory}
+        />
+      )}
 
       <SubcategoriesDialog
         key={`subcategories-${defaultCategory}`}
         open={subcategoriesOpen}
         onClose={() => setSubcategoriesOpen(false)}
         defaultCategory={defaultCategory}
-        subcategories={subcategories}
-        items={allItems}
-      />
-
-      <ItemSheet
-        itemId={openItemId}
-        onClose={() => openItem(null)}
         subcategories={subcategories}
       />
     </div>

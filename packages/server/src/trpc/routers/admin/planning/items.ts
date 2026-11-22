@@ -1,7 +1,17 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q, planningRepo } from "@/db";
-import { assertPatchNotEmpty, auditActor, findOrThrow, id } from "@/trpc/utils";
+import { PLANNING_UNASSIGNED } from "@/db/queries/planning/item";
+import {
+  assertPatchNotEmpty,
+  auditActor,
+  buildPagination,
+  findOrThrow,
+  id,
+  pageOffset,
+  paginationInput,
+  sortDirection,
+} from "@/trpc/utils";
 import { discordId } from "@/utils/zod-schemas";
 import {
   PLANNING_CATEGORIES,
@@ -23,17 +33,47 @@ export const planningItemsRouter = router({
   list: adminProcedure
     .meta({
       description:
-        "List every planning item with its assignees and comment count",
+        "List planning items with filtering, sorting and pagination, plus how many items each status holds under the other filters",
     })
-    .query(async () => {
-      const [items, assignees, commentCounts] = await Promise.all([
-        Q.planning.item.findAll(
-          {},
-          { orderBy: "updatedAt", orderDirection: "desc" },
-        ),
-        Q.planning.item.assignee.findAll({}),
-        Q.planning.item.comment.countBy("itemId"),
-      ]);
+    .input(
+      z.object({
+        status: status.optional(),
+        category: category.optional(),
+        subcategoryId: id().optional(),
+        assignee: z
+          .union([discordId, z.literal(PLANNING_UNASSIGNED)])
+          .optional(),
+        search: z.string().trim().max(100).optional(),
+        ...paginationInput({ defaultLimit: 12, maxLimit: 60 }),
+        orderBy: z
+          .enum(["updatedAt", "createdAt", "title"])
+          .default("updatedAt"),
+        orderDirection: sortDirection().default("desc"),
+      }),
+    )
+    .query(async ({ input }) => {
+      const { page, limit, search, ...filters } = input;
+      const {
+        rows: items,
+        total,
+        statusCounts,
+      } = await Q.planning.item.listPage({
+        ...filters,
+        search: search || undefined,
+        limit,
+        offset: pageOffset(input),
+      });
+
+      const itemIds = items.map((item) => item.id);
+      const [assignees, commentCounts] =
+        itemIds.length > 0
+          ? await Promise.all([
+              Q.planning.item.assignee.findAll({ itemId: { $in: itemIds } }),
+              Q.planning.item.comment.countBy("itemId", {
+                itemId: { $in: itemIds },
+              }),
+            ])
+          : [[], new Map<number, number>()];
 
       const person = await loadPeople([
         ...items.map((item) => item.createdBy),
@@ -54,7 +94,6 @@ export const planningItemsRouter = router({
           category: item.category,
           subcategoryId: item.subcategoryId,
           status: item.status,
-          decision: item.decision,
           revision: item.revision,
           createdAt: item.createdAt,
           updatedAt: item.updatedAt,
@@ -64,6 +103,8 @@ export const planningItemsRouter = router({
             .sort(byName),
           commentCount: commentCounts.get(item.id) ?? 0,
         })),
+        pagination: buildPagination(page, limit, total),
+        counts: statusCounts,
       };
     }),
 
@@ -106,7 +147,6 @@ export const planningItemsRouter = router({
           category: item.category,
           subcategoryId: item.subcategoryId,
           status: item.status,
-          decision: item.decision,
           revision: item.revision,
           sourceUrl: item.sourceUrl,
           createdAt: item.createdAt,
@@ -130,7 +170,6 @@ export const planningItemsRouter = router({
           category: revision.category,
           subcategoryId: revision.subcategoryId,
           status: revision.status,
-          decision: revision.decision,
           createdAt: revision.createdAt,
           editedBy: person(revision.editedBy),
         })),
@@ -145,17 +184,15 @@ export const planningItemsRouter = router({
         body: planningTextSchema.default(null),
         category,
         subcategoryId: subcategoryId.default(null),
-        status: status.default("inbox"),
+        status: status.default("draft"),
         assigneeIds: assigneeIds.default([]),
       }),
     )
     .mutation(async ({ input, ctx }) => {
       const { assigneeIds: assignees, ...content } = input;
-      const item = await planningRepo.createItem(
-        { ...content, decision: null },
-        ctx.user.discordId,
-        { assigneeIds: assignees },
-      );
+      const item = await planningRepo.createItem(content, ctx.user.discordId, {
+        assigneeIds: assignees,
+      });
 
       return { id: item.id };
     }),
@@ -174,7 +211,6 @@ export const planningItemsRouter = router({
         category: category.optional(),
         subcategoryId: subcategoryId.optional(),
         status: status.optional(),
-        decision: planningTextSchema.optional(),
       }),
     )
     .mutation(async ({ input, ctx }) => {
