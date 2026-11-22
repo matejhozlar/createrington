@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { DONATION_STATUSES } from "@createrington/shared/donation";
 import { router, ownerProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
 import { getOptionalService, Services } from "@/services";
@@ -36,9 +37,7 @@ export const ownerDonationsRouter = router({
     })
     .input(
       z.object({
-        status: z
-          .enum(["pending", "completed", "refunded", "cancelled"])
-          .optional(),
+        status: z.enum(DONATION_STATUSES).optional(),
         type: z.enum(["one_time", "monthly"]).optional(),
         discordId: z.string().optional(),
         ...paginationInput(),

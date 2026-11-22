@@ -1,7 +1,6 @@
 import { getAuthedPlayer, respondSuccess } from "@/app/middleware";
 import { BadRequestError } from "@/errors";
 import { Q, balanceRepo } from "@/db";
-import { BalanceTransactionType } from "@/db/utils/balance";
 import { dailyRewardService } from "@/services/reward/daily-reward.service";
 import { formatDuration } from "@/utils/format";
 import { MC_UUID_REGEX } from "@/utils/zod-schemas";
@@ -142,7 +141,7 @@ export class CurrencyController {
             uuid,
             amount,
             description,
-            BalanceTransactionType.DEPOSIT,
+            "deposit",
             { idempotencyKey, tx },
           );
 
@@ -223,7 +222,7 @@ export class CurrencyController {
             uuid,
             totalAmount,
             `Withdraw ${count}x${denomination}`,
-            BalanceTransactionType.WITHDRAW,
+            "withdraw",
             { idempotencyKey, tx },
           );
 

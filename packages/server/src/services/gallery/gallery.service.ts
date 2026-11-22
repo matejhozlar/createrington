@@ -3,7 +3,6 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { BadRequestError, ConflictError, NotFoundError } from "@/errors";
 import { balanceRepo, db, Q } from "@/db";
-import { BalanceTransactionType } from "@/db/utils/balance";
 import { UniqueViolationError, translateDbError } from "@/db/utils/errors";
 import { EmbedPresets } from "@/discord/embeds";
 import type {
@@ -302,7 +301,7 @@ export class GalleryService {
               { minecraftUuid: author.minecraftUuid },
               rewardAmount,
               `Gallery screenshot #${id} approved`,
-              BalanceTransactionType.GALLERY_REWARD,
+              "gallery_reward",
               { tx, idempotencyKey, metadata: { gallerySubmissionId: id } },
             );
             const ledger = await tx.player.balance.transaction

@@ -738,9 +738,9 @@ describe("BaseQueries (server table)", () => {
       expect(
         rows.map((row) => [row.status, row.scheduledAt.toISOString()]),
       ).toEqual([
-        ["cancelled", "2026-01-02T00:00:00.000Z"],
         ["completed", "2026-01-03T00:00:00.000Z"],
         ["completed", "2026-01-01T00:00:00.000Z"],
+        ["cancelled", "2026-01-02T00:00:00.000Z"],
       ]);
     });
 
@@ -756,9 +756,9 @@ describe("BaseQueries (server table)", () => {
       expect(
         rows.map((row) => [row.status, row.scheduledAt.toISOString()]),
       ).toEqual([
+        ["cancelled", "2026-01-02T00:00:00.000Z"],
         ["completed", "2026-01-01T00:00:00.000Z"],
         ["completed", "2026-01-03T00:00:00.000Z"],
-        ["cancelled", "2026-01-02T00:00:00.000Z"],
       ]);
     });
 

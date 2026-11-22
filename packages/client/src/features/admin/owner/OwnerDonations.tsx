@@ -34,16 +34,22 @@ import {
   LoadingState,
 } from "@/components/query-states";
 import { StatCard } from "@/components/stat-card";
+import {
+  DONATION_STATUSES,
+  type DonationStatus,
+} from "@createrington/shared/donation";
 
 type Donation = RouterOutput["owner"]["donations"]["list"]["items"][number];
-type DonationStatus = "pending" | "completed" | "refunded" | "cancelled";
 type DonationType = "one_time" | "monthly";
 
-const STATUS_TONES: Record<string, BadgeTone> = {
-  completed: "success",
-  pending: "warning",
-  refunded: "info",
-  cancelled: "neutral",
+const STATUS_DISPLAY: Record<
+  DonationStatus,
+  { label: string; tone: BadgeTone }
+> = {
+  completed: { label: "Completed", tone: "success" },
+  pending: { label: "Pending", tone: "warning" },
+  refunded: { label: "Refunded", tone: "info" },
+  cancelled: { label: "Cancelled", tone: "neutral" },
 };
 
 const TYPE_LABELS: Record<string, string> = {
@@ -102,10 +108,7 @@ const DONATION_COLUMNS: DataTableColumn<Donation>[] = [
     width: 120,
     skeleton: () => <BadgeCellSkeleton />,
     render: (d) => (
-      <Badge
-        tone={STATUS_TONES[d.status] ?? STATUS_TONES.pending}
-        className="capitalize"
-      >
+      <Badge tone={STATUS_DISPLAY[d.status].tone} className="capitalize">
         {d.status}
       </Badge>
     ),
@@ -268,10 +271,11 @@ export function OwnerDonations() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="refunded">Refunded</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                  {DONATION_STATUSES.map((status) => (
+                    <SelectItem key={status} value={status}>
+                      {STATUS_DISPLAY[status].label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
 

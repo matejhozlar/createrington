@@ -1,6 +1,6 @@
 import { DatabaseTable, type PlayerIdentifier } from "@/generated/db";
 import { balanceRepo, db, Q } from "@/db";
-import { BalanceTransactionType, BalanceUtils } from "@/db/utils/balance";
+import { BalanceUtils } from "@/db/utils/balance";
 import { UniqueViolationError } from "@/db/utils/errors";
 
 const REWARD_TYPE = "daily";
@@ -101,7 +101,7 @@ export class DailyRewardService {
           playerUuid,
           amount,
           "Daily reward claimed",
-          BalanceTransactionType.REWARD,
+          "reward",
           { metadata, tx },
         );
       });

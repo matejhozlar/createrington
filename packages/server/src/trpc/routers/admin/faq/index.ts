@@ -15,14 +15,15 @@ import {
 import { getServiceSync, Services } from "@/services";
 import { FaqService } from "@/services/discord/faq";
 import type { FaqEntryFilters } from "@createrington/shared/db";
+import { FAQ_MATCH_MODES, type FaqMatchMode } from "@createrington/shared/faq";
 
-const matchModeSchema = z.enum(["keywords", "regex"]).default("keywords");
+const matchModeSchema = z.enum(FAQ_MATCH_MODES).default("keywords");
 
 const MAX_PATTERN_LENGTH = 200;
 const NESTED_QUANTIFIER = /\([^()]*[+*][^()]*\)[+*?{]/;
 const QUANTIFIED_ALTERNATION = /\([^()]*\|[^()]*\)[+*]/;
 
-function validatePattern(matchMode: string, pattern: string): void {
+function validatePattern(matchMode: FaqMatchMode, pattern: string): void {
   if (pattern.length > MAX_PATTERN_LENGTH) {
     throw trpcError.badRequest(
       `Pattern must be at most ${MAX_PATTERN_LENGTH} characters`,
@@ -131,7 +132,7 @@ export const faqRouter = router({
     .input(
       z.object({
         id: id(),
-        matchMode: z.enum(["keywords", "regex"]).optional(),
+        matchMode: z.enum(FAQ_MATCH_MODES).optional(),
         pattern: z.string().min(1).optional(),
         title: z.string().min(1).max(100).optional(),
         response: z.string().min(1).optional(),

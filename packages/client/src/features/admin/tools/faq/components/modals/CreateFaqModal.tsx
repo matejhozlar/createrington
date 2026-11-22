@@ -13,8 +13,7 @@ import { useMentionResolver } from "@/features/admin/hooks/use-mention-resolver"
 import { DiscordMarkdown } from "@/features/admin/tools/embed-builder/components/DiscordMarkdown";
 import { useMutation } from "@tanstack/react-query";
 import { Textarea } from "@/components/ui/textarea";
-
-type MatchMode = "keywords" | "regex";
+import type { FaqMatchMode } from "@createrington/shared/faq";
 
 interface CreateFaqModalProps {
   open: boolean;
@@ -27,7 +26,7 @@ export function CreateFaqModal({ open, onClose }: CreateFaqModalProps) {
   const mentionResolver = useMentionResolver();
   const responseRef = useRef<HTMLTextAreaElement>(null);
   const [title, setTitle] = useState("");
-  const [matchMode, setMatchMode] = useState<MatchMode>("keywords");
+  const [matchMode, setMatchMode] = useState<FaqMatchMode>("keywords");
   const [pattern, setPattern] = useState("");
   const [response, setResponse] = useState("");
   const [priority, setPriority] = useState(0);

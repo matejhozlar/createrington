@@ -8,7 +8,11 @@ import {
   jsonb,
   index,
 } from "drizzle-orm/pg-core";
-import { ticketStatusEnum, ticketTypeEnum } from "./enums";
+import {
+  ticketActionTypeEnum,
+  ticketStatusEnum,
+  ticketTypeEnum,
+} from "./enums";
 
 // --- ticket ---
 
@@ -47,7 +51,7 @@ export const ticketAction = pgTable(
     ticketId: integer("ticket_id")
       .notNull()
       .references(() => ticket.id, { onDelete: "cascade" }),
-    actionType: text("action_type").notNull(),
+    actionType: ticketActionTypeEnum("action_type").notNull(),
     performedByDiscordId: text("performed_by_discord_id").notNull(),
     performedAt: timestamp("performed_at", { withTimezone: true })
       .notNull()

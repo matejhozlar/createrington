@@ -8,7 +8,6 @@ import {
   vi,
 } from "vitest";
 import { Q, balanceRepo } from "@/db";
-import { BalanceTransactionType } from "@/db/utils/balance";
 import { AppError, BadRequestError, ConflictError } from "@/errors";
 import {
   hashRequest,
@@ -45,7 +44,7 @@ function withdrawRequest(amount: number, key?: string) {
         ALICE,
         amount,
         `Withdraw ${amount}`,
-        BalanceTransactionType.WITHDRAW,
+        "withdraw",
         { idempotencyKey: key, tx },
       );
       return {
@@ -84,9 +83,7 @@ function withdrawRequest(amount: number, key?: string) {
 
 async function withdrawLedger() {
   const history = await balanceRepo.getHistory(ALICE);
-  return history.filter(
-    (t) => t.transactionType === BalanceTransactionType.WITHDRAW,
-  );
+  return history.filter((t) => t.transactionType === "withdraw");
 }
 
 beforeAll(async () => {
@@ -264,13 +261,9 @@ describe("runIdempotent (integration)", () => {
   it("rolls back writes made before an operational failure and still memoizes it", async () => {
     await seedAlice(100);
     const operation = vi.fn<IdempotentOperation>(async (tx) => {
-      await balanceRepo.add(
-        ALICE,
-        5,
-        "credited before rejection",
-        BalanceTransactionType.DEPOSIT,
-        { tx },
-      );
+      await balanceRepo.add(ALICE, 5, "credited before rejection", "deposit", {
+        tx,
+      });
       throw new BadRequestError("Rejected after write", undefined, {
         playerMessage: "Rejected.",
       });
@@ -291,11 +284,9 @@ describe("runIdempotent (integration)", () => {
 
     expect(await rawBalance(ALICE)).toBe(100_000n);
     const history = await balanceRepo.getHistory(ALICE);
-    expect(
-      history.filter(
-        (t) => t.transactionType === BalanceTransactionType.DEPOSIT,
-      ),
-    ).toHaveLength(0);
+    expect(history.filter((t) => t.transactionType === "deposit")).toHaveLength(
+      0,
+    );
   });
 
   it("treats a malformed stored body as unavailable instead of replaying it", async () => {

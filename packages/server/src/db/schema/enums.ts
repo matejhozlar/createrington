@@ -1,4 +1,10 @@
 import { pgEnum } from "drizzle-orm/pg-core";
+import { BALANCE_TRANSACTION_TYPES } from "@createrington/shared/balance";
+import { DONATION_STATUSES } from "@createrington/shared/donation";
+import { FAQ_MATCH_MODES } from "@createrington/shared/faq";
+import { MAINTENANCE_SCHEDULE_STATUSES } from "@createrington/shared/maintenance";
+import { REWARD_TYPES } from "@createrington/shared/reward";
+import { TICKET_ACTION_TYPES } from "@createrington/shared/ticket";
 import { GALLERY_SUBMISSION_STATUSES } from "@createrington/shared/gallery";
 import {
   LAUNCHER_PACK_FILE_SOURCES,
@@ -175,3 +181,25 @@ export const planningItemStatusEnum = pgEnum(
   "planning_item_status",
   PLANNING_ITEM_STATUSES,
 );
+
+// lottery_*: written by the retired lottery, kept for its ledger rows
+export const playerBalanceTransactionTypeEnum = pgEnum(
+  "player_balance_transaction_type",
+  BALANCE_TRANSACTION_TYPES,
+);
+
+export const rewardTypeEnum = pgEnum("reward_type", REWARD_TYPES);
+
+export const donationStatusEnum = pgEnum("donation_status", DONATION_STATUSES);
+
+export const serverMaintenanceScheduleStatusEnum = pgEnum(
+  "server_maintenance_schedule_status",
+  MAINTENANCE_SCHEDULE_STATUSES,
+);
+
+export const ticketActionTypeEnum = pgEnum(
+  "ticket_action_type",
+  TICKET_ACTION_TYPES,
+);
+
+export const faqMatchModeEnum = pgEnum("faq_match_mode", FAQ_MATCH_MODES);

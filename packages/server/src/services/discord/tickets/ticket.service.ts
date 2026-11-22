@@ -14,7 +14,6 @@ import {
 } from "discord.js";
 import type { Ticket } from "@/generated/db";
 import { type CreateTicketOptions, readTicketMetadata } from "./";
-import { TicketUserAction } from "@/db/utils/ticket";
 import { getTicketTypeConfig, TicketSystemIds } from "./";
 import { Discord } from "@/discord/constants";
 import { CustomIds } from "@/discord/custom-ids";
@@ -577,7 +576,7 @@ export class TicketService {
 
     await Q.ticket.action.create({
       ticketId,
-      actionType: TicketUserAction.TRANSCRIPT_GENERATED,
+      actionType: "transcript_generated",
       performedByDiscordId: generatedBy,
       metadata: {
         transcriptMessageId: message.id,
