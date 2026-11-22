@@ -9,7 +9,6 @@ import {
   NEOFORGE_LOADER_TYPE,
 } from "@/services/curseforge/client";
 import { listProjectFiles } from "@/services/curseforge/content";
-import { getFilesDependencies } from "@/services/curseforge/files";
 import { resolveDependencies, searchMods } from "@/services/curseforge/mods";
 import { findModpackModIds } from "@/services/modpack/manifest";
 import { auditActor, id } from "@/trpc/utils";
@@ -120,81 +119,7 @@ export const structurePackModsRouter = router({
         modId: z.coerce.number().int().positive(),
       }),
     )
-    .query(async ({ input }) => {
-      const pack = await structurePackService.getPack(input.packId);
-      const targetMod = pack.mods.find((m) => m.id === input.modId);
-      if (!targetMod) return { deps: [], dependents: [] };
-
-      const fileIds = pack.mods.map((m) => m.curseforgeFileId);
-      const allFileDeps = await getFilesDependencies(fileIds);
-
-      const dependents: Array<{ modName: string; relationType: number }> = [];
-      for (const fileDep of allFileDeps) {
-        if (fileDep.modId === targetMod.curseforgeModId) continue;
-        for (const dep of fileDep.dependencies) {
-          if (dep.modId === targetMod.curseforgeModId) {
-            const packMod = pack.mods.find(
-              (m) => m.curseforgeModId === fileDep.modId,
-            );
-            if (packMod) {
-              dependents.push({
-                modName: packMod.modName,
-                relationType: dep.relationType,
-              });
-            }
-          }
-        }
-      }
-
-      const targetFileDeps = allFileDeps.find(
-        (f) => f.fileId === targetMod.curseforgeFileId,
-      );
-      const targetDepModIds = new Set(
-        (targetFileDeps?.dependencies ?? []).map((d) => d.modId),
-      );
-
-      if (targetDepModIds.size === 0) return { deps: [], dependents };
-
-      const reverseDeps = new Map<number, Set<number>>();
-      for (const fileDep of allFileDeps) {
-        for (const dep of fileDep.dependencies) {
-          if (!targetDepModIds.has(dep.modId)) continue;
-          if (!reverseDeps.has(dep.modId))
-            reverseDeps.set(dep.modId, new Set());
-          reverseDeps.get(dep.modId)!.add(fileDep.modId);
-        }
-      }
-
-      const packModIdSet = new Set(pack.mods.map((m) => m.curseforgeModId));
-      const inPackDepIds = [...targetDepModIds].filter((id) =>
-        packModIdSet.has(id),
-      );
-
-      if (inPackDepIds.length === 0) return { deps: [], dependents };
-
-      const resolved = await resolveDependencies(inPackDepIds, packModIdSet);
-
-      return {
-        dependents,
-        deps: resolved.map((dep) => {
-          const neededByModIds = reverseDeps.get(dep.modId) ?? new Set();
-          const externalNeeders = [...neededByModIds].filter(
-            (id) => id !== targetMod.curseforgeModId,
-          );
-          const neededByNames = externalNeeders
-            .map(
-              (id) =>
-                pack.mods.find((m) => m.curseforgeModId === id)?.modName ?? "",
-            )
-            .filter(Boolean);
-
-          return {
-            modId: dep.modId,
-            modName: dep.modName,
-            safe: externalNeeders.length === 0,
-            neededBy: neededByNames,
-          };
-        }),
-      };
-    }),
+    .query(({ input }) =>
+      structurePackService.checkDeleteDependencies(input.packId, input.modId),
+    ),
 });
