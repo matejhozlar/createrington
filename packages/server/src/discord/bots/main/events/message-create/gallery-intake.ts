@@ -1,6 +1,6 @@
 import config from "@/config";
 import type { EventModule } from "@/discord/bots/common/loaders/event-loader";
-import { container, Services } from "@/services/container";
+import { getServiceSync, Services } from "@/services";
 import {
   GALLERY_INTAKE_REACTION,
   toIntakeMessage,
@@ -18,7 +18,7 @@ export async function execute(
   if (message.channelId !== config.gallery.intakeChannelId) return;
 
   try {
-    const gallery = container.getSync(Services.GALLERY_SERVICE);
+    const gallery = getServiceSync(Services.GALLERY_SERVICE);
     const { created } = await gallery.ingest(toIntakeMessage(message));
 
     if (created.length > 0) {

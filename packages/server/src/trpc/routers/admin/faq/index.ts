@@ -12,7 +12,7 @@ import {
   assertPatchNotEmpty,
   id,
 } from "@/trpc/utils";
-import { container, Services } from "@/services/container";
+import { getServiceSync, Services } from "@/services";
 import { FaqService } from "@/services/discord/faq";
 import type { FaqEntryFilters } from "@createrington/shared/db";
 
@@ -116,7 +116,7 @@ export const faqRouter = router({
         enabled: input.enabled,
       });
 
-      const faqService = container.getSync(Services.FAQ_SERVICE);
+      const faqService = getServiceSync(Services.FAQ_SERVICE);
       await faqService.refreshPatterns();
 
       await Q.admin.log.action.logAction({
@@ -153,7 +153,7 @@ export const faqRouter = router({
       assertPatchNotEmpty(updates);
       await Q.faq.entry.update({ id }, updates);
 
-      const faqService = container.getSync(Services.FAQ_SERVICE);
+      const faqService = getServiceSync(Services.FAQ_SERVICE);
       await faqService.refreshPatterns();
 
       await Q.admin.log.action.logAction({
@@ -174,7 +174,7 @@ export const faqRouter = router({
 
       await Q.faq.entry.delete({ id: input.id });
 
-      const faqService = container.getSync(Services.FAQ_SERVICE);
+      const faqService = getServiceSync(Services.FAQ_SERVICE);
       await faqService.refreshPatterns();
 
       await Q.admin.log.action.logAction({
@@ -187,7 +187,7 @@ export const faqRouter = router({
   repostWelcome: adminProcedure
     .meta({ description: "Manually trigger a welcome message repost" })
     .mutation(async ({ ctx }) => {
-      const faqService = container.getSync(Services.FAQ_SERVICE);
+      const faqService = getServiceSync(Services.FAQ_SERVICE);
       await faqService.repostWelcomeMessage();
 
       await Q.admin.log.action.logAction({

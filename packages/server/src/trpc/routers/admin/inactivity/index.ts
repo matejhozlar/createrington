@@ -11,11 +11,10 @@ import {
   pageOffset,
 } from "@/trpc/utils";
 import config from "@/config";
-import { getService, Services } from "@/services";
+import { getOptionalService, Services } from "@/services";
 import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
 import { removeInactiveWarning } from "@/services/discord/cleanup/inactivity/remove-warning";
-import type { InactivityCleanupService } from "@/services/discord/cleanup/inactivity/inactivity-cleanup.service";
 import {
   INACTIVITY_GRACE_DAYS,
   INACTIVITY_RETENTION_DAYS,
@@ -200,17 +199,13 @@ export const inactivityRouter = router({
         "Force-run the inactivity cleanup cycle now and reset the recurring schedule",
     })
     .mutation(async ({ ctx }) => {
-      if (!isManualActionsEnabled()) {
+      const service = await getOptionalService(
+        Services.INACTIVITY_CLEANUP_SERVICE,
+      );
+      if (!service) {
         throw trpcError.forbidden(
           "Triggering the cleanup cycle is only available on the production deployment",
         );
-      }
-
-      let service: InactivityCleanupService;
-      try {
-        service = await getService(Services.INACTIVITY_CLEANUP_SERVICE);
-      } catch {
-        throw trpcError.internal("Inactivity cleanup service is not available");
       }
 
       await service.forceRunAndResetSchedule({
@@ -231,17 +226,13 @@ export const inactivityRouter = router({
         "Run only the resolve + remove phases now (no new warning announcements)",
     })
     .mutation(async ({ ctx }) => {
-      if (!isManualActionsEnabled()) {
+      const service = await getOptionalService(
+        Services.INACTIVITY_CLEANUP_SERVICE,
+      );
+      if (!service) {
         throw trpcError.forbidden(
           "Processing overdue players is only available on the production deployment",
         );
-      }
-
-      let service: InactivityCleanupService;
-      try {
-        service = await getService(Services.INACTIVITY_CLEANUP_SERVICE);
-      } catch {
-        throw trpcError.internal("Inactivity cleanup service is not available");
       }
 
       await service.triggerResolveAndRemove({

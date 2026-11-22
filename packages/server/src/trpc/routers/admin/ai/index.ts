@@ -1,8 +1,7 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { trpcError } from "@/trpc/utils";
-import { getService, Services } from "@/services";
-import config from "@/config";
+import { getOptionalService, Services } from "@/services";
 import { createRateLimit } from "@/trpc/middleware/rate-limit";
 
 const aiAssistLimit = createRateLimit({
@@ -86,13 +85,12 @@ export const adminAiRouter = router({
       }),
     )
     .mutation(async ({ input }) => {
-      if (!config.ai.enabled) {
+      const aiService = await getOptionalService(Services.AI_SERVICE);
+      if (!aiService) {
         throw trpcError.badRequest(
           "AI assist is not available: OpenAI API key is not configured.",
         );
       }
-
-      const aiService = await getService(Services.AI_SERVICE);
       const prompt = ACTION_PROMPTS[input.action] + input.text;
 
       const result = await aiService.complete({

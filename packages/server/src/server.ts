@@ -1,13 +1,13 @@
 import "./logger.global";
 import config from "@/config";
 import { initializeServices, shutdownServices } from "@/services/bootstrap";
-import { container, Services } from "@/services";
+import { getService, Services } from "@/services";
 
 async function start() {
   try {
     await initializeServices();
 
-    const httpServer = await container.get(Services.HTTP_SERVER);
+    const httpServer = await getService(Services.HTTP_SERVER);
     setupProcessHandlers();
     httpServer.listen(config.app.port, () => {
       logger.info(`✓ Server running on port ${config.app.port}`);

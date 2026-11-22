@@ -10,7 +10,7 @@ import {
   paginationInput,
   id,
 } from "@/trpc/utils";
-import { container, Services } from "@/services/container";
+import { getServiceSync, Services } from "@/services";
 import { galleryImageUrls } from "@/services/gallery/urls";
 import {
   galleryRewardAmountSchema,
@@ -30,7 +30,7 @@ const MAX_NOTE_LENGTH = 500;
 const MAX_CREDITS = 10;
 
 function gallery() {
-  return container.getSync(Services.GALLERY_SERVICE);
+  return getServiceSync(Services.GALLERY_SERVICE);
 }
 
 function playerSummary(player: Player | undefined, minecraftUuid: string) {
