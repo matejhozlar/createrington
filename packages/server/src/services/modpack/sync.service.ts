@@ -2,6 +2,7 @@ import { Q } from "@/db";
 import { BadRequestError } from "@/errors";
 import type {
   Modpack,
+  ModpackMod,
   Workshop,
   WorkshopMod,
   WorkshopModStatus,
@@ -44,6 +45,107 @@ type ManifestMembership = Pick<
   ModpackManifest,
   "modIds" | "disabledModIds" | "version"
 >;
+
+interface MembershipPlan {
+  goingLive: Map<boolean, number[]>;
+  restored: Map<boolean, number[]>;
+  removedImportIds: number[];
+  droppedRowIds: number[];
+  shippedModIds: number[];
+  droppedModIds: number[];
+  droppedRequired: Map<number, boolean>;
+}
+
+function pushByRequired(
+  map: Map<boolean, number[]>,
+  required: boolean,
+  id: number,
+): void {
+  const ids = map.get(required) ?? [];
+  ids.push(id);
+  map.set(required, ids);
+}
+
+function planMembership(
+  rows: ModpackMod[],
+  manifest: ManifestMembership,
+): MembershipPlan {
+  const plan: MembershipPlan = {
+    goingLive: new Map(),
+    restored: new Map(),
+    removedImportIds: [],
+    droppedRowIds: [],
+    shippedModIds: [],
+    droppedModIds: [],
+    droppedRequired: new Map(),
+  };
+
+  for (const row of rows) {
+    if (manifest.modIds.has(row.curseforgeProjectId)) {
+      const required = !manifest.disabledModIds.has(row.curseforgeProjectId);
+      if (row.liveAt === null) {
+        pushByRequired(plan.goingLive, required, row.id);
+      } else if (
+        row.droppedFromManifestAt !== null ||
+        row.required !== required
+      ) {
+        pushByRequired(plan.restored, required, row.id);
+      }
+      if (row.workshopModId) plan.shippedModIds.push(row.workshopModId);
+      continue;
+    }
+
+    if (row.origin === "import") {
+      plan.removedImportIds.push(row.id);
+      continue;
+    }
+    if (row.droppedFromManifestAt === null) plan.droppedRowIds.push(row.id);
+    if (row.workshopModId) {
+      plan.droppedModIds.push(row.workshopModId);
+      plan.droppedRequired.set(row.workshopModId, row.required);
+    }
+  }
+  return plan;
+}
+
+async function writeMembership(
+  plan: MembershipPlan,
+  version: string | null,
+  now: Date,
+): Promise<void> {
+  for (const [required, ids] of plan.goingLive) {
+    await Q.modpack.mod.updateAll(
+      {
+        liveAt: now,
+        liveInVersion: version,
+        droppedFromManifestAt: null,
+        required,
+        updatedAt: now,
+      },
+      { id: { $in: ids } },
+    );
+  }
+  for (const [required, ids] of plan.restored) {
+    await Q.modpack.mod.updateAll(
+      { droppedFromManifestAt: null, required, updatedAt: now },
+      { id: { $in: ids } },
+    );
+  }
+  if (plan.removedImportIds.length > 0) {
+    await Q.modpack.mod.deleteAll({ id: { $in: plan.removedImportIds } });
+  }
+  if (plan.droppedRowIds.length > 0) {
+    await Q.modpack.mod.updateAll(
+      {
+        liveAt: null,
+        liveInVersion: null,
+        droppedFromManifestAt: now,
+        updatedAt: now,
+      },
+      { id: { $in: plan.droppedRowIds } },
+    );
+  }
+}
 
 export interface ModpackManifestSeedFile {
   projectId: number;
@@ -263,81 +365,8 @@ export class ModpackSyncService {
         : Promise.resolve([]),
     ]);
 
-    const shippedModIds: number[] = [];
-    const droppedModIds: number[] = [];
-    const droppedRequired = new Map<number, boolean>();
-    const goingLive = new Map<boolean, number[]>();
-    const restored = new Map<boolean, number[]>();
-    const removedImportIds: number[] = [];
-    const droppedRowIds: number[] = [];
-    const pushByRequired = (
-      map: Map<boolean, number[]>,
-      required: boolean,
-      id: number,
-    ) => {
-      const ids = map.get(required) ?? [];
-      ids.push(id);
-      map.set(required, ids);
-    };
-
-    for (const row of rows) {
-      if (manifest.modIds.has(row.curseforgeProjectId)) {
-        const required = !manifest.disabledModIds.has(row.curseforgeProjectId);
-        if (row.liveAt === null) {
-          pushByRequired(goingLive, required, row.id);
-        } else if (
-          row.droppedFromManifestAt !== null ||
-          row.required !== required
-        ) {
-          pushByRequired(restored, required, row.id);
-        }
-        if (row.workshopModId) shippedModIds.push(row.workshopModId);
-        continue;
-      }
-
-      if (row.origin === "import") {
-        removedImportIds.push(row.id);
-        continue;
-      }
-      if (row.droppedFromManifestAt === null) droppedRowIds.push(row.id);
-      if (row.workshopModId) {
-        droppedModIds.push(row.workshopModId);
-        droppedRequired.set(row.workshopModId, row.required);
-      }
-    }
-
-    for (const [required, ids] of goingLive) {
-      await Q.modpack.mod.updateAll(
-        {
-          liveAt: now,
-          liveInVersion: manifest.version,
-          droppedFromManifestAt: null,
-          required,
-          updatedAt: now,
-        },
-        { id: { $in: ids } },
-      );
-    }
-    for (const [required, ids] of restored) {
-      await Q.modpack.mod.updateAll(
-        { droppedFromManifestAt: null, required, updatedAt: now },
-        { id: { $in: ids } },
-      );
-    }
-    if (removedImportIds.length > 0) {
-      await Q.modpack.mod.deleteAll({ id: { $in: removedImportIds } });
-    }
-    if (droppedRowIds.length > 0) {
-      await Q.modpack.mod.updateAll(
-        {
-          liveAt: null,
-          liveInVersion: null,
-          droppedFromManifestAt: now,
-          updatedAt: now,
-        },
-        { id: { $in: droppedRowIds } },
-      );
-    }
+    const plan = planMembership(rows, manifest);
+    await writeMembership(plan, manifest.version, now);
 
     const memberProjectIds = new Set(
       rows.map((row) => row.curseforgeProjectId),
@@ -345,30 +374,29 @@ export class ModpackSyncService {
     const newProjectIds = [...manifest.modIds].filter(
       (id) => !memberProjectIds.has(id),
     );
-    if (newProjectIds.length > 0) {
-      shippedModIds.push(
-        ...(await this.importManifestMods(
-          modpack,
-          workshopIds,
-          suggestions,
-          manifest,
-          newProjectIds,
-          now,
-        )),
-      );
-    }
+    const importedModIds =
+      newProjectIds.length > 0
+        ? await this.importManifestMods({
+            modpack,
+            workshopIds,
+            suggestions,
+            manifest,
+            projectIds: newProjectIds,
+            now,
+          })
+        : [];
 
     announceStatusMoves([
       ...(await this.moveSuggestions(
-        shippedModIds,
+        [...plan.shippedModIds, ...importedModIds],
         "in_pack",
         manifest.version,
       )),
       ...(await this.moveSuggestions(
-        droppedModIds,
+        plan.droppedModIds,
         "next_update",
         manifest.version,
-        droppedRequired,
+        plan.droppedRequired,
       )),
     ]);
   }
@@ -401,14 +429,21 @@ export class ModpackSyncService {
     );
   }
 
-  private async importManifestMods(
-    modpack: Modpack,
-    workshopIds: number[],
-    suggestions: WorkshopMod[],
-    manifest: ManifestMembership,
-    projectIds: number[],
-    now: Date,
-  ): Promise<number[]> {
+  private async importManifestMods({
+    modpack,
+    workshopIds,
+    suggestions,
+    manifest,
+    projectIds,
+    now,
+  }: {
+    modpack: Modpack;
+    workshopIds: number[];
+    suggestions: WorkshopMod[];
+    manifest: ManifestMembership;
+    projectIds: number[];
+    now: Date;
+  }): Promise<number[]> {
     const suggestionByProject = new Map<number, WorkshopMod>();
     for (const mod of suggestions) {
       const held = suggestionByProject.get(mod.curseforgeProjectId);
