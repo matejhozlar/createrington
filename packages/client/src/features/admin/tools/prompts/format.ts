@@ -1,5 +1,18 @@
 import type { PlayerPromptEntryModeValue } from "@createrington/shared/player-prompt";
+import type { BadgeTone } from "@/components/ui/badge";
 import { pluralize } from "@/lib/format";
+import type { RouterOutput } from "@/lib/trpc";
+
+type PromptStatus =
+  RouterOutput["admin"]["prompts"]["list"]["items"][number]["status"];
+
+export const PROMPT_STATUS_DISPLAY: Record<
+  PromptStatus,
+  { label: string; tone: BadgeTone }
+> = {
+  active: { label: "Active", tone: "success" },
+  closed: { label: "Closed", tone: "neutral" },
+};
 
 export const DURATION_OPTIONS = [
   { value: "10m", label: "10 minutes", ms: 10 * 60 * 1000 },

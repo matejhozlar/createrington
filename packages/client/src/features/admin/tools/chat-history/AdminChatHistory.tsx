@@ -3,7 +3,8 @@ import { useNavigate } from "react-router";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Badge, type BadgeTone } from "@/components/ui/badge";
+import { EmptyState, ErrorState } from "@/components/query-states";
 import { CellDate, CellText } from "@/components/cell-text";
 import {
   BadgeCellSkeleton,
@@ -17,20 +18,14 @@ import { trpc } from "@/lib/trpc";
 
 const PAGE_SIZE = 25;
 
-const STATUS_VARIANT: Record<
-  string,
-  { variant: "default" | "secondary" | "destructive"; label: string }
-> = {
-  completed: { variant: "secondary", label: "Completed" },
-  failed: { variant: "destructive", label: "Failed" },
+const STATUS_DISPLAY: Record<string, { tone: BadgeTone; label: string }> = {
+  completed: { tone: "neutral", label: "Completed" },
+  failed: { tone: "danger", label: "Failed" },
 };
 
 function statusBadge(status: string): React.JSX.Element {
-  const meta = STATUS_VARIANT[status] ?? {
-    variant: "secondary" as const,
-    label: status,
-  };
-  return <Badge variant={meta.variant}>{meta.label}</Badge>;
+  const meta = STATUS_DISPLAY[status] ?? { tone: "neutral", label: status };
+  return <Badge tone={meta.tone}>{meta.label}</Badge>;
 }
 
 function displayTitle(raw: string): string {
@@ -140,19 +135,15 @@ export function AdminChatHistory() {
         />
 
         {error ? (
-          <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-border bg-card py-16 text-center">
-            <p className="text-destructive">{error}</p>
-            <Button variant="outline" onClick={reload} className="mt-2">
-              Try Again
-            </Button>
-          </div>
+          <ErrorState message={error} onRetry={reload} bordered />
         ) : !loading && sessions.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-border bg-card py-16 text-center">
-            <History className="size-10 text-muted-foreground" />
-            <p className="text-muted-foreground">No past sessions yet.</p>
-            <p className="text-sm text-muted-foreground/80">
-              End a chat in the assistant drawer and it'll show up here.
-            </p>
+          <div className="rounded-lg border border-border bg-card">
+            <EmptyState
+              icon={History}
+              message="No past sessions yet."
+              hint="End a chat in the assistant drawer and it'll show up here."
+              className="py-16"
+            />
           </div>
         ) : (
           <>

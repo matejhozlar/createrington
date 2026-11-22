@@ -32,15 +32,18 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import {
+  DEFAULT_STAT_WINDOWS,
   STAT_CARDS,
   STATUS_TONES,
   STATUS_FILTER_OPTIONS,
   STATUS_LABELS,
+  type WarningStatusFilter,
+} from "./constants";
+import {
   daysUntilDeadline,
   deriveWarningStatus,
   resolveStatText,
-  type WarningStatusFilter,
-} from "./constants";
+} from "./status";
 import { ResolveWarningModal } from "./components/modals/ResolveWarningModal";
 import { RemoveWarningModal } from "./components/modals/RemoveWarningModal";
 import { ExemptionsCard } from "./components/ExemptionsCard";
@@ -94,8 +97,10 @@ export function InactivityManagement() {
   );
 
   const canMutate = capabilitiesQuery.data?.canMutate ?? false;
-  const graceDays = capabilitiesQuery.data?.graceDays ?? 14;
-  const retentionDays = capabilitiesQuery.data?.retentionDays ?? 30;
+  const graceDays =
+    capabilitiesQuery.data?.graceDays ?? DEFAULT_STAT_WINDOWS.graceDays;
+  const retentionDays =
+    capabilitiesQuery.data?.retentionDays ?? DEFAULT_STAT_WINDOWS.retentionDays;
   const statWindows = { graceDays, retentionDays };
 
   const handleTriggerCleanup = () => triggerCleanup.mutate();

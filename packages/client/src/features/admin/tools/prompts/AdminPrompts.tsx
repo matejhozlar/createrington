@@ -22,12 +22,19 @@ import {
 } from "@/components/ui/select";
 import { MessageSquare, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { formatFullDate } from "@/features/admin/format";
+import { PROMPT_STATUS_DISPLAY } from "./format";
 import { usePagedQuery } from "@/hooks/use-paged-query";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { CreatePromptModal } from "./components/CreatePromptModal";
 import { DeletePromptModal } from "./components/DeletePromptModal";
 
 type StatusFilter = "all" | "active" | "closed";
+
+const STATUS_FILTER_OPTIONS: { value: StatusFilter; label: string }[] = [
+  { value: "all", label: "All" },
+  { value: "active", label: "Active" },
+  { value: "closed", label: "Closed" },
+];
 type PromptRow = RouterOutput["admin"]["prompts"]["list"]["items"][number];
 
 function formatEndsAt(date: Date | string): string {
@@ -77,8 +84,8 @@ export function AdminPrompts() {
       width: 100,
       skeleton: () => <BadgeCellSkeleton />,
       render: (row) => (
-        <Badge variant={row.status === "active" ? "default" : "secondary"}>
-          {row.status === "active" ? "Active" : "Closed"}
+        <Badge tone={PROMPT_STATUS_DISPLAY[row.status].tone}>
+          {PROMPT_STATUS_DISPLAY[row.status].label}
         </Badge>
       ),
     },
@@ -167,9 +174,11 @@ export function AdminPrompts() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="closed">Closed</SelectItem>
+                  {STATUS_FILTER_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <Button

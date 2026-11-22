@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { SearchInput } from "@/components/search-input";
 import { Badge } from "@/components/ui/badge";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
+import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import {
   Card,
   CardContent,
@@ -182,6 +183,8 @@ export function StatSearch() {
       />
 
       <div className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-4 px-4 pb-4">
+        <AdminPageTitle title="Stat Search" />
+
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">

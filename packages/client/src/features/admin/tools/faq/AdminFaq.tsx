@@ -30,8 +30,8 @@ import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { usePagedQuery } from "@/hooks/use-paged-query";
 import { useTableSort } from "@/hooks/use-table-sort";
 import { useMutation } from "@tanstack/react-query";
-import { CreateFaqModal } from "./components/modals/CreateFaqModal";
-import { EditFaqModal } from "./components/modals/EditFaqModal";
+import { EnabledBadge } from "@/features/admin/components/EnabledBadge";
+import { FaqEntryDialog } from "./components/modals/FaqEntryDialog";
 import { DeleteFaqModal } from "./components/modals/DeleteFaqModal";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
@@ -41,6 +41,12 @@ type FaqEntry = RouterOutput["admin"]["faq"]["list"]["items"][number];
 type SortField = "priority" | "title" | "createdAt";
 type EnabledFilter = "all" | "enabled" | "disabled";
 
+const ENABLED_FILTER_OPTIONS: { value: EnabledFilter; label: string }[] = [
+  { value: "all", label: "All Entries" },
+  { value: "enabled", label: "Enabled" },
+  { value: "disabled", label: "Disabled" },
+];
+
 export function AdminFaq() {
   const [searchQuery, setSearchQuery] = useState("");
   const [enabledFilter, setEnabledFilter] = useState<EnabledFilter>("all");
@@ -49,11 +55,11 @@ export function AdminFaq() {
     newFieldDirection: "desc",
   });
 
-  const [createModal, setCreateModal] = useState(false);
-  const [editModal, setEditModal] = useState<{
+  const [entryDialog, setEntryDialog] = useState<{
     open: boolean;
     entry: FaqEntry | null;
   }>({ open: false, entry: null });
+  const openCreate = () => setEntryDialog({ open: true, entry: null });
   const [deleteTarget, setDeleteTarget] = useState<FaqEntry | null>(null);
 
   const debouncedSearch = useDebouncedValue(searchQuery);
@@ -135,18 +141,7 @@ export function AdminFaq() {
       header: "Status",
       width: 110,
       skeleton: () => <BadgeCellSkeleton />,
-      render: (entry) => (
-        <Badge
-          variant="outline"
-          className={
-            entry.enabled
-              ? "border-success bg-success/10 text-success"
-              : "border-muted-foreground bg-muted-foreground/10 text-muted-foreground"
-          }
-        >
-          {entry.enabled ? "Enabled" : "Disabled"}
-        </Badge>
-      ),
+      render: (entry) => <EnabledBadge enabled={entry.enabled} />,
     },
     {
       key: "created",
@@ -161,7 +156,7 @@ export function AdminFaq() {
     {
       label: "Edit",
       icon: Pencil,
-      onClick: () => setEditModal({ open: true, entry }),
+      onClick: () => setEntryDialog({ open: true, entry }),
     },
     {
       label: "Delete",
@@ -199,7 +194,7 @@ export function AdminFaq() {
                 />
                 Repost Welcome
               </Button>
-              <Button onClick={() => setCreateModal(true)}>
+              <Button onClick={openCreate}>
                 <Plus className="mr-2 size-4" />
                 New Entry
               </Button>
@@ -223,9 +218,11 @@ export function AdminFaq() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Entries</SelectItem>
-              <SelectItem value="enabled">Enabled</SelectItem>
-              <SelectItem value="disabled">Disabled</SelectItem>
+              {ENABLED_FILTER_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </FilterBar>
@@ -237,7 +234,7 @@ export function AdminFaq() {
             icon: MessageCircleQuestion,
             message: "No FAQ entries found",
             children: (
-              <Button onClick={() => setCreateModal(true)}>
+              <Button onClick={openCreate}>
                 <Plus className="mr-2 size-4" />
                 Create First Entry
               </Button>
@@ -250,18 +247,12 @@ export function AdminFaq() {
         />
       </div>
 
-      <CreateFaqModal
-        open={createModal}
-        onClose={() => setCreateModal(false)}
+      <FaqEntryDialog
+        key={entryDialog.entry?.id ?? "new"}
+        open={entryDialog.open}
+        onClose={() => setEntryDialog((prev) => ({ ...prev, open: false }))}
+        entry={entryDialog.entry}
       />
-
-      {editModal.entry !== null && (
-        <EditFaqModal
-          open={editModal.open}
-          onClose={() => setEditModal({ open: false, entry: null })}
-          entry={editModal.entry}
-        />
-      )}
 
       <DeleteFaqModal
         entry={deleteTarget}

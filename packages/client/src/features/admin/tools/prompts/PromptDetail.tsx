@@ -9,7 +9,7 @@ import { MinecraftAvatar } from "@/components/minecraft-avatar";
 import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { formatDateTime } from "@/lib/format";
-import { describeEntryRules } from "./format";
+import { describeEntryRules, PROMPT_STATUS_DISPLAY } from "./format";
 import { DeletePromptModal } from "./components/DeletePromptModal";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
@@ -134,8 +134,8 @@ export function PromptDetail() {
           icon={MessageSquare}
           badges={
             <>
-              <Badge variant={isActive ? "default" : "secondary"}>
-                {prompt.status}
+              <Badge tone={PROMPT_STATUS_DISPLAY[prompt.status].tone}>
+                {PROMPT_STATUS_DISPLAY[prompt.status].label}
               </Badge>
               <Badge variant="outline">
                 {isMulti ? "Multiple entries" : "Single entry"}

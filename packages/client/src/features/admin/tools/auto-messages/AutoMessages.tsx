@@ -2,8 +2,8 @@ import { useState } from "react";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { EnabledBadge } from "@/features/admin/components/EnabledBadge";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   Plus,
   Pencil,
@@ -155,16 +155,7 @@ export function AutoMessages() {
                         <h3 className="font-semibold truncate">
                           {config.name}
                         </h3>
-                        <Badge
-                          variant="outline"
-                          className={
-                            config.enabled
-                              ? "border-success bg-success/10 text-success"
-                              : "border-muted-foreground bg-muted-foreground/10 text-muted-foreground"
-                          }
-                        >
-                          {config.enabled ? "Enabled" : "Disabled"}
-                        </Badge>
+                        <EnabledBadge enabled={config.enabled} />
                       </div>
                       <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
                         <span>
@@ -248,12 +239,10 @@ export function AutoMessages() {
                                   {msg.content}
                                 </p>
                                 {!msg.enabled && (
-                                  <Badge
-                                    variant="outline"
-                                    className="mt-1 border-muted-foreground bg-muted-foreground/10 text-muted-foreground"
-                                  >
-                                    Disabled
-                                  </Badge>
+                                  <EnabledBadge
+                                    enabled={false}
+                                    className="mt-1"
+                                  />
                                 )}
                                 {msg.followups.length > 0 && (
                                   <div className="mt-2 space-y-1 border-l-2 border-border/60 pl-3">
@@ -271,12 +260,10 @@ export function AutoMessages() {
                                             {f.content}
                                           </span>
                                           {!f.enabled && (
-                                            <Badge
-                                              variant="outline"
-                                              className="ml-2 border-muted-foreground bg-muted-foreground/10 text-muted-foreground text-[10px]"
-                                            >
-                                              Disabled
-                                            </Badge>
+                                            <EnabledBadge
+                                              enabled={false}
+                                              className="ml-2 text-[10px]"
+                                            />
                                           )}
                                         </div>
                                       </div>

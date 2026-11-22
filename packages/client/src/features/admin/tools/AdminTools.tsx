@@ -1,14 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import type { LucideIcon } from "lucide-react";
-import {
-  Breadcrumb,
-  BreadcrumbList,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbSeparator,
-  BreadcrumbPage,
-} from "@/components/ui/breadcrumb";
+import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { FilterBar } from "@/features/admin/components/FilterBar";
 import { Badge } from "@/components/ui/badge";
@@ -218,19 +211,12 @@ export function AdminTools() {
 
   return (
     <div className="flex flex-1 flex-col gap-4">
-      <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-border bg-sidebar px-4">
-        <Breadcrumb>
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbLink href="/admin/dashboard">Admin</BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbPage>Tools</BreadcrumbPage>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
-
+      <AdminPageHeader
+        trail={[
+          { label: "Admin", href: "/admin/dashboard" },
+          { label: "Tools" },
+        ]}
+      >
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
@@ -248,7 +234,7 @@ export function AdminTools() {
           </TooltipTrigger>
           <TooltipContent>Refresh Discord data</TooltipContent>
         </Tooltip>
-      </header>
+      </AdminPageHeader>
 
       <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
         <AdminPageTitle
