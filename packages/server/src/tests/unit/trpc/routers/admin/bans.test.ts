@@ -32,10 +32,12 @@ vi.mock("@/services/player/deletion", () => ({
   playerDeletionService: { delete: deletePlayer },
 }));
 vi.mock("@/services", () => ({
-  getService: vi.fn().mockResolvedValue({
-    guilds: { cache: { first: () => undefined } },
+  getService: vi.fn(async (key: string) => {
+    if (key === "bot") return { guilds: { cache: { first: () => undefined } } };
+    const { PlayerBanService } = await import("@/services/player/ban");
+    return new PlayerBanService();
   }),
-  Services: {},
+  Services: { DISCORD_MAIN_BOT: "bot", PLAYER_BAN_SERVICE: "bans" },
 }));
 vi.mock("@/services/auth/session/session.service", () => ({
   sessionService: { revokeAllForUser },
@@ -56,10 +58,19 @@ vi.mock("@/discord/constants", () => ({
     Messages: { send: vi.fn() },
   },
 }));
-vi.mock("@/discord/embeds", () => ({
-  EmbedColors: { Success: 0 },
-  EmbedPresets: { plain: () => ({ build: () => [] }) },
-}));
+vi.mock("@/discord/embeds", () => {
+  const embed = () => ({ build: () => [] });
+  return {
+    EmbedPresets: {
+      bans: {
+        temporary: embed,
+        permanent: embed,
+        unbanned: embed,
+        autoUnbanned: embed,
+      },
+    },
+  };
+});
 
 import { bansRouter } from "@/trpc/routers/admin/players/bans";
 import { BAN_REASON_MAX_LENGTH } from "@createrington/shared/admin-reason";
@@ -142,7 +153,7 @@ describe("admin.players.bans.issueTemporary", () => {
     rcon.banAll.mockRejectedValue(new Error("ban failed on: Rails 'n Sails"));
 
     await expect(caller.issueTemporary(input)).rejects.toMatchObject({
-      code: "BAD_GATEWAY",
+      code: "SERVICE_UNAVAILABLE",
     });
     expect(rcon.pardonAll).toHaveBeenCalledWith(PLAYER.minecraftUsername);
     expect(revokeAllForUser).not.toHaveBeenCalled();
@@ -189,7 +200,7 @@ describe("admin.players.bans.issuePermanent", () => {
     rcon.banAll.mockRejectedValue(new Error("ban failed on: Rails 'n Sails"));
 
     await expect(caller.issuePermanent(input)).rejects.toMatchObject({
-      code: "BAD_GATEWAY",
+      code: "SERVICE_UNAVAILABLE",
     });
     expect(rcon.pardonAll).toHaveBeenCalledWith(PLAYER.minecraftUsername);
     expect(rcon.whitelistAll).toHaveBeenLastCalledWith(
@@ -208,7 +219,7 @@ describe("admin.players.bans.unban", () => {
     );
 
     await expect(caller.unban(input)).rejects.toMatchObject({
-      code: "BAD_GATEWAY",
+      code: "SERVICE_UNAVAILABLE",
     });
     expect(rcon.banAll).toHaveBeenCalledWith(
       PLAYER.minecraftUsername,
@@ -226,7 +237,7 @@ describe("admin.players.bans.unban", () => {
     rcon.pardonAll.mockRejectedValue(new Error("pardon failed"));
 
     await expect(caller.unban(input)).rejects.toMatchObject({
-      code: "BAD_GATEWAY",
+      code: "SERVICE_UNAVAILABLE",
     });
     expect(rcon.banAll).toHaveBeenCalledWith(
       PLAYER.minecraftUsername,

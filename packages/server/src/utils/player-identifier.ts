@@ -21,13 +21,12 @@ export function getIdType(
   return "invalid";
 }
 
-export function idToObject(
-  id: string,
-):
+export type PlayerIdObject =
   | { minecraftUuid: string }
   | { minecraftUsername: string }
-  | { discordId: string }
-  | null {
+  | { discordId: string };
+
+export function idToObject(id: string): PlayerIdObject | null {
   const type = getIdType(id);
 
   switch (type) {
