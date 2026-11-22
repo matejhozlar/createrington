@@ -44,6 +44,65 @@ describe("coerceAction", () => {
     expect(coerceAction({ type: "unknown" })).toBeNull();
     expect(coerceAction(null)).toBeNull();
   });
+
+  it("keeps a new plan with its title, category and body", () => {
+    expect(
+      coerceAction({
+        type: "plan_create",
+        title: "Rework the economy",
+        body: "## Why\nMoney has no use.",
+        category: "modpack",
+        subcategoryId: 4,
+        label: "Economy plan",
+      }),
+    ).toEqual({
+      type: "plan_create",
+      title: "Rework the economy",
+      body: "## Why\nMoney has no use.",
+      category: "modpack",
+      subcategoryId: 4,
+      label: "Economy plan",
+    });
+  });
+
+  it("rejects a new plan without a title or with an unknown category", () => {
+    expect(
+      coerceAction({ type: "plan_create", category: "modpack" }),
+    ).toBeNull();
+    expect(
+      coerceAction({ type: "plan_create", title: "  ", category: "modpack" }),
+    ).toBeNull();
+    expect(
+      coerceAction({ type: "plan_create", title: "Plan", category: "lore" }),
+    ).toBeNull();
+    expect(coerceAction({ type: "plan_create", title: "Plan" })).toBeNull();
+  });
+
+  it("keeps only the fields a plan edit names", () => {
+    expect(
+      coerceAction({ type: "plan_update", id: 12, status: "approved" }),
+    ).toEqual({ type: "plan_update", id: 12, status: "approved" });
+    expect(
+      coerceAction({ type: "plan_update", id: 12, subcategoryId: null }),
+    ).toEqual({ type: "plan_update", id: 12, subcategoryId: null });
+  });
+
+  it("rejects a plan edit that changes nothing or is malformed", () => {
+    expect(coerceAction({ type: "plan_update", id: 12 })).toBeNull();
+    expect(
+      coerceAction({ type: "plan_update", id: 12, label: "Nothing" }),
+    ).toBeNull();
+    expect(coerceAction({ type: "plan_update", body: "No id" })).toBeNull();
+    expect(
+      coerceAction({ type: "plan_update", id: "12", body: "Text" }),
+    ).toBeNull();
+    expect(
+      coerceAction({ type: "plan_update", id: 12, status: "done" }),
+    ).toBeNull();
+    expect(
+      coerceAction({ type: "plan_update", id: 12, subcategoryId: 1.5 }),
+    ).toBeNull();
+  });
 });
 
 describe("parseActionsFromMessage", () => {

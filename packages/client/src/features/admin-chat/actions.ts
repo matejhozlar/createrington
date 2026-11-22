@@ -1,4 +1,10 @@
 import type { ComponentNode, EmbedData } from "@createrington/shared/api/embed";
+import {
+  PLANNING_CATEGORIES,
+  PLANNING_ITEM_STATUSES,
+  type PlanningCategory,
+  type PlanningItemStatus,
+} from "@createrington/shared/planning";
 
 export interface HighlightAction {
   type: "highlight";
@@ -25,8 +31,33 @@ export interface NavigateAction {
   label?: string;
 }
 
+export interface PlanCreateAction {
+  type: "plan_create";
+  title: string;
+  body?: string;
+  category: PlanningCategory;
+  subcategoryId?: number | null;
+  label?: string;
+}
+
+export interface PlanUpdateAction {
+  type: "plan_update";
+  id: number;
+  title?: string;
+  body?: string;
+  category?: PlanningCategory;
+  subcategoryId?: number | null;
+  status?: PlanningItemStatus;
+  label?: string;
+}
+
 export type AdminChatAction =
-  HighlightAction | InsertEmbedAction | InsertComponentsAction | NavigateAction;
+  | HighlightAction
+  | InsertEmbedAction
+  | InsertComponentsAction
+  | NavigateAction
+  | PlanCreateAction
+  | PlanUpdateAction;
 
 export interface ChatActionRecord {
   id: number;
@@ -122,9 +153,62 @@ export function coerceAction(raw: unknown): AdminChatAction | null {
       const embed = coerceEmbed(rec);
       return embed ? { type: "insert_embed", embed, ...label } : null;
     }
+    case "plan_create": {
+      const fields = coercePlanFields(rec);
+      if (!fields?.title || !fields.category) return null;
+      return {
+        ...fields,
+        type: "plan_create",
+        title: fields.title,
+        category: fields.category,
+        ...label,
+      };
+    }
+    case "plan_update": {
+      const fields = coercePlanFields(rec);
+      if (!fields || !isPositiveInteger(rec.id)) return null;
+      if (Object.keys(fields).length === 0) return null;
+      return { ...fields, type: "plan_update", id: rec.id, ...label };
+    }
     default:
       return null;
   }
+}
+
+function isPositiveInteger(value: unknown): value is number {
+  return typeof value === "number" && Number.isInteger(value) && value > 0;
+}
+
+function coercePlanFields(
+  rec: Record<string, unknown>,
+): Omit<PlanUpdateAction, "type" | "id" | "label"> | null {
+  const fields: Omit<PlanUpdateAction, "type" | "id" | "label"> = {};
+
+  if (rec.title !== undefined) {
+    if (typeof rec.title !== "string" || !rec.title.trim()) return null;
+    fields.title = rec.title;
+  }
+  if (rec.body !== undefined) {
+    if (typeof rec.body !== "string") return null;
+    fields.body = rec.body;
+  }
+  if (rec.category !== undefined) {
+    const category = PLANNING_CATEGORIES.find((c) => c === rec.category);
+    if (!category) return null;
+    fields.category = category;
+  }
+  if (rec.subcategoryId !== undefined) {
+    if (rec.subcategoryId !== null && !isPositiveInteger(rec.subcategoryId)) {
+      return null;
+    }
+    fields.subcategoryId = rec.subcategoryId;
+  }
+  if (rec.status !== undefined) {
+    const status = PLANNING_ITEM_STATUSES.find((s) => s === rec.status);
+    if (!status) return null;
+    fields.status = status;
+  }
+  return fields;
 }
 
 function coerceEmbed(rec: Record<string, unknown>): Partial<EmbedData> | null {
@@ -148,6 +232,12 @@ export function describeAction(action: AdminChatAction): string {
   if (action.type === "insert_components") {
     const count = action.components.length;
     return `Insert components message (${count} component${count === 1 ? "" : "s"})`;
+  }
+  if (action.type === "plan_create") {
+    return `New plan: ${action.title}`;
+  }
+  if (action.type === "plan_update") {
+    return `Edit plan #${action.id}`;
   }
   const title = action.embed.title ?? "untitled";
   return `Insert embed: ${title}`;
