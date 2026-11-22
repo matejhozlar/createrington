@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { CheckCircle2, XCircle } from "lucide-react";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
@@ -9,27 +8,26 @@ import { Spinner } from "@/components/ui/spinner";
 type Ghost =
   RouterOutput["admin"]["inactivity"]["ghosts"]["list"]["items"][number];
 
+interface GhostVerification {
+  isPending: boolean;
+  isError: boolean;
+  error: { message: string } | null;
+  data?: { stillGone: boolean };
+}
+
 interface RemoveGhostModalProps {
   ghost: Ghost | null;
+  verification: GhostVerification;
   onClose: () => void;
   canMutate: boolean;
 }
 
 export function RemoveGhostModal({
   ghost,
+  verification,
   onClose,
   canMutate,
 }: RemoveGhostModalProps) {
-  const verifyGhost = useMutation(
-    trpc.admin.inactivity.ghosts.verify.mutationOptions({
-      onSuccess: ({ stillGone }) => {
-        if (!stillGone)
-          void queryClient.invalidateQueries(
-            trpc.admin.inactivity.ghosts.pathFilter(),
-          );
-      },
-    }),
-  );
   const removeGhost = useMutation(
     trpc.admin.inactivity.ghosts.delete.mutationOptions(
       useMutationToast({
@@ -45,21 +43,10 @@ export function RemoveGhostModal({
     ),
   );
 
-  const discordId = ghost?.discordId ?? null;
+  const stillGone = verification.data?.stillGone === true;
+  const rejoined = verification.data?.stillGone === false;
 
-  useEffect(() => {
-    if (discordId !== null) {
-      verifyGhost.mutate({ discordId });
-    } else {
-      verifyGhost.reset();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [discordId]);
-
-  const stillGone = verifyGhost.data?.stillGone === true;
-  const rejoined = verifyGhost.data?.stillGone === false;
-
-  const canConfirm = canMutate && stillGone && !verifyGhost.isPending;
+  const canConfirm = canMutate && stillGone && !verification.isPending;
 
   return (
     <ConfirmDialog
@@ -90,14 +77,14 @@ export function RemoveGhostModal({
           : undefined
       }
     >
-      {verifyGhost.isPending ? (
+      {verification.isPending ? (
         <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/50 p-3 text-sm">
           <Spinner className="size-4 shrink-0 text-muted-foreground" />
           <span className="text-muted-foreground">
             Checking Discord membership...
           </span>
         </div>
-      ) : verifyGhost.isError ? (
+      ) : verification.isError ? (
         <div className="flex items-start gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
           <XCircle className="size-4 shrink-0 text-amber-500 mt-0.5" />
           <div>
@@ -105,7 +92,7 @@ export function RemoveGhostModal({
               Could not verify Discord membership
             </p>
             <p className="text-amber-300/80">
-              {verifyGhost.error?.message ?? "Unknown error"}. Removal blocked
+              {verification.error?.message ?? "Unknown error"}. Removal blocked
               until the check succeeds.
             </p>
           </div>

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { moveItem } from "../components-v2/defaults";
+import { moveItem } from "@/lib/moveItem";
 
 let keySeq = 0;
 const nextKey = () => ++keySeq;

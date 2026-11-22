@@ -1,11 +1,4 @@
-import {
-  type RefObject,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { type RefObject, useEffect, useMemo, useRef, useState } from "react";
 import { AtSign, Hash } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
@@ -228,27 +221,24 @@ export function MentionAutocomplete({
     };
   }, [inputRef]);
 
-  const apply = useCallback(
-    (s: Suggestion) => {
-      const el = inputRef.current;
-      if (!active || !el) return;
-      const cursorPos = el.selectionStart ?? value.length;
-      const before = value.slice(0, active.start);
-      const after = value.slice(cursorPos);
-      const insertion = spaceAfter ? `${s.insert} ` : s.insert;
-      const newPos = before.length + insertion.length;
-      onChange(`${before}${insertion}${after}`);
-      setCursor({ pos: newPos, collapsed: true });
-      setDismissed(null);
-      requestAnimationFrame(() => {
-        const target = inputRef.current;
-        if (!target) return;
-        target.selectionStart = target.selectionEnd = newPos;
-        target.focus();
-      });
-    },
-    [active, value, onChange, inputRef, spaceAfter],
-  );
+  const apply = (s: Suggestion) => {
+    const el = inputRef.current;
+    if (!active || !el) return;
+    const cursorPos = el.selectionStart ?? value.length;
+    const before = value.slice(0, active.start);
+    const after = value.slice(cursorPos);
+    const insertion = spaceAfter ? `${s.insert} ` : s.insert;
+    const newPos = before.length + insertion.length;
+    onChange(`${before}${insertion}${after}`);
+    setCursor({ pos: newPos, collapsed: true });
+    setDismissed(null);
+    requestAnimationFrame(() => {
+      const target = inputRef.current;
+      if (!target) return;
+      target.selectionStart = target.selectionEnd = newPos;
+      target.focus();
+    });
+  };
 
   const stateRef = useRef({ suggestions, highlight, apply, active, value });
   useEffect(() => {

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { FolderPlus, Save } from "lucide-react";
 import {
   Dialog,
@@ -83,12 +83,11 @@ function SaveAsNewForm({ builder, onClose }: SaveAsNewFormProps) {
   const trimmedName = name.trim();
   const trimmedNewCategory = newCategoryName.trim();
 
-  const submitDisabled = useMemo(() => {
-    if (isPending || creating) return true;
-    if (!trimmedName) return true;
-    if (isCreatingNew && !trimmedNewCategory) return true;
-    return false;
-  }, [isPending, creating, trimmedName, isCreatingNew, trimmedNewCategory]);
+  const submitDisabled =
+    isPending ||
+    creating ||
+    !trimmedName ||
+    (isCreatingNew && !trimmedNewCategory);
 
   async function onSubmit(e?: React.FormEvent) {
     e?.preventDefault();

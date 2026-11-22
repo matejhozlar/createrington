@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { FilterBar } from "@/features/admin/components/FilterBar";
@@ -107,15 +107,12 @@ export function InactivityManagement() {
 
   const handleProcessOverdue = () => triggerResolveRemove.mutate();
 
-  const stats = useMemo(
-    () => ({
-      active: statsQuery.data?.active ?? 0,
-      expired: statsQuery.data?.expired ?? 0,
-      resolvedInRetention: statsQuery.data?.resolvedInRetention ?? 0,
-      removedInRetention: statsQuery.data?.removedInRetention ?? 0,
-    }),
-    [statsQuery.data],
-  );
+  const stats = {
+    active: statsQuery.data?.active ?? 0,
+    expired: statsQuery.data?.expired ?? 0,
+    resolvedInRetention: statsQuery.data?.resolvedInRetention ?? 0,
+    removedInRetention: statsQuery.data?.removedInRetention ?? 0,
+  };
 
   const columns: DataTableColumn<Warning>[] = [
     {

@@ -153,6 +153,9 @@ export function EmbedBuilder() {
       setFocused(`button:link:${newIndex}` as FocusTarget);
       return;
     }
+    if (target === "author" && builder.data.author === undefined) {
+      builder.setEmbedData((prev) => ({ ...prev, author: "" }));
+    }
     setFocused(target);
   };
 

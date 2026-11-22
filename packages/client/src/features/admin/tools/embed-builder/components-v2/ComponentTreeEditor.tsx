@@ -40,8 +40,8 @@ import type {
 import type { UseEmbedBuilder } from "../hooks/use-embed-builder";
 import { useItemKeys } from "../hooks/use-item-keys";
 import { ColorPicker, TextField } from "../components/form-primitives";
+import { moveItem } from "@/lib/moveItem";
 import {
-  moveItem,
   newActionRow,
   newButton,
   newContainer,
