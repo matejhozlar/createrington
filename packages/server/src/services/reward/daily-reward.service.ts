@@ -1,7 +1,6 @@
 import { DatabaseTable, type PlayerIdentifier } from "@/generated/db";
 import { balanceRepo, db, Q } from "@/db";
-import { BalanceTransactionType } from "@/db/utils/balance";
-import { BalanceUtils } from "@/db/utils/balance";
+import { BalanceTransactionType, BalanceUtils } from "@/db/utils/balance";
 import { UniqueViolationError } from "@/db/utils/errors";
 
 const REWARD_TYPE = "daily";
