@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 import React from "react";
 import { type AnimatedIcon, useAnimatedHover } from "@createrington/icons";
 
-type NavMainItem = {
+export type NavMainItem = {
   title: string;
   url: string;
   icon?: AnimatedIcon;

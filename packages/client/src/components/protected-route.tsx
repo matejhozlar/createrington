@@ -1,11 +1,12 @@
 import type React from "react";
+import { Outlet } from "react-router";
 import { useAuth } from "@/contexts/auth/";
 import { LoadingScreen } from "@/components/query-states";
 import { LoginPrompt } from "./login-prompt";
 import { NotFound } from "@/components/not-found";
 
 interface ProtectedRouteProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
   requiresAdmin?: boolean;
   promptLogin?: boolean;
 }
@@ -29,5 +30,5 @@ export function ProtectedRoute({
     return <NotFound />;
   }
 
-  return <>{children}</>;
+  return children ?? <Outlet />;
 }

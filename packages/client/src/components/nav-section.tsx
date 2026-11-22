@@ -1,11 +1,7 @@
-import { ChevronRight } from "lucide-react";
-import {
-  type AnimatedIcon,
-  StarIcon,
-  useAnimatedHover,
-} from "@createrington/icons";
+import { useState, type ReactNode } from "react";
 import { NavLink, useLocation } from "react-router";
-import { useState } from "react";
+import { ChevronRight } from "lucide-react";
+import { type AnimatedIcon, useAnimatedHover } from "@createrington/icons";
 import {
   SidebarMenuButton,
   SidebarMenuItem,
@@ -25,18 +21,21 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { NAV_COLLAPSED_ITEM_CLASS, NAV_TONES, type NavTone } from "./nav-tones";
 
-type OwnerNavItem = {
+export type NavSectionItem = {
   title: string;
   url: string;
   icon?: AnimatedIcon;
 };
 
-function OwnerSubRow({
+function SubRow({
   item,
+  tone,
   isActive,
 }: {
-  item: OwnerNavItem;
+  item: NavSectionItem;
+  tone: NavTone;
   isActive: boolean;
 }) {
   return (
@@ -46,7 +45,7 @@ function OwnerSubRow({
           to={item.url}
           className={cn(
             "transition-colors duration-150",
-            isActive && "text-amber-500 bg-amber-500/10",
+            isActive && NAV_TONES[tone].subActive,
           )}
         >
           <span>{item.title}</span>
@@ -56,14 +55,16 @@ function OwnerSubRow({
   );
 }
 
-function OwnerSubCollapsed({
+function SubCollapsed({
   item,
+  tone,
   isActive,
 }: {
-  item: OwnerNavItem;
+  item: NavSectionItem;
+  tone: NavTone;
   isActive: boolean;
 }) {
-  const [iconRef, hoverHandlers] = useAnimatedHover();
+  const [hoverRef, hoverHandlers] = useAnimatedHover();
   const Icon = item.icon;
 
   return (
@@ -73,14 +74,14 @@ function OwnerSubCollapsed({
           to={item.url}
           {...hoverHandlers}
           className={cn(
-            "flex size-8 items-center justify-center rounded-md transition-colors",
-            "text-amber-500 hover:bg-amber-500/10",
-            isActive && "bg-amber-500/20 font-medium",
+            NAV_COLLAPSED_ITEM_CLASS,
+            NAV_TONES[tone].collapsed,
+            isActive && NAV_TONES[tone].active,
           )}
         >
           {Icon && (
             <Icon
-              ref={iconRef}
+              ref={hoverRef}
               size={16}
               className="block shrink-0 transition-colors"
             />
@@ -88,21 +89,43 @@ function OwnerSubCollapsed({
         </NavLink>
       </TooltipTrigger>
       <TooltipContent side="right">
-        <p className="font-semibold text-amber-500">{item.title}</p>
+        <p className={cn("font-semibold", NAV_TONES[tone].text)}>
+          {item.title}
+        </p>
       </TooltipContent>
     </Tooltip>
   );
 }
 
-export function NavOwner({ items }: { items: OwnerNavItem[] }) {
-  const { state } = useSidebar();
-  const location = useLocation();
-  const [triggerIconRef, triggerHandlers] = useAnimatedHover();
+interface NavSectionProps {
+  label: string;
+  tooltip: string;
+  icon: AnimatedIcon;
+  tone: NavTone;
+  items: NavSectionItem[];
+  extra?: { expanded: ReactNode; collapsed: ReactNode };
+}
 
-  const isOwnerActive = items.some((item) =>
-    location.pathname.startsWith(item.url),
-  );
-  const [isOpen, setIsOpen] = useState(isOwnerActive);
+export function NavSection({
+  label,
+  tooltip,
+  icon: Icon,
+  tone,
+  items,
+  extra,
+}: NavSectionProps) {
+  const { state } = useSidebar();
+  const { pathname } = useLocation();
+  const [triggerRef, triggerHandlers] = useAnimatedHover();
+
+  const activeUrl = items
+    .map((item) => item.url)
+    .filter((url) => pathname === url || pathname.startsWith(`${url}/`))
+    .sort((a, b) => b.length - a.length)[0];
+  const isSectionActive = activeUrl !== undefined;
+
+  const [isOpen, setIsOpen] = useState(isSectionActive);
+  const toneClasses = NAV_TONES[tone];
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen} asChild>
@@ -114,20 +137,21 @@ export function NavOwner({ items }: { items: OwnerNavItem[] }) {
                 size="lg"
                 {...triggerHandlers}
                 className={cn(
-                  "text-amber-500 hover:text-amber-500 hover:bg-amber-500/10",
-                  isOwnerActive && "bg-amber-500/20 font-medium",
+                  toneClasses.trigger,
+                  isSectionActive && toneClasses.active,
                 )}
               >
-                <StarIcon
-                  ref={triggerIconRef}
+                <Icon
+                  ref={triggerRef}
                   size={24}
                   className={cn(
-                    "block shrink-0 transition-colors text-amber-500",
+                    "block shrink-0 transition-colors",
+                    toneClasses.text,
                     state === "collapsed" && "ml-3",
                   )}
                 />
 
-                <span>Owner</span>
+                <span>{label}</span>
 
                 {state === "expanded" && (
                   <ChevronRight
@@ -140,11 +164,12 @@ export function NavOwner({ items }: { items: OwnerNavItem[] }) {
               </SidebarMenuButton>
             </CollapsibleTrigger>
           </TooltipTrigger>
+
           <TooltipContent
             side="right"
             className={state === "collapsed" ? "" : "hidden"}
           >
-            <p className="font-semibold text-amber-500">Owner Panel</p>
+            <p className={cn("font-semibold", toneClasses.text)}>{tooltip}</p>
           </TooltipContent>
         </Tooltip>
 
@@ -152,24 +177,28 @@ export function NavOwner({ items }: { items: OwnerNavItem[] }) {
           {state === "expanded" && (
             <SidebarMenuSub>
               {items.map((item) => (
-                <OwnerSubRow
+                <SubRow
                   key={item.title}
                   item={item}
-                  isActive={location.pathname.startsWith(item.url)}
+                  tone={tone}
+                  isActive={item.url === activeUrl}
                 />
               ))}
+              {extra?.expanded}
             </SidebarMenuSub>
           )}
 
           {state === "collapsed" && (
             <div className="flex flex-col gap-1 px-2 py-1">
               {items.map((item) => (
-                <OwnerSubCollapsed
+                <SubCollapsed
                   key={item.title}
                   item={item}
-                  isActive={location.pathname.startsWith(item.url)}
+                  tone={tone}
+                  isActive={item.url === activeUrl}
                 />
               ))}
+              {extra?.collapsed}
             </div>
           )}
         </CollapsibleContent>

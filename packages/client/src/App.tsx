@@ -1,5 +1,11 @@
-import { lazy, Suspense, useEffect, type ReactNode } from "react";
-import { BrowserRouter, Routes, Route, useLocation } from "react-router";
+import { Suspense, useEffect, type ReactNode } from "react";
+import {
+  BrowserRouter,
+  Outlet,
+  Routes,
+  Route,
+  useLocation,
+} from "react-router";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/trpc";
 import { lazyNamed } from "./lib/lazy";
@@ -14,7 +20,7 @@ import { Home } from "./features/home/Home";
 import { NotFound } from "./components/not-found";
 import { ErrorBoundary } from "./components/error-boundary";
 import { ToastProvider } from "./components/ui/toast";
-import { AppLayout } from "./components/app-layout";
+import { AppLayout, PageLayout } from "./components/app-layout";
 import { SidebarProvider } from "./components/ui/sidebar";
 import { LoadingScreen } from "@/components/query-states";
 import { AdminPlayersProvider } from "./contexts/admin";
@@ -286,10 +292,9 @@ const OwnerAdmins = lazyNamed(
 );
 
 const AdminChat = lazyNamed(() => import("./features/admin-chat"), "AdminChat");
-const AdminChatProvider = lazy(() =>
-  import("./contexts/admin-chat/AdminChatProvider").then((m) => ({
-    default: m.AdminChatProvider,
-  })),
+const AdminChatProvider = lazyNamed(
+  () => import("./contexts/admin-chat/AdminChatProvider"),
+  "AdminChatProvider",
 );
 
 function ScrollToTop() {
@@ -349,205 +354,145 @@ function AppContent() {
         <Route path="/render/tag" element={<TagRender />} />
 
         <Route element={<AppLayout />}>
-          <Route path="/" element={<Home />} />
-          <Route path="/rules" element={<Rules />} />
-          <Route path="/privacy" element={<PrivacyPolicy />} />
-          <Route path="/terms" element={<TermsOfService />} />
-          <Route path="/team" element={<Team />} />
-          <Route path="/leaderboards" element={<Leaderboards />} />
-          <Route
-            path="/leaderboards/compare"
-            element={<LeaderboardsCompare />}
-          />
-          <Route path="/gallery" element={<Gallery />} />
-          <Route path="/guides" element={<GuideList />} />
-          <Route path="/guides/:slug" element={<GuideDetail />} />
-          <Route path="/apply-to-join" element={<ApplyToJoin />} />
-          <Route
-            path="/donate"
-            element={
-              <ProtectedRoute promptLogin>
-                <Donate />
-              </ProtectedRoute>
-            }
-          />
-          <Route path="/donate/success" element={<DonationSuccess />} />
-          <Route path="/donate/cancel" element={<DonationCancel />} />
-          <Route path="/blue-map" element={<BlueMap />} />
-          <Route path="/online-players" element={<OnlinePlayers />} />
-          <Route
-            path="/settings"
-            element={
-              <ProtectedRoute>
-                <Settings />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/team-tag"
-            element={
-              <ProtectedRoute promptLogin>
-                <TeamTag />
-              </ProtectedRoute>
-            }
-          />
-          <Route path="/structure-packs" element={<StructurePacks />} />
-          <Route
-            path="/workshop"
-            element={
-              <ProtectedRoute promptLogin>
-                <Workshop />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/workshop/:slug"
-            element={
-              <ProtectedRoute promptLogin>
-                <WorkshopDetail />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/workshop/:slug/suggest"
-            element={
-              <ProtectedRoute promptLogin>
-                <WorkshopSuggest />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/workshop/:slug/pack"
-            element={
-              <ProtectedRoute promptLogin>
-                <WorkshopPack />
-              </ProtectedRoute>
-            }
-          />
+          <Route element={<PageLayout footer />}>
+            <Route path="/" element={<Home />} />
+            <Route path="/rules" element={<Rules />} />
+            <Route path="/privacy" element={<PrivacyPolicy />} />
+            <Route path="/terms" element={<TermsOfService />} />
+            <Route path="/team" element={<Team />} />
+            <Route path="/leaderboards" element={<Leaderboards />} />
+            <Route
+              path="/leaderboards/compare"
+              element={<LeaderboardsCompare />}
+            />
+            <Route path="/gallery" element={<Gallery />} />
+            <Route path="/guides" element={<GuideList />} />
+            <Route path="/guides/:slug" element={<GuideDetail />} />
+            <Route path="/apply-to-join" element={<ApplyToJoin />} />
+            <Route path="/donate/success" element={<DonationSuccess />} />
+            <Route path="/donate/cancel" element={<DonationCancel />} />
+            <Route path="/online-players" element={<OnlinePlayers />} />
+            <Route path="/structure-packs" element={<StructurePacks />} />
+            <Route
+              path="/settings"
+              element={
+                <ProtectedRoute>
+                  <Settings />
+                </ProtectedRoute>
+              }
+            />
 
-          <Route path="/chat" element={<ChatRedirect />} />
-          <Route path="/chat/:serverSlug" element={<ServerChat />} />
+            <Route element={<ProtectedRoute promptLogin />}>
+              <Route path="/donate" element={<Donate />} />
+              <Route path="/team-tag" element={<TeamTag />} />
+              <Route path="/workshop" element={<Workshop />} />
+              <Route path="/workshop/:slug" element={<WorkshopDetail />} />
+              <Route
+                path="/workshop/:slug/suggest"
+                element={<WorkshopSuggest />}
+              />
+              <Route path="/workshop/:slug/pack" element={<WorkshopPack />} />
+            </Route>
 
-          <Route
-            path="/admin/*"
-            element={
-              <ProtectedRoute requiresAdmin>
-                <AdminPlayersProvider>
+            <Route path="*" element={<NotFound />} />
+          </Route>
+
+          <Route element={<PageLayout />}>
+            <Route path="/blue-map" element={<BlueMap />} />
+            <Route path="/chat" element={<ChatRedirect />} />
+            <Route path="/chat/:serverSlug" element={<ServerChat />} />
+
+            <Route
+              path="/admin"
+              element={
+                <ProtectedRoute requiresAdmin>
+                  <AdminPlayersProvider>
+                    <ErrorBoundary>
+                      <Outlet />
+                    </ErrorBoundary>
+                  </AdminPlayersProvider>
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<NotFound />} />
+              <Route path="dashboard" element={<AdminDashboard />} />
+              <Route path="waitlist" element={<AdminWaitlists />} />
+              <Route path="players" element={<AdminPlayers />} />
+              <Route path="players/:id" element={<AdminPlayerDetail />} />
+              <Route path="planning" element={<AdminPlanning />} />
+              <Route path="planning/:id" element={<PlanDetail />} />
+              <Route path="servers" element={<AdminServers />} />
+              <Route path="servers/:id" element={<AdminServerDetail />} />
+              <Route path="tools" element={<AdminTools />} />
+              <Route
+                path="tools/structure-packs"
+                element={<AdminStructurePacks />}
+              />
+              <Route
+                path="tools/structure-packs/:id"
+                element={<StructurePackDetail />}
+              />
+              <Route path="tools/workshop" element={<AdminWorkshop />} />
+              <Route
+                path="tools/workshop/:slug"
+                element={<AdminWorkshopDetail />}
+              />
+              <Route path="tools/gallery" element={<AdminGallery />} />
+              <Route path="tools/faq" element={<AdminFaq />} />
+              <Route
+                path="tools/inactivity"
+                element={<InactivityManagement />}
+              />
+              <Route path="tools/embed-builder" element={<EmbedBuilder />} />
+              <Route path="tools/auto-messages" element={<AutoMessages />} />
+              <Route path="tools/command-docs" element={<CommandDocs />} />
+              <Route path="tools/stat-search" element={<StatSearch />} />
+              <Route
+                path="tools/title-generator"
+                element={<TitleGenerator />}
+              />
+              <Route path="tools/parties" element={<AdminParties />} />
+              <Route path="tools/votes" element={<AdminVotes />} />
+              <Route path="tools/prompts" element={<AdminPrompts />} />
+              <Route path="tools/prompts/:id" element={<PromptDetail />} />
+              <Route path="tools/chat-history" element={<AdminChatHistory />} />
+              <Route
+                path="tools/chat-history/:sessionId"
+                element={<ChatHistoryDetail />}
+              />
+              {AdminLauncher && (
+                <Route path="launcher" element={<AdminLauncher />} />
+              )}
+              <Route path="changelog" element={<Changelog />} />
+              <Route path="logs" element={<AdminLogs />} />
+              <Route path="*" element={<NotFound />} />
+            </Route>
+
+            <Route
+              path="/owner"
+              element={
+                <OwnerRoute>
                   <ErrorBoundary>
-                    <Routes>
-                      <Route path="dashboard" element={<AdminDashboard />} />
-                      <Route path="waitlist" element={<AdminWaitlists />} />
-                      <Route path="players" element={<AdminPlayers />} />
-                      <Route
-                        path="players/:id"
-                        element={<AdminPlayerDetail />}
-                      />
-                      <Route path="planning" element={<AdminPlanning />} />
-                      <Route path="planning/:id" element={<PlanDetail />} />
-                      <Route path="servers" element={<AdminServers />} />
-                      <Route
-                        path="servers/:id"
-                        element={<AdminServerDetail />}
-                      />
-                      <Route
-                        path="tools/structure-packs"
-                        element={<AdminStructurePacks />}
-                      />
-                      <Route
-                        path="tools/structure-packs/:id"
-                        element={<StructurePackDetail />}
-                      />
-                      <Route
-                        path="tools/workshop"
-                        element={<AdminWorkshop />}
-                      />
-                      <Route path="tools/gallery" element={<AdminGallery />} />
-                      <Route
-                        path="tools/workshop/:slug"
-                        element={<AdminWorkshopDetail />}
-                      />
-                      <Route path="tools" element={<AdminTools />} />
-                      <Route path="tools/faq" element={<AdminFaq />} />
-                      <Route
-                        path="tools/inactivity"
-                        element={<InactivityManagement />}
-                      />
-                      <Route
-                        path="tools/embed-builder"
-                        element={<EmbedBuilder />}
-                      />
-                      <Route
-                        path="tools/auto-messages"
-                        element={<AutoMessages />}
-                      />
-                      <Route
-                        path="tools/command-docs"
-                        element={<CommandDocs />}
-                      />
-                      <Route
-                        path="tools/stat-search"
-                        element={<StatSearch />}
-                      />
-                      <Route
-                        path="tools/title-generator"
-                        element={<TitleGenerator />}
-                      />
-                      <Route path="tools/parties" element={<AdminParties />} />
-                      <Route path="tools/votes" element={<AdminVotes />} />
-                      <Route path="tools/prompts" element={<AdminPrompts />} />
-                      <Route
-                        path="tools/prompts/:id"
-                        element={<PromptDetail />}
-                      />
-                      <Route
-                        path="tools/chat-history"
-                        element={<AdminChatHistory />}
-                      />
-                      <Route
-                        path="tools/chat-history/:sessionId"
-                        element={<ChatHistoryDetail />}
-                      />
-                      {AdminLauncher && (
-                        <Route path="launcher" element={<AdminLauncher />} />
-                      )}
-                      <Route path="changelog" element={<Changelog />} />
-                      <Route path="logs" element={<AdminLogs />} />
-                      <Route path="*" element={<NotFound />} />
-                    </Routes>
+                    <Outlet />
                   </ErrorBoundary>
-                </AdminPlayersProvider>
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/owner/*"
-            element={
-              <OwnerRoute>
-                <ErrorBoundary>
-                  <Routes>
-                    <Route path="admins" element={<OwnerAdmins />} />
-                    <Route path="donations" element={<OwnerDonations />} />
-                    {OwnerLauncherReleases && (
-                      <Route
-                        path="launcher-releases"
-                        element={<OwnerLauncherReleases />}
-                      />
-                    )}
-                    {OwnerLauncherPacks && (
-                      <Route
-                        path="launcher-packs"
-                        element={<OwnerLauncherPacks />}
-                      />
-                    )}
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
-                </ErrorBoundary>
-              </OwnerRoute>
-            }
-          />
-
-          <Route path="*" element={<NotFound />} />
+                </OwnerRoute>
+              }
+            >
+              <Route index element={<NotFound />} />
+              <Route path="admins" element={<OwnerAdmins />} />
+              <Route path="donations" element={<OwnerDonations />} />
+              {OwnerLauncherReleases && (
+                <Route
+                  path="launcher-releases"
+                  element={<OwnerLauncherReleases />}
+                />
+              )}
+              {OwnerLauncherPacks && (
+                <Route path="launcher-packs" element={<OwnerLauncherPacks />} />
+              )}
+              <Route path="*" element={<NotFound />} />
+            </Route>
+          </Route>
         </Route>
       </Routes>
     </Suspense>
