@@ -1,7 +1,5 @@
 import type { Request, Response } from "express";
-import config from "@/config";
-import { getService } from "@/services";
-import { Services } from "@/services/container";
+import { getOptionalService, Services } from "@/services";
 import {
   BadRequestError,
   InternalServerError,
@@ -10,7 +8,8 @@ import {
 
 export class DonationController {
   static async handleWebhook(req: Request, res: Response): Promise<void> {
-    if (!config.stripe.enabled) {
+    const donationService = await getOptionalService(Services.DONATION_SERVICE);
+    if (!donationService) {
       throw new ServiceUnavailableError("Donation service not configured");
     }
 
@@ -18,8 +17,6 @@ export class DonationController {
     if (typeof signature !== "string" || !signature) {
       throw new BadRequestError("Missing stripe-signature header");
     }
-
-    const donationService = await getService(Services.DONATION_SERVICE);
 
     let event;
     try {

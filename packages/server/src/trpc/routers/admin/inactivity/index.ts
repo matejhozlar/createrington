@@ -11,7 +11,7 @@ import {
   pageOffset,
 } from "@/trpc/utils";
 import config from "@/config";
-import { getService, Services } from "@/services";
+import { getOptionalService, Services } from "@/services";
 import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
 import { removeInactiveWarning } from "@/services/discord/cleanup/inactivity/remove-warning";
@@ -34,6 +34,21 @@ const warningStatusSchema = z.enum([
 
 function isManualActionsEnabled(): boolean {
   return config.envMode.isProductionDeployment;
+}
+
+async function getCleanupService(
+  notConfiguredMessage: string,
+): Promise<InactivityCleanupService> {
+  let service: InactivityCleanupService | null;
+  try {
+    service = await getOptionalService(Services.INACTIVITY_CLEANUP_SERVICE);
+  } catch {
+    throw trpcError.internal("Inactivity cleanup service is not available");
+  }
+  if (!service) {
+    throw trpcError.forbidden(notConfiguredMessage);
+  }
+  return service;
 }
 
 export const inactivityRouter = router({
@@ -200,18 +215,9 @@ export const inactivityRouter = router({
         "Force-run the inactivity cleanup cycle now and reset the recurring schedule",
     })
     .mutation(async ({ ctx }) => {
-      if (!isManualActionsEnabled()) {
-        throw trpcError.forbidden(
-          "Triggering the cleanup cycle is only available on the production deployment",
-        );
-      }
-
-      let service: InactivityCleanupService;
-      try {
-        service = await getService(Services.INACTIVITY_CLEANUP_SERVICE);
-      } catch {
-        throw trpcError.internal("Inactivity cleanup service is not available");
-      }
+      const service = await getCleanupService(
+        "Triggering the cleanup cycle is only available on the production deployment",
+      );
 
       await service.forceRunAndResetSchedule({
         discordId: ctx.user.discordId,
@@ -231,18 +237,9 @@ export const inactivityRouter = router({
         "Run only the resolve + remove phases now (no new warning announcements)",
     })
     .mutation(async ({ ctx }) => {
-      if (!isManualActionsEnabled()) {
-        throw trpcError.forbidden(
-          "Processing overdue players is only available on the production deployment",
-        );
-      }
-
-      let service: InactivityCleanupService;
-      try {
-        service = await getService(Services.INACTIVITY_CLEANUP_SERVICE);
-      } catch {
-        throw trpcError.internal("Inactivity cleanup service is not available");
-      }
+      const service = await getCleanupService(
+        "Processing overdue players is only available on the production deployment",
+      );
 
       await service.triggerResolveAndRemove({
         discordId: ctx.user.discordId,

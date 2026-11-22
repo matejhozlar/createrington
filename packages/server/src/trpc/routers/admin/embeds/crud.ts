@@ -3,7 +3,7 @@ import { z } from "zod";
 import { guildChannelsProcedure } from "../guild-channels";
 import { adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
-import { getServiceSync, isServiceReady, Services } from "@/services";
+import { getServiceIfReady, Services } from "@/services";
 import { trpcError, auditActor, id } from "@/trpc/utils";
 import { isMessageGone } from "@/services/discord/message/errors";
 import config from "@/config";
@@ -35,11 +35,7 @@ export const embedCrudProcedures = {
 
   emojis: adminProcedure
     .meta({ description: "Get the main bot's application emojis" })
-    .query(() =>
-      isServiceReady(Services.APP_EMOJI_SERVICE)
-        ? getServiceSync(Services.APP_EMOJI_SERVICE).list()
-        : [],
-    ),
+    .query(() => getServiceIfReady(Services.APP_EMOJI_SERVICE)?.list() ?? []),
 
   colors: adminProcedure
     .meta({ description: "Get all available embed colors" })

@@ -10,6 +10,7 @@ import {
   renderMaintenanceTemplate,
 } from "./presets";
 import type { MaintenanceScheduler } from "./scheduler";
+import type { PlaytimeManagerService } from "@/services/playtime/playtime-manager.service";
 
 const RECONCILE_INTERVAL_MS = 5 * 60 * 1000;
 
@@ -87,24 +88,20 @@ export class MaintenanceService {
   }
 
   /** Subscribe to server online events, run the first reconcile, and start the periodic one. */
-  async initialize(serverIds: readonly number[]): Promise<void> {
+  async initialize(
+    serverIds: readonly number[],
+    playtimeManager: PlaytimeManagerService,
+  ): Promise<void> {
     this.serverIds = serverIds;
 
-    try {
-      const manager = await getService(Services.PLAYTIME_MANAGER_SERVICE);
-      for (const serverId of serverIds) {
-        manager.getService(serverId)?.on("serverOnline", () => {
-          this.onServerOnline(serverId).catch((error) =>
-            logger.warn(
-              `Maintenance sync after server ${serverId} came online failed: ${error}`,
-            ),
-          );
-        });
-      }
-    } catch (error) {
-      logger.warn(
-        `Maintenance service could not subscribe to server online events: ${error}`,
-      );
+    for (const serverId of serverIds) {
+      playtimeManager.getService(serverId)?.on("serverOnline", () => {
+        this.onServerOnline(serverId).catch((error) =>
+          logger.warn(
+            `Maintenance sync after server ${serverId} came online failed: ${error}`,
+          ),
+        );
+      });
     }
 
     this.reconcileTimer = setInterval(() => {

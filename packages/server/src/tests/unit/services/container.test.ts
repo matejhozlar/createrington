@@ -9,44 +9,50 @@ function deferred<T>() {
   return { promise, resolve };
 }
 
+interface Named {
+  name: string;
+}
+
+type Services = Record<
+  "db" | "cache" | "api" | "a" | "b" | "c" | "svc" | "missing",
+  object
+>;
+
 describe("ServiceContainer", () => {
-  it("initializes dependencies before the service that needs them", async () => {
-    const container = new ServiceContainer();
+  it("initializes dependencies first and hands them to the factory in order", async () => {
+    const container = new ServiceContainer<{
+      db: Named;
+      cache: Named;
+      api: { db: Named; cache: Named };
+    }>();
     const order: string[] = [];
-    container.register("db", () => {
+    container.register("db", [], () => {
       order.push("db");
       return { name: "db" };
     });
-    container.register(
-      "cache",
-      () => {
-        order.push("cache");
-        return { name: "cache" };
-      },
-      { dependencies: ["db"] },
-    );
-    container.register(
-      "api",
-      (c) => {
-        order.push("api");
-        return { db: c.getSync<{ name: string }>("db") };
-      },
-      { dependencies: ["db", "cache"] },
-    );
+    container.register("cache", ["db"], () => {
+      order.push("cache");
+      return { name: "cache" };
+    });
+    container.register("api", ["db", "cache"], (db, cache) => {
+      order.push("api");
+      return { db, cache };
+    });
 
-    const api = await container.get<{ db: { name: string } }>("api");
+    const api = await container.get("api");
 
     expect(api.db.name).toBe("db");
+    expect(api.cache.name).toBe("cache");
     expect(order).toEqual(["db", "cache", "api"]);
   });
 
   it("runs a shared dependency's factory once when several services wait on it", async () => {
-    const container = new ServiceContainer();
+    const container = new ServiceContainer<Services>();
     const gate = deferred<{ ok: true }>();
     const dbFactory = vi.fn(() => gate.promise);
-    container.register("db", dbFactory);
-    container.register("a", () => ({}), { dependencies: ["db"] });
-    container.register("b", () => ({}), { dependencies: ["db"] });
+    container.register("db", [], dbFactory);
+    container.register("a", ["db"], () => ({}));
+    container.register("b", ["db"], () => ({}));
 
     const both = Promise.all([container.get("a"), container.get("b")]);
     gate.resolve({ ok: true });
@@ -56,9 +62,9 @@ describe("ServiceContainer", () => {
   });
 
   it("returns the cached instance on later calls", async () => {
-    const container = new ServiceContainer();
+    const container = new ServiceContainer<Services>();
     const factory = vi.fn(() => ({}));
-    container.register("svc", factory);
+    container.register("svc", [], factory);
 
     const first = await container.get("svc");
     const second = await container.get("svc");
@@ -68,10 +74,10 @@ describe("ServiceContainer", () => {
   });
 
   it("rejects a dependency cycle and names the path", async () => {
-    const container = new ServiceContainer();
-    container.register("a", () => ({}), { dependencies: ["b"] });
-    container.register("b", () => ({}), { dependencies: ["c"] });
-    container.register("c", () => ({}), { dependencies: ["a"] });
+    const container = new ServiceContainer<Services>();
+    container.register("a", ["b"], () => ({}));
+    container.register("b", ["c"], () => ({}));
+    container.register("c", ["a"], () => ({}));
 
     await expect(container.get("a")).rejects.toThrow(
       "Circular dependency detected: a -> b -> c -> a",
@@ -79,18 +85,18 @@ describe("ServiceContainer", () => {
   });
 
   it("allows two services to share a dependency without calling it a cycle", async () => {
-    const container = new ServiceContainer();
-    container.register("db", () => ({}));
-    container.register("a", () => ({}), { dependencies: ["db"] });
-    container.register("b", () => ({}), { dependencies: ["db", "a"] });
+    const container = new ServiceContainer<Services>();
+    container.register("db", [], () => ({}));
+    container.register("a", ["db"], () => ({}));
+    container.register("b", ["db", "a"], () => ({}));
 
     await expect(container.get("b")).resolves.toEqual({});
   });
 
   it("throws from getSync until the service is ready", async () => {
-    const container = new ServiceContainer();
+    const container = new ServiceContainer<Services>();
     const gate = deferred<{ ready: true }>();
-    container.register("svc", () => gate.promise);
+    container.register("svc", [], () => gate.promise);
 
     expect(() => container.getSync("svc")).toThrow(
       "Service svc is not ready (state: uninitialized)",
@@ -104,8 +110,21 @@ describe("ServiceContainer", () => {
     expect(container.getSync("svc")).toEqual({ ready: true });
   });
 
-  it("throws for a service that was never registered", async () => {
-    const container = new ServiceContainer();
+  it("returns null from getIfReady until the service is ready, without starting it", async () => {
+    const container = new ServiceContainer<Services>();
+    const factory = vi.fn(() => ({ ready: true }));
+    container.register("svc", [], factory);
+
+    expect(container.getIfReady("svc")).toBeNull();
+    expect(container.getIfReady("missing")).toBeNull();
+    expect(factory).not.toHaveBeenCalled();
+
+    await container.get("svc");
+    expect(container.getIfReady("svc")).toEqual({ ready: true });
+  });
+
+  it("throws for a required service that was never registered", async () => {
+    const container = new ServiceContainer<Services>();
 
     await expect(container.get("missing")).rejects.toThrow(
       "Service missing is not registered",
@@ -115,70 +134,73 @@ describe("ServiceContainer", () => {
     );
   });
 
-  it("refuses to register the same name twice", () => {
-    const container = new ServiceContainer();
-    container.register("svc", () => ({}));
+  it("resolves an optional service to null when it was never registered", async () => {
+    const container = new ServiceContainer<
+      Services,
+      { stripe: Named; ai: Named }
+    >();
+    container.register("ai", [], () => ({ name: "ai" }));
 
-    expect(() => container.register("svc", () => ({}))).toThrow(
+    await expect(container.getOptional("stripe")).resolves.toBeNull();
+    await expect(container.getOptional("ai")).resolves.toEqual({ name: "ai" });
+  });
+
+  it("refuses to register the same name twice", () => {
+    const container = new ServiceContainer<Services>();
+    container.register("svc", [], () => ({}));
+
+    expect(() => container.register("svc", [], () => ({}))).toThrow(
       "Service svc is already registered",
     );
   });
 
   it("marks a failed service FAILED, rethrows its error and fails its dependents", async () => {
-    const container = new ServiceContainer();
+    const container = new ServiceContainer<Services>();
     const boom = new Error("no connection");
-    const onFailed = vi.fn();
-    container.on("serviceFailed", onFailed);
-    container.register("db", () => {
+    container.register("db", [], () => {
       throw boom;
     });
-    container.register("api", () => ({}), { dependencies: ["db"] });
+    container.register("api", ["db"], () => ({}));
 
     await expect(container.get("api")).rejects.toBe(boom);
     await expect(container.get("db")).rejects.toBe(boom);
     expect(container.getState("db")).toBe(ServiceState.FAILED);
     expect(container.getState("api")).toBe(ServiceState.FAILED);
-    expect(onFailed).toHaveBeenCalledWith("db", boom);
   });
 
-  it("initializes every non-lazy service even when one fails, then emits allReady", async () => {
-    const container = new ServiceContainer();
-    const lazyFactory = vi.fn(() => ({}));
-    const onAllReady = vi.fn();
-    container.on("allReady", onAllReady);
-    container.register("broken", () => {
+  it("initializes every service even when one fails", async () => {
+    const container = new ServiceContainer<Services>();
+    container.register("a", [], () => {
       throw new Error("broken");
     });
-    container.register("healthy", () => ({}));
-    container.register("lazy", lazyFactory, { lazy: true });
+    container.register("b", [], () => ({}));
 
     await container.initializeAll();
 
     expect(container.getAllStates()).toEqual({
-      broken: ServiceState.FAILED,
-      healthy: ServiceState.READY,
-      lazy: ServiceState.UNINITIALIZED,
+      a: ServiceState.FAILED,
+      b: ServiceState.READY,
     });
-    expect(lazyFactory).not.toHaveBeenCalled();
-    expect(onAllReady).toHaveBeenCalledTimes(1);
   });
 
   it("shuts services down in reverse registration order and keeps going past a failure", async () => {
-    const container = new ServiceContainer();
+    const container = new ServiceContainer<
+      Record<"first" | "second" | "plain" | "third", object>
+    >();
     const order: string[] = [];
-    container.register("first", () => ({
+    container.register("first", [], () => ({
       shutdown: () => {
         order.push("first");
       },
     }));
-    container.register("second", () => ({
+    container.register("second", [], () => ({
       shutdown: () => {
         order.push("second");
         throw new Error("stuck");
       },
     }));
-    container.register("plain", () => ({}));
-    container.register("third", () => ({
+    container.register("plain", [], () => ({}));
+    container.register("third", [], () => ({
       shutdown: () => {
         order.push("third");
         return Promise.resolve();

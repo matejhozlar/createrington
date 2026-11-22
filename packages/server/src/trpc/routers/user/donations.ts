@@ -2,12 +2,22 @@ import { z } from "zod";
 import { router, userProcedure } from "@/trpc/trpc";
 import { trpcError } from "@/trpc/utils";
 import { Q } from "@/db";
-import { getService, Services } from "@/services";
-import config from "@/config";
+import { getOptionalService, Services } from "@/services";
+import type { DonationService } from "@/services/donation/donation.service";
 import { siteUrl } from "@/config/site-url";
 
 const MIN_AMOUNT_CENTS = 100;
 const MAX_AMOUNT_CENTS = 100_000;
+
+async function requireDonationService(): Promise<DonationService> {
+  const service = await getOptionalService(Services.DONATION_SERVICE);
+  if (!service) {
+    throw trpcError.preconditionFailed(
+      "Donations are not available at this time",
+    );
+  }
+  return service;
+}
 
 export const userDonationsRouter = router({
   createCheckout: userProcedure
@@ -32,12 +42,7 @@ export const userDonationsRouter = router({
       }),
     )
     .mutation(async ({ input, ctx }) => {
-      if (!config.stripe.enabled) {
-        throw trpcError.preconditionFailed(
-          "Donations are not available at this time",
-        );
-      }
-      const donationService = await getService(Services.DONATION_SERVICE);
+      const donationService = await requireDonationService();
 
       const { sessionId, url } = await donationService.createCheckoutSession({
         discordId: ctx.user.discordId,
@@ -56,9 +61,12 @@ export const userDonationsRouter = router({
         "Get the user's active monthly subscription details, or null if none",
     })
     .query(async ({ ctx }) => {
-      if (!config.stripe.enabled) return null;
-      const donationService = await getService(Services.DONATION_SERVICE);
-      return donationService.getActiveSubscription(ctx.user.discordId);
+      const donationService = await getOptionalService(
+        Services.DONATION_SERVICE,
+      );
+      return donationService
+        ? donationService.getActiveSubscription(ctx.user.discordId)
+        : null;
     }),
 
   cancelSubscription: userProcedure
@@ -67,12 +75,7 @@ export const userDonationsRouter = router({
         "Cancel the user's monthly subscription at the end of the current billing period",
     })
     .mutation(async ({ ctx }) => {
-      if (!config.stripe.enabled) {
-        throw trpcError.preconditionFailed(
-          "Donations are not available at this time",
-        );
-      }
-      const donationService = await getService(Services.DONATION_SERVICE);
+      const donationService = await requireDonationService();
       const result = await donationService.cancelSubscription(
         ctx.user.discordId,
       );
@@ -90,12 +93,7 @@ export const userDonationsRouter = router({
         "Reactivate a cancelled subscription before the billing period ends",
     })
     .mutation(async ({ ctx }) => {
-      if (!config.stripe.enabled) {
-        throw trpcError.preconditionFailed(
-          "Donations are not available at this time",
-        );
-      }
-      const donationService = await getService(Services.DONATION_SERVICE);
+      const donationService = await requireDonationService();
       const success = await donationService.reactivateSubscription(
         ctx.user.discordId,
       );

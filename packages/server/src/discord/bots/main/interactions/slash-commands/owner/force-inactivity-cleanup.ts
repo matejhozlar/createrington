@@ -1,8 +1,7 @@
-import config from "@/config";
 import { Q } from "@/db";
 import { EmbedPresets } from "@/discord/embeds";
 import { replyError } from "@/discord/utils/interaction-reply";
-import { getService, Services } from "@/services";
+import { getOptionalService, Services } from "@/services";
 import {
   type ChatInputCommandInteraction,
   MessageFlags,
@@ -30,7 +29,8 @@ async function execute(
 ): Promise<void> {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-  if (!config.envMode.isProductionDeployment) {
+  const service = await getOptionalService(Services.INACTIVITY_CLEANUP_SERVICE);
+  if (!service) {
     await replyError(
       interaction,
       "Service Unavailable",
@@ -38,8 +38,6 @@ async function execute(
     );
     return;
   }
-
-  const service = await getService(Services.INACTIVITY_CLEANUP_SERVICE);
 
   const player = await Q.player.find({ discordId: interaction.user.id });
 

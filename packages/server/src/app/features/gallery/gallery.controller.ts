@@ -3,7 +3,7 @@ import { getValidated } from "@/app/middleware/validation.middleware";
 import type { GallerySubmissionParams } from "./gallery.schemas";
 import { NotFoundError } from "@/errors";
 import { Q } from "@/db";
-import { container, Services } from "@/services/container";
+import { getServiceSync, Services } from "@/services";
 
 const ORIGINAL_CACHE_CONTROL = "private, max-age=300";
 
@@ -21,7 +21,7 @@ export class GalleryController {
       throw new NotFoundError("Gallery submission not found");
     }
 
-    const gallery = container.getSync(Services.GALLERY_SERVICE);
+    const gallery = getServiceSync(Services.GALLERY_SERVICE);
 
     await new Promise<void>((resolve, reject) => {
       res.sendFile(

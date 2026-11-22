@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { EventEmitter } from "node:events";
 import type { ServerMaintenanceSchedule } from "@createrington/shared/db/server_maintenance_schedule.types";
+import type { PlaytimeManagerService } from "@/services/playtime/playtime-manager.service";
 
 const SERVER_ID = 1;
 
@@ -81,13 +82,9 @@ vi.mock("@/db", () => ({
 
 vi.mock("@/services", () => ({
   Services: {
-    PLAYTIME_MANAGER_SERVICE: "minecraft.playtimeManagerService",
     WEBSOCKET_SERVICE: "http.webSocketService",
   },
   getService: async (key: string) => {
-    if (key === "minecraft.playtimeManagerService") {
-      return { getService: () => playtimeEmitter };
-    }
     if (key === "http.webSocketService") {
       return {
         triggerServerStatusUpdate: async (serverId: number) => {
@@ -671,7 +668,9 @@ describe("MaintenanceService settings", () => {
     const { mod, client } = createMod({ allowed: [] });
     const fake = createScheduler(makeWindow({ appliedAt: null }));
     const service = createService(client, fake);
-    await service.initialize([SERVER_ID]);
+    await service.initialize([SERVER_ID], {
+      getService: () => playtimeEmitter,
+    } as unknown as PlaytimeManagerService);
     service.shutdown();
 
     expect(mod.enabled).toBe(true);

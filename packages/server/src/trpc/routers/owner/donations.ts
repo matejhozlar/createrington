@@ -1,8 +1,7 @@
 import { z } from "zod";
 import { router, ownerProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
-import { getService, Services } from "@/services";
-import config from "@/config";
+import { getOptionalService, Services } from "@/services";
 import { paginateQuery, paginationInput } from "@/trpc/utils";
 
 export const ownerDonationsRouter = router({
@@ -21,10 +20,12 @@ export const ownerDonationsRouter = router({
         "Get active subscription count, cancelling count, and monthly recurring revenue",
     })
     .query(async () => {
-      if (!config.stripe.enabled) {
+      const donationService = await getOptionalService(
+        Services.DONATION_SERVICE,
+      );
+      if (!donationService) {
         return { activeCount: 0, cancellingCount: 0, mrrCents: 0 };
       }
-      const donationService = await getService(Services.DONATION_SERVICE);
       return donationService.getSubscriptionStats();
     }),
 
