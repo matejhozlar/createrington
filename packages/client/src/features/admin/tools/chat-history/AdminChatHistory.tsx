@@ -4,7 +4,7 @@ import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CellText } from "@/components/cell-text";
+import { CellDate, CellText } from "@/components/cell-text";
 import {
   BadgeCellSkeleton,
   DataTable,
@@ -14,8 +14,6 @@ import {
 import { History, RefreshCw } from "lucide-react";
 import type { ChatHistorySession } from "@createrington/shared/admin-chat";
 import { trpc } from "@/lib/trpc";
-import { formatFullDate } from "@/features/admin/format";
-import { formatRelativeDate } from "@/lib/format";
 
 const PAGE_SIZE = 25;
 
@@ -97,27 +95,19 @@ export function AdminChatHistory() {
       header: "Started",
       width: 140,
       cellClassName: "text-sm text-muted-foreground",
-      render: (s) => (
-        <CellText
-          value={formatFullDate(s.createdAt)}
-          display={formatRelativeDate(s.createdAt)}
-        />
-      ),
+      render: (s) => <CellDate value={s.createdAt} relative />,
     },
     {
       key: "lastActivity",
       header: "Last activity",
       width: 140,
       cellClassName: "text-sm text-muted-foreground",
-      render: (s) => {
-        const last = s.lastActivityAt ?? s.completedAt ?? s.createdAt;
-        return (
-          <CellText
-            value={formatFullDate(last)}
-            display={formatRelativeDate(last)}
-          />
-        );
-      },
+      render: (s) => (
+        <CellDate
+          value={s.lastActivityAt ?? s.completedAt ?? s.createdAt}
+          relative
+        />
+      ),
     },
   ];
 

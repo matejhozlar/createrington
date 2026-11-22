@@ -8,14 +8,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { CellText } from "@/components/cell-text";
 import {
   BadgeCellSkeleton,
-  DataTable,
-  loadingRowCount,
   TwoLineCellSkeleton,
   type DataTableAction,
   type DataTableColumn,
 } from "@/components/data-table";
-import { Paginator } from "@/components/paginator";
-import { EmptyState, ErrorState } from "@/components/query-states";
+import { TableCard } from "@/components/paged-table";
 import {
   Select,
   SelectContent,
@@ -25,7 +22,7 @@ import {
 } from "@/components/ui/select";
 import { MessageSquare, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { formatFullDate } from "@/features/admin/format";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { usePagedQuery } from "@/hooks/use-paged-query";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { CreatePromptModal } from "./components/CreatePromptModal";
 import { DeletePromptModal } from "./components/DeletePromptModal";
@@ -48,27 +45,13 @@ function formatEndsAt(date: Date | string): string {
 export function AdminPrompts() {
   const navigate = useNavigate();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
-  const [page, setPage] = useState(0);
-  const limit = 20;
   const [createOpen, setCreateOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<PromptRow | null>(null);
 
-  const listQuery = useQuery(
-    trpc.admin.prompts.list.queryOptions(
-      {
-        page,
-        limit,
-        status: statusFilter === "all" ? undefined : statusFilter,
-      },
-      { placeholderData: keepPreviousData },
-    ),
+  const prompts = usePagedQuery(
+    { status: statusFilter === "all" ? undefined : statusFilter },
+    (input) => trpc.admin.prompts.list.queryOptions(input),
   );
-
-  const items = listQuery.data?.items ?? [];
-  const total = listQuery.data?.pagination.total ?? 0;
-  const totalPages = listQuery.data?.pagination.totalPages ?? 0;
-  const loading = listQuery.isLoading || listQuery.isPlaceholderData;
-  const loadingRows = loadingRowCount(page, limit, total);
 
   const columns: DataTableColumn<PromptRow>[] = [
     {
@@ -178,10 +161,7 @@ export function AdminPrompts() {
             <>
               <Select
                 value={statusFilter}
-                onValueChange={(v) => {
-                  setStatusFilter(v as StatusFilter);
-                  setPage(0);
-                }}
+                onValueChange={(v) => setStatusFilter(v as StatusFilter)}
               >
                 <SelectTrigger className="w-full xs:w-36">
                   <SelectValue />
@@ -195,13 +175,13 @@ export function AdminPrompts() {
               <Button
                 variant="outline"
                 size="icon"
-                onClick={() => void listQuery.refetch()}
-                disabled={listQuery.isFetching}
+                onClick={prompts.retry}
+                disabled={prompts.query.isFetching}
                 title="Refresh"
               >
                 <RefreshCw
                   className={
-                    listQuery.isFetching ? "size-4 animate-spin" : "size-4"
+                    prompts.query.isFetching ? "size-4 animate-spin" : "size-4"
                   }
                 />
               </Button>
@@ -212,50 +192,21 @@ export function AdminPrompts() {
           }
         />
 
-        {listQuery.isError ? (
-          <div className="rounded-lg border border-border bg-card">
-            <ErrorState
-              message={listQuery.error.message}
-              onRetry={() => listQuery.refetch()}
-              className="py-16"
-            />
-          </div>
-        ) : !loading && items.length === 0 ? (
-          <div className="rounded-lg border border-border bg-card">
-            <EmptyState
-              icon={MessageSquare}
-              message="No prompts yet."
-              hint="Create one to ask players a question in Discord."
-              className="py-16"
-            />
-          </div>
-        ) : (
-          <div className="rounded-lg border border-border bg-card">
-            <DataTable
-              columns={columns}
-              rows={items}
-              loading={loading}
-              loadingRows={loadingRows}
-              rowKey={(row) => row.id}
-              onRowClick={(row) => navigate(`/admin/tools/prompts/${row.id}`)}
-              actions={promptActions}
-              actionSlots={1}
-            />
-            {total > 0 && (
-              <div className="border-t px-6 py-4">
-                <Paginator
-                  page={page}
-                  limit={limit}
-                  total={total}
-                  totalPages={totalPages}
-                  onPageChange={setPage}
-                  itemLabel="prompt"
-                  className="w-full"
-                />
-              </div>
-            )}
-          </div>
-        )}
+        <TableCard
+          paged={prompts}
+          empty={{
+            icon: MessageSquare,
+            message: "No prompts yet.",
+            hint: "Create one to ask players a question in Discord.",
+            className: "py-16",
+          }}
+          itemLabel="prompt"
+          columns={columns}
+          rowKey={(row) => row.id}
+          onRowClick={(row) => navigate(`/admin/tools/prompts/${row.id}`)}
+          actions={promptActions}
+          actionSlots={1}
+        />
       </div>
 
       <CreatePromptModal
@@ -269,7 +220,9 @@ export function AdminPrompts() {
         onClose={() => setDeleteTarget(null)}
         onSuccess={() => {
           setDeleteTarget(null);
-          if (items.length === 1 && page > 0) setPage(page - 1);
+          if (prompts.rows.length === 1 && prompts.page > 0) {
+            prompts.setPage(prompts.page - 1);
+          }
         }}
       />
     </div>

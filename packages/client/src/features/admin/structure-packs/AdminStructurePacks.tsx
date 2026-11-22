@@ -7,7 +7,6 @@ import { useMutationToast } from "@/hooks/use-mutation-toast";
 import {
   Plus,
   Package,
-  Filter,
   Upload,
   Copy,
   CheckCircle2,
@@ -35,12 +34,12 @@ import {
 } from "@/components/ui/select";
 import { FormDialog } from "@/components/form-dialog";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { SearchInput } from "@/components/search-input";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { HeaderActions } from "@/features/admin/components/HeaderActions";
+import { FilterBar } from "@/features/admin/components/FilterBar";
 import { RotationConfig } from "./components/RotationConfig";
 import { RotationHistory } from "./components/RotationHistory";
 import { structurePackImportSchema } from "@createrington/shared/structure-pack";
@@ -311,68 +310,61 @@ export function AdminStructurePacks() {
           <RotationHistory />
         </div>
 
-        <Card className="gap-2">
-          <CardHeader>
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Filter className="size-4 text-muted-foreground" />
-                Packs
-              </CardTitle>
-              <HeaderActions>
-                <Button
-                  variant="outline"
-                  onClick={handleImport}
-                  disabled={importMutation.isPending}
-                >
-                  <Upload className="mr-2 size-4" />
-                  Import
-                </Button>
-                <Button onClick={() => setCreateOpen(true)}>
-                  <Plus className="mr-2 size-4" />
-                  New Pack
-                </Button>
-              </HeaderActions>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2">
-              <SearchInput
-                className="min-w-48 flex-1"
-                placeholder="Search by name..."
-                value={searchQuery}
-                onValueChange={setSearchQuery}
-              />
-
-              <Select
-                value={statusFilter}
-                onValueChange={(v) => setStatusFilter(v as StatusFilter)}
+        <FilterBar
+          title="Packs"
+          search={searchQuery}
+          onSearchChange={setSearchQuery}
+          placeholder="Search by name..."
+          activeCount={
+            (searchQuery ? 1 : 0) +
+            (statusFilter !== "all" ? 1 : 0) +
+            (activeFilter !== "all" ? 1 : 0)
+          }
+          actions={
+            <HeaderActions>
+              <Button
+                variant="outline"
+                onClick={handleImport}
+                disabled={importMutation.isPending}
               >
-                <SelectTrigger className="min-w-[130px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="enabled">Enabled</SelectItem>
-                  <SelectItem value="disabled">Disabled</SelectItem>
-                </SelectContent>
-              </Select>
+                <Upload className="mr-2 size-4" />
+                Import
+              </Button>
+              <Button onClick={() => setCreateOpen(true)}>
+                <Plus className="mr-2 size-4" />
+                New Pack
+              </Button>
+            </HeaderActions>
+          }
+        >
+          <Select
+            value={statusFilter}
+            onValueChange={(v) => setStatusFilter(v as StatusFilter)}
+          >
+            <SelectTrigger className="min-w-[130px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="enabled">Enabled</SelectItem>
+              <SelectItem value="disabled">Disabled</SelectItem>
+            </SelectContent>
+          </Select>
 
-              <Select
-                value={activeFilter}
-                onValueChange={(v) => setActiveFilter(v as ActiveFilter)}
-              >
-                <SelectTrigger className="min-w-[130px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Packs</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </CardContent>
-        </Card>
+          <Select
+            value={activeFilter}
+            onValueChange={(v) => setActiveFilter(v as ActiveFilter)}
+          >
+            <SelectTrigger className="min-w-[130px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Packs</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="inactive">Inactive</SelectItem>
+            </SelectContent>
+          </Select>
+        </FilterBar>
 
         <Card className="gap-0">
           <CardHeader className="gap-0 border-b">

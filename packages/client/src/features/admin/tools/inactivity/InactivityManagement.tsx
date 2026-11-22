@@ -1,22 +1,14 @@
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Paginator } from "@/components/paginator";
-import { SearchInput } from "@/components/search-input";
+import { FilterBar } from "@/features/admin/components/FilterBar";
+import { Card, CardContent } from "@/components/ui/card";
+import { TableCard } from "@/components/paged-table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CellText } from "@/components/cell-text";
+import { CellDate, CellText } from "@/components/cell-text";
 import {
   BadgeCellSkeleton,
-  DataTable,
-  loadingRowCount,
   TwoLineCellSkeleton,
   type DataTableColumn,
 } from "@/components/data-table";
@@ -32,21 +24,13 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import {
-  Clock,
-  Filter,
-  RefreshCw,
-  Trash2,
-  UserCheck,
-  UserX,
-} from "lucide-react";
+import { Clock, RefreshCw, Trash2, UserCheck, UserX } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { keepPreviousData, useQuery, useMutation } from "@tanstack/react-query";
+import { usePagedQuery } from "@/hooks/use-paged-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
-import { formatFullDate, toIso } from "@/features/admin/format";
-import { formatRelativeDate } from "@/lib/format";
 import {
   STAT_CARDS,
   STATUS_TONES,
@@ -62,7 +46,6 @@ import { RemoveWarningModal } from "./components/modals/RemoveWarningModal";
 import { ExemptionsCard } from "./components/ExemptionsCard";
 import { GhostsCard } from "./components/GhostsCard";
 import { UnlinkedMembersCard } from "./components/UnlinkedMembersCard";
-import { EmptyState, ErrorState } from "@/components/query-states";
 import { StatCard } from "@/components/stat-card";
 
 type Warning = RouterOutput["admin"]["inactivity"]["list"]["items"][number];
@@ -73,9 +56,6 @@ const invalidateAfterRemovalRun = () => {
 };
 
 export function InactivityManagement() {
-  const [page, setPage] = useState(0);
-  const [limit] = useState(20);
-
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<WarningStatusFilter>("all");
 
@@ -88,16 +68,12 @@ export function InactivityManagement() {
     trpc.admin.inactivity.capabilities.queryOptions(),
   );
   const statsQuery = useQuery(trpc.admin.inactivity.stats.queryOptions());
-  const listQuery = useQuery(
-    trpc.admin.inactivity.list.queryOptions(
-      {
-        status: statusFilter,
-        search: debouncedSearch.trim() || undefined,
-        page,
-        limit,
-      },
-      { placeholderData: keepPreviousData },
-    ),
+  const warnings = usePagedQuery(
+    {
+      status: statusFilter,
+      search: debouncedSearch.trim() || undefined,
+    },
+    (input) => trpc.admin.inactivity.list.queryOptions(input),
   );
 
   const triggerCleanup = useMutation(
@@ -117,22 +93,10 @@ export function InactivityManagement() {
     ),
   );
 
-  const warnings = listQuery.data?.items ?? [];
-  const total = listQuery.data?.pagination.total ?? 0;
-  const totalPages = listQuery.data?.pagination.totalPages ?? 0;
-  const loading = listQuery.isLoading || listQuery.isPlaceholderData;
-  const loadingRows = loadingRowCount(page, limit, total);
-  const error = listQuery.error?.message ?? null;
-
   const canMutate = capabilitiesQuery.data?.canMutate ?? false;
   const graceDays = capabilitiesQuery.data?.graceDays ?? 14;
   const retentionDays = capabilitiesQuery.data?.retentionDays ?? 30;
   const statWindows = { graceDays, retentionDays };
-
-  const handleSearchChange = useCallback((value: string) => {
-    setSearchQuery(value);
-    setPage(0);
-  }, []);
 
   const handleTriggerCleanup = () => triggerCleanup.mutate();
 
@@ -189,15 +153,7 @@ export function InactivityManagement() {
       header: "Warned",
       width: 140,
       cellClassName: "text-sm text-muted-foreground",
-      render: (warning) => {
-        const iso = toIso(warning.warnedAt);
-        return (
-          <CellText
-            value={formatFullDate(iso)}
-            display={formatRelativeDate(iso)}
-          />
-        );
-      },
+      render: (warning) => <CellDate value={warning.warnedAt} relative />,
     },
     {
       key: "deadline",
@@ -228,16 +184,7 @@ export function InactivityManagement() {
       header: "Last Seen",
       width: 140,
       cellClassName: "text-sm text-muted-foreground",
-      render: (warning) => {
-        if (!warning.lastSeen) return null;
-        const iso = toIso(warning.lastSeen);
-        return (
-          <CellText
-            value={formatFullDate(iso)}
-            display={formatRelativeDate(iso)}
-          />
-        );
-      },
+      render: (warning) => <CellDate value={warning.lastSeen} relative />,
     },
   ];
 
@@ -331,103 +278,57 @@ export function InactivityManagement() {
           ))}
         </div>
 
-        <Card className="gap-2">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Filter className="size-4 text-muted-foreground" />
-              Filters
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2">
-              <SearchInput
-                className="min-w-48 flex-1"
-                placeholder="Search by username..."
-                value={searchQuery}
-                onValueChange={handleSearchChange}
-              />
+        <FilterBar
+          search={searchQuery}
+          onSearchChange={setSearchQuery}
+          placeholder="Search by username..."
+          activeCount={(searchQuery ? 1 : 0) + (statusFilter !== "all" ? 1 : 0)}
+        >
+          <Select
+            value={statusFilter}
+            onValueChange={(v) => setStatusFilter(v as WarningStatusFilter)}
+          >
+            <SelectTrigger className="min-w-[190px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {STATUS_FILTER_OPTIONS.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </FilterBar>
 
-              <Select
-                value={statusFilter}
-                onValueChange={(v) => {
-                  setStatusFilter(v as WarningStatusFilter);
-                  setPage(0);
-                }}
-              >
-                <SelectTrigger className="min-w-[190px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {STATUS_FILTER_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="gap-0">
-          <CardHeader className="border-b gap-0">
-            <CardTitle>
-              Inactivity Warnings ({total.toLocaleString()})
-            </CardTitle>
-          </CardHeader>
-
-          {error ? (
-            <ErrorState message={error} onRetry={() => listQuery.refetch()} />
-          ) : !loading && warnings.length === 0 ? (
-            <EmptyState icon={Clock} message="No warnings found" />
-          ) : (
-            <>
-              <CardContent className="px-0">
-                <DataTable
-                  columns={columns}
-                  rows={warnings}
-                  loading={loading}
-                  loadingRows={loadingRows}
-                  rowKey={(warning) => warning.id}
-                  actions={(warning) => {
-                    const canAct = !warning.resolvedAt && !warning.removedAt;
-                    return [
-                      {
-                        label: "Resolve",
-                        icon: UserCheck,
-                        disabled: !canAct,
-                        onClick: () => setResolveTarget(warning),
-                      },
-                      {
-                        label: canMutate
-                          ? "Remove now"
-                          : "Only available on the production deployment",
-                        icon: Trash2,
-                        variant: "destructive",
-                        disabled: !canAct || !canMutate,
-                        onClick: () => setRemoveTarget(warning),
-                      },
-                    ];
-                  }}
-                />
-              </CardContent>
-
-              {total > 0 && (
-                <CardFooter className="border-t">
-                  <Paginator
-                    page={page}
-                    limit={limit}
-                    total={total}
-                    totalPages={totalPages}
-                    onPageChange={setPage}
-                    itemLabel="warning"
-                    className="w-full"
-                  />
-                </CardFooter>
-              )}
-            </>
-          )}
-        </Card>
+        <TableCard
+          title="Inactivity Warnings"
+          paged={warnings}
+          empty={{ icon: Clock, message: "No warnings found" }}
+          itemLabel="warning"
+          columns={columns}
+          rowKey={(warning) => warning.id}
+          actions={(warning) => {
+            const canAct = !warning.resolvedAt && !warning.removedAt;
+            return [
+              {
+                label: "Resolve",
+                icon: UserCheck,
+                disabled: !canAct,
+                onClick: () => setResolveTarget(warning),
+              },
+              {
+                label: canMutate
+                  ? "Remove now"
+                  : "Only available on the production deployment",
+                icon: Trash2,
+                variant: "destructive",
+                disabled: !canAct || !canMutate,
+                onClick: () => setRemoveTarget(warning),
+              },
+            ];
+          }}
+        />
 
         <ExemptionsCard />
 

@@ -1,9 +1,8 @@
-import { useState } from "react";
 import { Paginator } from "@/components/paginator";
 import { Badge } from "@/components/ui/badge";
 import { Ticket } from "lucide-react";
 import { trpc } from "@/lib/trpc";
-import { useQuery } from "@tanstack/react-query";
+import { usePagedQuery } from "@/hooks/use-paged-query";
 import {
   EmptyState,
   ErrorState,
@@ -15,22 +14,12 @@ interface TicketsTabProps {
 }
 
 export function TicketsTab({ playerId }: TicketsTabProps) {
-  const [page, setPage] = useState(0);
-  const [limit] = useState(10);
-
-  const ticketsQuery = useQuery(
-    trpc.admin.players.tickets.list.queryOptions({
-      id: playerId,
-      page,
-      limit,
-    }),
+  const paged = usePagedQuery(
+    { id: playerId },
+    (input) => trpc.admin.players.tickets.list.queryOptions(input),
+    10,
   );
-
-  const tickets = ticketsQuery.data?.items ?? [];
-  const total = ticketsQuery.data?.pagination.total ?? 0;
-  const totalPages = ticketsQuery.data?.pagination.totalPages ?? 0;
-  const loading = ticketsQuery.isLoading;
-  const error = ticketsQuery.error?.message ?? null;
+  const tickets = paged.rows;
 
   const isClosed = (t: (typeof tickets)[number]) =>
     String(t.status).toLowerCase() === "closed";
@@ -43,15 +32,15 @@ export function TicketsTab({ playerId }: TicketsTabProps) {
         <div>
           <h3 className="text-lg font-semibold">Support Tickets</h3>
           <p className="text-sm text-muted-foreground">
-            {total.toLocaleString()} total
+            {paged.total.toLocaleString()} total
           </p>
         </div>
       </div>
 
-      {loading ? (
+      {paged.query.isLoading ? (
         <LoadingState text="Loading tickets..." />
-      ) : error ? (
-        <ErrorState message={error} onRetry={() => ticketsQuery.refetch()} />
+      ) : paged.error ? (
+        <ErrorState message={paged.error} onRetry={paged.retry} />
       ) : tickets.length === 0 ? (
         <EmptyState icon={Ticket} message="No tickets found" />
       ) : (
@@ -107,11 +96,11 @@ export function TicketsTab({ playerId }: TicketsTabProps) {
           </div>
 
           <Paginator
-            page={page}
-            limit={limit}
-            total={total}
-            totalPages={totalPages}
-            onPageChange={setPage}
+            page={paged.page}
+            limit={paged.limit}
+            total={paged.total}
+            totalPages={paged.totalPages}
+            onPageChange={paged.setPage}
             itemLabel="ticket"
             className="border-t border-border pt-4"
           />

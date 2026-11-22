@@ -1,15 +1,8 @@
 import { useState } from "react";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Paginator } from "@/components/paginator";
+import { FilterBar } from "@/features/admin/components/FilterBar";
+import { TableCard } from "@/components/paged-table";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
-import { SearchInput } from "@/components/search-input";
 import {
   Select,
   SelectContent,
@@ -20,19 +13,14 @@ import {
 import { CellDate, CellText } from "@/components/cell-text";
 import {
   BadgeCellSkeleton,
-  DataTable,
-  loadingRowCount,
   type DataTableColumn,
 } from "@/components/data-table";
-import { Heart, Users, Euro, Filter, Repeat, CalendarX } from "lucide-react";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { Heart, Users, Euro, Repeat, CalendarX } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { usePagedQuery } from "@/hooks/use-paged-query";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import {
-  EmptyState,
-  ErrorState,
-  LoadingState,
-} from "@/components/query-states";
+import { ErrorState, LoadingState } from "@/components/query-states";
 import { StatCard } from "@/components/stat-card";
 import {
   DONATION_STATUSES,
@@ -122,8 +110,6 @@ const DONATION_COLUMNS: DataTableColumn<Donation>[] = [
 ];
 
 export function OwnerDonations() {
-  const [page, setPage] = useState(0);
-  const limit = 20;
   const [discordIdInput, setDiscordIdInput] = useState("");
   const [statusFilter, setStatusFilter] = useState<DonationStatus | "all">(
     "all",
@@ -135,27 +121,16 @@ export function OwnerDonations() {
   const subStatsQuery = useQuery(
     trpc.owner.donations.subscriptionStats.queryOptions(),
   );
-  const listQuery = useQuery(
-    trpc.owner.donations.list.queryOptions(
-      {
-        page,
-        limit,
-        discordId: debouncedDiscordId || undefined,
-        status: statusFilter !== "all" ? statusFilter : undefined,
-        type: typeFilter !== "all" ? typeFilter : undefined,
-      },
-      { placeholderData: keepPreviousData },
-    ),
+  const donations = usePagedQuery(
+    {
+      discordId: debouncedDiscordId || undefined,
+      status: statusFilter !== "all" ? statusFilter : undefined,
+      type: typeFilter !== "all" ? typeFilter : undefined,
+    },
+    (input) => trpc.owner.donations.list.queryOptions(input),
   );
 
   const stats = statsQuery.data;
-  const donations = listQuery.data?.items ?? [];
-  const pagination = listQuery.data?.pagination;
-  const total = pagination?.total ?? 0;
-  const totalPages = pagination?.totalPages ?? 0;
-  const loading = listQuery.isLoading || listQuery.isPlaceholderData;
-  const loadingRows = loadingRowCount(page, limit, total);
-  const error = listQuery.error?.message ?? null;
 
   return (
     <div className="flex flex-1 flex-col gap-4">
@@ -231,114 +206,56 @@ export function OwnerDonations() {
           </div>
         ) : null}
 
-        <Card className="gap-2">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Filter className="size-4 text-muted-foreground" />
-              Filters
-              {(discordIdInput ||
-                statusFilter !== "all" ||
-                typeFilter !== "all") && (
-                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                  {(discordIdInput ? 1 : 0) +
-                    (statusFilter !== "all" ? 1 : 0) +
-                    (typeFilter !== "all" ? 1 : 0)}
-                </Badge>
-              )}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2">
-              <SearchInput
-                className="min-w-48 flex-1"
-                placeholder="Search by Discord ID..."
-                value={discordIdInput}
-                onValueChange={(value) => {
-                  setDiscordIdInput(value);
-                  setPage(0);
-                }}
-              />
+        <FilterBar
+          search={discordIdInput}
+          onSearchChange={setDiscordIdInput}
+          placeholder="Search by Discord ID..."
+          activeCount={
+            (discordIdInput ? 1 : 0) +
+            (statusFilter !== "all" ? 1 : 0) +
+            (typeFilter !== "all" ? 1 : 0)
+          }
+        >
+          <Select
+            value={statusFilter}
+            onValueChange={(v) => setStatusFilter(v as DonationStatus | "all")}
+          >
+            <SelectTrigger className="min-w-[150px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              {DONATION_STATUSES.map((status) => (
+                <SelectItem key={status} value={status}>
+                  {STATUS_DISPLAY[status].label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-              <Select
-                value={statusFilter}
-                onValueChange={(v) => {
-                  setStatusFilter(v as DonationStatus | "all");
-                  setPage(0);
-                }}
-              >
-                <SelectTrigger className="min-w-[150px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  {DONATION_STATUSES.map((status) => (
-                    <SelectItem key={status} value={status}>
-                      {STATUS_DISPLAY[status].label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <Select
+            value={typeFilter}
+            onValueChange={(v) => setTypeFilter(v as DonationType | "all")}
+          >
+            <SelectTrigger className="min-w-[130px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Types</SelectItem>
+              <SelectItem value="one_time">One-time</SelectItem>
+              <SelectItem value="monthly">Monthly</SelectItem>
+            </SelectContent>
+          </Select>
+        </FilterBar>
 
-              <Select
-                value={typeFilter}
-                onValueChange={(v) => {
-                  setTypeFilter(v as DonationType | "all");
-                  setPage(0);
-                }}
-              >
-                <SelectTrigger className="min-w-[130px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
-                  <SelectItem value="one_time">One-time</SelectItem>
-                  <SelectItem value="monthly">Monthly</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="gap-0">
-          <CardHeader className="border-b gap-0">
-            <CardTitle>
-              Donations
-              {pagination?.total != null ? ` (${pagination.total})` : ""}
-            </CardTitle>
-          </CardHeader>
-
-          {error ? (
-            <ErrorState message={error} onRetry={() => listQuery.refetch()} />
-          ) : !loading && donations.length === 0 ? (
-            <EmptyState icon={Heart} message="No donations found" />
-          ) : (
-            <>
-              <CardContent className="px-0">
-                <DataTable
-                  columns={DONATION_COLUMNS}
-                  rows={donations}
-                  loading={loading}
-                  loadingRows={loadingRows}
-                  rowKey={(d) => d.id}
-                />
-              </CardContent>
-
-              {total > 0 && (
-                <CardFooter className="border-t">
-                  <Paginator
-                    page={page}
-                    limit={limit}
-                    total={total}
-                    totalPages={totalPages}
-                    onPageChange={setPage}
-                    itemLabel="donation"
-                    className="w-full"
-                  />
-                </CardFooter>
-              )}
-            </>
-          )}
-        </Card>
+        <TableCard
+          title="Donations"
+          paged={donations}
+          empty={{ icon: Heart, message: "No donations found" }}
+          itemLabel="donation"
+          columns={DONATION_COLUMNS}
+          rowKey={(d) => d.id}
+        />
       </div>
     </div>
   );

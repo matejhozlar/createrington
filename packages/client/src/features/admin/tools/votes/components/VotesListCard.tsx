@@ -1,25 +1,14 @@
 import { useState } from "react";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { History, TriangleAlert, Vote } from "lucide-react";
 import { CellText } from "@/components/cell-text";
 import {
   BadgeCellSkeleton,
-  DataTable,
-  loadingRowCount,
   type DataTableColumn,
 } from "@/components/data-table";
-import { Paginator } from "@/components/paginator";
+import { TableCard } from "@/components/paged-table";
 import { PlayerLabel } from "@/components/player-label";
-import { EmptyState, ErrorState } from "@/components/query-states";
 import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { CardDescription, CardTitle } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -34,6 +23,7 @@ import {
 } from "@/components/ui/tooltip";
 import { FilterBar } from "@/features/admin/components/FilterBar";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { usePagedQuery } from "@/hooks/use-paged-query";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 
 type Status = "all" | "paid" | "pending" | "unlinked";
@@ -132,43 +122,25 @@ const COLUMNS: DataTableColumn<VoteRow>[] = [
 export function VotesListCard() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<Status>("all");
-  const [page, setPage] = useState(0);
   const needle = useDebouncedValue(search).trim();
 
-  const query = useQuery(
-    trpc.admin.votes.list.queryOptions(
-      {
-        search: needle || undefined,
-        status,
-        page,
-        limit: PAGE_SIZE,
-      },
-      { placeholderData: keepPreviousData },
-    ),
+  const votes = usePagedQuery(
+    { search: needle || undefined, status },
+    (input) => trpc.admin.votes.list.queryOptions(input),
+    PAGE_SIZE,
   );
-
-  const votes = query.data?.items ?? [];
-  const total = query.data?.pagination.total ?? 0;
-  const totalPages = query.data?.pagination.totalPages ?? 0;
-  const loading = query.isLoading || query.isPlaceholderData;
 
   return (
     <>
       <FilterBar
         search={search}
-        onSearchChange={(value) => {
-          setSearch(value);
-          setPage(0);
-        }}
+        onSearchChange={setSearch}
         placeholder={COPY.search}
         activeCount={(search ? 1 : 0) + (status !== "all" ? 1 : 0)}
       >
         <Select
           value={status}
-          onValueChange={(value) => {
-            setStatus(value as Status);
-            setPage(0);
-          }}
+          onValueChange={(value) => setStatus(value as Status)}
         >
           <SelectTrigger className="min-w-[160px]">
             <SelectValue />
@@ -183,48 +155,27 @@ export function VotesListCard() {
         </Select>
       </FilterBar>
 
-      <Card className="gap-2">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <History className="size-4 text-muted-foreground" />
-            {COPY.title}
-            {query.data && ` (${total.toLocaleString()})`}
-          </CardTitle>
-          <CardDescription>{COPY.description}</CardDescription>
-        </CardHeader>
-        <CardContent className="px-0">
-          {query.isError ? (
-            <ErrorState
-              message={`Failed to load the votes: ${query.error.message}`}
-              onRetry={() => query.refetch()}
-              compact
-            />
-          ) : !loading && votes.length === 0 ? (
-            <EmptyState icon={Vote} message={COPY.empty} className="py-8" />
-          ) : (
-            <DataTable
-              columns={COLUMNS}
-              rows={votes}
-              loading={loading}
-              loadingRows={loadingRowCount(page, PAGE_SIZE, total)}
-              rowKey={(vote) => String(vote.id)}
-            />
-          )}
-        </CardContent>
-        {total > 0 && (
-          <CardFooter className="border-t">
-            <Paginator
-              page={page}
-              limit={PAGE_SIZE}
-              total={total}
-              totalPages={totalPages}
-              onPageChange={setPage}
-              itemLabel="vote"
-              className="w-full"
-            />
-          </CardFooter>
-        )}
-      </Card>
+      <TableCard
+        header={
+          <>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <History className="size-4 text-muted-foreground" />
+              {COPY.title}
+              {votes.query.data && ` (${votes.total.toLocaleString()})`}
+            </CardTitle>
+            <CardDescription>{COPY.description}</CardDescription>
+          </>
+        }
+        paged={{
+          ...votes,
+          error: votes.error && `Failed to load the votes: ${votes.error}`,
+        }}
+        compact
+        empty={{ icon: Vote, message: COPY.empty, className: "py-8" }}
+        itemLabel="vote"
+        columns={COLUMNS}
+        rowKey={(vote) => String(vote.id)}
+      />
     </>
   );
 }

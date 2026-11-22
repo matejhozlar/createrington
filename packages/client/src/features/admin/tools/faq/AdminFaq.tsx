@@ -1,22 +1,13 @@
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Paginator } from "@/components/paginator";
-import { SearchInput } from "@/components/search-input";
+import { FilterBar } from "@/features/admin/components/FilterBar";
+import { TableCard } from "@/components/paged-table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CellDate, CellText } from "@/components/cell-text";
 import {
   BadgeCellSkeleton,
-  DataTable,
-  loadingRowCount,
   type DataTableAction,
   type DataTableColumn,
 } from "@/components/data-table";
@@ -28,7 +19,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Filter,
   MessageCircleQuestion,
   Plus,
   Pencil,
@@ -37,13 +27,14 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { keepPreviousData, useMutation, useQuery } from "@tanstack/react-query";
+import { usePagedQuery } from "@/hooks/use-paged-query";
+import { useTableSort } from "@/hooks/use-table-sort";
+import { useMutation } from "@tanstack/react-query";
 import { CreateFaqModal } from "./components/modals/CreateFaqModal";
 import { EditFaqModal } from "./components/modals/EditFaqModal";
 import { DeleteFaqModal } from "./components/modals/DeleteFaqModal";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
-import { EmptyState, ErrorState } from "@/components/query-states";
 
 type FaqEntry = RouterOutput["admin"]["faq"]["list"]["items"][number];
 
@@ -51,14 +42,12 @@ type SortField = "priority" | "title" | "createdAt";
 type EnabledFilter = "all" | "enabled" | "disabled";
 
 export function AdminFaq() {
-  const [page, setPage] = useState(0);
-  const [limit] = useState(10);
-
   const [searchQuery, setSearchQuery] = useState("");
   const [enabledFilter, setEnabledFilter] = useState<EnabledFilter>("all");
 
-  const [orderBy, setOrderBy] = useState<SortField>("priority");
-  const [orderDirection, setOrderDirection] = useState<"asc" | "desc">("desc");
+  const sort = useTableSort<SortField>("priority", {
+    newFieldDirection: "desc",
+  });
 
   const [createModal, setCreateModal] = useState(false);
   const [editModal, setEditModal] = useState<{
@@ -75,43 +64,19 @@ export function AdminFaq() {
     ),
   );
 
-  const entriesQuery = useQuery(
-    trpc.admin.faq.list.queryOptions(
-      {
-        page,
-        limit,
-        orderBy,
-        orderDirection,
-        search: debouncedSearch.trim() || undefined,
-        enabled:
-          enabledFilter === "enabled"
-            ? true
-            : enabledFilter === "disabled"
-              ? false
-              : undefined,
-      },
-      { placeholderData: keepPreviousData },
-    ),
-  );
-
-  const entries = entriesQuery.data?.items ?? [];
-  const total = entriesQuery.data?.pagination.total ?? 0;
-  const totalPages = entriesQuery.data?.pagination.totalPages ?? 0;
-  const loading = entriesQuery.isLoading || entriesQuery.isPlaceholderData;
-  const loadingRows = loadingRowCount(page, limit, total);
-  const error = entriesQuery.error?.message ?? null;
-
-  const handleSort = useCallback(
-    (field: SortField) => {
-      if (orderBy === field) {
-        setOrderDirection((prev) => (prev === "asc" ? "desc" : "asc"));
-      } else {
-        setOrderBy(field);
-        setOrderDirection("desc");
-      }
-      setPage(0);
+  const entries = usePagedQuery(
+    {
+      ...sort.order,
+      search: debouncedSearch.trim() || undefined,
+      enabled:
+        enabledFilter === "enabled"
+          ? true
+          : enabledFilter === "disabled"
+            ? false
+            : undefined,
     },
-    [orderBy],
+    (input) => trpc.admin.faq.list.queryOptions(input),
+    10,
   );
 
   const handleRepostWelcome = () => repostWelcome.mutate();
@@ -127,8 +92,7 @@ export function AdminFaq() {
       key: "title",
       header: "Title",
       minWidth: 200,
-      sorted: orderBy === "title" ? orderDirection : false,
-      onSort: () => handleSort("title"),
+      ...sort.column("title"),
       render: (entry) => (
         <CellText value={entry.title} className="font-medium" />
       ),
@@ -162,8 +126,7 @@ export function AdminFaq() {
       key: "priority",
       header: "Priority",
       width: 105,
-      sorted: orderBy === "priority" ? orderDirection : false,
-      onSort: () => handleSort("priority"),
+      ...sort.column("priority"),
       cellClassName: "text-sm",
       render: (entry) => entry.priority,
     },
@@ -189,8 +152,7 @@ export function AdminFaq() {
       key: "created",
       header: "Created",
       width: 130,
-      sorted: orderBy === "createdAt" ? orderDirection : false,
-      onSort: () => handleSort("createdAt"),
+      ...sort.column("createdAt"),
       render: (entry) => <CellDate value={entry.createdAt} />,
     },
   ];
@@ -245,94 +207,47 @@ export function AdminFaq() {
           }
         />
 
-        <Card className="gap-2">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Filter className="size-4 text-muted-foreground" />
-              Filters
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2">
-              <SearchInput
-                className="min-w-48 flex-1"
-                placeholder="Search by title..."
-                value={searchQuery}
-                onValueChange={(value) => {
-                  setSearchQuery(value);
-                  setPage(0);
-                }}
-              />
+        <FilterBar
+          search={searchQuery}
+          onSearchChange={setSearchQuery}
+          placeholder="Search by title..."
+          activeCount={
+            (searchQuery ? 1 : 0) + (enabledFilter !== "all" ? 1 : 0)
+          }
+        >
+          <Select
+            value={enabledFilter}
+            onValueChange={(v) => setEnabledFilter(v as EnabledFilter)}
+          >
+            <SelectTrigger className="min-w-[130px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Entries</SelectItem>
+              <SelectItem value="enabled">Enabled</SelectItem>
+              <SelectItem value="disabled">Disabled</SelectItem>
+            </SelectContent>
+          </Select>
+        </FilterBar>
 
-              <Select
-                value={enabledFilter}
-                onValueChange={(v) => {
-                  setEnabledFilter(v as EnabledFilter);
-                  setPage(0);
-                }}
-              >
-                <SelectTrigger className="min-w-[130px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Entries</SelectItem>
-                  <SelectItem value="enabled">Enabled</SelectItem>
-                  <SelectItem value="disabled">Disabled</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="gap-0">
-          <CardHeader className="border-b gap-0">
-            <CardTitle>FAQ Entries ({total.toLocaleString()})</CardTitle>
-          </CardHeader>
-
-          {error ? (
-            <ErrorState
-              message={error}
-              onRetry={() => entriesQuery.refetch()}
-            />
-          ) : !loading && entries.length === 0 ? (
-            <EmptyState
-              icon={MessageCircleQuestion}
-              message="No FAQ entries found"
-            >
+        <TableCard
+          title="FAQ Entries"
+          paged={entries}
+          empty={{
+            icon: MessageCircleQuestion,
+            message: "No FAQ entries found",
+            children: (
               <Button onClick={() => setCreateModal(true)}>
                 <Plus className="mr-2 size-4" />
                 Create First Entry
               </Button>
-            </EmptyState>
-          ) : (
-            <>
-              <CardContent className="px-0">
-                <DataTable
-                  columns={columns}
-                  rows={entries}
-                  loading={loading}
-                  loadingRows={loadingRows}
-                  rowKey={(entry) => entry.id}
-                  actions={entryActions}
-                />
-              </CardContent>
-
-              {total > 0 && (
-                <CardFooter className="border-t">
-                  <Paginator
-                    page={page}
-                    limit={limit}
-                    total={total}
-                    totalPages={totalPages}
-                    onPageChange={setPage}
-                    itemLabel="entry"
-                    className="w-full"
-                  />
-                </CardFooter>
-              )}
-            </>
-          )}
-        </Card>
+            ),
+          }}
+          itemLabel="entry"
+          columns={columns}
+          rowKey={(entry) => entry.id}
+          actions={entryActions}
+        />
       </div>
 
       <CreateFaqModal

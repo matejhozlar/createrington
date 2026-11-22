@@ -7,14 +7,12 @@ import {
   modpackManifestUploadSchema,
   type ModpackManifestUpload,
 } from "@createrington/shared/workshop";
-import { Paginator } from "@/components/paginator";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
   CardAction,
-  CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
@@ -22,9 +20,10 @@ import {
 import { CellDate, CellText } from "@/components/cell-text";
 import {
   BadgeCellSkeleton,
-  DataTable,
   type DataTableColumn,
 } from "@/components/data-table";
+import { PagedTable } from "@/components/paged-table";
+import { useClientPagination } from "@/hooks/use-client-pagination";
 import { PlayerLabel } from "@/components/player-label";
 import {
   Select,
@@ -34,7 +33,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { FilterBar } from "@/features/admin/components/FilterBar";
-import { EmptyState, ErrorState } from "@/components/query-states";
 import {
   DISABLED_LABEL,
   formatDate,
@@ -143,7 +141,6 @@ export function InPackTab({
 }) {
   const toast = useToastActions();
   const [selected, setSelected] = useState("current");
-  const [requestedPage, setRequestedPage] = useState(0);
   const manifestInputRef = useRef<HTMLInputElement>(null);
   const [pendingManifest, setPendingManifest] =
     useState<ModpackManifestUpload | null>(null);
@@ -264,10 +261,21 @@ export function InPackTab({
     );
   }, [releaseRows, query]);
 
-  const filtered = isCurrent ? currentFiltered.length : releaseFiltered.length;
   const total = isCurrent ? rows.length : releaseRows.length;
-  const totalPages = Math.ceil(filtered / MODS_PER_PAGE);
-  const page = Math.min(requestedPage, Math.max(0, totalPages - 1));
+  const currentPaged = useClientPagination(currentFiltered, {
+    perPage: MODS_PER_PAGE,
+    resetKey: [query, selected],
+    loading: isLoading,
+    error,
+    retry: onRetry,
+  });
+  const releasePaged = useClientPagination(releaseFiltered, {
+    perPage: MODS_PER_PAGE,
+    resetKey: [query, selected],
+    loading: releaseModsQuery.isLoading,
+    error: releaseModsQuery.error?.message ?? null,
+    retry: () => void releaseModsQuery.refetch(),
+  });
 
   const currentColumns: DataTableColumn<PackMod>[] = [
     {
@@ -382,26 +390,15 @@ export function InPackTab({
     },
   ];
 
-  const handleSearchChange = (value: string) => {
-    onSearchChange(value);
-    setRequestedPage(0);
-  };
-
   return (
     <>
       <FilterBar
         search={search}
-        onSearchChange={handleSearchChange}
+        onSearchChange={onSearchChange}
         placeholder="Search mods..."
         activeCount={(query ? 1 : 0) + (isCurrent ? 0 : 1)}
       >
-        <Select
-          value={selected}
-          onValueChange={(value) => {
-            setSelected(value);
-            setRequestedPage(0);
-          }}
-        >
+        <Select value={selected} onValueChange={setSelected}>
           <SelectTrigger className="min-w-[190px]">
             <SelectValue />
           </SelectTrigger>
@@ -474,71 +471,36 @@ export function InPackTab({
         </CardHeader>
 
         {isCurrent ? (
-          error ? (
-            <ErrorState message={error} onRetry={onRetry} />
-          ) : !isLoading && rows.length === 0 ? (
-            <EmptyState
-              icon={Package}
-              message={
-                unlinked ? "Nothing imported yet" : "Nothing published yet"
-              }
-            />
-          ) : !isLoading && currentFiltered.length === 0 ? (
-            <EmptyState icon={Search} message="No mods match your search" />
-          ) : (
-            <CardContent className="px-0">
-              <DataTable
-                columns={currentColumns}
-                rows={currentFiltered.slice(
-                  page * MODS_PER_PAGE,
-                  (page + 1) * MODS_PER_PAGE,
-                )}
-                loading={isLoading}
-                loadingRows={MODS_PER_PAGE}
-                rowKey={(row) => row.id}
-              />
-              <Paginator
-                page={page}
-                limit={MODS_PER_PAGE}
-                total={currentFiltered.length}
-                totalPages={totalPages}
-                onPageChange={setRequestedPage}
-                itemLabel="mod"
-                className="px-4 pt-4"
-              />
-            </CardContent>
-          )
-        ) : releaseModsQuery.error ? (
-          <ErrorState
-            message={releaseModsQuery.error.message}
-            onRetry={() => releaseModsQuery.refetch()}
+          <PagedTable
+            variant="card"
+            paged={currentPaged}
+            empty={
+              rows.length === 0
+                ? {
+                    icon: Package,
+                    message: unlinked
+                      ? "Nothing imported yet"
+                      : "Nothing published yet",
+                  }
+                : { icon: Search, message: "No mods match your search" }
+            }
+            itemLabel="mod"
+            columns={currentColumns}
+            rowKey={(row) => row.id}
           />
-        ) : !releaseModsQuery.isLoading && releaseRows.length === 0 ? (
-          <EmptyState icon={Package} message="This release recorded no mods" />
-        ) : !releaseModsQuery.isLoading && releaseFiltered.length === 0 ? (
-          <EmptyState icon={Search} message="No mods match your search" />
         ) : (
-          <CardContent className="px-0">
-            <DataTable
-              columns={releaseColumns}
-              rows={releaseFiltered.slice(
-                page * MODS_PER_PAGE,
-                (page + 1) * MODS_PER_PAGE,
-              )}
-              loading={releaseModsQuery.isLoading}
-              loadingRows={MODS_PER_PAGE}
-              rowKey={(row) => `${row.curseforgeProjectId}-${row.fileId}`}
-            />
-            <Paginator
-              page={page}
-              limit={MODS_PER_PAGE}
-              total={releaseFiltered.length}
-              totalPages={totalPages}
-              onPageChange={setRequestedPage}
-              itemLabel="mod"
-              className="px-4 pt-4"
-            />
-          </CardContent>
+          <PagedTable
+            variant="card"
+            paged={releasePaged}
+            empty={
+              releaseRows.length === 0
+                ? { icon: Package, message: "This release recorded no mods" }
+                : { icon: Search, message: "No mods match your search" }
+            }
+            itemLabel="mod"
+            columns={releaseColumns}
+            rowKey={(row) => `${row.curseforgeProjectId}-${row.fileId}`}
+          />
         )}
       </Card>
 

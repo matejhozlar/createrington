@@ -5,34 +5,44 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Kbd } from "@/components/ui/kbd";
 import { useSearchShortcut } from "@/features/admin/hooks/use-search-shortcut";
 import { MODIFIER_KEY_LABEL } from "@/lib/platform";
+import { cn } from "@/lib/utils";
 
 export function FilterBar({
   search,
   onSearchChange,
   placeholder,
   activeCount,
+  title = "Filters",
+  actions,
+  className,
   children,
 }: {
   search: string;
   onSearchChange: (value: string) => void;
   placeholder: string;
   activeCount: number;
+  title?: string;
+  actions?: React.ReactNode;
+  className?: string;
   children?: React.ReactNode;
 }) {
   const searchRef = useSearchShortcut();
 
   return (
-    <Card className="gap-2">
+    <Card className={cn("gap-2", className)}>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
-          <Filter className="size-4 text-muted-foreground" />
-          Filters
-          {activeCount > 0 && (
-            <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">
-              {activeCount}
-            </Badge>
-          )}
-        </CardTitle>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Filter className="size-4 text-muted-foreground" />
+            {title}
+            {activeCount > 0 && (
+              <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">
+                {activeCount}
+              </Badge>
+            )}
+          </CardTitle>
+          {actions}
+        </div>
       </CardHeader>
       <CardContent className="flex flex-col gap-2">
         <SearchInput

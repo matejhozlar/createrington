@@ -1,26 +1,13 @@
 import { useCallback, useState } from "react";
-import {
-  EmptyState,
-  ErrorState,
-  LoadingState,
-} from "@/components/query-states";
+import { LoadingState } from "@/components/query-states";
 import { StatCard } from "@/components/stat-card";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Paginator } from "@/components/paginator";
-import { SearchInput } from "@/components/search-input";
+import { FilterBar } from "@/features/admin/components/FilterBar";
+import { TableCard } from "@/components/paged-table";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
 import { CellDate, CellText } from "@/components/cell-text";
 import {
   BadgeCellSkeleton,
-  DataTable,
-  loadingRowCount,
   TwoLineCellSkeleton,
   type DataTableAction,
   type DataTableColumn,
@@ -32,17 +19,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Filter,
-  Users,
-  UserPlus,
-  UserCheck,
-  Clock,
-  Trash2,
-} from "lucide-react";
+import { Users, UserPlus, UserCheck, Clock, Trash2 } from "lucide-react";
 import type { WaitlistStatus } from "@createrington/shared/db";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { usePagedQuery } from "@/hooks/use-paged-query";
+import { useTableSort } from "@/hooks/use-table-sort";
+import { useQuery } from "@tanstack/react-query";
 import { PromoteWaitlistModal } from "./components/modals/PromoteWaitlistModal";
 import { DeleteWaitlistModal } from "./components/modals/DeleteWaitlistModal";
 import { IntakeSettingsCard } from "./components/IntakeSettingsCard";
@@ -75,14 +57,12 @@ function hasRequeued(entry: WaitlistEntry) {
 }
 
 export function AdminWaitlists() {
-  const [page, setPage] = useState(0);
-  const [limit] = useState(10);
-
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
 
-  const [orderBy, setOrderBy] = useState<SortField>("queuedAt");
-  const [orderDirection, setOrderDirection] = useState<"asc" | "desc">("desc");
+  const sort = useTableSort<SortField>("queuedAt", {
+    newFieldDirection: "desc",
+  });
 
   const [promoteModal, setPromoteModal] = useState<{
     open: boolean;
@@ -99,39 +79,15 @@ export function AdminWaitlists() {
   const search = debouncedSearch.trim();
   const searchIsId = /^\d{15,21}$/.test(search);
 
-  const entriesQuery = useQuery(
-    trpc.admin.waitlists.list.queryOptions(
-      {
-        page,
-        limit,
-        orderBy,
-        orderDirection,
-        discordUsername: search && !searchIsId ? search : undefined,
-        discordId: searchIsId ? search : undefined,
-        status: statusFilter !== "all" ? statusFilter : undefined,
-      },
-      { placeholderData: keepPreviousData },
-    ),
-  );
-
-  const entries = entriesQuery.data?.items ?? [];
-  const total = entriesQuery.data?.pagination.total ?? 0;
-  const totalPages = entriesQuery.data?.pagination.totalPages ?? 0;
-  const loading = entriesQuery.isLoading || entriesQuery.isPlaceholderData;
-  const loadingRows = loadingRowCount(page, limit, total);
-  const error = entriesQuery.error?.message ?? null;
-
-  const handleSort = useCallback(
-    (field: SortField) => {
-      if (orderBy === field) {
-        setOrderDirection((prev) => (prev === "asc" ? "desc" : "asc"));
-      } else {
-        setOrderBy(field);
-        setOrderDirection("desc");
-      }
-      setPage(0);
+  const entries = usePagedQuery(
+    {
+      ...sort.order,
+      discordUsername: search && !searchIsId ? search : undefined,
+      discordId: searchIsId ? search : undefined,
+      status: statusFilter !== "all" ? statusFilter : undefined,
     },
-    [orderBy],
+    (input) => trpc.admin.waitlists.list.queryOptions(input),
+    10,
   );
 
   const handlePromote = useCallback((entry: WaitlistEntry) => {
@@ -153,8 +109,7 @@ export function AdminWaitlists() {
       key: "discordUsername",
       header: "Member",
       minWidth: 180,
-      sorted: orderBy === "discordUsername" ? orderDirection : false,
-      onSort: () => handleSort("discordUsername"),
+      ...sort.column("discordUsername"),
       skeleton: () => <TwoLineCellSkeleton />,
       render: (entry) => (
         <>
@@ -184,8 +139,7 @@ export function AdminWaitlists() {
       key: "queued",
       header: "Queued",
       width: 170,
-      sorted: orderBy === "queuedAt" ? orderDirection : false,
-      onSort: () => handleSort("queuedAt"),
+      ...sort.column("queuedAt"),
       skeleton: () => <TwoLineCellSkeleton />,
       render: (entry) => (
         <>
@@ -283,93 +237,38 @@ export function AdminWaitlists() {
 
         <IntakeSettingsCard />
 
-        <Card className="gap-2">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Filter className="size-4 text-muted-foreground" />
-              Filters
-              {(searchQuery || statusFilter !== "all") && (
-                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                  {(searchQuery ? 1 : 0) + (statusFilter !== "all" ? 1 : 0)}
-                </Badge>
-              )}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2">
-              <SearchInput
-                className="min-w-48 flex-1"
-                placeholder="Search by Discord username or ID..."
-                value={searchQuery}
-                onValueChange={(value) => {
-                  setSearchQuery(value);
-                  setPage(0);
-                }}
-              />
+        <FilterBar
+          search={searchQuery}
+          onSearchChange={setSearchQuery}
+          placeholder="Search by Discord username or ID..."
+          activeCount={(searchQuery ? 1 : 0) + (statusFilter !== "all" ? 1 : 0)}
+        >
+          <Select
+            value={statusFilter}
+            onValueChange={(v) => setStatusFilter(v as StatusFilter)}
+          >
+            <SelectTrigger className="min-w-[150px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="queued">Queued</SelectItem>
+              <SelectItem value="promoted">Promoted</SelectItem>
+              <SelectItem value="registered">Registered</SelectItem>
+              <SelectItem value="expired">Expired</SelectItem>
+            </SelectContent>
+          </Select>
+        </FilterBar>
 
-              <Select
-                value={statusFilter}
-                onValueChange={(v) => {
-                  setStatusFilter(v as StatusFilter);
-                  setPage(0);
-                }}
-              >
-                <SelectTrigger className="min-w-[150px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="queued">Queued</SelectItem>
-                  <SelectItem value="promoted">Promoted</SelectItem>
-                  <SelectItem value="registered">Registered</SelectItem>
-                  <SelectItem value="expired">Expired</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="gap-0">
-          <CardHeader className="border-b gap-0">
-            <CardTitle>Waitlist Entries ({total.toLocaleString()})</CardTitle>
-          </CardHeader>
-
-          {error ? (
-            <ErrorState
-              message={error}
-              onRetry={() => entriesQuery.refetch()}
-            />
-          ) : !loading && entries.length === 0 ? (
-            <EmptyState icon={Users} message="No waitlist entries found" />
-          ) : (
-            <>
-              <CardContent className="px-0">
-                <DataTable
-                  columns={columns}
-                  rows={entries}
-                  loading={loading}
-                  loadingRows={loadingRows}
-                  rowKey={(entry) => entry.id}
-                  actions={entryActions}
-                />
-              </CardContent>
-
-              {total > 0 && (
-                <CardFooter className="border-t">
-                  <Paginator
-                    page={page}
-                    limit={limit}
-                    total={total}
-                    totalPages={totalPages}
-                    onPageChange={setPage}
-                    itemLabel="entry"
-                    className="w-full"
-                  />
-                </CardFooter>
-              )}
-            </>
-          )}
-        </Card>
+        <TableCard
+          title="Waitlist Entries"
+          paged={entries}
+          empty={{ icon: Users, message: "No waitlist entries found" }}
+          itemLabel="entry"
+          columns={columns}
+          rowKey={(entry) => entry.id}
+          actions={entryActions}
+        />
       </div>
 
       {promoteModal.entry !== null && (

@@ -8,7 +8,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CellText } from "@/components/cell-text";
+import { CellDate, CellText } from "@/components/cell-text";
 import { EmptyState, ErrorState } from "@/components/query-states";
 import {
   AvatarCellSkeleton,
@@ -19,8 +19,6 @@ import { UserCog, UserMinus, UserPlus } from "lucide-react";
 import { PlayerLabel } from "@/components/player-label";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
-import { formatFullDate } from "@/features/admin/format";
-import { formatRelativeDate } from "@/lib/format";
 import { PromoteDialog } from "./components/PromoteDialog";
 import { DemoteDialog } from "./components/DemoteDialog";
 import { AuditFeed } from "./components/AuditFeed";
@@ -77,13 +75,7 @@ export function OwnerAdmins() {
       header: "Since",
       width: 140,
       cellClassName: "text-sm text-muted-foreground",
-      render: (admin) =>
-        admin.createdAt && (
-          <CellText
-            value={formatFullDate(admin.createdAt)}
-            display={formatRelativeDate(admin.createdAt)}
-          />
-        ),
+      render: (admin) => <CellDate value={admin.createdAt} relative />,
     },
   ];
 

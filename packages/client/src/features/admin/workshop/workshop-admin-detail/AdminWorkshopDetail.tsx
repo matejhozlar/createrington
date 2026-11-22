@@ -100,7 +100,6 @@ export function AdminWorkshopDetail() {
     : "review";
 
   const [search, setSearch] = useState("");
-  const [page, setPage] = useState(0);
   const [detailModId, setDetailModId] = useState<number | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -134,7 +133,6 @@ export function AdminWorkshopDetail() {
     else next.set("tab", tab);
     setSearchParams(next, { replace: true });
     setSearch("");
-    setPage(0);
     setLingeringEnvItems([]);
   };
 
@@ -151,11 +149,6 @@ export function AdminWorkshopDetail() {
     onTabChange: setActiveTab,
     onOpenGroup: openGroup,
   });
-
-  const handleSearchChange = (value: string) => {
-    setSearch(value);
-    setPage(0);
-  };
 
   const openReject = (target: { workshopModId: number; name: string }) => {
     setRejectKey((key) => key + 1);
@@ -528,9 +521,7 @@ export function AdminWorkshopDetail() {
                       error={modsQuery.error?.message ?? null}
                       onRetry={() => modsQuery.refetch()}
                       search={search}
-                      onSearchChange={handleSearchChange}
-                      page={page}
-                      onPageChange={setPage}
+                      onSearchChange={setSearch}
                       busyModId={busyModId}
                       onView={setDetailModId}
                       envDisplay={envDisplay}
@@ -547,9 +538,7 @@ export function AdminWorkshopDetail() {
                       error={modsQuery.error?.message ?? null}
                       onRetry={() => modsQuery.refetch()}
                       search={search}
-                      onSearchChange={handleSearchChange}
-                      page={page}
-                      onPageChange={setPage}
+                      onSearchChange={setSearch}
                       busyModId={busyModId}
                       onView={setDetailModId}
                       envDisplay={envDisplay}
@@ -607,9 +596,7 @@ export function AdminWorkshopDetail() {
               <ActivityTab
                 workshopId={workshopId}
                 search={search}
-                onSearchChange={handleSearchChange}
-                page={page}
-                onPageChange={setPage}
+                onSearchChange={setSearch}
                 onView={setDetailModId}
               />
             )}
