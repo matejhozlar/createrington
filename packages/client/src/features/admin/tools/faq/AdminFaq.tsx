@@ -250,7 +250,7 @@ export function AdminFaq() {
       <FaqEntryDialog
         key={entryDialog.entry?.id ?? "new"}
         open={entryDialog.open}
-        onClose={() => setEntryDialog((prev) => ({ ...prev, open: false }))}
+        onClose={() => setEntryDialog({ open: false, entry: null })}
         entry={entryDialog.entry}
       />
 
