@@ -359,12 +359,12 @@ describe("PlaytimeService restart persistence", () => {
     expect(sessionOf(service, STEVE)?.activeSeconds).toBe(2800);
   });
 
-  it("leaves sessions open on stop", () => {
+  it("leaves sessions open on shutdown", () => {
     const { service, ends } = makeService();
     service.initialize();
     service.handlePlayerJoinFromMod({ uuid: STEVE, username: "steve" });
 
-    service.stop();
+    service.shutdown();
 
     expect(ends).toHaveLength(0);
     expect(service.getOnlineCount()).toBe(1);

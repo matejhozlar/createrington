@@ -576,7 +576,7 @@ export class PlaytimeService extends typedEmitter<PlaytimeServiceEvents>() {
   }
 
   /** Stops the watchdog. Sessions are left open in the database on purpose: the next process restores them. */
-  stop(): void {
+  shutdown(): void {
     logger.info("Stopping PlaytimeService...");
     if (this.watchdog) {
       clearInterval(this.watchdog);

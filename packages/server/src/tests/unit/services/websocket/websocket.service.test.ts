@@ -15,6 +15,8 @@ import {
   splitFrame,
 } from "@/services/websocket/request-validation";
 import { SocketEvent, SubscriptionType } from "@createrington/shared/socket";
+import type { MessageCacheService } from "@/services/discord/message/cache";
+import type { PlaytimeManagerService } from "@/services/playtime/playtime-manager.service";
 
 type Handler = (...args: unknown[]) => void;
 
@@ -72,7 +74,11 @@ describe("WebSocketService inbound event handling", () => {
   beforeEach(() => {
     unhandled.mockReset();
     process.on("unhandledRejection", unhandled);
-    service = new WebSocketService(createServer());
+    service = new WebSocketService(
+      createServer(),
+      {} as MessageCacheService,
+      {} as PlaytimeManagerService,
+    );
   });
 
   afterEach(() => {

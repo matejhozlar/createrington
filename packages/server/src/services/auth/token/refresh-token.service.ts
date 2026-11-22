@@ -11,23 +11,14 @@ const COOKIE_PATH = "/api/auth";
  * everything persisted (and looked up against) is the SHA-256 hash. Singleton.
  */
 class RefreshTokenService {
-  private static instance: RefreshTokenService;
-
   private readonly expiresInDays: number;
   private readonly cookieName: string;
   private readonly cookieDomain: string | undefined;
 
-  private constructor() {
+  constructor() {
     this.expiresInDays = config.app.auth.refreshToken.expiresInDays;
     this.cookieName = config.app.auth.cookie.name;
     this.cookieDomain = config.app.auth.cookie.domain;
-  }
-
-  static getInstance(): RefreshTokenService {
-    if (!RefreshTokenService.instance) {
-      RefreshTokenService.instance = new RefreshTokenService();
-    }
-    return RefreshTokenService.instance;
   }
 
   /** Generates a fresh opaque refresh token. */
@@ -89,4 +80,4 @@ class RefreshTokenService {
   }
 }
 
-export const refreshTokenService = RefreshTokenService.getInstance();
+export const refreshTokenService = new RefreshTokenService();

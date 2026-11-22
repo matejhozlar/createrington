@@ -14,20 +14,8 @@ function requirePlayerName(playerName: string): void {
 }
 
 export class MinecraftRconManager {
-  private static instance: MinecraftRconManager | null = null;
   private readonly connections = new Map<ServerId, ServerRconConnection>();
   private cleanupInterval: NodeJS.Timeout | null = null;
-
-  private constructor() {
-    this.startCleanupInterval();
-  }
-
-  static getInstance(): MinecraftRconManager {
-    if (!MinecraftRconManager.instance) {
-      MinecraftRconManager.instance = new MinecraftRconManager();
-    }
-    return MinecraftRconManager.instance;
-  }
 
   private getConnection(serverId: ServerId): ServerRconConnection {
     const server = getServerById(serverId);
@@ -46,7 +34,8 @@ export class MinecraftRconManager {
     return connection;
   }
 
-  private startCleanupInterval(): void {
+  initialize(): void {
+    if (this.cleanupInterval) return;
     this.cleanupInterval = setInterval(() => {
       const now = Date.now();
 
@@ -66,6 +55,7 @@ export class MinecraftRconManager {
         }
       }
     }, CLEANUP_INTERVAL_MS);
+    this.cleanupInterval.unref();
   }
 
   async shutdown(): Promise<void> {
@@ -77,7 +67,6 @@ export class MinecraftRconManager {
       Array.from(this.connections.values()).map((conn) => conn.disconnect()),
     );
     this.connections.clear();
-    MinecraftRconManager.instance = null;
   }
 
   getServerIds(): ServerId[] {
@@ -193,4 +182,4 @@ export class MinecraftRconManager {
   }
 }
 
-export const minecraftRcon = MinecraftRconManager.getInstance();
+export const minecraftRcon = new MinecraftRconManager();

@@ -34,18 +34,19 @@ const ROTATION_GRACE_MS = 60_000;
  * instance falls back to strict theft detection. Revoking the old row and inserting its
  * successor run in one transaction that only proceeds if it claimed the row, so two
  * rotations that slip past the cache never both issue a successor: the loser is treated
- * as a replay. Instantiated as a singleton; an hourly cleanup interval starts
- * automatically on first access and runs for the lifetime of the process.
+ * as a replay. The hourly cleanup of expired rows runs between the container's
+ * `initialize()` and `shutdown()`.
  */
-class SessionService {
-  private static instance: SessionService;
-  private cleanupInterval: ReturnType<typeof setInterval> | null = null;
+export class SessionService {
+  private cleanupInterval: NodeJS.Timeout | null = null;
   private recentRotations = new Map<
     string,
     { promise: Promise<RotateResult | null>; expiresAt: number }
   >();
 
-  private constructor() {
+  /** Starts the hourly cleanup of expired sessions. */
+  initialize(): void {
+    if (this.cleanupInterval) return;
     this.cleanupInterval = setInterval(
       () => {
         this.cleanupExpired().catch((error: unknown) => {
@@ -54,13 +55,15 @@ class SessionService {
       },
       60 * 60 * 1000,
     );
+    this.cleanupInterval.unref();
   }
 
-  static getInstance(): SessionService {
-    if (!SessionService.instance) {
-      SessionService.instance = new SessionService();
+  /** Stops the hourly cleanup. */
+  shutdown(): void {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = null;
     }
-    return SessionService.instance;
   }
 
   /** Issues a fresh session in a new token family and returns the raw refresh token to set as a cookie. */
@@ -247,4 +250,4 @@ class SessionService {
   }
 }
 
-export const sessionService = SessionService.getInstance();
+export const sessionService = new SessionService();

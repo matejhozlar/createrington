@@ -38,11 +38,7 @@ describe("JWTService", () => {
   let service: JWTService;
 
   beforeEach(() => {
-    service = JWTService.getInstance();
-  });
-
-  it("getInstance returns a stable singleton", () => {
-    expect(JWTService.getInstance()).toBe(service);
+    service = new JWTService();
   });
 
   describe("generate", () => {

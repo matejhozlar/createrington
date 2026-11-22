@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterAll, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
 vi.mock("@/config", () => ({
   default: {
@@ -21,13 +21,12 @@ import { MinecraftRconManager, WhitelistAction } from "@/utils/rcon";
 describe("MinecraftRconManager", () => {
   let rconManager: MinecraftRconManager;
 
-  beforeEach(async () => {
-    await MinecraftRconManager.getInstance().shutdown();
-    rconManager = MinecraftRconManager.getInstance();
+  beforeEach(() => {
+    rconManager = new MinecraftRconManager();
   });
 
-  afterAll(async () => {
-    await MinecraftRconManager.getInstance().shutdown();
+  afterEach(async () => {
+    await rconManager.shutdown();
   });
 
   describe("Configuration", () => {

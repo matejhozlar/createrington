@@ -70,13 +70,12 @@ function getSocketClientIp(socket: Socket): string {
  * optional Bearer token; authenticated sockets auto-join a private per-user room
  * reserved for owner-only events, while invalid tokens degrade to anonymous rather
  * than reject. Per-socket event budgets prevent one tab from starving others on the
- * same client. Construction wires the HTTP server
- * and connection handlers; `initialize()` must be called with both dependency
- * services before event-driven broadcasting will fire.
+ * same client. Construction wires the HTTP server and connection handlers;
+ * event-driven broadcasting starts with `initialize()`.
  */
 export class WebSocketService {
   private io: SocketServer;
-  private dataProvider!: WebSocketDataProvider;
+  private dataProvider: WebSocketDataProvider;
   private isInitialized = false;
   private startTime: Date;
 
@@ -86,8 +85,14 @@ export class WebSocketService {
 
   constructor(
     httpServer: HttpServer,
+    private readonly messageCacheService: MessageCacheService,
+    private readonly playtimeManagerService: PlaytimeManagerService,
     private config: WebSocketServiceConfig = {},
   ) {
+    this.dataProvider = new WebSocketDataProvider(
+      messageCacheService,
+      playtimeManagerService,
+    );
     this.io = new SocketIOServer(httpServer, {
       cors: config.cors || {
         origin: false,
@@ -137,22 +142,17 @@ export class WebSocketService {
     return bucket.count <= EVENTS_PER_SOCKET_PER_MIN;
   }
 
-  /** Wires data providers and bridges events from the message cache and every per-server playtime service. */
-  initialize(
-    messageCacheService: MessageCacheService,
-    playtimeManagerService: PlaytimeManagerService,
-  ): void {
+  /** Bridges events from the message cache and every per-server playtime service into room broadcasts. */
+  initialize(): void {
     if (this.isInitialized) {
       logger.warn("WebSocketService already initialized");
       return;
     }
 
-    this.dataProvider = new WebSocketDataProvider(
-      messageCacheService,
-      playtimeManagerService,
+    this.connectToServices(
+      this.messageCacheService,
+      this.playtimeManagerService,
     );
-
-    this.connectToServices(messageCacheService, playtimeManagerService);
 
     this.isInitialized = true;
     logger.info("WebSocketService initialized");
@@ -524,7 +524,7 @@ export class WebSocketService {
   }
 
   /** Closes the Socket.IO server and clears tracked IP and event-bucket state. */
-  async close(): Promise<void> {
+  async shutdown(): Promise<void> {
     if (!this.isInitialized) {
       return;
     }
@@ -534,7 +534,7 @@ export class WebSocketService {
     this.eventBuckets.clear();
     this.isInitialized = false;
 
-    logger.info("WebSocketService closed");
+    logger.info("WebSocketService shut down");
   }
 
   /** Re-broadcasts the current status for a server; use after external state (e.g. maintenance) changes. */

@@ -29,25 +29,16 @@ export class InvalidJwtPayloadError extends Error {
  * `JWT_ACCESS_SECRET` is missing.
  */
 export class JWTService {
-  private static instance: JWTService;
-
   private readonly secret: string;
   private readonly expiresIn: string;
 
-  private constructor() {
+  constructor() {
     this.secret = config.app.auth.accessToken.secret;
     this.expiresIn = config.app.auth.accessToken.expiresIn;
 
     if (!this.secret) {
       throw new Error("JWT_ACCESS_SECRET environment variable is missing");
     }
-  }
-
-  static getInstance(): JWTService {
-    if (!JWTService.instance) {
-      JWTService.instance = new JWTService();
-    }
-    return JWTService.instance;
   }
 
   /** Signs a new access token for an authenticated user. */
@@ -109,7 +100,7 @@ export class JWTService {
   }
 }
 
-export const jwtService = JWTService.getInstance();
+export const jwtService = new JWTService();
 
 const AUTH_ROLES = Object.values(AuthRole) as string[];
 

@@ -213,4 +213,62 @@ describe("ServiceContainer", () => {
     expect(order).toEqual(["third", "second", "first"]);
     expect(container.size).toBe(0);
   });
+
+  it("runs the teardown passed at registration with the instance", async () => {
+    const container = new ServiceContainer<{
+      pool: { end: () => void; shutdown?: () => void };
+    }>();
+    const end = vi.fn();
+    const ownShutdown = vi.fn();
+    container.register("pool", [], () => ({ end, shutdown: ownShutdown }), {
+      shutdown: (pool) => pool.end(),
+    });
+    await container.initializeAll();
+
+    await container.shutdown();
+
+    expect(end).toHaveBeenCalledTimes(1);
+    expect(ownShutdown).not.toHaveBeenCalled();
+  });
+
+  it("skips a service that never became ready", async () => {
+    const container = new ServiceContainer<Record<"broken", object>>();
+    const teardown = vi.fn();
+    container.register(
+      "broken",
+      [],
+      () => {
+        throw new Error("boom");
+      },
+      { shutdown: teardown },
+    );
+    await container.initializeAll();
+
+    await container.shutdown();
+
+    expect(teardown).not.toHaveBeenCalled();
+  });
+
+  it("moves on from a teardown that never settles after 10 seconds", async () => {
+    vi.useFakeTimers();
+    try {
+      const container = new ServiceContainer<
+        Record<"first" | "hung", object>
+      >();
+      const first = vi.fn();
+      container.register("first", [], () => ({ shutdown: first }));
+      container.register("hung", [], () => ({
+        shutdown: () => new Promise<void>(() => {}),
+      }));
+      await container.initializeAll();
+
+      const done = container.shutdown();
+      await vi.advanceTimersByTimeAsync(10_000);
+      await done;
+
+      expect(first).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

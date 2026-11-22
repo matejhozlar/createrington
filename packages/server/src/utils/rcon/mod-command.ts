@@ -1,5 +1,5 @@
 import { MC_USERNAME_REGEX } from "@/utils/zod-schemas";
-import { MinecraftRconManager } from "./manager";
+import { minecraftRcon } from "./manager";
 
 export type RconSend = (serverId: number, command: string) => Promise<string>;
 
@@ -24,4 +24,4 @@ export function requireUsername(username: string): string {
 }
 
 export const defaultRconSend: RconSend = (serverId, command) =>
-  MinecraftRconManager.getInstance().send(serverId, command);
+  minecraftRcon.send(serverId, command);
