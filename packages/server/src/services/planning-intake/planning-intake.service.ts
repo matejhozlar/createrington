@@ -123,8 +123,8 @@ export class PlanningIntakeService {
   }
 
   /**
-   * Writes a proposal to the board: a new inbox card, or a comment on the
-   * card it names. Throws when the category is unknown or the card is gone.
+   * Writes a proposal to the board: a new draft, or a comment on the item it
+   * names. Throws when the category is unknown or the card is gone.
    */
   async apply(
     proposal: PlanningProposal,
@@ -175,8 +175,7 @@ export class PlanningIntakeService {
         category: proposal.category,
         subcategoryId:
           subcategory?.category === proposal.category ? subcategory.id : null,
-        status: "inbox",
-        decision: null,
+        status: "draft",
       },
       by.discordId,
       { sourceUrl: by.sourceUrl },
@@ -193,7 +192,7 @@ export class PlanningIntakeService {
       kind,
       itemId,
       title,
-      url: `${siteUrl("/admin/planning")}?card=${itemId}`,
+      url: siteUrl(`/admin/planning/${itemId}`),
     };
   }
 

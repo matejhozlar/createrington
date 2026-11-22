@@ -15,7 +15,7 @@ const board = vi.hoisted(() => ({
       body: "x".repeat(500),
       category: "modpack",
       subcategoryId: 10,
-      status: "discussing",
+      status: "open",
     },
   ],
   createItem: vi.fn(),
@@ -114,7 +114,7 @@ describe("PlanningIntakeService.start", () => {
         title: "Give money a purpose",
         category: "modpack",
         subcategory: "Economy",
-        status: "discussing",
+        status: "open",
         details: "x".repeat(300),
       },
     ]);
@@ -122,7 +122,7 @@ describe("PlanningIntakeService.start", () => {
 });
 
 describe("PlanningIntakeService.apply", () => {
-  it("adds a new card to the inbox with the link back to Discord", async () => {
+  it("adds a new item as a draft with the link back to Discord", async () => {
     const saved = await planningIntakeService.apply(
       {
         action: "create",
@@ -140,8 +140,7 @@ describe("PlanningIntakeService.apply", () => {
         body: "Shops should sell claim upgrades.",
         category: "modpack",
         subcategoryId: 10,
-        status: "inbox",
-        decision: null,
+        status: "draft",
       },
       "555",
       { sourceUrl: SOURCE },
@@ -150,7 +149,7 @@ describe("PlanningIntakeService.apply", () => {
       kind: "created",
       itemId: 31,
       title: "Rework the shops",
-      url: "https://createrington.test/admin/planning?card=31",
+      url: "https://createrington.test/admin/planning/31",
     });
   });
 

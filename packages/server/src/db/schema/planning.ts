@@ -33,7 +33,7 @@ export const planningSubcategory = pgTable(
 );
 
 // --- planning_item ---
-// Current state of one planning card. Every save also writes a
+// Current state of one planning item; body is markdown. Every save also writes a
 // planning_item_revision row with the same content; revision is the number
 // of the latest one and guards against two admins overwriting each other.
 
@@ -48,8 +48,7 @@ export const planningItem = pgTable(
       () => planningSubcategory.id,
       { onDelete: "set null" },
     ),
-    status: planningItemStatusEnum("status").notNull().default("inbox"),
-    decision: text("decision"),
+    status: planningItemStatusEnum("status").notNull().default("draft"),
     revision: integer("revision").notNull().default(1),
     // Discord message the item was captured from by /idea; null when it was
     // written on the website
@@ -87,7 +86,6 @@ export const planningItemRevision = pgTable(
     category: planningCategoryEnum("category").notNull(),
     subcategoryId: integer("subcategory_id"),
     status: planningItemStatusEnum("status").notNull(),
-    decision: text("decision"),
     editedBy: text("edited_by").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()

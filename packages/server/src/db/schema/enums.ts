@@ -169,7 +169,8 @@ export const planningCategoryEnum = pgEnum(
   PLANNING_CATEGORIES,
 );
 
-// rejected items stay on record with their decision text
+// draft: just written, by a person or by Claude. open: up for discussion.
+// approved: agreed, and can later be tied to a roadmap entry
 export const planningItemStatusEnum = pgEnum(
   "planning_item_status",
   PLANNING_ITEM_STATUSES,

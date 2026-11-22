@@ -12,7 +12,6 @@ export interface PlanningItemContent {
   category: PlanningCategory;
   subcategoryId: number | null;
   status: PlanningItemStatus;
-  decision: string | null;
 }
 
 const CONTENT_FIELDS = [
@@ -21,7 +20,6 @@ const CONTENT_FIELDS = [
   "category",
   "subcategoryId",
   "status",
-  "decision",
 ] as const satisfies readonly (keyof PlanningItemContent)[];
 
 function contentOf(source: PlanningItemContent): PlanningItemContent {
@@ -31,7 +29,6 @@ function contentOf(source: PlanningItemContent): PlanningItemContent {
     category: source.category,
     subcategoryId: source.subcategoryId,
     status: source.status,
-    decision: source.decision,
   };
 }
 
@@ -141,7 +138,7 @@ export class PlanningRepository {
       const current = await this.lockAtRevision(tx, id, expectedRevision);
       const source = await tx.planning.item.revision.find({ id: revisionId });
       if (!source || source.itemId !== id) {
-        throw new BadRequestError("That version does not belong to this card");
+        throw new BadRequestError("That version does not belong to this plan");
       }
 
       const next = contentOf(source);
@@ -201,7 +198,7 @@ export class PlanningRepository {
     const current = await tx.planning.item.getForUpdate(id);
     if (current.revision !== expectedRevision) {
       throw new ConflictError(
-        "This card was changed by someone else. Reload it and try again.",
+        "This plan was changed by someone else. Reload it and try again.",
       );
     }
     return current;

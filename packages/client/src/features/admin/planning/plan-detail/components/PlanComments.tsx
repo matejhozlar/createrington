@@ -6,16 +6,17 @@ import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { formatRelativeDate } from "@/lib/format";
 import { queryClient, trpc } from "@/lib/trpc";
 import { PLANNING_COMMENT_MAX_LENGTH } from "@createrington/shared/planning";
-import type { PlanningComment } from "../types";
-import { PersonChip } from "./PersonChip";
-import { SourceLink } from "./SourceLink";
+import { PersonChip } from "../../components/PersonChip";
+import { PlanMarkdown } from "../../components/PlanMarkdown";
+import { SourceLink } from "../../components/SourceLink";
+import type { PlanningComment } from "../../types";
 
-interface ItemCommentsProps {
+interface PlanCommentsProps {
   itemId: number;
   comments: PlanningComment[];
 }
 
-export function ItemComments({ itemId, comments }: ItemCommentsProps) {
+export function PlanComments({ itemId, comments }: PlanCommentsProps) {
   const [body, setBody] = useState("");
 
   const addComment = useMutation(
@@ -35,14 +36,14 @@ export function ItemComments({ itemId, comments }: ItemCommentsProps) {
   };
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-5">
       {comments.length === 0 ? (
         <p className="text-sm text-muted-foreground">No comments yet.</p>
       ) : (
-        <ul className="flex flex-col gap-4">
+        <ul className="flex flex-col gap-5">
           {comments.map((comment) => (
-            <li key={comment.id} className="flex flex-col gap-1">
-              <div className="flex items-center gap-2">
+            <li key={comment.id} className="flex flex-col gap-1.5">
+              <div className="flex flex-wrap items-center gap-2">
                 <PersonChip person={comment.author} />
                 <span className="text-xs text-muted-foreground">
                   {formatRelativeDate(comment.createdAt)}
@@ -54,9 +55,7 @@ export function ItemComments({ itemId, comments }: ItemCommentsProps) {
                   />
                 )}
               </div>
-              <p className="whitespace-pre-wrap break-words text-sm">
-                {comment.body}
-              </p>
+              <PlanMarkdown text={comment.body} />
             </li>
           ))}
         </ul>
@@ -71,7 +70,7 @@ export function ItemComments({ itemId, comments }: ItemCommentsProps) {
               submit();
             }
           }}
-          placeholder="Add a comment"
+          placeholder="Add a comment. Markdown is supported."
           aria-label="Add a comment"
           rows={3}
           maxLength={PLANNING_COMMENT_MAX_LENGTH}

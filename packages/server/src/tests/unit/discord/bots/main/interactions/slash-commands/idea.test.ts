@@ -77,7 +77,7 @@ const SAVED = {
   kind: "created",
   itemId: 31,
   title: "Rework the shops",
-  url: "https://createrington.test/admin/planning?card=31",
+  url: "https://createrington.test/admin/planning/31",
 };
 
 function fakeInteraction() {
@@ -120,14 +120,14 @@ describe("/idea", () => {
       content: "<@555> `/idea` in <#100>",
       embeds: expect.objectContaining({
         kind: "success",
-        title: "Card added to the board",
+        title: "Draft added to planning",
         description:
-          "[Rework the shops](https://createrington.test/admin/planning?card=31)",
+          "[Rework the shops](https://createrington.test/admin/planning/31)",
       }),
       allowedMentions: { users: ["555"] },
     });
     expect(editReply).toHaveBeenLastCalledWith({
-      embeds: [expect.objectContaining({ title: "Card added to the board" })],
+      embeds: [expect.objectContaining({ title: "Draft added to planning" })],
     });
   });
 
@@ -139,7 +139,7 @@ describe("/idea", () => {
 
     await vi.waitFor(() =>
       expect(editReply).toHaveBeenLastCalledWith({
-        embeds: [expect.objectContaining({ title: "Comment added to a card" })],
+        embeds: [expect.objectContaining({ title: "Comment added to a plan" })],
       }),
     );
   });
