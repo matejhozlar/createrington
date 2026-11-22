@@ -5,13 +5,13 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/auth";
-import { api } from "@/services/api/client";
+import { trpc } from "@/lib/trpc";
 import { AdminChatContext } from "./context";
 import type { AdminChatContextType, OpenDrawerOptions } from "./types";
 
 const BUBBLE_KEY = "admin-chat:bubble-visible";
-const ENABLED_ENDPOINT = "api/claude-chat/enabled";
 
 interface PanelState {
   open: boolean;
@@ -19,15 +19,6 @@ interface PanelState {
 }
 
 const PANEL_CLOSED: PanelState = { open: false, expanded: false };
-
-async function fetchEnabled(): Promise<boolean> {
-  try {
-    const data = await api.get<{ enabled?: boolean }>(ENABLED_ENDPOINT);
-    return data.enabled === true;
-  } catch {
-    return false;
-  }
-}
 
 function readInitialBubbleVisible(): boolean {
   try {
@@ -41,24 +32,15 @@ export function AdminChatProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const isAdmin = Boolean(user?.isAdmin);
 
-  const [enabledFromServer, setEnabledFromServer] = useState<boolean>(false);
+  const { data: enabledFromServer } = useQuery(
+    trpc.admin.chat.enabled.queryOptions(undefined, { enabled: isAdmin }),
+  );
   const [bubbleVisible, setBubbleVisibleState] = useState<boolean>(
     readInitialBubbleVisible,
   );
   const [panel, setPanel] = useState<PanelState>(PANEL_CLOSED);
 
-  useEffect(() => {
-    if (!isAdmin) return;
-    let cancelled = false;
-    void fetchEnabled().then((value) => {
-      if (!cancelled) setEnabledFromServer(value);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [isAdmin]);
-
-  const enabled = isAdmin && enabledFromServer;
+  const enabled = isAdmin && enabledFromServer === true;
 
   useEffect(() => {
     try {

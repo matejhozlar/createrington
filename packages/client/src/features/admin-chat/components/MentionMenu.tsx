@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import type { RepoSuggestion } from "../types";
+import type { RepoSuggestion } from "@createrington/shared/admin-chat";
 
 interface MentionMenuProps {
   matches: RepoSuggestion[];

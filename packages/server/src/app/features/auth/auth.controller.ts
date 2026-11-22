@@ -219,11 +219,6 @@ export class AuthController {
     });
   }
 
-  static async checkStatus(req: Request, res: Response): Promise<void> {
-    const user = await withLiveAdminStatus(authenticatedUser(req));
-    res.json({ success: true, data: { authenticated: true, user } });
-  }
-
   static async ssoStart(req: Request, res: Response): Promise<void> {
     if (!config.app.auth.sso.callbackUrl) {
       throw new BadRequestError("SSO is not configured on this server");

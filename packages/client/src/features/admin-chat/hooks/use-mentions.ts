@@ -1,7 +1,8 @@
 import { useCallback, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { fetchRepos } from "../api";
-import type { MentionState, RepoSuggestion } from "../types";
+import type { RepoSuggestion } from "@createrington/shared/admin-chat";
+import { trpc } from "@/lib/trpc";
+import type { MentionState } from "../types";
 
 export function detectMention(
   value: string,
@@ -36,12 +37,12 @@ interface UseMentionsResult {
 export function useMentions(): UseMentionsResult {
   const [mention, setMention] = useState<MentionState | null>(null);
   const [index, setIndex] = useState(0);
-  const { data: repos } = useQuery({
-    queryKey: ["admin-chat", "repos"],
-    queryFn: async () => (await fetchRepos()).repos ?? [],
-    enabled: mention !== null,
-    staleTime: Infinity,
-  });
+  const { data: repos } = useQuery(
+    trpc.admin.chat.repos.queryOptions(undefined, {
+      enabled: mention !== null,
+      staleTime: Infinity,
+    }),
+  );
 
   const matches = useMemo<RepoSuggestion[]>(() => {
     if (!mention || !repos) return [];

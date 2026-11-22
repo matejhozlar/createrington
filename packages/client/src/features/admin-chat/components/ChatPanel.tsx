@@ -9,11 +9,11 @@ import { MessageInput } from "./MessageInput";
 import { MessageList } from "./MessageList";
 import { ModelChip } from "./ModelChip";
 import { readingColumnClass, type ChatLayout } from "../layout";
-import {
-  DEFAULT_ADMIN_CHAT_MODEL,
-  type AdminChatModel,
-  type ChatMessage,
-} from "../types";
+import type {
+  AdminChatModel,
+  ChatMessage,
+} from "@createrington/shared/admin-chat";
+import { DEFAULT_ADMIN_CHAT_MODEL } from "../types";
 import { Spinner } from "@/components/ui/spinner";
 
 const DOCKED_WIDTH_REM = 24;

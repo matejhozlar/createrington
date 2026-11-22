@@ -5,7 +5,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { ADMIN_CHAT_MODEL_LABELS, type AdminChatModel } from "../types";
+import type { AdminChatModel } from "@createrington/shared/admin-chat";
+import { ADMIN_CHAT_MODEL_LABELS } from "../types";
 
 interface ModelChipProps {
   value: AdminChatModel;

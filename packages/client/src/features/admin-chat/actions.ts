@@ -65,15 +65,6 @@ export function isPlanAction(
   return action.type === "plan_create" || action.type === "plan_update";
 }
 
-export interface ChatActionRecord {
-  id: number;
-  sessionId: number;
-  chatMessageId: number;
-  type: string;
-  payload: unknown;
-  createdAt: string | Date;
-}
-
 export const PENDING_EMBED_KEY = "admin-chat:pending-embed";
 
 export const INSERT_EMBED_EVENT = "admin-chat:insert-embed";

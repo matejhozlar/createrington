@@ -43,8 +43,6 @@ router.post(
   ...route("user", AuthController.logoutAll),
 );
 
-router.get("/status", ...route("user", AuthController.checkStatus));
-
 if (config.envMode.isDev) {
   router.get(
     "/dev-set-refresh",
