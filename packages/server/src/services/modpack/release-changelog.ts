@@ -128,7 +128,7 @@ export async function getReleaseDiffs(
   releases: ModpackRelease[],
 ): Promise<ModpackReleaseDiff[]> {
   if (releases.length === 0) return [];
-  const preceding = await Q.modpack.release.listPreceding(
+  const preceding = await Q.modpack.release.getPreceding(
     releases.map((release) => release.id),
   );
   const previousOf = new Map<number, ModpackRelease>();
@@ -142,7 +142,7 @@ export async function getReleaseDiffs(
     const previous = previousOf.get(release.id);
     if (previous) releaseIds.add(previous.id);
   }
-  const rows = await Q.modpack.release.mod.listForReleases([...releaseIds]);
+  const rows = await Q.modpack.release.mod.getForReleases([...releaseIds]);
   const rowsOf = new Map<number, ReleaseRow[]>();
   for (const row of rows) {
     const held = rowsOf.get(row.releaseId);

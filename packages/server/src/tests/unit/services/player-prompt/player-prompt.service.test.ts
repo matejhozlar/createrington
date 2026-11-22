@@ -86,7 +86,7 @@ vi.mock("@/db", () => {
             promptFindCalls += 1;
             return prompt;
           },
-          findAllActive: async () => activePrompts,
+          getActive: async () => activePrompts,
           update: async (
             identifier: { id: number },
             data: Partial<PlayerPrompt>,

@@ -21,7 +21,9 @@ export const strikesRouter = router({
     )
     .query(async ({ input }) => {
       const [strikes, statistics] = await Promise.all([
-        playerStrikeRepo.getHistory(input.id, input.activeOnly),
+        playerStrikeRepo.getHistory(input.id, {
+          includeRemoved: !input.activeOnly,
+        }),
         playerStrikeRepo.getStatistics(input.id),
       ]);
 

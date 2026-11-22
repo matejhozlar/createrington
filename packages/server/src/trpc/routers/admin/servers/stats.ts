@@ -157,14 +157,14 @@ export const serverStatsProcedures = {
     .query(async ({ input }) => {
       requireServer(input.serverId);
 
-      const { sessions, total } = await Q.player.session.getServerSessions(
+      const { rows, total } = await Q.player.session.getServerSessions(
         input.serverId,
         input.limit,
         pageOffset(input),
       );
 
       return {
-        items: sessions,
+        items: rows,
         pagination: buildPagination(input.page, input.limit, total),
       };
     }),

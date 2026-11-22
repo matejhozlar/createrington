@@ -227,7 +227,7 @@ export class PlayerMinecraftStatTotalQueries extends PlayerMinecraftStatTotalBas
    * Returns one row per player with an array of values corresponding to each
    * requested category, ordered by the sum of those values.
    */
-  async compareItem(
+  async getItemComparison(
     item: string,
     categories: string[],
     options?: { limit?: number },

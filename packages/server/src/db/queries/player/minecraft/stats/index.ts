@@ -1,7 +1,6 @@
 import type { Pool, PoolClient } from "pg";
 import { PlayerMinecraftStatsBaseQueries } from "@/generated/db/player_minecraft_stats.queries";
 import { PlayerMinecraftStatTotalQueries } from "@/db/queries/player/minecraft/stat/total";
-import { transaction } from "@/db/utils/transactions";
 
 export interface StatsUpsertEntry {
   minecraftUuid: string;
@@ -22,8 +21,8 @@ export class PlayerMinecraftStatsQueries extends PlayerMinecraftStatsBaseQueries
 
   /**
    * Batch upsert stats for multiple players on a single server, then rebuild
-   * the stat totals of every player whose stats were inserted or changed, all
-   * in one transaction. Rows whose stats and data version are unchanged are
+   * the stat totals of every player whose stats were inserted or changed. Must
+   * run inside a transaction (`db.inTransaction`) so both commit together. Rows whose stats and data version are unchanged are
    * left untouched (updated_at included), so a re-import of identical files
    * writes nothing.
    *
@@ -35,9 +34,7 @@ export class PlayerMinecraftStatsQueries extends PlayerMinecraftStatsBaseQueries
   ): Promise<string[]> {
     if (entries.length === 0) return [];
     if (!this.isInTransaction()) {
-      return transaction(this.db as Pool, (client) =>
-        this.useClient(client).batchUpsert(serverId, entries),
-      );
+      throw new Error("batchUpsert must run inside a transaction");
     }
 
     const values: unknown[] = [serverId];

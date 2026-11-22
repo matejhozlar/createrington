@@ -129,7 +129,7 @@ export class RenderController {
   static async top(_req: Request, res: Response): Promise<void> {
     const { category, item } = getValidated<{ query: TopQuery }>(res).query;
 
-    const results = await Q.player.minecraft.stat.total.compareItem(
+    const results = await Q.player.minecraft.stat.total.getItemComparison(
       item,
       [category],
       { limit: 3 },

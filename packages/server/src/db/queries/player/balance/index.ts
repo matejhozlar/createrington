@@ -113,7 +113,7 @@ export class PlayerBalanceQueries extends PlayerBalanceBaseQueries {
    *
    * @returns Balance in storage format, or null when the player has no balance row
    */
-  async getForUpdate(minecraftUuid: string): Promise<bigint | null> {
+  async findForUpdate(minecraftUuid: string): Promise<bigint | null> {
     const query = `
       SELECT balance
       FROM ${this.table}

@@ -92,7 +92,7 @@ async function autocomplete(
     return;
   }
 
-  const results = await Q.server.party.searchTagged(
+  const results = await Q.server.party.getTaggedMatches(
     config.servers.rails.id,
     focused.value ?? "",
     25,
@@ -178,7 +178,7 @@ async function lookupPlayer(user: User): Promise<TagLookup> {
 
   const username = player.minecraftUsername;
   const name = escapeMarkdown(username);
-  const party = await Q.server.party.getForMember(
+  const party = await Q.server.party.findForMember(
     config.servers.rails.id,
     player.minecraftUuid,
   );

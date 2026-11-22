@@ -45,13 +45,13 @@ export class WorkshopModEventQueries extends WorkshopModEventBaseQueries {
    * player, and whether the suggestion row still exists resolved per event.
    * Search matches the project name or the actor's Minecraft username.
    */
-  async search(opts: {
+  async getPage(opts: {
     workshopId: number;
     eventType?: WorkshopModEventType;
     search?: string;
     limit: number;
     offset: number;
-  }): Promise<{ events: WorkshopModEventListItem[]; total: number }> {
+  }): Promise<{ rows: WorkshopModEventListItem[]; total: number }> {
     const conditions = ["e.workshop_id = $1"];
     const params: unknown[] = [opts.workshopId];
 
@@ -99,7 +99,7 @@ export class WorkshopModEventQueries extends WorkshopModEventBaseQueries {
     ]);
 
     return {
-      events: dataResult.rows.map((row) => this.mapSearchRow(row)),
+      rows: dataResult.rows.map((row) => this.mapSearchRow(row)),
       total: countResult.rows[0]?.count ?? 0,
     };
   }

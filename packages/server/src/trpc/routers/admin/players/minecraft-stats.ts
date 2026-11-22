@@ -40,7 +40,7 @@ export const minecraftStatsRouter = router({
     .meta({ description: "Autocomplete search for item keys" })
     .input(z.object({ query: z.string().min(1) }))
     .query(async ({ input }) => {
-      return Q.player.minecraft.stat.key.searchItems(input.query);
+      return Q.player.minecraft.stat.key.getMatchingItems(input.query);
     }),
 
   compare: adminProcedure
@@ -56,7 +56,7 @@ export const minecraftStatsRouter = router({
       }),
     )
     .query(async ({ input }) => {
-      return Q.player.minecraft.stat.total.compareItem(
+      return Q.player.minecraft.stat.total.getItemComparison(
         input.item,
         input.categories,
         { limit: input.limit },

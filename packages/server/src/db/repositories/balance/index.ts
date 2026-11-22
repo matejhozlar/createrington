@@ -51,7 +51,7 @@ export class BalanceRepository extends BasePlayerRepository {
     tx: DatabaseQueries,
     minecraftUuid: string,
   ): Promise<bigint> {
-    const balance = await tx.player.balance.getForUpdate(minecraftUuid);
+    const balance = await tx.player.balance.findForUpdate(minecraftUuid);
     if (balance === null) {
       throw new NotFoundError("player_balance", { minecraftUuid });
     }
@@ -69,6 +69,7 @@ export class BalanceRepository extends BasePlayerRepository {
   }
 
   private async logTransaction(
+    tx: DatabaseQueries,
     data: {
       playerMinecraftUuid: string;
       amount: bigint;
@@ -80,7 +81,6 @@ export class BalanceRepository extends BasePlayerRepository {
       metadata?: Record<string, unknown>;
       idempotencyKey?: string;
     },
-    tx: DatabaseQueries,
   ): Promise<void> {
     await tx.player.balance.transaction.create({
       playerMinecraftUuid: data.playerMinecraftUuid,
@@ -139,17 +139,14 @@ export class BalanceRepository extends BasePlayerRepository {
       });
 
       if (initialBalance > 0) {
-        await this.logTransaction(
-          {
-            playerMinecraftUuid,
-            amount: balanceBigInt,
-            balanceBefore: 0n,
-            balanceAfter: balanceBigInt,
-            transactionType: BalanceTransactionType.ADMIN_GRANT,
-            description: "Initial balance",
-          },
-          tx,
-        );
+        await this.logTransaction(tx, {
+          playerMinecraftUuid,
+          amount: balanceBigInt,
+          balanceBefore: 0n,
+          balanceAfter: balanceBigInt,
+          transactionType: BalanceTransactionType.ADMIN_GRANT,
+          description: "Initial balance",
+        });
       }
 
       logger.info(
@@ -186,19 +183,16 @@ export class BalanceRepository extends BasePlayerRepository {
       { balance: newBalance },
     );
 
-    await this.logTransaction(
-      {
-        playerMinecraftUuid: uuid,
-        amount: amountBigInt,
-        balanceBefore: balance,
-        balanceAfter: newBalance,
-        transactionType: type,
-        description: reason,
-        metadata: options.metadata,
-        idempotencyKey: options.idempotencyKey,
-      },
-      tx,
-    );
+    await this.logTransaction(tx, {
+      playerMinecraftUuid: uuid,
+      amount: amountBigInt,
+      balanceBefore: balance,
+      balanceAfter: newBalance,
+      transactionType: type,
+      description: reason,
+      metadata: options.metadata,
+      idempotencyKey: options.idempotencyKey,
+    });
 
     return { before: balance, after: newBalance };
   }
@@ -231,19 +225,16 @@ export class BalanceRepository extends BasePlayerRepository {
       { balance: newBalance },
     );
 
-    await this.logTransaction(
-      {
-        playerMinecraftUuid: uuid,
-        amount: -amountBigInt,
-        balanceBefore: balance,
-        balanceAfter: newBalance,
-        transactionType: type,
-        description: reason,
-        metadata: options.metadata,
-        idempotencyKey: options.idempotencyKey,
-      },
-      tx,
-    );
+    await this.logTransaction(tx, {
+      playerMinecraftUuid: uuid,
+      amount: -amountBigInt,
+      balanceBefore: balance,
+      balanceAfter: newBalance,
+      transactionType: type,
+      description: reason,
+      metadata: options.metadata,
+      idempotencyKey: options.idempotencyKey,
+    });
 
     return { before: balance, after: newBalance };
   }
@@ -269,18 +260,15 @@ export class BalanceRepository extends BasePlayerRepository {
       { balance: amountBigInt },
     );
 
-    await this.logTransaction(
-      {
-        playerMinecraftUuid: uuid,
-        amount: difference,
-        balanceBefore: balance,
-        balanceAfter: amountBigInt,
-        transactionType: type,
-        description: reason,
-        metadata: options.metadata,
-      },
-      tx,
-    );
+    await this.logTransaction(tx, {
+      playerMinecraftUuid: uuid,
+      amount: difference,
+      balanceBefore: balance,
+      balanceAfter: amountBigInt,
+      transactionType: type,
+      description: reason,
+      metadata: options.metadata,
+    });
 
     return { before: balance, after: amountBigInt };
   }
@@ -298,7 +286,7 @@ export class BalanceRepository extends BasePlayerRepository {
     type: BalanceTransactionType,
     options: BalanceMutationOptions = {},
   ): Promise<number> {
-    const uuid = await this.resolvePlayerUuid(identifier, options.tx);
+    const uuid = await this.resolvePlayerUuid(identifier, { tx: options.tx });
 
     return await (options.tx ?? db).inTransaction(async (tx) => {
       const { after } = await this.addLocked(tx, uuid, amount, reason, type, {
@@ -323,7 +311,7 @@ export class BalanceRepository extends BasePlayerRepository {
     type: BalanceTransactionType,
     options: BalanceMutationOptions = {},
   ): Promise<number> {
-    const uuid = await this.resolvePlayerUuid(identifier, options.tx);
+    const uuid = await this.resolvePlayerUuid(identifier, { tx: options.tx });
 
     return await (options.tx ?? db).inTransaction(async (tx) => {
       const { after } = await this.deductLocked(
@@ -403,31 +391,25 @@ export class BalanceRepository extends BasePlayerRepository {
         { balance: newRecipientBalance },
       );
 
-      await this.logTransaction(
-        {
-          playerMinecraftUuid: senderUuid,
-          amount: -amountBigInt,
-          balanceBefore: senderBalance,
-          balanceAfter: newSenderBalance,
-          transactionType: BalanceTransactionType.TRANSFER_SEND,
-          description: description || `Transfer to ${recipientUuid}`,
-          relatedPlayerUuid: recipientUuid,
-        },
-        tx,
-      );
+      await this.logTransaction(tx, {
+        playerMinecraftUuid: senderUuid,
+        amount: -amountBigInt,
+        balanceBefore: senderBalance,
+        balanceAfter: newSenderBalance,
+        transactionType: BalanceTransactionType.TRANSFER_SEND,
+        description: description || `Transfer to ${recipientUuid}`,
+        relatedPlayerUuid: recipientUuid,
+      });
 
-      await this.logTransaction(
-        {
-          playerMinecraftUuid: recipientUuid,
-          amount: amountBigInt,
-          balanceBefore: recipientBalance,
-          balanceAfter: newRecipientBalance,
-          transactionType: BalanceTransactionType.TRANSFER_RECEIVE,
-          description: description || `Transfer from ${senderUuid}`,
-          relatedPlayerUuid: senderUuid,
-        },
-        tx,
-      );
+      await this.logTransaction(tx, {
+        playerMinecraftUuid: recipientUuid,
+        amount: amountBigInt,
+        balanceBefore: recipientBalance,
+        balanceAfter: newRecipientBalance,
+        transactionType: BalanceTransactionType.TRANSFER_RECEIVE,
+        description: description || `Transfer from ${senderUuid}`,
+        relatedPlayerUuid: senderUuid,
+      });
 
       return {
         senderBalance: BalanceUtils.fromStorage(newSenderBalance),

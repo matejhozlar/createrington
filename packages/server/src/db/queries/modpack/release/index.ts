@@ -31,7 +31,7 @@ export class ModpackReleaseQueries extends ModpackReleaseBaseQueries {
   }
 
   /** Newest recorded release per modpack; packs without a release are absent from the result. */
-  async latestPerModpack(modpackIds: number[]): Promise<ModpackRelease[]> {
+  async getLatestPerModpack(modpackIds: number[]): Promise<ModpackRelease[]> {
     if (modpackIds.length === 0) return [];
     const result = await this.runQuery<ModpackReleaseRow>(
       "list latest releases per modpack",
@@ -45,7 +45,7 @@ export class ModpackReleaseQueries extends ModpackReleaseBaseQueries {
   }
 
   /** The release recorded right before each given one in its modpack, tagged with the id of the release it precedes; a modpack's first release has no row. */
-  async listPreceding(
+  async getPreceding(
     releaseIds: number[],
   ): Promise<Array<ModpackRelease & { successorId: number }>> {
     if (releaseIds.length === 0) return [];

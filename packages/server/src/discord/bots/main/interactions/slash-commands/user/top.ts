@@ -64,7 +64,7 @@ async function autocomplete(
   const category = CATEGORY_CHOICES.find(
     (choice) => choice.value === interaction.options.getString("category"),
   )?.value;
-  const results = await Q.player.minecraft.stat.key.searchItems(
+  const results = await Q.player.minecraft.stat.key.getMatchingItems(
     interaction.options.getFocused(),
     { category, limit: 25 },
   );
@@ -89,7 +89,7 @@ async function execute(
 
   await interaction.deferReply();
 
-  const results = await Q.player.minecraft.stat.total.compareItem(
+  const results = await Q.player.minecraft.stat.total.getItemComparison(
     item,
     [category],
     { limit: 3 },

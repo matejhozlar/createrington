@@ -11,7 +11,7 @@ export class ModpackPublishQueries extends ModpackPublishBaseQueries {
   }
 
   /** Newest reported publish per modpack (by client file id); packs without one are absent. */
-  async latestPerModpack(modpackIds: number[]): Promise<ModpackPublish[]> {
+  async getLatestPerModpack(modpackIds: number[]): Promise<ModpackPublish[]> {
     if (modpackIds.length === 0) return [];
     const result = await this.runQuery<ModpackPublishRow>(
       "list latest publishes per modpack",

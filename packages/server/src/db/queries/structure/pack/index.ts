@@ -35,7 +35,7 @@ export class StructurePackQueries extends StructurePackBaseQueries {
     super(db);
   }
 
-  async findAllWithMods(): Promise<StructurePackWithMods[]> {
+  async getAllWithMods(): Promise<StructurePackWithMods[]> {
     const result = await this.runQuery<PackRowWithMods>(
       "find structure packs with mods",
       `SELECT p.*, ${MODS_AGG}
@@ -51,7 +51,7 @@ export class StructurePackQueries extends StructurePackBaseQueries {
     }));
   }
 
-  async findOneWithMods(id: number): Promise<StructurePackWithMods | null> {
+  async findWithMods(id: number): Promise<StructurePackWithMods | null> {
     const result = await this.runQuery<PackRowWithMods>(
       "find structure pack with mods",
       `SELECT p.*, ${MODS_AGG}
@@ -69,7 +69,7 @@ export class StructurePackQueries extends StructurePackBaseQueries {
     };
   }
 
-  async getActive(): Promise<StructurePackWithMods | null> {
+  async findActive(): Promise<StructurePackWithMods | null> {
     const result = await this.runQuery<PackRowWithMods>(
       "get active structure pack",
       `SELECT p.*, ${MODS_AGG}

@@ -102,7 +102,7 @@ afterAll(async () => {
 const usernames = (rows: Array<{ minecraftUuid: string }>) =>
   rows.map((row) => UUIDS.indexOf(row.minecraftUuid)).sort();
 
-describe("Q.player.listWithViolations", () => {
+describe("Q.player.getWithViolations", () => {
   const page = {
     limit: 10,
     offset: 0,
@@ -112,7 +112,7 @@ describe("Q.player.listWithViolations", () => {
   const filters = { minecraftUuid: { $in: UUIDS } };
 
   it("keeps only players with an active strike", async () => {
-    const { rows, total } = await Q.player.listWithViolations(
+    const { rows, total } = await Q.player.getWithViolations(
       filters,
       "strikes",
       page,
@@ -122,25 +122,23 @@ describe("Q.player.listWithViolations", () => {
   });
 
   it("ignores lifted strikes and expired bans", async () => {
-    const { rows } = await Q.player.listWithViolations(filters, "bans", page);
+    const { rows } = await Q.player.getWithViolations(filters, "bans", page);
     expect(usernames(rows)).toEqual([2, 3]);
   });
 
   it("intersects and unions the two violation kinds", async () => {
     expect(
-      usernames(
-        (await Q.player.listWithViolations(filters, "both", page)).rows,
-      ),
+      usernames((await Q.player.getWithViolations(filters, "both", page)).rows),
     ).toEqual([3]);
     expect(
       usernames(
-        (await Q.player.listWithViolations(filters, "either", page)).rows,
+        (await Q.player.getWithViolations(filters, "either", page)).rows,
       ),
     ).toEqual([1, 2, 3]);
   });
 
   it("applies the other filters, the order and the page", async () => {
-    const first = await Q.player.listWithViolations(
+    const first = await Q.player.getWithViolations(
       {
         minecraftUuid: { $in: UUIDS },
         minecraftUsername: { $ilike: "%violation_%" },
@@ -159,7 +157,7 @@ describe("Q.player.listWithViolations", () => {
     ]);
     expect(first.total).toBe(3);
 
-    const second = await Q.player.listWithViolations(
+    const second = await Q.player.getWithViolations(
       { minecraftUuid: { $in: UUIDS } },
       "either",
       {

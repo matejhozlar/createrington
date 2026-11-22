@@ -121,7 +121,7 @@ describe("recordRelease durability", () => {
     const [release] = await modpackReleaseService.listReleases(modpack.id);
     expect(release.modCount).toBe(1);
     expect(
-      await Q.modpack.release.mod.listForReleases([release.id]),
+      await Q.modpack.release.mod.getForReleases([release.id]),
     ).toHaveLength(1);
   });
 });
@@ -162,7 +162,7 @@ describe("recordRelease upgrade", () => {
       serverPackFileId: 900_001,
     });
     expect(
-      await Q.modpack.release.mod.listForReleases([frozen.id]),
+      await Q.modpack.release.mod.getForReleases([frozen.id]),
     ).toHaveLength(2);
 
     vi.mocked(getModpackManifest).mockResolvedValue(clientOnly);

@@ -114,7 +114,7 @@ describe("ModpackReleaseService release history", () => {
       modLoader: "neoforge-21.1.236",
       modCount: 1,
     });
-    const rows = await Q.modpack.release.mod.listForReleases([release.id]);
+    const rows = await Q.modpack.release.mod.getForReleases([release.id]);
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({
       curseforgeProjectId: member.curseforgeProjectId,
@@ -329,7 +329,7 @@ describe("ModpackReleaseService release history", () => {
     expect(releases.map((r) => r.version)).toEqual(["1.1.0", "1.0.0"]);
 
     const old = releases[1];
-    const oldRows = await Q.modpack.release.mod.listForReleases([old.id]);
+    const oldRows = await Q.modpack.release.mod.getForReleases([old.id]);
     expect(oldRows.map((row) => row.curseforgeProjectId).sort()).toEqual(
       [kept.curseforgeProjectId, dropped.curseforgeProjectId].sort(),
     );
@@ -480,9 +480,9 @@ describe("ModpackReleaseService release diff with multi-file mods", () => {
 
     const [first] = await modpackReleaseService.listReleases(modpack.id);
     expect(first.modCount).toBe(2);
-    expect(
-      await Q.modpack.release.mod.listForReleases([first.id]),
-    ).toHaveLength(3);
+    expect(await Q.modpack.release.mod.getForReleases([first.id])).toHaveLength(
+      3,
+    );
 
     vi.mocked(getModpackManifest).mockResolvedValue(
       manifest({

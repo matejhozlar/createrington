@@ -132,12 +132,12 @@ export class PlayerStrikeQueries extends PlayerStrikeBaseQueries {
    * Get complete strike history for a player (including removed)
    *
    * @param playerMinecraftUuid - Player Minecraft UUID to get all strikes for
-   * @param includeRemoved - Whether to include removed strikes (default: true)
+   * @param options.includeRemoved - Whether to include removed strikes (default: true)
    * @returns Promise resolving to an array of player strikes
    */
   async getStrikeHistory(
     playerMinecraftUuid: string,
-    includeRemoved: boolean = true,
+    { includeRemoved = true }: { includeRemoved?: boolean } = {},
   ): Promise<PlayerStrike[]> {
     const filters = includeRemoved
       ? { playerMinecraftUuid }

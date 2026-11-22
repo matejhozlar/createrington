@@ -139,7 +139,7 @@ export class AdminLogActionQueries extends AdminLogActionBaseQueries {
    * Search audit logs with text matching across description and targetPlayerName.
    * Supports pagination, sorting, and optional action type filter.
    */
-  async search(opts: {
+  async getPage(opts: {
     search?: string;
     actionType?: string;
     adminUsername?: string;
@@ -147,7 +147,7 @@ export class AdminLogActionQueries extends AdminLogActionBaseQueries {
     orderDirection: "asc" | "desc";
     limit: number;
     offset: number;
-  }): Promise<{ actions: AdminLogAction[]; total: number }> {
+  }): Promise<{ rows: AdminLogAction[]; total: number }> {
     const conditions: string[] = [];
     const params: unknown[] = [];
     let paramIndex = 1;
@@ -198,7 +198,7 @@ export class AdminLogActionQueries extends AdminLogActionBaseQueries {
     ]);
 
     return {
-      actions: this.mapRowsToEntities(dataResult.rows),
+      rows: this.mapRowsToEntities(dataResult.rows),
       total: countResult.rows[0]?.count ?? 0,
     };
   }

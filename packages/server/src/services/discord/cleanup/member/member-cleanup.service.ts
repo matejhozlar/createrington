@@ -44,7 +44,7 @@ export class MemberCleanupService {
 
   private async cleanup(): Promise<void> {
     try {
-      const expiredMembers = await Q.discord.guild.member.leave.expired();
+      const expiredMembers = await Q.discord.guild.member.leave.getExpired();
 
       if (expiredMembers.length === 0) {
         logger.debug("No departed members to clean up");

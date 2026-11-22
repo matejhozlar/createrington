@@ -54,7 +54,7 @@ export class PlayerSessionQueries extends PlayerSessionBaseQueries {
    *
    * @param serverId - Server ID to query
    */
-  async findOpenWithUsername(serverId: number): Promise<OpenSessionEntry[]> {
+  async getOpenWithUsername(serverId: number): Promise<OpenSessionEntry[]> {
     const query = `
       SELECT s.id, s.player_minecraft_uuid, s.server_id, s.session_start,
              s.last_seen_at, s.last_play_ticks, s.active_seconds::float8 AS active_seconds,
@@ -179,7 +179,7 @@ export class PlayerSessionQueries extends PlayerSessionBaseQueries {
     serverId: number,
     limit: number,
     offset: number,
-  ): Promise<{ sessions: ServerSessionEntry[]; total: number }> {
+  ): Promise<{ rows: ServerSessionEntry[]; total: number }> {
     const [dataResult, countResult] = await Promise.all([
       this.runQuery<ServerSessionRow>(
         "get server sessions",
@@ -200,7 +200,7 @@ export class PlayerSessionQueries extends PlayerSessionBaseQueries {
     ]);
 
     return {
-      sessions: this.mapRowsToEntities(dataResult.rows),
+      rows: this.mapRowsToEntities(dataResult.rows),
       total: countResult.rows[0].total,
     };
   }

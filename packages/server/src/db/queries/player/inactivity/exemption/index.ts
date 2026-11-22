@@ -56,11 +56,11 @@ export class PlayerInactivityExemptionQueries extends PlayerInactivityExemptionB
    * Paginated exemptions joined with player data, optionally filtered by a
    * case-insensitive username substring. Newest first.
    */
-  async listWithPlayer(params: {
+  async getWithPlayer(params: {
     search?: string;
     limit: number;
     offset: number;
-  }): Promise<{ exemptions: ExemptionListItem[]; total: number }> {
+  }): Promise<{ rows: ExemptionListItem[]; total: number }> {
     const values: unknown[] = params.search ? [escapeLike(params.search)] : [];
     const where = params.search
       ? "p.minecraft_username ILIKE '%' || $1 || '%'"
@@ -94,7 +94,7 @@ export class PlayerInactivityExemptionQueries extends PlayerInactivityExemptionB
     ]);
 
     return {
-      exemptions: this.mapRowsToEntities(listResult.rows),
+      rows: this.mapRowsToEntities(listResult.rows),
       total: countResult.rows[0]?.total ?? 0,
     };
   }

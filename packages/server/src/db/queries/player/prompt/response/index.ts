@@ -150,7 +150,7 @@ export class PlayerPromptResponseQueries extends PlayerPromptResponseBaseQueries
    * All responses for a prompt with the responder's Minecraft username
    * attached when linked. Ordered newest-first for the admin detail view.
    */
-  async findByPromptIdWithPlayer(
+  async getByPromptIdWithPlayer(
     promptId: number,
   ): Promise<PlayerPromptResponseWithPlayer[]> {
     // Order by whichever of submitted_at / updated_at is newer so a

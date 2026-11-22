@@ -123,13 +123,13 @@ export class PlayerStrikeRepository extends BasePlayerRepository {
     });
   }
 
-  /** Full strike history for a player; pass activeOnly=true to skip removed strikes. */
+  /** Full strike history for a player; pass includeRemoved: false to skip removed strikes. */
   async getHistory(
     identifier: PlayerIdentifier,
-    activeOnly: boolean = false,
+    options: { includeRemoved?: boolean } = {},
   ): Promise<PlayerStrike[]> {
     const uuid = await this.resolvePlayerUuid(identifier);
-    return await Q.player.strike.getStrikeHistory(uuid, !activeOnly);
+    return await Q.player.strike.getStrikeHistory(uuid, options);
   }
 
   /** Aggregate strike statistics for a single player. */

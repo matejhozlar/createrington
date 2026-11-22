@@ -92,17 +92,16 @@ export const inactivityRouter = router({
       }),
     )
     .query(async ({ input }) => {
-      const { warnings, total } =
-        await Q.player.inactivity.warning.listByStatus({
-          status: input.status,
-          graceDays: INACTIVITY_GRACE_DAYS,
-          search: input.search?.trim() || undefined,
-          limit: input.limit,
-          offset: pageOffset(input),
-        });
+      const { rows, total } = await Q.player.inactivity.warning.getByStatus({
+        status: input.status,
+        graceDays: INACTIVITY_GRACE_DAYS,
+        search: input.search?.trim() || undefined,
+        limit: input.limit,
+        offset: pageOffset(input),
+      });
 
       return {
-        items: warnings,
+        items: rows,
         pagination: buildPagination(input.page, input.limit, total),
       };
     }),

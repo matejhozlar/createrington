@@ -9,7 +9,7 @@ const { connectMock, getOpenSessionsMock, flushMock, forwarderConnectMock } =
   }));
 
 vi.mock("@/db", () => ({
-  Q: { player: { session: { findOpenWithUsername: getOpenSessionsMock } } },
+  Q: { player: { session: { getOpenWithUsername: getOpenSessionsMock } } },
   playtimeRepo: {},
 }));
 

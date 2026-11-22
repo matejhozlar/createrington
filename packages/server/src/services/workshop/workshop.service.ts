@@ -75,7 +75,7 @@ export class WorkshopService {
 
   /** All workshops regardless of status, for the admin panel. */
   async listAllWorkshops(): Promise<(Workshop & { modCount: number })[]> {
-    return Q.workshop.listAllWithModCount();
+    return Q.workshop.getAllWithModCount();
   }
 
   /** A user-visible workshop by slug; drafts and archived workshops read as missing. */
@@ -188,9 +188,9 @@ export class WorkshopService {
       limit: number;
       offset: number;
     },
-  ): Promise<{ events: WorkshopModEventListItem[]; total: number }> {
+  ): Promise<{ rows: WorkshopModEventListItem[]; total: number }> {
     await this.getWorkshop(workshopId);
-    return Q.workshop.mod.event.search({ workshopId, ...options });
+    return Q.workshop.mod.event.getPage({ workshopId, ...options });
   }
 }
 

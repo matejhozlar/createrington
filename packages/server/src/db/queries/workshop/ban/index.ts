@@ -84,7 +84,7 @@ export class WorkshopBanQueries extends WorkshopBanBaseQueries {
    * @param includeInactive - Include lifted and elapsed bans
    * @returns Promise resolving to the user's workshop bans
    */
-  async listForUser(
+  async getForUser(
     discordId: string,
     includeInactive: boolean,
   ): Promise<WorkshopBanWithScope[]> {

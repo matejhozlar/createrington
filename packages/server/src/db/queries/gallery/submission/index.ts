@@ -18,7 +18,7 @@ export class GallerySubmissionQueries extends GallerySubmissionBaseQueries {
    *
    * @returns The locked submission, or null when the id does not exist
    */
-  async getForUpdate(id: number): Promise<GallerySubmission | null> {
+  async findForUpdate(id: number): Promise<GallerySubmission | null> {
     const query = `
       SELECT *
       FROM ${this.table}

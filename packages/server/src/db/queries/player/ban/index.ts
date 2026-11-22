@@ -125,7 +125,7 @@ export class PlayerBanQueries extends PlayerBanBaseQueries {
    * @param playerMinecraftUuid - Player Minecraft UUID
    * @returns Promise resolving to the active ban or null
    */
-  async getCurrentBan(playerMinecraftUuid: string): Promise<PlayerBan | null> {
+  async findCurrentBan(playerMinecraftUuid: string): Promise<PlayerBan | null> {
     const query = `
       SELECT * FROM ${this.table}
       WHERE player_minecraft_uuid = $1 AND ${ACTIVE_BAN_WHERE}
@@ -142,12 +142,12 @@ export class PlayerBanQueries extends PlayerBanBaseQueries {
    * Get complete ban history for a player (including unbanned)
    *
    * @param playerMinecraftUuid - Player Minecraft UUID
-   * @param includeUnbanned - Whether to include unbanned entries (default: true)
+   * @param options.includeUnbanned - Whether to include unbanned entries (default: true)
    * @returns Promise resolving to array of bans
    */
   async getBanHistory(
     playerMinecraftUuid: string,
-    includeUnbanned: boolean = true,
+    { includeUnbanned = true }: { includeUnbanned?: boolean } = {},
   ): Promise<PlayerBan[]> {
     const filters = includeUnbanned
       ? { playerMinecraftUuid }

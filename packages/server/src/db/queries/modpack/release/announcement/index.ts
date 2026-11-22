@@ -16,7 +16,7 @@ export class ModpackReleaseAnnouncementQueries extends ModpackReleaseAnnouncemen
   }
 
   /** Announcement parts of releases with the name of the preset each one was saved as. */
-  async listForReleases(
+  async getForReleases(
     releaseIds: number[],
   ): Promise<ReleaseAnnouncementRow[]> {
     if (releaseIds.length === 0) return [];

@@ -31,7 +31,7 @@ export class PlayerMinecraftStatKeyQueries extends PlayerMinecraftStatKeyBaseQue
    * across all of them. Exact and prefix matches on the item name rank first,
    * then items held by the most players. Spaces in the search match underscores.
    */
-  async searchItems(
+  async getMatchingItems(
     search: string,
     options?: { category?: string; limit?: number },
   ): Promise<string[]> {
@@ -78,7 +78,10 @@ export class PlayerMinecraftStatKeyQueries extends PlayerMinecraftStatKeyBaseQue
    * holds are returned; exact and prefix name matches rank first, then the
    * stats held by the most players. Spaces in the search match underscores.
    */
-  async searchStats(search: string, limit = 12): Promise<StatSearchResult[]> {
+  async getMatchingStats(
+    search: string,
+    limit = 12,
+  ): Promise<StatSearchResult[]> {
     const term = search.trim().toLowerCase().replace(/\s+/g, "_");
     const pattern = escapeLike(term);
 

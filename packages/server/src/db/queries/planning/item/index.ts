@@ -41,7 +41,7 @@ export class PlanningItemQueries extends PlanningItemBaseQueries {
    * One page of the items matching every given filter, with the total match
    * count and how many items each status holds under the other filters.
    */
-  async listPage(params: PlanningItemPageParams): Promise<{
+  async getPage(params: PlanningItemPageParams): Promise<{
     rows: PlanningItem[];
     total: number;
     statusCounts: Record<PlanningItemStatus, number>;

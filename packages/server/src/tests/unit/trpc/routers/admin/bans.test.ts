@@ -1,23 +1,33 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-type BeforeCommit = (() => Promise<void>) | undefined;
+type TransactionWork = (tx: unknown) => Promise<unknown>;
 
-const { Q, bans, rcon, revokeAllForUser, revokeAllForPlayer, deletePlayer } =
-  vi.hoisted(() => ({
-    Q: {
-      player: {
-        get: vi.fn(),
-        ban: { get: vi.fn() },
-      },
+const TX = { transaction: true };
+
+const {
+  db,
+  Q,
+  bans,
+  rcon,
+  revokeAllForUser,
+  revokeAllForPlayer,
+  deletePlayer,
+} = vi.hoisted(() => ({
+  db: { inTransaction: vi.fn() },
+  Q: {
+    player: {
+      get: vi.fn(),
+      ban: { get: vi.fn() },
     },
-    bans: { issueTemporary: vi.fn(), createPermanent: vi.fn(), unban: vi.fn() },
-    rcon: { banAll: vi.fn(), pardonAll: vi.fn(), whitelistAll: vi.fn() },
-    revokeAllForUser: vi.fn(),
-    revokeAllForPlayer: vi.fn(),
-    deletePlayer: vi.fn(),
-  }));
+  },
+  bans: { issueTemporary: vi.fn(), createPermanent: vi.fn(), unban: vi.fn() },
+  rcon: { banAll: vi.fn(), pardonAll: vi.fn(), whitelistAll: vi.fn() },
+  revokeAllForUser: vi.fn(),
+  revokeAllForPlayer: vi.fn(),
+  deletePlayer: vi.fn(),
+}));
 
-vi.mock("@/db", () => ({ Q, playerBanRepo: bans }));
+vi.mock("@/db", () => ({ db, Q, playerBanRepo: bans }));
 vi.mock("@/services/player/deletion", () => ({
   playerDeletionService: { delete: deletePlayer },
 }));
@@ -76,18 +86,12 @@ beforeEach(() => {
     expiresAt: EXPIRES_AT,
     playerMinecraftUuid: PLAYER.minecraftUuid,
   });
-  bans.issueTemporary.mockImplementation(
-    async (_id, _data, _admin, _name, beforeCommit: BeforeCommit) => {
-      await beforeCommit?.();
-      return { id: 1, playerMinecraftUuid: PLAYER.minecraftUuid };
-    },
-  );
-  bans.unban.mockImplementation(
-    async (_banId, _admin, _name, _reason, beforeCommit: BeforeCommit) => {
-      await beforeCommit?.();
-      return { id: 1 };
-    },
-  );
+  db.inTransaction.mockImplementation((work: TransactionWork) => work(TX));
+  bans.issueTemporary.mockResolvedValue({
+    id: 1,
+    playerMinecraftUuid: PLAYER.minecraftUuid,
+  });
+  bans.unban.mockResolvedValue({ id: 1 });
   bans.createPermanent.mockResolvedValue({ id: 2 });
   deletePlayer.mockImplementation(
     async (
@@ -145,12 +149,10 @@ describe("admin.players.bans.issueTemporary", () => {
   });
 
   it("undoes the in-game ban when the ban fails to commit afterwards", async () => {
-    bans.issueTemporary.mockImplementation(
-      async (_id, _data, _admin, _name, beforeCommit: BeforeCommit) => {
-        await beforeCommit?.();
-        throw new Error("commit failed");
-      },
-    );
+    db.inTransaction.mockImplementation(async (work: TransactionWork) => {
+      await work(TX);
+      throw new Error("commit failed");
+    });
 
     await expect(caller.issueTemporary(input)).rejects.toThrow("commit failed");
     expect(rcon.pardonAll).toHaveBeenCalledWith(PLAYER.minecraftUsername);
@@ -244,7 +246,7 @@ describe("admin.players.bans.unban", () => {
       "100000000000000009",
       "admin",
       "appeal accepted",
-      expect.any(Function),
+      { tx: TX },
     );
     expect(rcon.banAll).not.toHaveBeenCalled();
   });
