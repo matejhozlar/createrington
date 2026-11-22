@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from "vitest";
-import { Q } from "@/db";
+import { db, Q } from "@/db";
 
 const ALICE = "cccccccc-0000-4000-8000-000000000001";
 const BOB = "cccccccc-0000-4000-8000-000000000002";
@@ -12,8 +12,6 @@ const DISCORD_IDS = [
 ];
 const SERVER_IDENTIFIER = "search-test";
 
-const stats = Q.player.minecraft.stats;
-
 let serverId: number;
 
 async function removePlayers(): Promise<void> {
@@ -24,13 +22,15 @@ async function removePlayers(): Promise<void> {
 async function seedStats(
   entries: Record<string, Record<string, unknown>>,
 ): Promise<void> {
-  await stats.batchUpsert(
-    serverId,
-    Object.entries(entries).map(([minecraftUuid, playerStats]) => ({
-      minecraftUuid,
-      stats: playerStats,
-      dataVersion: null,
-    })),
+  await db.inTransaction((tx) =>
+    tx.player.minecraft.stats.batchUpsert(
+      serverId,
+      Object.entries(entries).map(([minecraftUuid, playerStats]) => ({
+        minecraftUuid,
+        stats: playerStats,
+        dataVersion: null,
+      })),
+    ),
   );
 }
 
@@ -63,7 +63,7 @@ afterAll(async () => {
   await Q.server.deleteAll({ identifier: SERVER_IDENTIFIER });
 });
 
-describe("PlayerMinecraftStatsQueries.searchItems (integration)", () => {
+describe("PlayerMinecraftStatsQueries.getMatchingItems (integration)", () => {
   it("only suggests items the chosen category has data for", async () => {
     await seedStats({
       [ALICE]: {
@@ -73,12 +73,12 @@ describe("PlayerMinecraftStatsQueries.searchItems (integration)", () => {
     });
 
     expect(
-      await Q.player.minecraft.stat.key.searchItems("searchtest:", {
+      await Q.player.minecraft.stat.key.getMatchingItems("searchtest:", {
         category: "minecraft:killed",
       }),
     ).toEqual(["searchtest:zombie"]);
     expect(
-      await Q.player.minecraft.stat.key.searchItems("searchtest:"),
+      await Q.player.minecraft.stat.key.getMatchingItems("searchtest:"),
     ).toEqual(["searchtest:ore", "searchtest:zombie"]);
   });
 
@@ -91,7 +91,7 @@ describe("PlayerMinecraftStatsQueries.searchItems (integration)", () => {
     });
 
     expect(
-      await Q.player.minecraft.stat.key.searchItems("searchtest:", {
+      await Q.player.minecraft.stat.key.getMatchingItems("searchtest:", {
         category: "minecraft:used",
       }),
     ).toEqual(["searchtest:counted"]);
@@ -120,9 +120,12 @@ describe("PlayerMinecraftStatsQueries.searchItems (integration)", () => {
       },
     });
 
-    const results = await Q.player.minecraft.stat.key.searchItems("stone", {
-      category: "minecraft:mined",
-    });
+    const results = await Q.player.minecraft.stat.key.getMatchingItems(
+      "stone",
+      {
+        category: "minecraft:mined",
+      },
+    );
 
     expect(results.filter((key) => key.startsWith("searchtest:"))).toEqual([
       "searchtest:stone",
@@ -144,7 +147,7 @@ describe("PlayerMinecraftStatsQueries.searchItems (integration)", () => {
       [CARA]: { "minecraft:broken": { "searchtest:common": 1 } },
     });
 
-    const results = await Q.player.minecraft.stat.key.searchItems("", {
+    const results = await Q.player.minecraft.stat.key.getMatchingItems("", {
       category: "minecraft:broken",
     });
 
@@ -170,7 +173,7 @@ describe("PlayerMinecraftStatsQueries.searchItems (integration)", () => {
     });
 
     expect(
-      await Q.player.minecraft.stat.key.searchItems("searchtest:"),
+      await Q.player.minecraft.stat.key.getMatchingItems("searchtest:"),
     ).toEqual(["searchtest:huge", "searchtest:valid", "searchtest:fractional"]);
   });
 
@@ -180,7 +183,7 @@ describe("PlayerMinecraftStatsQueries.searchItems (integration)", () => {
     });
 
     expect(
-      await Q.player.minecraft.stat.key.searchItems("Iron Ingot", {
+      await Q.player.minecraft.stat.key.getMatchingItems("Iron Ingot", {
         category: "minecraft:crafted",
       }),
     ).toContain("searchtest:iron_ingot");

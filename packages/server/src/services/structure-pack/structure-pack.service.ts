@@ -82,13 +82,13 @@ export class StructurePackService {
   }
 
   async getPack(id: number): Promise<StructurePackWithMods> {
-    const pack = await Q.structure.pack.findOneWithMods(id);
+    const pack = await Q.structure.pack.findWithMods(id);
     if (!pack) throw new NotFoundError(`Structure pack ${id} not found`);
     return pack;
   }
 
   async listPacks(): Promise<StructurePackWithMods[]> {
-    return Q.structure.pack.findAllWithMods();
+    return Q.structure.pack.getAllWithMods();
   }
 
   async addMod(
@@ -119,7 +119,7 @@ export class StructurePackService {
   }
 
   async getActivePack(): Promise<StructurePackWithMods | null> {
-    return Q.structure.pack.getActive();
+    return Q.structure.pack.findActive();
   }
 
   private async assertNameAvailable(name: string): Promise<void> {

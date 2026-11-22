@@ -321,12 +321,6 @@ export class PlayerPlaytimeSummaryQueries extends PlayerPlaytimeSummaryBaseQueri
       [playerMinecraftUuid],
     );
 
-    if (result.rows.length === 0) {
-      throw new Error(
-        `No playtime data found for player ${playerMinecraftUuid}`,
-      );
-    }
-
     const servers: PlayerServerPlaytime[] = this.mapRowsToEntities(result.rows);
 
     // Calculate totals

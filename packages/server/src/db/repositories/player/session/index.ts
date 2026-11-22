@@ -15,14 +15,14 @@ export class PlayerSessionRepository extends BasePlayerRepository {
     serverId: number | undefined,
     limit: number,
     offset: number,
-  ): Promise<{ sessions: PlayerSession[]; total: number }> {
+  ): Promise<{ rows: PlayerSession[]; total: number }> {
     const uuid = await this.resolvePlayerUuid(identifier);
     const filters = {
       playerMinecraftUuid: uuid,
       ...(serverId && { serverId }),
     };
 
-    const [sessions, total] = await Promise.all([
+    const [rows, total] = await Promise.all([
       Q.player.session.findAll(filters, {
         limit,
         offset,
@@ -31,6 +31,6 @@ export class PlayerSessionRepository extends BasePlayerRepository {
       }),
       Q.player.session.count(filters),
     ]);
-    return { sessions, total };
+    return { rows, total };
   }
 }

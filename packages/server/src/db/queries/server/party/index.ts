@@ -118,7 +118,7 @@ export class ServerPartyQueries extends ServerPartyBaseQueries {
   }
 
   /** The party a player is a member of, with their rank, or null. */
-  async getForMember(
+  async findForMember(
     serverId: number,
     minecraftUuid: string,
   ): Promise<PartyMembership | null> {
@@ -197,7 +197,7 @@ export class ServerPartyQueries extends ServerPartyBaseQueries {
   }
 
   /** Parties whose name contains the query, for autocompletes. */
-  async searchByName(
+  async getNameMatches(
     serverId: number,
     query: string,
     limit = 25,
@@ -224,7 +224,7 @@ export class ServerPartyQueries extends ServerPartyBaseQueries {
   }
 
   /** Tagged parties whose name or tag contains the query, for autocompletes. */
-  async searchTagged(
+  async getTaggedMatches(
     serverId: number,
     query: string,
     limit = 25,

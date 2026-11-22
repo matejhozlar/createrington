@@ -14,7 +14,7 @@ export class DiscordCommandUsageQueries extends DiscordCommandUsageBaseQueries {
     super(db);
   }
 
-  async topCommands(limit = 10): Promise<CommandUsageStat[]> {
+  async getTopCommands(limit = 10): Promise<CommandUsageStat[]> {
     const result = await this.runQuery<CommandUsageStatRow>(
       "get top commands",
       `SELECT command_name, COUNT(*)::int AS count

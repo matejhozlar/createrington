@@ -132,7 +132,7 @@ export class PlaytimeManagerService {
     serverId: number,
     options: BringUpOptions,
   ): Promise<PlaytimeService> {
-    const openSessions = await Q.player.session.findOpenWithUsername(serverId);
+    const openSessions = await Q.player.session.getOpenWithUsername(serverId);
 
     const service = new PlaytimeService({ serverId });
     service.hydrate(openSessions);

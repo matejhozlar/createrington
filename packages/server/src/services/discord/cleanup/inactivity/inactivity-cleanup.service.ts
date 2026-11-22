@@ -105,7 +105,7 @@ export class InactivityCleanupService {
 
   private async warnInactive(): Promise<void> {
     const inactivePlayers =
-      await Q.player.inactivity.warning.findInactivePlayers(
+      await Q.player.inactivity.warning.getInactivePlayers(
         INACTIVITY_INACTIVE_DAYS,
       );
 
@@ -151,7 +151,7 @@ export class InactivityCleanupService {
     triggeredBy: InactivityTriggerContext = null,
   ): Promise<void> {
     const expiredWarnings =
-      await Q.player.inactivity.warning.findExpiredWarnings(
+      await Q.player.inactivity.warning.getExpiredWarnings(
         INACTIVITY_GRACE_DAYS,
       );
 

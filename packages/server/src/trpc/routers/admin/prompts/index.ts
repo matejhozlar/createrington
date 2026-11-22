@@ -70,7 +70,7 @@ export const adminPromptsRouter = router({
       }),
     )
     .query(async ({ input }) => {
-      const { rows, total } = await Q.player.prompt.listWithResponseCount(
+      const { rows, total } = await Q.player.prompt.getWithResponseCount(
         { status: input.status },
         { limit: input.limit, offset: pageOffset(input) },
       );
@@ -91,7 +91,7 @@ export const adminPromptsRouter = router({
         Q.player.prompt.find({ id: input.id }),
         "Prompt not found",
       );
-      const responses = await Q.player.prompt.response.findByPromptIdWithPlayer(
+      const responses = await Q.player.prompt.response.getByPromptIdWithPlayer(
         input.id,
       );
       const creator = await Q.player.find({ discordId: prompt.createdBy });

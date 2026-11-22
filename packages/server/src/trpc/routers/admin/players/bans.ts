@@ -4,7 +4,7 @@ import { z } from "zod";
 import { fetchGuildMember } from "@/discord/utils/fetch-guild-member";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { playerDeletionService } from "@/services/player/deletion";
-import { Q, playerBanRepo } from "@/db";
+import { db, Q, playerBanRepo } from "@/db";
 import {
   ADMIN_REASON_MAX_LENGTH,
   BAN_REASON_MAX_LENGTH,
@@ -68,9 +68,11 @@ export const bansRouter = router({
     )
     .query(async ({ input }) => {
       const [bans, statistics, currentBan] = await Promise.all([
-        playerBanRepo.getHistory(input.id, input.includeUnbanned),
+        playerBanRepo.getHistory(input.id, {
+          includeUnbanned: input.includeUnbanned,
+        }),
         playerBanRepo.getStatistics(input.id),
-        playerBanRepo.getCurrent(input.id),
+        playerBanRepo.findCurrent(input.id),
       ]);
 
       return { bans, statistics, current: currentBan };
@@ -116,18 +118,22 @@ export const bansRouter = router({
           undo: () => minecraftRcon.pardonAll(player.minecraftUsername),
         },
         (applyInGame) =>
-          playerBanRepo.issueTemporary(
-            input.id,
-            {
-              reason: input.reason,
-              expiresAt,
-              serverId: input.serverId,
-              metadata: input.metadata,
-            },
-            ctx.user.discordId,
-            ctx.user.minecraftUsername,
-            applyInGame,
-          ),
+          db.inTransaction(async (tx) => {
+            const issued = await playerBanRepo.issueTemporary(
+              input.id,
+              {
+                reason: input.reason,
+                expiresAt,
+                serverId: input.serverId,
+                metadata: input.metadata,
+              },
+              ctx.user.discordId,
+              ctx.user.minecraftUsername,
+              { tx },
+            );
+            await applyInGame();
+            return issued;
+          }),
       );
       logger.info(
         `Banned ${player.minecraftUsername} on all Minecraft servers`,
@@ -222,7 +228,6 @@ export const bansRouter = router({
             serverId: input.serverId,
             beforeDelete: async (tx, deletedPlayer) => {
               ban = await playerBanRepo.createPermanent(
-                tx,
                 deletedPlayer,
                 {
                   reason: input.reason,
@@ -231,6 +236,7 @@ export const bansRouter = router({
                 },
                 ctx.user.discordId,
                 ctx.user.minecraftUsername,
+                { tx },
               );
               await applyInGame();
             },
@@ -314,14 +320,18 @@ export const bansRouter = router({
               inGameBanReason(existingBan.reason, existingBan.expiresAt),
             ),
         },
-        (beforeCommit) =>
-          playerBanRepo.unban(
-            input.banId,
-            ctx.user.discordId,
-            ctx.user.minecraftUsername,
-            input.reason,
-            beforeCommit,
-          ),
+        (applyInGame) =>
+          db.inTransaction(async (tx) => {
+            const lifted = await playerBanRepo.unban(
+              input.banId,
+              ctx.user.discordId,
+              ctx.user.minecraftUsername,
+              input.reason,
+              { tx },
+            );
+            await applyInGame();
+            return lifted;
+          }),
       );
       logger.info(`Pardoned ${minecraftUsername} on all Minecraft servers`);
 

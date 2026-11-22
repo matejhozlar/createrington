@@ -89,7 +89,7 @@ async function autocomplete(
     return;
   }
 
-  const results = await Q.server.party.searchByName(
+  const results = await Q.server.party.getNameMatches(
     TICKET_PARTY_SERVER_ID,
     focused.value ?? "",
     25,

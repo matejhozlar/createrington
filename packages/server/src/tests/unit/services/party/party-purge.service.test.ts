@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  getForMember: vi.fn(),
+  findForMember: vi.fn(),
   getDeparted: vi.fn(),
   createAudit: vi.fn(),
   waitForPartySync: vi.fn(),
@@ -18,7 +18,7 @@ vi.mock("@/db", () => ({
   Q: {
     server: {
       party: {
-        getForMember: mocks.getForMember,
+        findForMember: mocks.findForMember,
         member: { getDeparted: mocks.getDeparted },
       },
     },
@@ -187,7 +187,7 @@ describe("PartyPurgeService.purge", () => {
 describe("PartyPurgeService.removePlayer", () => {
   it("removes a deleted non-owner member and audits it as a deletion", async () => {
     const client = fakeClient();
-    mocks.getForMember.mockResolvedValue({ name: "Crew", rank: "member" });
+    mocks.findForMember.mockResolvedValue({ name: "Crew", rank: "member" });
 
     await serviceWith(client).removePlayer(deleted, SYSTEM);
 
@@ -200,7 +200,7 @@ describe("PartyPurgeService.removePlayer", () => {
 
   it("credits the removal to the admin who deleted the player", async () => {
     const client = fakeClient();
-    mocks.getForMember.mockResolvedValue({ name: "Crew", rank: "member" });
+    mocks.findForMember.mockResolvedValue({ name: "Crew", rank: "member" });
 
     await serviceWith(client).removePlayer(deleted, {
       type: "admin",
@@ -217,7 +217,7 @@ describe("PartyPurgeService.removePlayer", () => {
 
   it("leaves a deleted owner in their party", async () => {
     const client = fakeClient();
-    mocks.getForMember.mockResolvedValue({ name: "Crew", rank: "owner" });
+    mocks.findForMember.mockResolvedValue({ name: "Crew", rank: "owner" });
 
     await serviceWith(client).removePlayer(deleted, SYSTEM);
 
@@ -226,7 +226,7 @@ describe("PartyPurgeService.removePlayer", () => {
 
   it("does nothing for a player in no party", async () => {
     const client = fakeClient();
-    mocks.getForMember.mockResolvedValue(null);
+    mocks.findForMember.mockResolvedValue(null);
 
     await serviceWith(client).removePlayer(deleted, SYSTEM);
 
@@ -235,7 +235,7 @@ describe("PartyPurgeService.removePlayer", () => {
 
   it("never throws when the removal fails", async () => {
     const client = fakeClient();
-    mocks.getForMember.mockResolvedValue({ name: "Crew", rank: "member" });
+    mocks.findForMember.mockResolvedValue({ name: "Crew", rank: "member" });
     client.remove.mockRejectedValue(new Error("rcon down"));
 
     await expect(

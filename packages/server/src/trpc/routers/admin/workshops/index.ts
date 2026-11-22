@@ -342,7 +342,7 @@ export const adminWorkshopsRouter = router({
       }),
     )
     .query(async ({ input }) => {
-      const { events, total } = await workshopService.getWorkshopEvents(
+      const { rows, total } = await workshopService.getWorkshopEvents(
         input.workshopId,
         {
           eventType: input.eventType,
@@ -352,7 +352,7 @@ export const adminWorkshopsRouter = router({
         },
       );
       return {
-        items: events,
+        items: rows,
         pagination: buildPagination(input.page, input.limit, total),
       };
     }),

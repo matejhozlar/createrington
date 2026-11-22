@@ -25,15 +25,16 @@ export const exemptionsRouter = router({
       }),
     )
     .query(async ({ input }) => {
-      const { exemptions, total } =
-        await Q.player.inactivity.exemption.listWithPlayer({
+      const { rows, total } = await Q.player.inactivity.exemption.getWithPlayer(
+        {
           search: input.search?.trim() || undefined,
           limit: input.limit,
           offset: pageOffset(input),
-        });
+        },
+      );
 
       return {
-        items: exemptions,
+        items: rows,
         pagination: buildPagination(input.page, input.limit, total),
       };
     }),

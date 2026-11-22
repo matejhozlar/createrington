@@ -73,7 +73,7 @@ export class DiscordGuildMemberLeaveQueries extends DiscordGuildMemberLeaveBaseQ
    *
    * @returns Promise resolving to an Array of departed members
    */
-  async expired() {
+  async getExpired() {
     const result = await this.runQuery<DepartureRow>(
       "fetch expired members",
       `SELECT ${DEPARTURE_COLUMNS}

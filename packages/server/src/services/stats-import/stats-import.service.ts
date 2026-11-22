@@ -1,5 +1,5 @@
 import SftpClient from "ssh2-sftp-client";
-import { playtimeRepo, Q } from "@/db";
+import { db, playtimeRepo, Q } from "@/db";
 import type { StatsUpsertEntry } from "@/db/queries/player/minecraft/stats";
 import type { StatsReconcileEntry } from "@/db/repositories/playtime";
 import { FeatureFlags, featureFlagService } from "../feature-flag";
@@ -202,7 +202,9 @@ export class StatsImportService {
         return;
       }
 
-      await Q.player.minecraft.stats.batchUpsert(serverId, statsToUpsert);
+      await db.inTransaction((tx) =>
+        tx.player.minecraft.stats.batchUpsert(serverId, statsToUpsert),
+      );
 
       const duration = Date.now() - startTime;
       logger.info(

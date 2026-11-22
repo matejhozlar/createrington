@@ -97,7 +97,7 @@ export const adminPartiesRouter = router({
     .input(z.object({ serverId: id(), playerUuid: mcUuid }))
     .query(async ({ input }) => {
       const [party, allyOf] = await Promise.all([
-        Q.server.party.getForMember(input.serverId, input.playerUuid),
+        Q.server.party.findForMember(input.serverId, input.playerUuid),
         Q.server.party.getForAlly(input.serverId, input.playerUuid),
       ]);
       return { party, allyOf };

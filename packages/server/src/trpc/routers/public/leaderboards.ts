@@ -135,7 +135,9 @@ export const leaderboardsRouter = router({
         "Searches individual Minecraft stats (a category such as minecraft:mined plus an item such as minecraft:diamond_ore) by item name, returning only stats at least one player holds, with how many players hold each",
     })
     .input(z.object({ query: z.string().trim().min(1).max(48) }))
-    .query(({ input }) => Q.player.minecraft.stat.key.searchStats(input.query)),
+    .query(({ input }) =>
+      Q.player.minecraft.stat.key.getMatchingStats(input.query),
+    ),
 
   stat: publicProcedure
     .use(leaderboardsReadLimit)

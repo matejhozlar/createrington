@@ -262,7 +262,7 @@ describe("WorkshopService.getWorkshopEvents", () => {
       expect(await modEvents(item.id)).toHaveLength(2);
     });
 
-    const { events, total } = await workshopService.getWorkshopEvents(
+    const { rows: events, total } = await workshopService.getWorkshopEvents(
       workshop.id,
       { limit: 10, offset: 0 },
     );
@@ -319,7 +319,7 @@ describe("WorkshopService.getWorkshopEvents", () => {
       offset: 0,
     });
     expect(approved.total).toBe(1);
-    expect(approved.events[0]?.project.name).toBe("Alpha Tools");
+    expect(approved.rows[0]?.project.name).toBe("Alpha Tools");
 
     const byMod = await workshopService.getWorkshopEvents(workshop.id, {
       search: "beta",
@@ -327,7 +327,7 @@ describe("WorkshopService.getWorkshopEvents", () => {
       offset: 0,
     });
     expect(byMod.total).toBe(1);
-    expect(byMod.events[0]?.workshopModId).toBe(beta.id);
+    expect(byMod.rows[0]?.workshopModId).toBe(beta.id);
 
     const byPlayer = await workshopService.getWorkshopEvents(workshop.id, {
       search: "vitest_act",
@@ -335,7 +335,7 @@ describe("WorkshopService.getWorkshopEvents", () => {
       offset: 0,
     });
     expect(byPlayer.total).toBe(1);
-    expect(byPlayer.events[0]).toMatchObject({
+    expect(byPlayer.rows[0]).toMatchObject({
       eventType: "suggested",
       workshopModId: alpha.id,
     });
@@ -345,7 +345,7 @@ describe("WorkshopService.getWorkshopEvents", () => {
       offset: 2,
     });
     expect(secondPage.total).toBe(3);
-    expect(secondPage.events).toHaveLength(1);
+    expect(secondPage.rows).toHaveLength(1);
   });
 
   it("keeps withdrawn suggestions in the timeline without a live row", async () => {
@@ -363,10 +363,13 @@ describe("WorkshopService.getWorkshopEvents", () => {
       expect(await modEvents(item.id)).toHaveLength(2);
     });
 
-    const { events } = await workshopService.getWorkshopEvents(workshop.id, {
-      limit: 10,
-      offset: 0,
-    });
+    const { rows: events } = await workshopService.getWorkshopEvents(
+      workshop.id,
+      {
+        limit: 10,
+        offset: 0,
+      },
+    );
     expect(events.map((event) => event.eventType)).toEqual([
       "withdrawn",
       "suggested",

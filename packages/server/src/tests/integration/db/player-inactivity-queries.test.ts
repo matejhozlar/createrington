@@ -118,18 +118,18 @@ describe("Q.player.inactivity.warning.countByStatus", () => {
   });
 });
 
-describe("Q.player.inactivity.warning.findInactivePlayers", () => {
+describe("Q.player.inactivity.warning.getInactivePlayers", () => {
   it("skips exempted players", async () => {
     await seedPlayer(ALICE, "alice", "100", 90);
     await seedPlayer(BOB, "bob", "101", 90);
     await exempt(BOB);
 
-    const inactive = await warning.findInactivePlayers(60);
+    const inactive = await warning.getInactivePlayers(60);
     expect(inactive.map((p) => p.minecraftUuid)).toEqual([ALICE]);
   });
 });
 
-describe("Q.player.inactivity.warning.findExpiredWarnings", () => {
+describe("Q.player.inactivity.warning.getExpiredWarnings", () => {
   it("skips warnings belonging to exempted players", async () => {
     await seedPlayer(ALICE, "alice", "100", 90);
     await seedPlayer(BOB, "bob", "101", 90);
@@ -137,7 +137,7 @@ describe("Q.player.inactivity.warning.findExpiredWarnings", () => {
     await seedWarning(BOB, { warnedDaysAgo: 20 });
     await exempt(BOB);
 
-    const expired = await warning.findExpiredWarnings(14);
+    const expired = await warning.getExpiredWarnings(14);
     expect(expired.map((w) => w.id)).toEqual([aliceWarning]);
   });
 });
@@ -202,13 +202,13 @@ describe("Q.player.inactivity.exemption.createIfAbsent", () => {
   });
 });
 
-describe("Q.player.inactivity.exemption.listWithPlayer", () => {
+describe("Q.player.inactivity.exemption.getWithPlayer", () => {
   it("joins the exempted player and resolves the creating admin's Minecraft username", async () => {
     await seedPlayer(ALICE, "alice", "100", 5);
     await seedPlayer(BOB, "bob", "101", 5);
     await exempt(ALICE, "long trip");
 
-    const { exemptions, total } = await exemption.listWithPlayer({
+    const { rows: exemptions, total } = await exemption.getWithPlayer({
       limit: 20,
       offset: 0,
     });
@@ -230,7 +230,7 @@ describe("Q.player.inactivity.exemption.listWithPlayer", () => {
 
     await Q.player.delete({ minecraftUuid: BOB });
 
-    const { exemptions, total } = await exemption.listWithPlayer({
+    const { rows: exemptions, total } = await exemption.getWithPlayer({
       limit: 20,
       offset: 0,
     });
@@ -249,7 +249,7 @@ describe("Q.player.inactivity.exemption.listWithPlayer", () => {
     await exempt(ALICE);
     await exempt(BOB);
 
-    const { exemptions, total } = await exemption.listWithPlayer({
+    const { rows: exemptions, total } = await exemption.getWithPlayer({
       search: "LIC",
       limit: 20,
       offset: 0,

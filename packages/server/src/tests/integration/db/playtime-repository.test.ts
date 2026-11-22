@@ -76,7 +76,7 @@ describe("PlaytimeRepository (integration)", () => {
     expect(row.lastSeenAt).toEqual(T0);
     expect(row.activeSeconds).toBe(0n);
 
-    const open = await Q.player.session.findOpenWithUsername(serverId);
+    const open = await Q.player.session.getOpenWithUsername(serverId);
     expect(open).toEqual([
       expect.objectContaining({
         id: started!.sessionId,

@@ -43,7 +43,7 @@ export class PlayerQueries extends PlayerBaseQueries {
    * One page of players matching `filters` that also carry the required
    * active violations, with the total matching count.
    */
-  async listWithViolations(
+  async getWithViolations(
     filters: PlayerFilters,
     violation: ViolationRequirement,
     options: {

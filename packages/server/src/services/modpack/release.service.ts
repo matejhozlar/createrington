@@ -46,7 +46,7 @@ export class ModpackReleaseService {
       { modpackId },
       { orderBy: "id", orderDirection: "desc" },
     );
-    const rows = await Q.modpack.release.announcement.listForReleases(
+    const rows = await Q.modpack.release.announcement.getForReleases(
       releases.map((release) => release.id),
     );
     const byRelease = new Map<number, ReleaseAnnouncementRow[]>();
@@ -85,7 +85,7 @@ export class ModpackReleaseService {
   /** Frozen membership of a recorded release, joined to cached project summaries. */
   async getReleaseMods(releaseId: number): Promise<ReleaseModRow[]> {
     const release = await Q.modpack.release.get({ id: releaseId });
-    const rows = await Q.modpack.release.mod.listForReleases([release.id]);
+    const rows = await Q.modpack.release.mod.getForReleases([release.id]);
     return rows.map(({ releaseId: _releaseId, ...row }) => row);
   }
 

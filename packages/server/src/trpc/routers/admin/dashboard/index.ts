@@ -30,7 +30,7 @@ export const dashboardRouter = router({
     .meta({ description: "Get top slash command usage statistics" })
     .query(async () => {
       const [topCommands, totalToday] = await Promise.all([
-        Q.discord.command.usage.topCommands(10),
+        Q.discord.command.usage.getTopCommands(10),
         Q.discord.command.usage.countToday(),
       ]);
 

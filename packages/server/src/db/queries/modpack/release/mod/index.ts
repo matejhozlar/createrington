@@ -86,7 +86,7 @@ export class ModpackReleaseModQueries extends ModpackReleaseModBaseQueries {
   }
 
   /** Frozen membership of releases, joined to the projects for display. */
-  async listForReleases(
+  async getForReleases(
     releaseIds: number[],
   ): Promise<Array<ReleaseModRow & { releaseId: number }>> {
     if (releaseIds.length === 0) return [];

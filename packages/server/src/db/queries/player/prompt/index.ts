@@ -28,7 +28,7 @@ export class PlayerPromptQueries extends PlayerPromptBaseQueries {
    * Used by the admin UI's list page. Ordered newest first so the most
    * recently created prompt sits at the top.
    */
-  async listWithResponseCount(
+  async getWithResponseCount(
     filters: { status?: PlayerPrompt["status"] },
     options: { limit: number; offset: number },
   ): Promise<{
@@ -76,7 +76,7 @@ export class PlayerPromptQueries extends PlayerPromptBaseQueries {
    * All prompts whose status is still `active`. Used on service startup to
    * re-arm closure timers and on every timer tick to sanity-check.
    */
-  async findAllActive(): Promise<PlayerPrompt[]> {
+  async getActive(): Promise<PlayerPrompt[]> {
     const query = `
       SELECT * FROM ${this.table}
       WHERE status = 'active'

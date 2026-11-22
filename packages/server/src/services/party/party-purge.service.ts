@@ -86,7 +86,7 @@ export class PartyPurgeService {
   ): Promise<void> {
     for (const serverId of minecraftRcon.getServerIds()) {
       try {
-        const membership = await Q.server.party.getForMember(
+        const membership = await Q.server.party.findForMember(
           serverId,
           player.minecraftUuid,
         );

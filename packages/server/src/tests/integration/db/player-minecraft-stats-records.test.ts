@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from "vitest";
-import { Q } from "@/db";
+import { db, Q } from "@/db";
 
 const ALICE = "bbbbbbbb-0000-4000-8000-000000000001";
 const BOB = "bbbbbbbb-0000-4000-8000-000000000002";
@@ -11,8 +11,6 @@ const DISCORD_IDS = [
   "778000000000000003",
 ];
 const SERVER_IDENTIFIERS = ["records-test-a", "records-test-b"];
-
-const stats = Q.player.minecraft.stats;
 
 let serverA: number;
 let serverB: number;
@@ -36,13 +34,15 @@ async function seedStats(
   serverId: number,
   entries: Record<string, Record<string, Record<string, number>>>,
 ): Promise<void> {
-  await stats.batchUpsert(
-    serverId,
-    Object.entries(entries).map(([minecraftUuid, playerStats]) => ({
-      minecraftUuid,
-      stats: playerStats,
-      dataVersion: null,
-    })),
+  await db.inTransaction((tx) =>
+    tx.player.minecraft.stats.batchUpsert(
+      serverId,
+      Object.entries(entries).map(([minecraftUuid, playerStats]) => ({
+        minecraftUuid,
+        stats: playerStats,
+        dataVersion: null,
+      })),
+    ),
   );
 }
 

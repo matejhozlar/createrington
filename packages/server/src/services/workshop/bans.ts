@@ -184,5 +184,5 @@ export async function listBansForUser(
   discordId: string,
   includeInactive: boolean,
 ): Promise<WorkshopBanWithScope[]> {
-  return Q.workshop.ban.listForUser(discordId, includeInactive);
+  return Q.workshop.ban.getForUser(discordId, includeInactive);
 }

@@ -505,8 +505,8 @@ describe("LauncherPackService.listReleases", () => {
     for (let minor = 0; minor < fullPage.limit; minor++) {
       await seedReadyRelease(modpack, `1.${minor}.0`, [file]);
     }
-    const previousReads = vi.spyOn(Q.modpack.release, "listPreceding");
-    const modReads = vi.spyOn(Q.modpack.release.mod, "listForReleases");
+    const previousReads = vi.spyOn(Q.modpack.release, "getPreceding");
+    const modReads = vi.spyOn(Q.modpack.release.mod, "getForReleases");
 
     const first = await launcherPackService.listReleases(PACK_SLUG, fullPage);
     const readsForFirst = [

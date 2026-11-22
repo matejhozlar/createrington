@@ -46,7 +46,7 @@ export class PlayerPromptService {
    * its closure timer. Called once on service bootstrap.
    */
   async initialize(): Promise<void> {
-    const active = await Q.player.prompt.findAllActive();
+    const active = await Q.player.prompt.getActive();
     for (const prompt of active) {
       const msUntil = prompt.endsAt.getTime() - Date.now();
 

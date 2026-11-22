@@ -79,7 +79,7 @@ export class PlayerInactivityWarningQueries extends PlayerInactivityWarningBaseQ
    * Also excludes players created within the inactivity window, registered
    * admins (admins are never swept by inactivity), and exempted players.
    */
-  async findInactivePlayers(inactiveDays: number) {
+  async getInactivePlayers(inactiveDays: number) {
     const result = await this.runQuery<InactivePlayerRow>(
       "find inactive players",
       `SELECT p.minecraft_uuid, p.minecraft_username, p.discord_id, p.last_seen
@@ -100,10 +100,10 @@ export class PlayerInactivityWarningQueries extends PlayerInactivityWarningBaseQ
   /**
    * Find active warnings whose grace period has expired.
    * Admins and exempted players are excluded defensively: even if a
-   * warning row predates the exclusions in `findInactivePlayers`, it will
+   * warning row predates the exclusions in `getInactivePlayers`, it will
    * never be acted on by the removal phase.
    */
-  async findExpiredWarnings(graceDays: number) {
+  async getExpiredWarnings(graceDays: number) {
     const result = await this.runQuery<WarningWithPlayerRow>(
       "find expired inactivity warnings",
       `SELECT ${WARNING_COLUMNS}
@@ -199,13 +199,13 @@ export class PlayerInactivityWarningQueries extends PlayerInactivityWarningBaseQ
    * @param params.limit - Page size
    * @param params.offset - Row offset
    */
-  async listByStatus(params: {
+  async getByStatus(params: {
     status: WarningStatus;
     graceDays: number;
     search?: string;
     limit: number;
     offset: number;
-  }): Promise<{ warnings: WarningListItem[]; total: number }> {
+  }): Promise<{ rows: WarningListItem[]; total: number }> {
     const values: unknown[] =
       params.status === "active" || params.status === "expired"
         ? [params.graceDays]
@@ -239,7 +239,7 @@ export class PlayerInactivityWarningQueries extends PlayerInactivityWarningBaseQ
     ]);
 
     return {
-      warnings: this.mapRowsToEntities(listResult.rows),
+      rows: this.mapRowsToEntities(listResult.rows),
       total: countResult.rows[0]?.total ?? 0,
     };
   }

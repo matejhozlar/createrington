@@ -18,14 +18,14 @@ export const ticketsRouter = router({
       }),
     )
     .query(async ({ input }) => {
-      const { tickets, total } = await playerTicketRepo.getPage(
+      const { rows, total } = await playerTicketRepo.getPage(
         input.id,
         input.limit,
         pageOffset(input),
       );
 
       return {
-        items: tickets,
+        items: rows,
         pagination: buildPagination(input.page, input.limit, total),
       };
     }),

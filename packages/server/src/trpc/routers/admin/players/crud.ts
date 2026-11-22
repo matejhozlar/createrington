@@ -67,7 +67,7 @@ export const playersRouter = router({
 
       const { rows: players, pagination } = violation
         ? await Q.player
-            .listWithViolations(filters, violation, {
+            .getWithViolations(filters, violation, {
               limit: input.limit,
               offset: pageOffset(input),
               orderBy: input.orderBy,
@@ -124,7 +124,7 @@ export const playersRouter = router({
         playerRepo.getDetailed(input.id),
         playerStrikeRepo.getHistory(input.id),
         playerBanRepo.getHistory(input.id),
-        playerBanRepo.getCurrent(input.id),
+        playerBanRepo.findCurrent(input.id),
       ]);
       const activeStrikes = strikes.filter((s) => !s.removed);
       const activeBans = banHistory.filter((b) => !b.unbanned);

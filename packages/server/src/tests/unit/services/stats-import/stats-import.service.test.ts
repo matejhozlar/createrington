@@ -22,10 +22,13 @@ vi.mock("ssh2-sftp-client", () => ({
   }),
 }));
 vi.mock("@/db", () => ({
+  db: {
+    inTransaction: (work: (tx: unknown) => Promise<unknown>) =>
+      work({ player: { minecraft: { stats: { batchUpsert } } } }),
+  },
   Q: {
     player: {
       findAll: findAllPlayers,
-      minecraft: { stats: { batchUpsert } },
     },
   },
   playtimeRepo: { reconcileTotalsFromStats: reconcile },

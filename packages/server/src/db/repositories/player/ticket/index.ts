@@ -14,12 +14,12 @@ export class PlayerTicketRepository extends BasePlayerRepository {
     identifier: PlayerIdentifier,
     limit: number = 20,
     offset: number = 0,
-  ): Promise<{ tickets: Ticket[]; total: number }> {
+  ): Promise<{ rows: Ticket[]; total: number }> {
     const uuid = await this.resolvePlayerUuid(identifier);
     const player = await Q.player.get({ minecraftUuid: uuid });
     const filters = { creatorDiscordId: player.discordId };
 
-    const [tickets, total] = await Promise.all([
+    const [rows, total] = await Promise.all([
       Q.ticket.findAll(filters, {
         limit,
         offset,
@@ -28,6 +28,6 @@ export class PlayerTicketRepository extends BasePlayerRepository {
       }),
       Q.ticket.count(filters),
     ]);
-    return { tickets, total };
+    return { rows, total };
   }
 }

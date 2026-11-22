@@ -287,7 +287,7 @@ export class GalleryService {
       [fullKey, thumbKey],
       async () =>
         db.inTransaction(async (tx) => {
-          const locked = await tx.gallery.submission.getForUpdate(id);
+          const locked = await tx.gallery.submission.findForUpdate(id);
           if (!locked || locked.status !== "pending") {
             throw new ConflictError(
               `Gallery submission is already ${locked?.status ?? "gone"}`,

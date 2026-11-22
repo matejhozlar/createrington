@@ -57,7 +57,7 @@ export const planningItemsRouter = router({
         rows: items,
         total,
         statusCounts,
-      } = await Q.planning.item.listPage({
+      } = await Q.planning.item.getPage({
         ...filters,
         search: search || undefined,
         limit,

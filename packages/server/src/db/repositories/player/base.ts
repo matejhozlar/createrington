@@ -17,7 +17,7 @@ export type PlayerIdentifier =
 export abstract class BasePlayerRepository {
   protected async resolvePlayerUuid(
     identifier: PlayerIdentifier,
-    tx?: DatabaseQueries,
+    { tx }: { tx?: DatabaseQueries } = {},
   ): Promise<string> {
     if (typeof identifier === "string") return identifier;
     if ("minecraftUuid" in identifier && identifier.minecraftUuid) {

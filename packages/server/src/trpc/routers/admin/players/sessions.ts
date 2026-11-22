@@ -23,21 +23,20 @@ export const sessionsRouter = router({
       }),
     )
     .query(async ({ input }) => {
-      const { sessions, total: totalSessions } =
-        await playerSessionRepo.getHistoryPage(
-          input.id,
-          input.serverId,
-          input.limit,
-          pageOffset(input),
-        );
+      const { rows, total } = await playerSessionRepo.getHistoryPage(
+        input.id,
+        input.serverId,
+        input.limit,
+        pageOffset(input),
+      );
 
       return {
-        items: sessions.map((s) => ({
+        items: rows.map((s) => ({
           ...s,
           secondsPlayed: s.secondsPlayed?.toString() || null,
           activeSeconds: s.activeSeconds.toString(),
         })),
-        pagination: buildPagination(input.page, input.limit, totalSessions),
+        pagination: buildPagination(input.page, input.limit, total),
       };
     }),
 });

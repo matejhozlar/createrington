@@ -33,7 +33,7 @@ export const logsRouter = router({
       }),
     )
     .query(async ({ input }) => {
-      const { actions, total } = await Q.admin.log.action.search({
+      const { rows, total } = await Q.admin.log.action.getPage({
         search: input.search,
         actionType: input.actionType,
         adminUsername: input.adminUsername,
@@ -44,7 +44,7 @@ export const logsRouter = router({
       });
 
       return {
-        items: actions,
+        items: rows,
         pagination: buildPagination(input.page, input.limit, total),
       };
     }),
