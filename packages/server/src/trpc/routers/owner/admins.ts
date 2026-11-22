@@ -1,14 +1,10 @@
 import { z } from "zod";
 import { fetchGuildMember } from "@/discord/utils/fetch-guild-member";
 import { router, ownerProcedure } from "@/trpc/trpc";
-import { trpcError, auditActor } from "@/trpc/utils";
 import { Q } from "@/db";
 import { ilikeContains } from "@/db/utils";
-import { sessionService } from "@/services/auth/session/session.service";
-import { adminStatusService } from "@/services/auth/admin-status/admin-status.service";
-import { RoleManager } from "@/discord/utils/roles/role-manager";
+import { adminRoleService } from "@/services/auth/admin-role/admin-role.service";
 import { Discord } from "@/discord/constants";
-import { minecraftRcon } from "@/utils/rcon";
 import { SERVERS } from "@/services/mc-server/servers";
 import { discordId, DISCORD_ID_REGEX } from "@/utils/zod-schemas";
 
@@ -118,49 +114,9 @@ export const ownerAdminsRouter = router({
         reason: z.string().max(500).optional(),
       }),
     )
-    .mutation(async ({ ctx, input }) => {
-      const existing = await Q.admin.find({ discordId: input.discordId });
-      if (existing) {
-        throw trpcError.conflict("User is already an admin");
-      }
-
-      const player = await Q.player.find({ discordId: input.discordId });
-
-      await Q.admin.create({ discordId: input.discordId });
-      adminStatusService.invalidate(input.discordId);
-
-      let discordRoleAdded = false;
-      try {
-        const member = await fetchGuildMember(input.discordId);
-        if (member) {
-          discordRoleAdded = await RoleManager.assign(
-            member,
-            Discord.Roles.ADMIN,
-            input.reason ?? `Promoted by ${ctx.user.minecraftUsername}`,
-          );
-        }
-      } catch (error) {
-        logger.error(
-          `[admin-promote] Failed to add Discord ADMIN role for ${input.discordId}:`,
-          error,
-        );
-      }
-
-      await Q.admin.log.action.logAction({
-        ...auditActor(ctx),
-        actionType: "admin_promote",
-        description: `Promoted ${player?.minecraftUsername ?? input.discordId} to admin`,
-        targetPlayerUuid: player?.minecraftUuid,
-        targetPlayerName: player?.minecraftUsername,
-        reason: input.reason,
-        metadata: { discordRoleAdded },
-      });
-
-      return {
-        discordRoleAdded,
-        minecraftUsername: player?.minecraftUsername ?? null,
-      };
-    }),
+    .mutation(({ ctx, input }) =>
+      adminRoleService.promote(input.discordId, input.reason, ctx.user),
+    ),
 
   demote: ownerProcedure
     .meta({
@@ -173,83 +129,9 @@ export const ownerAdminsRouter = router({
         reason: z.string().max(500).optional(),
       }),
     )
-    .mutation(async ({ ctx, input }) => {
-      if (input.discordId === ctx.user.discordId) {
-        throw trpcError.badRequest("You can't demote yourself");
-      }
-
-      const player = await Q.player.find({ discordId: input.discordId });
-      const dbEntry = await Q.admin.find({ discordId: input.discordId });
-
-      if (dbEntry) {
-        await Q.admin.delete({ discordId: input.discordId });
-      }
-
-      adminStatusService.invalidate(input.discordId);
-      await sessionService.revokeAllForUser(input.discordId);
-
-      let discordRoleRemoved = false;
-      try {
-        const member = await fetchGuildMember(input.discordId);
-        if (member?.roles.cache.has(Discord.Roles.ADMIN)) {
-          discordRoleRemoved = await RoleManager.remove(
-            member,
-            Discord.Roles.ADMIN,
-            input.reason ?? `Demoted by ${ctx.user.minecraftUsername}`,
-          );
-        }
-      } catch (error) {
-        logger.error(
-          `[admin-demote] Failed to remove Discord ADMIN role for ${input.discordId}:`,
-          error,
-        );
-      }
-
-      const rconResults: Array<{
-        serverId: number;
-        success: boolean;
-        error?: string;
-      }> = [];
-      if (player?.minecraftUsername) {
-        const results = await minecraftRcon.sendAll(
-          `deop ${player.minecraftUsername}`,
-        );
-        for (const [serverId, result] of results.entries()) {
-          rconResults.push({
-            serverId,
-            success: result.success,
-            error: result.error?.message,
-          });
-          if (!result.success) {
-            logger.warn(
-              `[admin-demote] deop failed on server ${serverId} for ${player.minecraftUsername}:`,
-              result.error,
-            );
-          }
-        }
-      }
-
-      await Q.admin.log.action.logAction({
-        ...auditActor(ctx),
-        actionType: "admin_demote",
-        description: `Demoted ${player?.minecraftUsername ?? input.discordId} from admin`,
-        targetPlayerUuid: player?.minecraftUuid,
-        targetPlayerName: player?.minecraftUsername,
-        reason: input.reason,
-        metadata: {
-          removedFromDb: !!dbEntry,
-          discordRoleRemoved,
-          rconResults,
-        },
-      });
-
-      return {
-        removedFromDb: !!dbEntry,
-        discordRoleRemoved,
-        rconResults,
-        minecraftUsername: player?.minecraftUsername ?? null,
-      };
-    }),
+    .mutation(({ ctx, input }) =>
+      adminRoleService.demote(input.discordId, input.reason, ctx.user),
+    ),
 
   auditLog: ownerProcedure
     .meta({
