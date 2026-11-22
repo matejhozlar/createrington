@@ -112,6 +112,8 @@ export function AdminPlanning() {
   const totalPlans = counts
     ? PLANNING_ITEM_STATUSES.reduce((sum, value) => sum + counts[value], 0)
     : 0;
+  const isFiltered =
+    debouncedSearch.trim() !== "" || category !== ALL || assignee !== "anyone";
   const defaultCategory = category === ALL ? "modpack" : category;
 
   const changeFilter = (apply: () => void) => {
@@ -285,7 +287,7 @@ export function AdminPlanning() {
           />
         ) : itemsQuery.isLoading ? (
           <LoadingState />
-        ) : totalPlans === 0 ? (
+        ) : totalPlans === 0 && !isFiltered ? (
           <EmptyState
             icon={Lightbulb}
             message="No plans yet"
