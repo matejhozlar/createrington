@@ -47,8 +47,11 @@ vi.mock("@/discord/utils/channel-transcript", () => ({
   })),
 }));
 
+vi.mock("@/services/claude-automation/session-client", () => ({
+  AutomationStartError: class extends Error {},
+}));
+
 vi.mock("@/services/issue-triage/issue-triage.service", () => ({
-  IssueTriageError: class extends Error {},
   issueTriageService: triage,
 }));
 

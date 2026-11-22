@@ -1,26 +1,18 @@
 import {
   type ChatInputCommandInteraction,
-  type GuildTextBasedChannel,
-  type Message,
-  MessageFlags,
   PermissionFlagsBits,
   SlashCommandBuilder,
-  channelMention,
-  userMention,
 } from "discord.js";
-import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
 import { replyError } from "@/discord/utils/interaction-reply";
 import { InteractionError } from "@/discord/utils/interaction-error";
 import {
-  TRANSCRIPT_MAX_MESSAGES,
-  buildChannelTranscript,
-  fetchMessagesSince,
-  fetchRecentMessages,
-  parseMessageReference,
-} from "@/discord/utils/channel-transcript";
+  addTranscriptOptions,
+  announceOutcome,
+  captureDiscussion,
+} from "@/discord/utils/transcript-command";
+import { AutomationStartError } from "@/services/claude-automation/session-client";
 import {
-  IssueTriageError,
   issueTriageService,
   type IssueTriageStatus,
 } from "@/services/issue-triage/issue-triage.service";
@@ -28,8 +20,6 @@ import type {
   CommandModule,
   CommandPermissions,
 } from "@/discord/bots/common/loaders/command-loader";
-
-const DEFAULT_MESSAGE_COUNT = 50;
 
 const START_ERRORS = {
   not_configured: [
@@ -54,90 +44,19 @@ const FAILURE_REASONS: Record<string, string> = {
   closed: "The session was stopped before it finished.",
 };
 
-const data = new SlashCommandBuilder()
-  .setName("issue")
-  .setDescription(
-    "Have Claude file a Gitea issue from the recent messages here",
-  )
-  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
-  .addIntegerOption((option) =>
-    option
-      .setName("messages")
-      .setDescription(
-        `How many recent messages to read (default ${DEFAULT_MESSAGE_COUNT}, max ${TRANSCRIPT_MAX_MESSAGES})`,
-      )
-      .setMinValue(1)
-      .setMaxValue(TRANSCRIPT_MAX_MESSAGES),
-  )
-  .addStringOption((option) =>
-    option
-      .setName("from")
-      .setDescription(
-        "Link to the first message to read; reads from there to now instead",
-      ),
-  )
-  .addStringOption((option) =>
-    option
-      .setName("note")
-      .setDescription(
-        "What to report, if the messages cover more than one thing",
-      )
-      .setMaxLength(1000),
-  );
+const data = addTranscriptOptions(
+  new SlashCommandBuilder()
+    .setName("issue")
+    .setDescription(
+      "Have Claude file a Gitea issue from the recent messages here",
+    )
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+  "What to report, if the messages cover more than one thing",
+);
 
 const permissions: CommandPermissions = {
   requireAdmin: true,
 };
-
-function resolveChannel(
-  interaction: ChatInputCommandInteraction,
-): GuildTextBasedChannel | null {
-  const channel = interaction.channel;
-  if (!channel || !channel.isTextBased() || channel.isDMBased()) return null;
-  return channel;
-}
-
-interface MessageSelection {
-  messages: Message[];
-  keep: "newest" | "oldest";
-  hasMore: boolean;
-}
-
-async function readMessages(
-  interaction: ChatInputCommandInteraction,
-  channel: GuildTextBasedChannel,
-): Promise<MessageSelection | null> {
-  const from = interaction.options.getString("from");
-  if (!from) {
-    const count =
-      interaction.options.getInteger("messages") ?? DEFAULT_MESSAGE_COUNT;
-    const messages = await fetchRecentMessages(channel, count);
-    return { messages, keep: "newest", hasMore: false };
-  }
-  const startId = parseMessageReference(from, channel.id);
-  if (!startId) return null;
-  const { messages, hasMore } = await fetchMessagesSince(
-    channel,
-    startId,
-    TRANSCRIPT_MAX_MESSAGES,
-  );
-  return { messages, keep: "oldest", hasMore };
-}
-
-function readingSummary(
-  selection: MessageSelection,
-  messageCount: number,
-): string {
-  const leftOut = selection.messages.length - messageCount;
-  const skipped =
-    leftOut > 0
-      ? ` (${leftOut} ${selection.keep === "newest" ? "older" : "newer"} or empty ones left out)`
-      : "";
-  const capped = selection.hasMore
-    ? ` Only the first ${TRANSCRIPT_MAX_MESSAGES} messages after the link were read.`
-    : "";
-  return `Claude is reading ${messageCount} messages${skipped}.${capped} This usually takes a minute or two.`;
-}
 
 function outcomeEmbed(outcome: IssueTriageStatus | null) {
   if (!outcome) {
@@ -181,27 +100,13 @@ async function reportOutcome(
   channelId: string,
 ): Promise<void> {
   const outcome = await issueTriageService.waitForOutcome(sessionId);
-  const [edited, posted] = await Promise.allSettled([
-    interaction.editReply({ embeds: [outcomeEmbed(outcome).build()] }),
-    Discord.Messages.send({
-      channelId: Discord.Channels.administration.NOTIFICATIONS,
-      content: `${userMention(interaction.user.id)} \`/issue\` in ${channelMention(channelId)}`,
-      embeds: outcomeEmbed(outcome).build(),
-      allowedMentions: { users: [interaction.user.id] },
-    }),
-  ]);
-  if (edited.status === "rejected") {
-    logger.warn(
-      `/issue session #${sessionId} could not update its reply:`,
-      edited.reason,
-    );
-  }
-  if (posted.status === "rejected") {
-    logger.warn(
-      `/issue session #${sessionId} could not post to admin notifications:`,
-      posted.reason,
-    );
-  }
+  await announceOutcome(
+    interaction,
+    "issue",
+    sessionId,
+    channelId,
+    outcomeEmbed(outcome),
+  );
   logger.info(
     `/issue session #${sessionId} by ${interaction.user.tag}: ${outcome?.result ?? "pending"}${
       outcome?.issue ? ` (${outcome.issue.repo}#${outcome.issue.number})` : ""
@@ -212,75 +117,14 @@ async function reportOutcome(
 async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
-  const channel = resolveChannel(interaction);
-  if (!channel) {
-    await replyError(
-      interaction,
-      "Invalid channel",
-      "This command can only be used in server text channels.",
-    );
-    return;
-  }
+  const discussion = await captureDiscussion(interaction);
+  if (!discussion) return;
 
-  if (
-    interaction.options.getString("from") &&
-    interaction.options.getInteger("messages") !== null
-  ) {
-    await replyError(
-      interaction,
-      "Pick one option",
-      "Use `messages` to read the latest messages, or `from` to read from a linked message up to now.",
-    );
-    return;
-  }
-
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-
-  const selection = await readMessages(interaction, channel).catch(
-    (error: unknown) => {
-      throw new InteractionError(
-        "Could not read messages",
-        "Check that the link points to a message in this channel and that the bot can read its history.",
-        { cause: error },
-      );
-    },
-  );
-  if (!selection) {
-    await replyError(
-      interaction,
-      "Invalid message link",
-      "Use a link to a message in this channel, or its ID.",
-    );
-    return;
-  }
-
-  const transcript = buildChannelTranscript(selection.messages, {
-    keep: selection.keep,
-  });
-  if (transcript.messageCount === 0) {
-    await replyError(
-      interaction,
-      "Nothing to read",
-      "There are no messages with content to send.",
-    );
-    return;
-  }
-
-  const note = interaction.options.getString("note");
   let sessionId: number;
   try {
-    ({ sessionId } = await issueTriageService.start({
-      transcript: transcript.text,
-      messageCount: transcript.messageCount,
-      requestedBy: interaction.user.username,
-      sourceLabel: `#${channel.name}`,
-      ...(transcript.firstMessageUrl && {
-        sourceUrl: transcript.firstMessageUrl,
-      }),
-      ...(note && { note }),
-    }));
+    ({ sessionId } = await issueTriageService.start(discussion.request));
   } catch (error) {
-    const kind = error instanceof IssueTriageError ? error.kind : "failed";
+    const kind = error instanceof AutomationStartError ? error.kind : "failed";
     const [title, description] = START_ERRORS[kind];
     if (kind === "failed") {
       throw new InteractionError(title, description, { cause: error });
@@ -290,16 +134,15 @@ async function execute(
   }
 
   await interaction.editReply({
-    embeds: [
-      EmbedPresets.info(
-        "Triaging",
-        readingSummary(selection, transcript.messageCount),
-      ).build(),
-    ],
+    embeds: [EmbedPresets.info("Triaging", discussion.summary).build()],
   });
 
-  void reportOutcome(interaction, sessionId, channel.id).catch((error) =>
-    logger.error(`/issue session #${sessionId} could not report back:`, error),
+  void reportOutcome(interaction, sessionId, discussion.channel.id).catch(
+    (error) =>
+      logger.error(
+        `/issue session #${sessionId} could not report back:`,
+        error,
+      ),
   );
 }
 
