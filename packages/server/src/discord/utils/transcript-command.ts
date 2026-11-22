@@ -1,0 +1,226 @@
+import {
+  type ChatInputCommandInteraction,
+  type GuildTextBasedChannel,
+  type Message,
+  MessageFlags,
+  type SlashCommandBuilder,
+  type SlashCommandOptionsOnlyBuilder,
+  channelMention,
+  userMention,
+} from "discord.js";
+import { Discord } from "@/discord/constants";
+import type { EmbedPresets } from "@/discord/embeds";
+import { replyError } from "@/discord/utils/interaction-reply";
+import { InteractionError } from "@/discord/utils/interaction-error";
+import {
+  TRANSCRIPT_MAX_MESSAGES,
+  buildChannelTranscript,
+  fetchMessagesSince,
+  fetchRecentMessages,
+  parseMessageReference,
+} from "@/discord/utils/channel-transcript";
+
+const DEFAULT_MESSAGE_COUNT = 50;
+
+interface MessageSelection {
+  messages: Message[];
+  keep: "newest" | "oldest";
+  hasMore: boolean;
+}
+
+export interface CapturedDiscussion {
+  channel: GuildTextBasedChannel;
+  request: {
+    transcript: string;
+    messageCount: number;
+    requestedBy: string;
+    sourceLabel: string;
+    sourceUrl?: string;
+    note?: string;
+  };
+  summary: string;
+}
+
+export function addTranscriptOptions(
+  builder: SlashCommandBuilder,
+  noteDescription: string,
+): SlashCommandOptionsOnlyBuilder {
+  return builder
+    .addIntegerOption((option) =>
+      option
+        .setName("messages")
+        .setDescription(
+          `How many recent messages to read (default ${DEFAULT_MESSAGE_COUNT}, max ${TRANSCRIPT_MAX_MESSAGES})`,
+        )
+        .setMinValue(1)
+        .setMaxValue(TRANSCRIPT_MAX_MESSAGES),
+    )
+    .addStringOption((option) =>
+      option
+        .setName("from")
+        .setDescription(
+          "Link to the first message to read; reads from there to now instead",
+        ),
+    )
+    .addStringOption((option) =>
+      option.setName("note").setDescription(noteDescription).setMaxLength(1000),
+    );
+}
+
+function resolveChannel(
+  interaction: ChatInputCommandInteraction,
+): GuildTextBasedChannel | null {
+  const channel = interaction.channel;
+  if (!channel || !channel.isTextBased() || channel.isDMBased()) return null;
+  return channel;
+}
+
+async function readMessages(
+  interaction: ChatInputCommandInteraction,
+  channel: GuildTextBasedChannel,
+): Promise<MessageSelection | null> {
+  const from = interaction.options.getString("from");
+  if (!from) {
+    const count =
+      interaction.options.getInteger("messages") ?? DEFAULT_MESSAGE_COUNT;
+    const messages = await fetchRecentMessages(channel, count);
+    return { messages, keep: "newest", hasMore: false };
+  }
+  const startId = parseMessageReference(from, channel.id);
+  if (!startId) return null;
+  const { messages, hasMore } = await fetchMessagesSince(
+    channel,
+    startId,
+    TRANSCRIPT_MAX_MESSAGES,
+  );
+  return { messages, keep: "oldest", hasMore };
+}
+
+function readingSummary(
+  selection: MessageSelection,
+  messageCount: number,
+): string {
+  const leftOut = selection.messages.length - messageCount;
+  const skipped =
+    leftOut > 0
+      ? ` (${leftOut} ${selection.keep === "newest" ? "older" : "newer"} or empty ones left out)`
+      : "";
+  const capped = selection.hasMore
+    ? ` Only the first ${TRANSCRIPT_MAX_MESSAGES} messages after the link were read.`
+    : "";
+  return `Claude is reading ${messageCount} messages${skipped}.${capped} This usually takes a minute or two.`;
+}
+
+/**
+ * Reads the messages a transcript command points at (its `messages`, `from`
+ * and `note` options) and defers the reply as ephemeral. Resolves null after
+ * answering the interaction itself when there is nothing usable to read.
+ */
+export async function captureDiscussion(
+  interaction: ChatInputCommandInteraction,
+): Promise<CapturedDiscussion | null> {
+  const channel = resolveChannel(interaction);
+  if (!channel) {
+    await replyError(
+      interaction,
+      "Invalid channel",
+      "This command can only be used in server text channels.",
+    );
+    return null;
+  }
+
+  if (
+    interaction.options.getString("from") &&
+    interaction.options.getInteger("messages") !== null
+  ) {
+    await replyError(
+      interaction,
+      "Pick one option",
+      "Use `messages` to read the latest messages, or `from` to read from a linked message up to now.",
+    );
+    return null;
+  }
+
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+  const selection = await readMessages(interaction, channel).catch(
+    (error: unknown) => {
+      throw new InteractionError(
+        "Could not read messages",
+        "Check that the link points to a message in this channel and that the bot can read its history.",
+        { cause: error },
+      );
+    },
+  );
+  if (!selection) {
+    await replyError(
+      interaction,
+      "Invalid message link",
+      "Use a link to a message in this channel, or its ID.",
+    );
+    return null;
+  }
+
+  const transcript = buildChannelTranscript(selection.messages, {
+    keep: selection.keep,
+  });
+  if (transcript.messageCount === 0) {
+    await replyError(
+      interaction,
+      "Nothing to read",
+      "There are no messages with content to send.",
+    );
+    return null;
+  }
+
+  const note = interaction.options.getString("note");
+  return {
+    channel,
+    request: {
+      transcript: transcript.text,
+      messageCount: transcript.messageCount,
+      requestedBy: interaction.user.username,
+      sourceLabel: `#${channel.name}`,
+      ...(transcript.firstMessageUrl && {
+        sourceUrl: transcript.firstMessageUrl,
+      }),
+      ...(note && { note }),
+    },
+    summary: readingSummary(selection, transcript.messageCount),
+  };
+}
+
+/**
+ * Shows the outcome of a transcript command to the admin who ran it and
+ * posts it to the admin notifications channel. Either can fail without
+ * stopping the other.
+ */
+export async function announceOutcome(
+  interaction: ChatInputCommandInteraction,
+  command: string,
+  sessionId: number,
+  channelId: string,
+  embed: ReturnType<typeof EmbedPresets.info>,
+): Promise<void> {
+  const [edited, posted] = await Promise.allSettled([
+    interaction.editReply({ embeds: [embed.build()] }),
+    Discord.Messages.send({
+      channelId: Discord.Channels.administration.NOTIFICATIONS,
+      content: `${userMention(interaction.user.id)} \`/${command}\` in ${channelMention(channelId)}`,
+      embeds: embed.build(),
+      allowedMentions: { users: [interaction.user.id] },
+    }),
+  ]);
+  if (edited.status === "rejected") {
+    logger.warn(
+      `/${command} session #${sessionId} could not update its reply:`,
+      edited.reason,
+    );
+  }
+  if (posted.status === "rejected") {
+    logger.warn(
+      `/${command} session #${sessionId} could not post to admin notifications:`,
+      posted.reason,
+    );
+  }
+}
