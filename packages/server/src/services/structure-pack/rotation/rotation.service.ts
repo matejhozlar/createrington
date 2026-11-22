@@ -11,21 +11,56 @@ import { getModFileDownloadUrl } from "@/services/curseforge/downloads";
 import type { StructurePackService } from "../structure-pack.service";
 import type { StructurePackWithMods } from "@/db/queries/structure/pack";
 import type {
+  StructurePack,
   StructurePackMod,
   StructurePackRotationConfig,
-  StructurePackRotation,
   StructurePackBoost,
 } from "@createrington/shared/db";
 import { MODS_DIR } from "./constants";
 import { periodIntervalMs } from "./timezone";
 import {
   checkMissedRotation,
-  computeCycleStart,
-  computeNextRotationTime,
+  describeSchedule,
+  occurrence,
 } from "./scheduling";
 import { computeWeights, selectWeightedRandom } from "./weights";
 import { ensureModsCached, getCachePath } from "./mod-cache";
-import type { RotationPeriod, WeightEntry } from "./types";
+import {
+  toRotationConfig,
+  type RotationConfig,
+  type WeightEntry,
+} from "./types";
+
+interface RotationCycle {
+  config: RotationConfig;
+  cycleStart: Date;
+}
+
+async function removePackMods(
+  pack: StructurePackWithMods,
+  keepFileNames: ReadonlySet<string> = new Set(),
+): Promise<void> {
+  for (const mod of pack.mods) {
+    if (keepFileNames.has(mod.fileName)) continue;
+    const modPath = `${MODS_DIR}/${mod.fileName}`;
+    if (await fileExists(modPath)) {
+      await deleteFile(modPath);
+      logger.info(`Removed mod file: ${mod.fileName}`);
+    }
+  }
+}
+
+async function installPackMods(pack: StructurePackWithMods): Promise<void> {
+  for (const mod of pack.mods) {
+    const modPath = `${MODS_DIR}/${mod.fileName}`;
+    if (await fileExists(modPath)) {
+      logger.info(`Mod already in mods dir: ${mod.fileName}`);
+      continue;
+    }
+    await copyFileToServer(getCachePath(mod.fileName), modPath);
+    logger.info(`Installed mod file: ${mod.fileName}`);
+  }
+}
 
 /**
  * Structure Pack Rotation Service
@@ -67,35 +102,24 @@ export class StructurePackRotationService {
       return;
     }
 
-    const rotationConfig =
-      await Q.structure.pack.rotation.config.getOrCreateDefault();
+    const rotationConfig = await this.getConfig();
     if (!rotationConfig.enabled) {
       logger.info("Structure pack rotation is disabled, scheduler not started");
       return;
     }
 
-    const period = rotationConfig.period as RotationPeriod;
-    const scheduleDesc =
-      period === "daily"
-        ? `daily at ${rotationConfig.time}`
-        : period === "monthly"
-          ? `monthly on day ${rotationConfig.dayOfMonth} at ${rotationConfig.time}`
-          : `weekly on ${["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][rotationConfig.dayOfWeek]} at ${rotationConfig.time}`;
     logger.info(
-      `Structure pack rotation config: ${scheduleDesc} ${rotationConfig.timezone}`,
+      `Structure pack rotation config: ${describeSchedule(rotationConfig)} ${rotationConfig.timezone}`,
     );
 
     const lastRotation = await this.getLastRotation();
-    if (lastRotation) {
-      const missed = checkMissedRotation(
-        rotationConfig,
-        lastRotation.rotatedAt,
-      );
-      if (missed) {
-        logger.info("Missed rotation detected, executing now...");
-        await this.executeRotation();
-        return;
-      }
+    if (
+      lastRotation &&
+      checkMissedRotation(rotationConfig, lastRotation.rotatedAt)
+    ) {
+      logger.info("Missed rotation detected, executing now...");
+      await this.executeRotation();
+      return;
     }
 
     this.scheduleNextRotation(rotationConfig);
@@ -109,9 +133,7 @@ export class StructurePackRotationService {
     }
   }
 
-  private scheduleNextRotation(
-    rotationConfig: StructurePackRotationConfig,
-  ): void {
+  private scheduleNextRotation(rotationConfig: RotationConfig): void {
     if (this.nextRotationTimer) {
       clearTimeout(this.nextRotationTimer);
       this.nextRotationTimer = null;
@@ -122,29 +144,19 @@ export class StructurePackRotationService {
       return;
     }
 
-    const nextTime = computeNextRotationTime(rotationConfig);
-    const delayMs = nextTime.getTime() - Date.now();
-    const period = rotationConfig.period as RotationPeriod;
-
-    if (delayMs <= 0) {
+    let nextTime = occurrence(rotationConfig, new Date(), "next");
+    if (nextTime.getTime() <= Date.now()) {
       logger.warn(
         "Computed next rotation time is in the past, scheduling for next period",
       );
-      const adjusted = new Date(nextTime.getTime() + periodIntervalMs(period));
-      const adjustedDelay = adjusted.getTime() - Date.now();
-      this.nextRotationTimer = setTimeout(
-        () => this.runScheduledRotation(),
-        adjustedDelay,
+      nextTime = new Date(
+        nextTime.getTime() + periodIntervalMs(rotationConfig.period),
       );
-      logger.info(
-        `Next structure pack rotation scheduled for ${adjusted.toISOString()}`,
-      );
-      return;
     }
 
     this.nextRotationTimer = setTimeout(
       () => this.runScheduledRotation(),
-      delayMs,
+      nextTime.getTime() - Date.now(),
     );
     logger.info(
       `Next structure pack rotation scheduled for ${nextTime.toISOString()}`,
@@ -176,9 +188,9 @@ export class StructurePackRotationService {
    *
    * Automatic rotations are skipped while rotation is disabled in the config;
    * manual triggers still run. When no packs are eligible, nothing is rotated
-   * and no history row is recorded. Manual triggers rethrow failures to the
-   * caller; expected ones (empty pool, file ops) are raised as BadRequestError
-   * at their handling site and bypass the generic recovery catch.
+   * and no history row is recorded. Automatic rotations only log a refusal
+   * (empty pool, failed file ops); manual triggers get it as BadRequestError
+   * and get unexpected errors rethrown after the reschedule.
    */
   async executeRotation(manual = false): Promise<void> {
     if (this.rotationInProgress) {
@@ -186,143 +198,113 @@ export class StructurePackRotationService {
     }
 
     this.rotationInProgress = true;
-    const startTime = Date.now();
-
+    let refusal: string | null;
     try {
-      const rotationConfig =
-        await Q.structure.pack.rotation.config.getOrCreateDefault();
-      if (!rotationConfig.enabled && !manual) {
-        logger.info("Structure pack rotation is disabled, skipping rotation");
-        return;
-      }
+      refusal = await this.rotate(manual);
+    } catch (error) {
+      logger.error("Rotation failed:", error);
+      await this.getConfig()
+        .then((cfg) => this.scheduleNextRotation(cfg))
+        .catch(() => logger.error("Failed to reschedule after rotation error"));
+      if (manual) throw error;
+      return;
+    } finally {
+      this.rotationInProgress = false;
+    }
 
-      const activePack = await this.packService.getActivePack();
-      const eligible = await Q.structure.pack.getEligibleForRotation(
-        activePack?.id,
-      );
+    if (refusal !== null && manual) throw new BadRequestError(refusal);
+  }
 
-      if (eligible.length === 0) {
-        logger.warn("No eligible packs for rotation, skipping");
-        if (manual) {
-          throw new BadRequestError("No eligible packs for rotation");
-        }
-        this.scheduleNextRotation(rotationConfig);
-        return;
-      }
+  private async rotate(manual: boolean): Promise<string | null> {
+    const startTime = Date.now();
+    const cycle = await this.loadCycle();
+    if (!cycle.config.enabled && !manual) {
+      logger.info("Structure pack rotation is disabled, skipping rotation");
+      return null;
+    }
 
-      const cycleStart = computeCycleStart(rotationConfig);
-      const boostData =
-        await Q.structure.pack.boost.getBoostsByPackForCycle(cycleStart);
-      const boostMap = new Map(boostData.map((b) => [b.packId, b.totalUnits]));
-      const weights = computeWeights(
-        eligible,
-        boostMap,
-        rotationConfig.timeWeightMultiplier,
-        rotationConfig.boostWeightPerUnit,
-      );
+    const activePack = await this.packService.getActivePack();
+    const eligible = await Q.structure.pack.getEligibleForRotation(
+      activePack?.id,
+    );
+    if (eligible.length === 0) {
+      logger.warn("No eligible packs for rotation, skipping");
+      this.scheduleNextRotation(cycle.config);
+      return "No eligible packs for rotation";
+    }
 
-      const selectedPackId = selectWeightedRandom(weights);
-      const incomingPack = await this.packService.getPack(selectedPackId);
+    const { weights } = await this.weighPool(eligible, cycle);
+    const selectedPackId = selectWeightedRandom(weights);
+    const incomingPack = await this.packService.getPack(selectedPackId);
+    logger.info(
+      `Rotation: ${activePack?.name ?? "(none)"} → ${incomingPack.name} (weights: ${JSON.stringify(weights)})`,
+    );
 
-      logger.info(
-        `Rotation: ${activePack?.name ?? "(none)"} → ${incomingPack.name} (weights: ${JSON.stringify(weights)})`,
-      );
-
-      if (isFileOpsAllowed()) {
-        try {
-          await ensureModsCached(incomingPack.mods);
-
-          const incomingFileNames = new Set(
-            incomingPack.mods.map((m) => m.fileName),
-          );
-
-          if (activePack) {
-            for (const mod of activePack.mods) {
-              if (incomingFileNames.has(mod.fileName)) continue;
-              const modPath = `${MODS_DIR}/${mod.fileName}`;
-              if (await fileExists(modPath)) {
-                await deleteFile(modPath);
-                logger.info(`Removed mod file: ${mod.fileName}`);
-              }
-            }
-          }
-
-          for (const mod of incomingPack.mods) {
-            const modPath = `${MODS_DIR}/${mod.fileName}`;
-            if (await fileExists(modPath)) {
-              logger.info(`Mod already in mods dir: ${mod.fileName}`);
-              continue;
-            }
-            const cachePath = getCachePath(mod.fileName);
-            await copyFileToServer(cachePath, modPath);
-            logger.info(`Installed mod file: ${mod.fileName}`);
-          }
-        } catch (error) {
-          const reason = errorMessage(error);
-          logger.error(`Rotation file operations failed: ${reason}`);
-          await this.recordRotation(
-            activePack?.id ?? null,
-            selectedPackId,
-            false,
-            reason,
-          );
-          this.scheduleNextRotation(rotationConfig);
-          if (manual) {
-            throw new BadRequestError(`Rotation failed: ${reason}`);
-          }
-          return;
-        }
-      } else {
-        logger.info(
-          "File ops not available, rotation recorded without file changes",
-        );
-      }
-
-      await db.inTransaction(async (tx) => {
-        if (activePack) {
-          await tx.structure.pack.update(
-            { id: activePack.id },
-            { isActive: false },
-          );
-        }
-        await tx.structure.pack.update(
-          { id: selectedPackId },
-          { isActive: true, lastActivatedAt: new Date() },
-        );
-      });
-
+    const fileFailure = await this.swapModFiles(activePack, incomingPack);
+    if (fileFailure !== null) {
       await this.recordRotation(
         activePack?.id ?? null,
         selectedPackId,
-        true,
-        null,
-        weights,
+        false,
+        fileFailure,
       );
+      this.scheduleNextRotation(cycle.config);
+      return `Rotation failed: ${fileFailure}`;
+    }
 
-      await Q.structure.pack.boost.clearCycleBoosts(cycleStart);
+    await db.inTransaction(async (tx) => {
+      if (activePack) {
+        await tx.structure.pack.update(
+          { id: activePack.id },
+          { isActive: false },
+        );
+      }
+      await tx.structure.pack.update(
+        { id: selectedPackId },
+        { isActive: true, lastActivatedAt: new Date() },
+      );
+    });
+    await this.recordRotation(
+      activePack?.id ?? null,
+      selectedPackId,
+      true,
+      null,
+      weights,
+    );
+    await Q.structure.pack.boost.clearCycleBoosts(cycle.cycleStart);
 
-      const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+    const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+    logger.info(
+      `Rotation complete in ${elapsed}s: ${activePack?.name ?? "(none)"} → ${incomingPack.name}`,
+    );
+    this.scheduleNextRotation(cycle.config);
+    return null;
+  }
+
+  private async swapModFiles(
+    outgoing: StructurePackWithMods | null,
+    incoming: StructurePackWithMods,
+  ): Promise<string | null> {
+    if (!isFileOpsAllowed()) {
       logger.info(
-        `Rotation complete in ${elapsed}s: ${activePack?.name ?? "(none)"} → ${incomingPack.name}`,
+        "File ops not available, rotation recorded without file changes",
       );
-
-      this.scheduleNextRotation(rotationConfig);
+      return null;
+    }
+    try {
+      await ensureModsCached(incoming.mods);
+      if (outgoing) {
+        await removePackMods(
+          outgoing,
+          new Set(incoming.mods.map((mod) => mod.fileName)),
+        );
+      }
+      await installPackMods(incoming);
+      return null;
     } catch (error) {
-      if (manual && error instanceof BadRequestError) {
-        throw error;
-      }
-      logger.error("Rotation failed:", error);
-      try {
-        const cfg = await Q.structure.pack.rotation.config.getOrCreateDefault();
-        this.scheduleNextRotation(cfg);
-      } catch {
-        logger.error("Failed to reschedule after rotation error");
-      }
-      if (manual) {
-        throw error;
-      }
-    } finally {
-      this.rotationInProgress = false;
+      const reason = errorMessage(error);
+      logger.error(`Rotation file operations failed: ${reason}`);
+      return reason;
     }
   }
 
@@ -346,13 +328,11 @@ export class StructurePackRotationService {
       throw new BadRequestError("Cannot boost the currently active pack");
     }
 
-    const rotationConfig =
-      await Q.structure.pack.rotation.config.getOrCreateDefault();
+    const { config: rotationConfig, cycleStart } = await this.loadCycle();
     if (!rotationConfig.enabled) {
       throw new BadRequestError("Rotations are currently disabled");
     }
     const cost = units * rotationConfig.boostUnitPrice;
-    const cycleStart = computeCycleStart(rotationConfig);
 
     return db.inTransaction(async (tx) => {
       await balanceRepo.deduct(
@@ -375,9 +355,7 @@ export class StructurePackRotationService {
 
   /** Returns all boost records placed by a player during the current rotation cycle. */
   async getPlayerBoosts(discordId: string): Promise<StructurePackBoost[]> {
-    const rotationConfig =
-      await Q.structure.pack.rotation.config.getOrCreateDefault();
-    const cycleStart = computeCycleStart(rotationConfig);
+    const { cycleStart } = await this.loadCycle();
     return Q.structure.pack.boost.getPlayerBoostsForCycle(
       discordId,
       cycleStart,
@@ -416,17 +394,9 @@ export class StructurePackRotationService {
       }
     }
 
-    const rotationConfig =
-      await Q.structure.pack.rotation.config.getOrCreateDefault();
-    const cycleStart = computeCycleStart(rotationConfig);
-    const boostData =
-      await Q.structure.pack.boost.getBoostsByPackForCycle(cycleStart);
-    const boostMap = new Map(boostData.map((b) => [b.packId, b.totalUnits]));
-    const weights = computeWeights(
+    const { weights, boostUnits } = await this.weighPool(
       eligible,
-      boostMap,
-      rotationConfig.timeWeightMultiplier,
-      rotationConfig.boostWeightPerUnit,
+      await this.loadCycle(),
     );
 
     return eligible.map((pack) => {
@@ -434,14 +404,16 @@ export class StructurePackRotationService {
       return {
         pack: { ...pack, mods: modsByPackId.get(pack.id) ?? [] },
         weight: w?.weight ?? 0,
-        boostUnits: boostMap.get(pack.id) ?? 0,
+        boostUnits: boostUnits.get(pack.id) ?? 0,
       };
     });
   }
 
   /** Returns the current rotation configuration, creating the default record if none exists. */
-  async getConfig(): Promise<StructurePackRotationConfig> {
-    return Q.structure.pack.rotation.config.getOrCreateDefault();
+  async getConfig(): Promise<RotationConfig> {
+    return toRotationConfig(
+      await Q.structure.pack.rotation.config.getOrCreateDefault(),
+    );
   }
 
   /**
@@ -459,7 +431,7 @@ export class StructurePackRotationService {
     return {
       enabled: cfg.enabled,
       nextRotationAt: cfg.enabled
-        ? computeNextRotationTime(cfg).toISOString()
+        ? occurrence(cfg, new Date(), "next").toISOString()
         : null,
       boostUnitPrice: cfg.boostUnitPrice,
       cycle: pastRotations + 1,
@@ -488,8 +460,8 @@ export class StructurePackRotationService {
         | "gracePeriodMinutes"
       >
     >,
-  ): Promise<StructurePackRotationConfig> {
-    const current = await Q.structure.pack.rotation.config.getOrCreateDefault();
+  ): Promise<RotationConfig> {
+    const current = await this.getConfig();
     const disabling = current.enabled && data.enabled === false;
 
     const updated = await db.inTransaction(async (tx) => {
@@ -526,28 +498,13 @@ export class StructurePackRotationService {
         }
       }
 
-      return next;
+      return toRotationConfig(next);
     });
 
     this.scheduleNextRotation(updated);
     logger.info("Rotation config updated");
 
     return updated;
-  }
-
-  /** Returns a paginated list of past rotation records, ordered most-recent first. */
-  async getRotationHistory(
-    limit = 20,
-    offset = 0,
-  ): Promise<{ rows: StructurePackRotation[]; total: number }> {
-    const total = await Q.structure.pack.rotation.count();
-
-    const result = await Q.structure.pack.rotation.findAll(
-      {},
-      { limit, offset, orderBy: "rotatedAt", orderDirection: "desc" },
-    );
-
-    return { rows: result, total };
   }
 
   /**
@@ -564,13 +521,7 @@ export class StructurePackRotationService {
     }
 
     if (isFileOpsAllowed()) {
-      for (const mod of activePack.mods) {
-        const modPath = `${MODS_DIR}/${mod.fileName}`;
-        if (await fileExists(modPath)) {
-          await deleteFile(modPath);
-          logger.info(`Removed mod file: ${mod.fileName}`);
-        }
-      }
+      await removePackMods(activePack);
     } else {
       logger.info(
         "File ops not available, rotation cleared without file changes",
@@ -579,8 +530,7 @@ export class StructurePackRotationService {
 
     await Q.structure.pack.update({ id: activePack.id }, { isActive: false });
 
-    const cfg = await Q.structure.pack.rotation.config.getOrCreateDefault();
-    const cycleStart = computeCycleStart(cfg);
+    const { cycleStart } = await this.loadCycle();
     await Q.structure.pack.boost.clearCycleBoosts(cycleStart);
 
     logger.info(`Rotation cleared: deactivated pack "${activePack.name}"`);
@@ -601,6 +551,28 @@ export class StructurePackRotationService {
           "The author may have restricted API downloads.",
       );
     }
+  }
+
+  private async loadCycle(): Promise<RotationCycle> {
+    const cfg = await this.getConfig();
+    return { config: cfg, cycleStart: occurrence(cfg, new Date(), "previous") };
+  }
+
+  private async weighPool(
+    eligible: StructurePack[],
+    cycle: RotationCycle,
+  ): Promise<{ weights: WeightEntry[]; boostUnits: Map<number, number> }> {
+    const boosts = await Q.structure.pack.boost.getBoostsByPackForCycle(
+      cycle.cycleStart,
+    );
+    const boostUnits = new Map(boosts.map((b) => [b.packId, b.totalUnits]));
+    const weights = computeWeights(
+      eligible,
+      boostUnits,
+      cycle.config.timeWeightMultiplier,
+      cycle.config.boostWeightPerUnit,
+    );
+    return { weights, boostUnits };
   }
 
   private async getLastRotation() {

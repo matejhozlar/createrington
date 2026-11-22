@@ -200,23 +200,10 @@ export class LauncherPackReleaseService {
       const clientEntries = manifest.entries.filter(
         (entry) => entry.sides !== "server",
       );
-      const stored = await launcherPackFileService.ensureResolved(
-        clientEntries.map((entry) => entry.fileId),
-        { recheckStored: true },
-      );
-      const unresolved = clientEntries.filter((entry) => {
-        const row = stored.get(entry.fileId);
-        return !row || packFolderForClass(row.project.classId) === null;
-      });
-      if (unresolved.length > 0) {
-        await this.reportBlocked(
-          modpack,
-          release,
-          `${unresolved.length} client file(s) could not be resolved on CurseForge (file ids ${unresolved
-            .slice(0, NOTICE_MAX_FILES)
-            .map((entry) => entry.fileId)
-            .join(", ")})`,
-        );
+      const { stored, unresolved } =
+        await this.resolveClientFiles(clientEntries);
+      if (unresolved !== null) {
+        await this.reportBlocked(modpack, release, unresolved);
         return;
       }
 
@@ -301,24 +288,16 @@ export class LauncherPackReleaseService {
         };
       }
 
-      const stored = await launcherPackFileService.ensureResolved(
-        snapshot.entries.map((entry) => entry.fileId),
-        { recheckStored: true },
+      const { stored, unresolved } = await this.resolveClientFiles(
+        snapshot.entries,
       );
-      const unresolved = snapshot.entries.filter((entry) => {
-        const row = stored.get(entry.fileId);
-        return !row || packFolderForClass(row.project.classId) === null;
-      });
-      if (unresolved.length > 0) {
+      if (unresolved !== null) {
         return {
           status: "blocked",
           reason: await this.reportBlocked(
             modpack,
             release,
-            `${unresolved.length} client file(s) could not be resolved on CurseForge (file ids ${unresolved
-              .slice(0, NOTICE_MAX_FILES)
-              .map((entry) => entry.fileId)
-              .join(", ")})`,
+            unresolved,
             SNAPSHOT_NEXT_STEP,
           ),
         };
@@ -416,6 +395,31 @@ export class LauncherPackReleaseService {
       );
     }
     return null;
+  }
+
+  private async resolveClientFiles(entries: { fileId: number }[]): Promise<{
+    stored: Map<number, CurseforgeFileWithProject>;
+    unresolved: string | null;
+  }> {
+    const stored = await launcherPackFileService.ensureResolved(
+      entries.map((entry) => entry.fileId),
+      { recheckStored: true },
+    );
+    const unresolvedIds = entries
+      .map((entry) => entry.fileId)
+      .filter((fileId) => {
+        const row = stored.get(fileId);
+        return !row || packFolderForClass(row.project.classId) === null;
+      });
+    return {
+      stored,
+      unresolved:
+        unresolvedIds.length > 0
+          ? `${unresolvedIds.length} client file(s) could not be resolved on CurseForge (file ids ${unresolvedIds
+              .slice(0, NOTICE_MAX_FILES)
+              .join(", ")})`
+          : null,
+    };
   }
 
   private async servesFromCurseforge(modpack: Modpack): Promise<boolean> {

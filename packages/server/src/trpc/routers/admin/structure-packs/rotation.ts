@@ -2,12 +2,7 @@ import { z } from "zod";
 import { errorMessage } from "@/errors";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
-import {
-  paginationInput,
-  buildPagination,
-  auditActor,
-  pageOffset,
-} from "@/trpc/utils";
+import { paginationInput, auditActor, paginateQuery } from "@/trpc/utils";
 import { getRotationService } from "./helpers";
 
 const rotationConfigRouter = router({
@@ -93,15 +88,13 @@ export const structurePackRotationRouter = router({
     .meta({ description: "Get paginated rotation history" })
     .input(z.object({ ...paginationInput() }))
     .query(async ({ input }) => {
-      const service = await getRotationService();
-      const { rows, total } = await service.getRotationHistory(
-        input.limit,
-        pageOffset(input),
+      const { rows, pagination } = await paginateQuery(
+        Q.structure.pack.rotation,
+        {},
+        input,
+        { orderBy: "rotatedAt", orderDirection: "desc" },
       );
-      return {
-        items: rows,
-        pagination: buildPagination(input.page, input.limit, total),
-      };
+      return { items: rows, pagination };
     }),
 
   config: rotationConfigRouter,
