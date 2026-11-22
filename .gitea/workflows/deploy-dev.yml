@@ -19,6 +19,8 @@ jobs:
   deploy:
     if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
     runs-on: hetzner
+    concurrency:
+      group: deploy-dev
     env:
       INFISICAL_API_URL: ${{ secrets.INFISICAL_API_URL }}
       INFISICAL_PROJECT_ID: ${{ vars.INFISICAL_PROJECT_ID }}
