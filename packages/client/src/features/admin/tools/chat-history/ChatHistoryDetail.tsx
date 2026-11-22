@@ -17,6 +17,7 @@ export function ChatHistoryDetail() {
   const transcriptQuery = useQuery(
     trpc.admin.chat.messages.list.queryOptions(
       invalidId ? skipToken : { sessionId: numericId },
+      { staleTime: 0 },
     ),
   );
   const messages = transcriptQuery.data?.messages ?? [];

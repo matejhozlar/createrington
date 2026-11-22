@@ -46,7 +46,7 @@ export function AdminChatHistory() {
   const historyQuery = useInfiniteQuery(
     trpc.admin.chat.sessions.list.infiniteQueryOptions(
       { limit: PAGE_SIZE },
-      { getNextPageParam: (page) => page.nextCursor },
+      { getNextPageParam: (page) => page.nextCursor, staleTime: 0 },
     ),
   );
   const sessions = historyQuery.data?.pages.flatMap((page) => page.items) ?? [];
