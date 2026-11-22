@@ -22,9 +22,9 @@ export class PlayerMinecraftStatsQueries extends PlayerMinecraftStatsBaseQueries
   /**
    * Batch upsert stats for multiple players on a single server, then rebuild
    * the stat totals of every player whose stats were inserted or changed. Must
-   * run inside a transaction (`db.inTransaction`) so both commit together. Rows whose stats and data version are unchanged are
-   * left untouched (updated_at included), so a re-import of identical files
-   * writes nothing.
+   * run inside a transaction (`db.inTransaction`) so both commit together.
+   * Rows whose stats and data version are unchanged are left untouched
+   * (updated_at included), so a re-import of identical files writes nothing.
    *
    * @returns The Minecraft UUIDs whose stats were inserted or changed
    */

@@ -1795,14 +1795,12 @@ export abstract class BaseQueries<
    * @returns New instance using the transaction client
    *
    * @example
-   * import { transaction } from "@/db/utils/transactions";
    * import { PlayerQueries } from "@/db/queries/player";
    *
-   * await transaction(db, async (client) => {
-   *    const queries = new PlayerQueries(db).useClient(client);
-   *    await queries.create({...});
-   *    await queries.balance.create({...});
-   * })
+   * const client = await pool.connect();
+   * const queries = new PlayerQueries(pool).useClient(client);
+   *
+   * For an ordinary transaction use `db.inTransaction(async (tx) => ...)`.
    */
   useClient(client: PoolClient): this {
     const Constructor = this.constructor as new (db: Pool | PoolClient) => this;

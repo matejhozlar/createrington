@@ -1,29 +1,4 @@
-import type { Pool, PoolClient } from "pg";
-
-export async function transaction<T>(
-  db: Pool,
-  callback: (client: PoolClient) => Promise<T>,
-): Promise<T> {
-  const client = await db.connect();
-
-  try {
-    await client.query("BEGIN");
-    logger.debug("Transaction started");
-
-    const result = await callback(client);
-
-    await client.query("COMMIT");
-    logger.debug("Transaction committed");
-
-    return result;
-  } catch (error) {
-    await client.query("ROLLBACK");
-    logger.error("Transaction rolled back:", error);
-    throw error;
-  } finally {
-    client.release();
-  }
-}
+import type { PoolClient } from "pg";
 
 const SAVEPOINT_NAME_RE = /^[A-Za-z_][A-Za-z0-9_]{0,62}$/;
 
