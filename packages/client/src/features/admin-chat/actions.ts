@@ -59,6 +59,12 @@ export type AdminChatAction =
   | PlanCreateAction
   | PlanUpdateAction;
 
+export function isPlanAction(
+  action: AdminChatAction,
+): action is PlanCreateAction | PlanUpdateAction {
+  return action.type === "plan_create" || action.type === "plan_update";
+}
+
 export interface ChatActionRecord {
   id: number;
   sessionId: number;

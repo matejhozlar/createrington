@@ -9,9 +9,15 @@ import {
   PENDING_COMPONENTS_KEY,
   INSERT_COMPONENTS_EVENT,
   describeAction,
+  isPlanAction,
   type AdminChatAction,
   type HighlightAction,
 } from "../actions";
+import {
+  readActionState,
+  saveActionState,
+  type ActionState,
+} from "../actionState";
 import { usePlanAction } from "../hooks/use-plan-action";
 import { EmbedActionPreview } from "./EmbedActionPreview";
 import { PlanActionPreview } from "./PlanActionPreview";
@@ -78,30 +84,19 @@ export function ActionCard({
   navigate,
 }: ActionCardProps): React.JSX.Element {
   const toast = useToastActions();
-  const persistKey = `admin-chat-action:${storageKey}`;
-  const [state, setState] = useState<"pending" | "applied" | "dismissed">(
-    () => {
-      try {
-        const v = sessionStorage.getItem(persistKey);
-        if (v === "applied" || v === "dismissed") return v;
-      } catch {}
-      return "pending";
-    },
+  const [state, setState] = useState<ActionState>(() =>
+    readActionState(action, storageKey),
   );
 
   const setPersistent = useCallback(
     (next: "applied" | "dismissed") => {
       setState(next);
-      try {
-        sessionStorage.setItem(persistKey, next);
-      } catch {}
+      saveActionState(action, storageKey, next);
     },
-    [persistKey],
+    [action, storageKey],
   );
 
   const plan = usePlanAction();
-  const isPlanAction =
-    action.type === "plan_create" || action.type === "plan_update";
 
   const onApply = (): void => {
     if (action.type === "highlight") {
@@ -117,7 +112,7 @@ export function ActionCard({
       setPersistent("applied");
       return;
     }
-    if (isPlanAction) {
+    if (isPlanAction(action)) {
       void plan.apply(action).then(
         (id) => {
           setPersistent("applied");
@@ -161,9 +156,7 @@ export function ActionCard({
       {action.type === "insert_components" && (
         <ComponentsActionPreview components={action.components} />
       )}
-      {(action.type === "plan_create" || action.type === "plan_update") && (
-        <PlanActionPreview action={action} />
-      )}
+      {isPlanAction(action) && <PlanActionPreview action={action} />}
       <div className="flex items-center gap-1.5">
         {state === "pending" && (
           <>
@@ -191,7 +184,7 @@ export function ActionCard({
             <span className="text-[0.6875rem] italic text-muted-foreground">
               Applied
             </span>
-            {!isPlanAction && (
+            {!isPlanAction(action) && (
               <Button size="xs" variant="ghost" onClick={onApply} type="button">
                 <RotateCcw size={12} />
                 Re-apply
