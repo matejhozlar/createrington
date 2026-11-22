@@ -1,4 +1,5 @@
 import { Q } from "@/db";
+import { UniqueViolationError } from "@/db/utils";
 import { BadRequestError, ConflictError } from "@/errors";
 import { fetchGuildMember } from "@/discord/utils/fetch-guild-member";
 import { RoleManager } from "@/discord/utils/roles/role-manager";
@@ -39,7 +40,14 @@ class AdminRoleService {
 
     const player = await Q.player.find({ discordId });
 
-    await Q.admin.create({ discordId });
+    try {
+      await Q.admin.create({ discordId });
+    } catch (error) {
+      if (error instanceof UniqueViolationError) {
+        throw new ConflictError("User is already an admin");
+      }
+      throw error;
+    }
     adminStatusService.invalidate(discordId);
 
     let discordRoleAdded = false;

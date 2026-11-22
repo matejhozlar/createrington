@@ -73,6 +73,7 @@ vi.mock("@/services/mc-server/servers", () => ({
 }));
 
 import { TRPCError } from "@trpc/server";
+import { UniqueViolationError } from "@/db/utils";
 import { ownerAdminsRouter } from "@/trpc/routers/owner/admins";
 import { adminContext } from "@/tests/helpers/trpc";
 
@@ -185,6 +186,21 @@ describe("owner.admins.promote", () => {
       message: "User is already an admin",
     });
     expect(Q.admin.create).not.toHaveBeenCalled();
+  });
+
+  it("refuses a promote that loses the race to a concurrent one", async () => {
+    Q.admin.create.mockRejectedValueOnce(
+      new UniqueViolationError("duplicate key", "admin_pkey"),
+    );
+
+    const error = await rejection(owner.promote({ discordId: TARGET_ID }));
+
+    expect(error).toMatchObject({
+      code: "CONFLICT",
+      message: "User is already an admin",
+    });
+    expect(assignRole).not.toHaveBeenCalled();
+    expect(Q.admin.log.action.logAction).not.toHaveBeenCalled();
   });
 
   it("still promotes when Discord cannot be reached", async () => {
