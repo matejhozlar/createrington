@@ -216,7 +216,7 @@ describe("user.account.deleteAccount", () => {
 
   it("deletes the player with their tickets as the user, then kicks them from Discord", async () => {
     const tx = { ticket: { deleteAll: vi.fn() } };
-    deletePlayer.mockImplementation(
+    deletePlayer.mockImplementationOnce(
       async (
         _id: unknown,
         options: { beforeDelete: (tx: unknown) => Promise<void> },
@@ -240,7 +240,7 @@ describe("user.account.deleteAccount", () => {
   });
 
   it("still succeeds when the Discord kick fails", async () => {
-    kick.mockRejectedValue(new Error("missing permissions"));
+    kick.mockRejectedValueOnce(new Error("missing permissions"));
 
     await expect(
       callerFor(discordId).deleteAccount({ confirmation }),
