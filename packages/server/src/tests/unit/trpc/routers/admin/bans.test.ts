@@ -37,6 +37,7 @@ vi.mock("@/services", () => ({
   }),
   Services: {},
 }));
+
 vi.mock("@/services/auth/session/session.service", () => ({
   sessionService: { revokeAllForUser },
 }));
@@ -56,11 +57,21 @@ vi.mock("@/discord/constants", () => ({
     Messages: { send: vi.fn() },
   },
 }));
-vi.mock("@/discord/embeds", () => ({
-  EmbedColors: { Success: 0 },
-  EmbedPresets: { plain: () => ({ build: () => [] }) },
-}));
+vi.mock("@/discord/embeds", () => {
+  const embed = () => ({ build: () => [] });
+  return {
+    EmbedPresets: {
+      bans: {
+        temporary: embed,
+        permanent: embed,
+        unbanned: embed,
+        autoUnbanned: embed,
+      },
+    },
+  };
+});
 
+import { getService } from "@/services";
 import { bansRouter } from "@/trpc/routers/admin/players/bans";
 import { BAN_REASON_MAX_LENGTH } from "@createrington/shared/admin-reason";
 import { adminContext } from "@/tests/helpers/trpc";
@@ -79,6 +90,9 @@ const caller = bansRouter.createCaller(
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(getService).mockResolvedValue({
+    guilds: { cache: { first: () => undefined } },
+  } as never);
   Q.player.get.mockResolvedValue(PLAYER);
   Q.player.ban.get.mockResolvedValue({
     id: 1,
@@ -142,7 +156,7 @@ describe("admin.players.bans.issueTemporary", () => {
     rcon.banAll.mockRejectedValue(new Error("ban failed on: Rails 'n Sails"));
 
     await expect(caller.issueTemporary(input)).rejects.toMatchObject({
-      code: "BAD_GATEWAY",
+      code: "SERVICE_UNAVAILABLE",
     });
     expect(rcon.pardonAll).toHaveBeenCalledWith(PLAYER.minecraftUsername);
     expect(revokeAllForUser).not.toHaveBeenCalled();
@@ -156,6 +170,15 @@ describe("admin.players.bans.issueTemporary", () => {
 
     await expect(caller.issueTemporary(input)).rejects.toThrow("commit failed");
     expect(rcon.pardonAll).toHaveBeenCalledWith(PLAYER.minecraftUsername);
+  });
+
+  it("bans while the Discord bot is unavailable", async () => {
+    vi.mocked(getService).mockRejectedValue(new Error("bot offline"));
+
+    await expect(caller.issueTemporary(input)).resolves.toMatchObject({
+      ban: { id: 1 },
+    });
+    expect(rcon.banAll).toHaveBeenCalled();
   });
 
   it("leaves the game alone when the ban is refused before the in-game step", async () => {
@@ -189,7 +212,7 @@ describe("admin.players.bans.issuePermanent", () => {
     rcon.banAll.mockRejectedValue(new Error("ban failed on: Rails 'n Sails"));
 
     await expect(caller.issuePermanent(input)).rejects.toMatchObject({
-      code: "BAD_GATEWAY",
+      code: "SERVICE_UNAVAILABLE",
     });
     expect(rcon.pardonAll).toHaveBeenCalledWith(PLAYER.minecraftUsername);
     expect(rcon.whitelistAll).toHaveBeenLastCalledWith(
@@ -208,7 +231,7 @@ describe("admin.players.bans.unban", () => {
     );
 
     await expect(caller.unban(input)).rejects.toMatchObject({
-      code: "BAD_GATEWAY",
+      code: "SERVICE_UNAVAILABLE",
     });
     expect(rcon.banAll).toHaveBeenCalledWith(
       PLAYER.minecraftUsername,
@@ -226,7 +249,7 @@ describe("admin.players.bans.unban", () => {
     rcon.pardonAll.mockRejectedValue(new Error("pardon failed"));
 
     await expect(caller.unban(input)).rejects.toMatchObject({
-      code: "BAD_GATEWAY",
+      code: "SERVICE_UNAVAILABLE",
     });
     expect(rcon.banAll).toHaveBeenCalledWith(
       PLAYER.minecraftUsername,
