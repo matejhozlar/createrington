@@ -95,11 +95,10 @@ function isCategory(value: string): value is PlanningCategory {
 }
 
 /**
- * Turns a Discord discussion into an entry on the planning board through a
- * claude-automation planning session. The session is sent the discussion and
- * the current board and only proposes: a new card, a comment for an existing
- * card, or nothing. Writing to the board happens here, in `apply`, as the
- * admin who asked.
+ * Turns a Discord discussion into a plan through a claude-automation planning
+ * session. The session is sent the discussion and the existing plans and only
+ * proposes: a new plan, a comment for an existing plan, or nothing. Writing
+ * to planning happens here, in `apply`, as the admin who asked.
  */
 export class PlanningIntakeService {
   private readonly sessions = new AutomationSessionClient<
@@ -123,8 +122,8 @@ export class PlanningIntakeService {
   }
 
   /**
-   * Writes a proposal to the board: a new draft, or a comment on the item it
-   * names. Throws when the category is unknown or the card is gone.
+   * Writes a proposal to planning: a new draft, or a comment on the plan it
+   * names. Throws when the category is unknown or the plan is gone.
    */
   async apply(
     proposal: PlanningProposal,
