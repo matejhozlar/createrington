@@ -13,9 +13,9 @@ import { useMentionResolver } from "@/features/admin/hooks/use-mention-resolver"
 import { DiscordMarkdown } from "@/features/admin/tools/embed-builder/components/DiscordMarkdown";
 import { useMutation } from "@tanstack/react-query";
 import { Textarea } from "@/components/ui/textarea";
+import type { FaqMatchMode } from "@createrington/shared/faq";
 
 type FaqEntry = RouterOutput["admin"]["faq"]["list"]["items"][number];
-type MatchMode = "keywords" | "regex";
 
 interface EditFaqModalProps {
   open: boolean;
@@ -40,9 +40,7 @@ export function EditFaqModal({ open, onClose, entry }: EditFaqModalProps) {
   const mentionResolver = useMentionResolver();
   const responseRef = useRef<HTMLTextAreaElement>(null);
   const [title, setTitle] = useState(entry.title);
-  const [matchMode, setMatchMode] = useState<MatchMode>(
-    (entry.matchMode as MatchMode) || "keywords",
-  );
+  const [matchMode, setMatchMode] = useState<FaqMatchMode>(entry.matchMode);
   const [pattern, setPattern] = useState(entry.pattern);
   const [response, setResponse] = useState(entry.response);
   const [priority, setPriority] = useState(entry.priority);

@@ -1,21 +1,5 @@
 import { formatMoney } from "@createrington/shared/format";
 
-export enum BalanceTransactionType {
-  TRANSFER_SEND = "transfer_send",
-  TRANSFER_RECEIVE = "transfer_receive",
-  DEPOSIT = "deposit",
-  WITHDRAW = "withdraw",
-  ADMIN_GRANT = "admin_grant",
-  ADMIN_DEDUCT = "admin_deduct",
-  ADMIN_SET = "admin_set",
-  PURCHASE = "purchase",
-  REWARD = "reward",
-  REFUND = "refund",
-  GALLERY_REWARD = "gallery_reward",
-  CRYPTO_BUY = "crypto_buy",
-  CRYPTO_SELL = "crypto_sell",
-}
-
 /**
  * Conversion and validation helpers for player balances. Balances are stored
  * as bigint with 3 implicit decimal places (1.000 = 1000 in storage). All

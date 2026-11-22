@@ -2,7 +2,7 @@ import { z } from "zod";
 import { guildChannelsProcedure } from "../guild-channels";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q, db } from "@/db";
-import type { AdminActionType } from "@/db/queries/admin/log/action";
+import type { AdminActionType } from "@createrington/shared/admin-action";
 import {
   findOrThrow,
   auditActor,

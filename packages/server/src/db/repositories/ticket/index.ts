@@ -1,5 +1,4 @@
 import type { TicketMetadata } from "@/services/discord/tickets/types";
-import { TicketUserAction } from "@/db/utils/ticket";
 import type { Ticket, TicketCreate } from "@/generated/db";
 import { db, Q } from "@/db/pool";
 
@@ -26,7 +25,7 @@ export class TicketRepository {
 
       await tx.ticket.action.create({
         ticketId: created.id,
-        actionType: TicketUserAction.CREATED,
+        actionType: "created",
         performedByDiscordId: data.creatorDiscordId,
         metadata: {
           ticketNumber: created.ticketNumber,
@@ -65,7 +64,7 @@ export class TicketRepository {
 
       await tx.ticket.action.create({
         ticketId,
-        actionType: TicketUserAction.CLOSED,
+        actionType: "closed",
         performedByDiscordId: closedBy,
       });
 
@@ -99,7 +98,7 @@ export class TicketRepository {
 
       await tx.ticket.action.create({
         ticketId,
-        actionType: TicketUserAction.REOPENED,
+        actionType: "reopened",
         performedByDiscordId: reopenedBy,
       });
 
@@ -128,7 +127,7 @@ export class TicketRepository {
 
       await tx.ticket.action.create({
         ticketId,
-        actionType: TicketUserAction.DELETED,
+        actionType: "deleted",
         performedByDiscordId: deletedBy,
         metadata: {
           deletedAt: deletedAt.toISOString(),

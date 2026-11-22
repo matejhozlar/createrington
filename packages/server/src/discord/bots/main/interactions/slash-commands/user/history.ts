@@ -1,4 +1,5 @@
 import { Q, balanceRepo } from "@/db";
+import type { BalanceTransactionType } from "@createrington/shared/balance";
 import { BalanceUtils } from "@/db/utils/balance";
 import { EmbedPresets } from "@/discord/embeds";
 import { replyError } from "@/discord/utils/interaction-reply";
@@ -16,7 +17,7 @@ import type {
 
 const TRANSACTION_LIMIT = 10;
 
-const typeLabels: Record<string, string> = {
+const typeLabels: Record<BalanceTransactionType, string> = {
   transfer_send: "Transfer (sent)",
   transfer_receive: "Transfer (received)",
   deposit: "Deposit",
@@ -25,13 +26,12 @@ const typeLabels: Record<string, string> = {
   admin_deduct: "Admin Deduct",
   admin_set: "Admin Set",
   purchase: "Purchase",
-  sale: "Sale",
   reward: "Reward",
   refund: "Refund",
+  gallery_reward: "Gallery Reward",
   lottery_entry: "Lottery Entry",
   lottery_win: "Lottery Win",
   lottery_refund: "Lottery Refund",
-  other: "Other",
 };
 
 const data = new SlashCommandBuilder()
@@ -79,7 +79,7 @@ async function execute(
     const isPositive = tx.amount >= 0n;
     const sign = isPositive ? "+" : "";
     const amount = BalanceUtils.formatMoney(tx.amount);
-    const label = typeLabels[tx.transactionType] ?? tx.transactionType;
+    const label = typeLabels[tx.transactionType];
     const desc = tx.description ? ` - ${tx.description}` : "";
 
     return `${discordTimestamp(tx.createdAt, "R")} **${sign}${amount}** ${label}${desc}`;

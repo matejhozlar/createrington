@@ -11,7 +11,10 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
-import { partyMemberRankEnum } from "./enums";
+import {
+  partyMemberRankEnum,
+  serverMaintenanceScheduleStatusEnum,
+} from "./enums";
 
 // --- server (referenced by many tables) ---
 
@@ -39,7 +42,9 @@ export const serverMaintenanceSchedule = pgTable(
     serverId: integer("server_id")
       .notNull()
       .references(() => server.id),
-    status: text("status").notNull().default("scheduled"),
+    status: serverMaintenanceScheduleStatusEnum("status")
+      .notNull()
+      .default("scheduled"),
     scheduledAt: timestamp("scheduled_at", { withTimezone: true }).notNull(),
     estimatedMinutes: integer("estimated_minutes"),
     startedAt: timestamp("started_at", { withTimezone: true }),

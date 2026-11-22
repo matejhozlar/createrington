@@ -1,4 +1,5 @@
 import { db, Q } from "@/db/pool";
+import type { BalanceTransactionType } from "@createrington/shared/balance";
 import { NotFoundError } from "@/db/utils";
 import { DatabaseTable, type DatabaseQueries } from "@/generated/db";
 import type {
@@ -7,7 +8,7 @@ import type {
   PlayerBalanceTransaction,
 } from "@/generated/db";
 import { BasePlayerRepository, type PlayerIdentifier } from "../player/base";
-import { BalanceTransactionType, BalanceUtils } from "@/db/utils/balance";
+import { BalanceUtils } from "@/db/utils/balance";
 
 export interface BalanceMutationOptions {
   metadata?: Record<string, unknown>;
@@ -20,19 +21,19 @@ type LockedOptions = Omit<BalanceMutationOptions, "tx">;
 const ADMIN_BALANCE_ACTIONS = {
   grant: {
     mutation: "addLocked",
-    transactionType: BalanceTransactionType.ADMIN_GRANT,
+    transactionType: "admin_grant",
     actionType: "balance_grant",
     logsAmount: true,
   },
   deduct: {
     mutation: "deductLocked",
-    transactionType: BalanceTransactionType.ADMIN_DEDUCT,
+    transactionType: "admin_deduct",
     actionType: "balance_deduct",
     logsAmount: true,
   },
   set: {
     mutation: "setLocked",
-    transactionType: BalanceTransactionType.ADMIN_SET,
+    transactionType: "admin_set",
     actionType: "balance_set",
     logsAmount: false,
   },
@@ -75,7 +76,7 @@ export class BalanceRepository extends BasePlayerRepository {
       amount: bigint;
       balanceBefore: bigint;
       balanceAfter: bigint;
-      transactionType: string;
+      transactionType: BalanceTransactionType;
       description?: string;
       relatedPlayerUuid?: string;
       metadata?: Record<string, unknown>;
@@ -144,7 +145,7 @@ export class BalanceRepository extends BasePlayerRepository {
           amount: balanceBigInt,
           balanceBefore: 0n,
           balanceAfter: balanceBigInt,
-          transactionType: BalanceTransactionType.ADMIN_GRANT,
+          transactionType: "admin_grant",
           description: "Initial balance",
         });
       }
@@ -396,7 +397,7 @@ export class BalanceRepository extends BasePlayerRepository {
         amount: -amountBigInt,
         balanceBefore: senderBalance,
         balanceAfter: newSenderBalance,
-        transactionType: BalanceTransactionType.TRANSFER_SEND,
+        transactionType: "transfer_send",
         description: description || `Transfer to ${recipientUuid}`,
         relatedPlayerUuid: recipientUuid,
       });
@@ -406,7 +407,7 @@ export class BalanceRepository extends BasePlayerRepository {
         amount: amountBigInt,
         balanceBefore: recipientBalance,
         balanceAfter: newRecipientBalance,
-        transactionType: BalanceTransactionType.TRANSFER_RECEIVE,
+        transactionType: "transfer_receive",
         description: description || `Transfer from ${senderUuid}`,
         relatedPlayerUuid: senderUuid,
       });
@@ -554,7 +555,7 @@ export class BalanceRepository extends BasePlayerRepository {
       amount: string;
       balanceBefore: string;
       balanceAfter: string;
-      transactionType: string;
+      transactionType: BalanceTransactionType;
       description: string | null;
       createdAt: Date;
       metadata: Record<string, unknown>;

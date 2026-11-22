@@ -1,6 +1,5 @@
 import config from "@/config";
 import { Q, db, balanceRepo } from "@/db";
-import { BalanceTransactionType } from "@/db/utils/balance";
 import { BadRequestError, errorMessage } from "@/errors";
 import {
   isFileOpsAllowed,
@@ -360,7 +359,7 @@ export class StructurePackRotationService {
         { discordId },
         cost,
         `Structure pack boost: ${units} unit(s) for "${pack.name}"`,
-        BalanceTransactionType.PURCHASE,
+        "purchase",
         { metadata: { packId, units, packName: pack.name }, tx },
       );
 
@@ -506,7 +505,7 @@ export class StructurePackRotationService {
             { discordId: boost.discordId },
             boost.currencySpent,
             `Structure pack boost refund: ${boost.units} unit(s), rotations disabled`,
-            BalanceTransactionType.REFUND,
+            "refund",
             {
               metadata: {
                 packId: boost.packId,

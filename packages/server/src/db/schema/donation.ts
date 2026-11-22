@@ -8,7 +8,7 @@ import {
   timestamp,
   index,
 } from "drizzle-orm/pg-core";
-import { donationTypeEnum } from "./enums";
+import { donationStatusEnum, donationTypeEnum } from "./enums";
 
 export const donation = pgTable(
   "donation",
@@ -21,7 +21,7 @@ export const donation = pgTable(
     stripeSessionId: text("stripe_session_id").notNull().unique(),
     stripeCustomerId: text("stripe_customer_id"),
     stripeSubscriptionId: text("stripe_subscription_id"),
-    status: text("status").notNull().default("pending"),
+    status: donationStatusEnum("status").notNull().default("pending"),
     supporterRoleGranted: boolean("supporter_role_granted")
       .notNull()
       .default(false),

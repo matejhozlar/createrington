@@ -2,7 +2,6 @@ import { describe, it, expect, afterEach, afterAll } from "vitest";
 import { db, Q, ticketRepo } from "@/db";
 import { UniqueViolationError } from "@/db/utils/errors";
 import { TicketType } from "@/services/discord/tickets";
-import { TicketUserAction } from "@/db/utils/ticket";
 import { cleanupTestPool } from "@/tests/helpers/db";
 
 const CREATOR = "900000000000000777";
@@ -40,7 +39,7 @@ describe("TicketRepository ticket numbers", () => {
 
     expect(ticket.ticketNumber).toBe(ticketNumber);
     const [action] = await Q.ticket.action.findAll({ ticketId: ticket.id });
-    expect(action.actionType).toBe(TicketUserAction.CREATED);
+    expect(action.actionType).toBe("created");
     expect(action.metadata).toMatchObject({ ticketNumber });
   });
 
@@ -82,10 +81,10 @@ describe("TicketRepository lifecycle", () => {
     expect(deleted.status).toBe("deleted");
 
     expect(await actionTypes(ticket.id)).toEqual([
-      TicketUserAction.CREATED,
-      TicketUserAction.CLOSED,
-      TicketUserAction.REOPENED,
-      TicketUserAction.DELETED,
+      "created",
+      "closed",
+      "reopened",
+      "deleted",
     ]);
   });
 
@@ -103,7 +102,7 @@ describe("TicketRepository lifecycle", () => {
     const error = await closing;
     expect(error).toBeInstanceOf(Error);
     expect((error as Error).message).toMatch(/already closed/);
-    expect(await actionTypes(ticket.id)).toEqual([TicketUserAction.CREATED]);
+    expect(await actionTypes(ticket.id)).toEqual(["created"]);
   });
 
   it("leaves the ticket open when the CLOSED audit row cannot be written", async () => {
@@ -115,6 +114,6 @@ describe("TicketRepository lifecycle", () => {
 
     expect(error).toBeInstanceOf(Error);
     expect((await Q.ticket.get({ id: ticket.id })).status).toBe("open");
-    expect(await actionTypes(ticket.id)).toEqual([TicketUserAction.CREATED]);
+    expect(await actionTypes(ticket.id)).toEqual(["created"]);
   });
 });

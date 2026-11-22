@@ -601,32 +601,20 @@ INSERT INTO public.ticket_action (
 -- Ticket 1001
 (1, 'created', '123456789012345690', NOW() - INTERVAL '2 days',
  '{"note":"Ticket opened via /ticket","type":"general"}'::jsonb),
-(1, 'message', '123456789012345690', NOW() - INTERVAL '1 day 23 hours',
- '{"content":"I linked Discord but bot says UUID missing."}'::jsonb),
-(1, 'staff_reply', '818819241666281503', NOW() - INTERVAL '1 day 22 hours',
- '{"content":"Run /verify in #verify and paste the code here."}'::jsonb),
 
 -- Ticket 1002
 (2, 'created', '123456789012345681', NOW() - INTERVAL '6 hours',
  '{"note":"Report opened from ticket panel","type":"report"}'::jsonb),
-(2, 'message', '123456789012345681', NOW() - INTERVAL '5 hours 40 minutes',
- '{"content":"Spawn area broken, chests emptied. Accused: Mumbo."}'::jsonb),
-(2, 'staff_reply', '547450242090532874', NOW() - INTERVAL '5 hours 15 minutes',
- '{"content":"Thanks — we’re checking logs. Any screenshots?"}'::jsonb),
 
 -- Ticket 1003
 (3, 'created', '123456789012345691', NOW() - INTERVAL '10 days',
  '{"note":"Opened for connection help","type":"general"}'::jsonb),
-(3, 'staff_reply', '547450242090532874', NOW() - INTERVAL '9 days 23 hours',
- '{"content":"Looks like you weren’t whitelisted yet; applying now."}'::jsonb),
 (3, 'closed', '547450242090532874', NOW() - INTERVAL '9 days 20 hours',
  '{"resolution":"Resolved"}'::jsonb),
 
 -- Ticket 1004
 (4, 'created', '123456789012345688', NOW() - INTERVAL '20 days',
  '{"note":"Harassment report submitted","type":"report","accused":"Herobrine"}'::jsonb),
-(4, 'staff_reply', '818819241666281503', NOW() - INTERVAL '19 days 23 hours',
- '{"content":"We reviewed logs; action will be taken."}'::jsonb),
 (4, 'closed', '818819241666281503', NOW() - INTERVAL '19 days 22 hours',
  '{"resolution":"Warning issued","accused":"Herobrine"}'::jsonb),
 
@@ -691,23 +679,23 @@ INSERT INTO discord_sticky_message (channel_id, message_id) VALUES
 
 INSERT INTO player_balance_transaction (player_minecraft_uuid, amount, balance_before, balance_after, transaction_type, description, related_player_uuid, metadata) VALUES
 -- Steve: earning and spending
-('550e8400-e29b-41d4-a716-446655440001', 50000, 0, 50000, 'welcome_bonus', 'Welcome bonus for new player', NULL, '{}'),
-('550e8400-e29b-41d4-a716-446655440001', 5000, 50000, 55000, 'playtime_reward', 'Playtime milestone reward', NULL, '{}'),
-('550e8400-e29b-41d4-a716-446655440001', 200500, 55000, 255500, 'playtime_reward', 'Weekly playtime reward', NULL, '{"week":"2026-W04"}'),
-('550e8400-e29b-41d4-a716-446655440001', -5000, 255500, 250500, 'transfer', 'Sent to Alex', '550e8400-e29b-41d4-a716-446655440002', '{}'),
-('550e8400-e29b-41d4-a716-446655440001', 1000000, 250500, 1250500, 'admin_adjust', 'Admin balance correction', NULL, '{"admin_discord_id":"818819241666281503","reason":"compensation for lost items"}'),
+('550e8400-e29b-41d4-a716-446655440001', 50000, 0, 50000, 'admin_grant', 'Welcome bonus for new player', NULL, '{}'),
+('550e8400-e29b-41d4-a716-446655440001', 5000, 50000, 55000, 'reward', 'Playtime milestone reward', NULL, '{}'),
+('550e8400-e29b-41d4-a716-446655440001', 200500, 55000, 255500, 'reward', 'Weekly playtime reward', NULL, '{"week":"2026-W04"}'),
+('550e8400-e29b-41d4-a716-446655440001', -5000, 255500, 250500, 'transfer_send', 'Sent to Alex', '550e8400-e29b-41d4-a716-446655440002', '{}'),
+('550e8400-e29b-41d4-a716-446655440001', 1000000, 250500, 1250500, 'admin_grant', 'Admin balance correction', NULL, '{"admin_discord_id":"818819241666281503","reason":"compensation for lost items"}'),
 
 -- Alex: receiving and trading
-('550e8400-e29b-41d4-a716-446655440002', 50000, 0, 50000, 'welcome_bonus', 'Welcome bonus for new player', NULL, '{}'),
-('550e8400-e29b-41d4-a716-446655440002', 5000, 50000, 55000, 'transfer', 'Received from Steve', '550e8400-e29b-41d4-a716-446655440001', '{}'),
-('550e8400-e29b-41d4-a716-446655440002', 3365750, 55000, 3420750, 'playtime_reward', 'Accumulated playtime rewards', NULL, '{}'),
+('550e8400-e29b-41d4-a716-446655440002', 50000, 0, 50000, 'admin_grant', 'Welcome bonus for new player', NULL, '{}'),
+('550e8400-e29b-41d4-a716-446655440002', 5000, 50000, 55000, 'transfer_receive', 'Received from Steve', '550e8400-e29b-41d4-a716-446655440001', '{}'),
+('550e8400-e29b-41d4-a716-446655440002', 3365750, 55000, 3420750, 'reward', 'Accumulated playtime rewards', NULL, '{}'),
 
 -- Notch: high earner
-('550e8400-e29b-41d4-a716-446655440003', 50000, 0, 50000, 'welcome_bonus', 'Welcome bonus for new player', NULL, '{}'),
-('550e8400-e29b-41d4-a716-446655440003', 8949990, 50000, 8999990, 'shop_sale', 'Sold rare items at shop', NULL, '{"items":["minecraft:netherite_ingot","minecraft:elytra"]}'),
+('550e8400-e29b-41d4-a716-446655440003', 50000, 0, 50000, 'admin_grant', 'Welcome bonus for new player', NULL, '{}'),
+('550e8400-e29b-41d4-a716-446655440003', 8949990, 50000, 8999990, 'deposit', 'Sold rare items at shop', NULL, '{"items":["minecraft:netherite_ingot","minecraft:elytra"]}'),
 
 -- Newbie1: only welcome bonus
-('550e8400-e29b-41d4-a716-446655440013', 100000, 0, 100000, 'welcome_bonus', 'Welcome bonus for new player', NULL, '{}');
+('550e8400-e29b-41d4-a716-446655440013', 100000, 0, 100000, 'admin_grant', 'Welcome bonus for new player', NULL, '{}');
 
 -- ============================================================================
 -- PLAYER MINECRAFT STATS
@@ -752,27 +740,12 @@ HAVING GREATEST(LEAST(SUM(item.value::numeric), 9223372036854775807), 0)::bigint
 -- ============================================================================
 
 INSERT INTO reward_claim (player_minecraft_uuid, reward_type, claimed_at, claim_period_key, amount, metadata) VALUES
--- Daily login rewards
-('091b900c-4174-478c-900c-a0fe5a31a329', 'daily_login', NOW() - INTERVAL '1 day', to_char((NOW() - INTERVAL '1 day')::date, 'YYYY-MM-DD'), 1000, '{"streak":45}'),
-('091b900c-4174-478c-900c-a0fe5a31a329', 'daily_login', NOW() - INTERVAL '2 days', to_char((NOW() - INTERVAL '2 days')::date, 'YYYY-MM-DD'), 1000, '{"streak":44}'),
-('550e8400-e29b-41d4-a716-446655440001', 'daily_login', NOW() - INTERVAL '1 day', to_char((NOW() - INTERVAL '1 day')::date, 'YYYY-MM-DD'), 1000, '{"streak":12}'),
-('550e8400-e29b-41d4-a716-446655440002', 'daily_login', NOW() - INTERVAL '1 day', to_char((NOW() - INTERVAL '1 day')::date, 'YYYY-MM-DD'), 1000, '{"streak":8}'),
-('550e8400-e29b-41d4-a716-446655440003', 'daily_login', NOW() - INTERVAL '2 days', to_char((NOW() - INTERVAL '2 days')::date, 'YYYY-MM-DD'), 1000, '{"streak":30}'),
-
--- Weekly playtime rewards
-('091b900c-4174-478c-900c-a0fe5a31a329', 'weekly_playtime', NOW() - INTERVAL '3 days', '2026-W05', 25000, '{"hours_played":42,"week":"2026-W05"}'),
-('550e8400-e29b-41d4-a716-446655440001', 'weekly_playtime', NOW() - INTERVAL '3 days', '2026-W05', 15000, '{"hours_played":28,"week":"2026-W05"}'),
-('550e8400-e29b-41d4-a716-446655440007', 'weekly_playtime', NOW() - INTERVAL '3 days', '2026-W05', 10000, '{"hours_played":18,"week":"2026-W05"}'),
-
--- Vote rewards
-('550e8400-e29b-41d4-a716-446655440001', 'vote', NOW() - INTERVAL '1 day', to_char((NOW() - INTERVAL '1 day')::date, 'YYYY-MM-DD'), 500, '{"site":"minecraft-server-list"}'),
-('550e8400-e29b-41d4-a716-446655440002', 'vote', NOW() - INTERVAL '1 day', to_char((NOW() - INTERVAL '1 day')::date, 'YYYY-MM-DD'), 500, '{"site":"minecraft-server-list"}'),
-('550e8400-e29b-41d4-a716-446655440005', 'vote', NOW() - INTERVAL '2 days', to_char((NOW() - INTERVAL '2 days')::date, 'YYYY-MM-DD'), 500, '{"site":"minecraft-server-list"}'),
-
--- Event participation
-('550e8400-e29b-41d4-a716-446655440007', 'event', NOW() - INTERVAL '10 days', 'winter_games_2026', 50000, '{"event":"winter_games_2026","placement":1}'),
-('550e8400-e29b-41d4-a716-446655440001', 'event', NOW() - INTERVAL '10 days', 'winter_games_2026', 25000, '{"event":"winter_games_2026","placement":2}'),
-('550e8400-e29b-41d4-a716-446655440002', 'event', NOW() - INTERVAL '10 days', 'winter_games_2026', 10000, '{"event":"winter_games_2026","placement":3}');
+-- Daily rewards
+('091b900c-4174-478c-900c-a0fe5a31a329', 'daily', NOW() - INTERVAL '1 day', to_char((NOW() - INTERVAL '1 day')::date, 'YYYY-MM-DD'), 1000, '{"streak":45}'),
+('091b900c-4174-478c-900c-a0fe5a31a329', 'daily', NOW() - INTERVAL '2 days', to_char((NOW() - INTERVAL '2 days')::date, 'YYYY-MM-DD'), 1000, '{"streak":44}'),
+('550e8400-e29b-41d4-a716-446655440001', 'daily', NOW() - INTERVAL '1 day', to_char((NOW() - INTERVAL '1 day')::date, 'YYYY-MM-DD'), 1000, '{"streak":12}'),
+('550e8400-e29b-41d4-a716-446655440002', 'daily', NOW() - INTERVAL '1 day', to_char((NOW() - INTERVAL '1 day')::date, 'YYYY-MM-DD'), 1000, '{"streak":8}'),
+('550e8400-e29b-41d4-a716-446655440003', 'daily', NOW() - INTERVAL '2 days', to_char((NOW() - INTERVAL '2 days')::date, 'YYYY-MM-DD'), 1000, '{"streak":30}');
 
 
 -- ============================================================================
