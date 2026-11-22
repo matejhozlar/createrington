@@ -1,24 +1,7 @@
-import pg from "pg";
-import config from "@/config";
-import { DatabaseQueries, createQueryInstances } from "@/generated/db";
+import pool, { db, Q } from "./pool";
 import * as repositories from "./repositories";
-import { registerPgTypeParsers } from "./utils/pg-types";
 
-registerPgTypeParsers();
-
-const pool = new pg.Pool(config.database.pool);
-
-try {
-  await pool.query("SELECT 1");
-  logger.info("Connected to PostgreSQL database");
-} catch (error) {
-  logger.error("Failed to connect to DB:", error);
-  process.exit(1);
-}
-
-export const db = new DatabaseQueries(pool);
-
-export const Q = createQueryInstances(pool);
+export { db, Q };
 
 export const waitlistRepo = new repositories.WaitlistRepository();
 
@@ -38,7 +21,9 @@ export const playerBanRepo = new repositories.PlayerBanRepository();
 
 export const playerSessionRepo = new repositories.PlayerSessionRepository();
 
-export const playerBalanceRepo = new repositories.PlayerBalanceRepository();
+export const playerBalanceRepo = new repositories.PlayerBalanceRepository(
+  balanceRepo,
+);
 
 export const playerTicketRepo = new repositories.PlayerTicketRepository();
 

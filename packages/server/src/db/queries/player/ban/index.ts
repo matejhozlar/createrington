@@ -1,7 +1,6 @@
 import type { Pool, PoolClient } from "pg";
 import { PlayerBanBaseQueries } from "@/generated/db/player_ban.queries";
 import type { PlayerBan, PlayerBanRow } from "@createrington/shared/db";
-import { DatabaseTable } from "@/generated/db";
 import type { Granularity } from "@/db/utils";
 import { ACTIVE_BAN_WHERE, EXPIRED_BAN_WHERE } from "./sql";
 
@@ -155,7 +154,7 @@ export class PlayerBanQueries extends PlayerBanBaseQueries {
       : { playerMinecraftUuid, unbanned: false };
 
     return await this.findAll(filters, {
-      orderBy: DatabaseTable.PLAYER_BAN.CAMEL_FIELDS.BANNED_AT,
+      orderBy: "bannedAt",
       orderDirection: "desc",
     });
   }
@@ -257,7 +256,7 @@ export class PlayerBanQueries extends PlayerBanBaseQueries {
 
     return await this.findAll(undefined, {
       limit,
-      orderBy: DatabaseTable.PLAYER_BAN.CAMEL_FIELDS.BANNED_AT,
+      orderBy: "bannedAt",
       orderDirection: "desc",
     });
   }

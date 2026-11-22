@@ -1,4 +1,5 @@
-import { Q, waitlistRepo } from "@/db";
+import { Q } from "@/db";
+import { waitlistCapacityService } from "@/services/waitlist/capacity.service";
 import { waitlistService } from "@/services/waitlist/waitlist.service";
 import { RegistrationComponentPresets } from "@/discord/components/presets/registration";
 import { denyForeignVerificationChannel } from "@/discord/bots/main/registration/verification-channel";
@@ -16,7 +17,7 @@ async function renderCurrentState(
   const entry = await Q.waitlist.entry.find({ discordId });
 
   if (!entry || entry.status === "expired") {
-    const hasCapacity = await waitlistRepo.hasCapacity();
+    const hasCapacity = await waitlistCapacityService.hasCapacity();
     const card = hasCapacity
       ? RegistrationComponentPresets.idle({ memberMention })
       : entry
@@ -61,7 +62,7 @@ async function execute(interaction: ButtonInteraction): Promise<void> {
     case "join": {
       await interaction.deferUpdate();
 
-      const hasCapacity = await waitlistRepo.hasCapacity();
+      const hasCapacity = await waitlistCapacityService.hasCapacity();
       if (!hasCapacity) {
         await waitlistService.joinQueue({
           discordId,

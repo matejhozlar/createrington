@@ -1,5 +1,7 @@
 import { userMention } from "discord.js";
-import { Q, waitlistRepo } from "@/db";
+import { Q } from "@/db";
+import { updateProgressEmbed } from "./progress-embed";
+import { waitlistCapacityService } from "./capacity.service";
 import { Discord } from "@/discord/constants";
 import { RegistrationComponentPresets } from "@/discord/components/presets/registration";
 import { createVerificationChannel } from "@/discord/bots/main/registration/verification-channel";
@@ -85,7 +87,10 @@ export class WaitlistPromotionService {
     options: { enforceCapacity: boolean },
   ): Promise<{ reserved: boolean; notified: boolean }> {
     const reserved = await withSlotLock(async () => {
-      if (options.enforceCapacity && (await waitlistRepo.getFreeSlots()) <= 0) {
+      if (
+        options.enforceCapacity &&
+        (await waitlistCapacityService.getFreeSlots()) <= 0
+      ) {
         return false;
       }
       await Q.waitlist.entry.update(
@@ -107,7 +112,7 @@ export class WaitlistPromotionService {
       );
     }
 
-    await waitlistRepo.updateProgressEmbed(entry.id);
+    await updateProgressEmbed(entry.id);
 
     logger.info(
       `Promoted waitlist entry #${entry.id} (${entry.discordUsername})${promotedBy ? ` by admin ${promotedBy}` : " automatically"}${notified ? "" : " (member not notified)"}`,
@@ -243,7 +248,7 @@ export class WaitlistPromotionService {
       return 0;
     }
 
-    if ((await waitlistRepo.getFreeSlots()) <= 0) return 0;
+    if ((await waitlistCapacityService.getFreeSlots()) <= 0) return 0;
 
     const queued = await Q.waitlist.entry.findAll(
       { status: "queued" },

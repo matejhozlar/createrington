@@ -8,7 +8,8 @@ import {
 } from "@/trpc/utils";
 import { createRateLimit } from "@/trpc/middleware/rate-limit";
 import { topRoleHolderService } from "@/services/discord/role/top-role-holder.service";
-import { Q, playtimeRepo } from "@/db";
+import { Q } from "@/db";
+import { getPlayerActivity } from "@/services/playtime/activity";
 import { escapeLike } from "@/db/utils";
 import { mcUsername, mcUuid } from "@/utils/zod-schemas";
 import {
@@ -169,7 +170,7 @@ export const leaderboardsRouter = router({
     })
     .input(z.object({ minecraftUuid: mcUuid }))
     .query(async ({ input }) =>
-      playtimeRepo.getPlayerActivity(
+      getPlayerActivity(
         await findOrThrow(
           Q.player.find({ minecraftUuid: input.minecraftUuid }),
           "Player not found",

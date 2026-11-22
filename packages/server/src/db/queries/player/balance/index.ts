@@ -1,6 +1,6 @@
 import type { Pool, PoolClient } from "pg";
 import { PlayerBalanceBaseQueries } from "@/generated/db/player_balance.queries";
-import { BalanceUtils } from "@/db/repositories/balance/utils";
+import { BalanceUtils } from "@/db/utils/balance";
 
 export type BalanceLeaderboardEntry = {
   name: string;

@@ -1,7 +1,8 @@
 import config from "@/config";
 import type { Client, GuildMember } from "discord.js";
 import type { EventModule } from "@/discord/bots/common/loaders/event-loader";
-import { Q, waitlistRepo } from "@/db";
+import { Q } from "@/db";
+import { waitlistCapacityService } from "@/services/waitlist/capacity.service";
 import { RoleManager } from "@/discord/utils/roles/role-manager";
 import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
@@ -131,7 +132,7 @@ export async function execute(
           `Created verification channel ${verificationChannel.name} for ${member.user.tag}`,
         );
 
-        const hasCapacity = await waitlistRepo.hasCapacity();
+        const hasCapacity = await waitlistCapacityService.hasCapacity();
         const welcome = hasCapacity
           ? RegistrationComponentPresets.idle({ memberMention: `${member}` })
           : WaitlistComponentPresets.queueOffer({

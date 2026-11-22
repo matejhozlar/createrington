@@ -1,4 +1,4 @@
-import { Q } from "@/db";
+import { Q } from "@/db/pool";
 import type { Player } from "@createrington/shared/db";
 import type { DatabaseQueries } from "@/generated/db";
 

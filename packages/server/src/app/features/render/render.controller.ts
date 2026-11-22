@@ -1,8 +1,9 @@
 import type { Request, Response } from "express";
 import { getValidated } from "@/app/middleware/validation.middleware";
 import config from "@/config";
-import { Q, playerRepo, playtimeRepo } from "@/db";
-import { BalanceUtils } from "@/db/repositories/balance/utils";
+import { Q, playerRepo } from "@/db";
+import { getPlayerActivity } from "@/services/playtime/activity";
+import { BalanceUtils } from "@/db/utils/balance";
 import { formatPlaytime } from "@createrington/shared/format";
 import {
   formatStatCategory,
@@ -112,7 +113,7 @@ export class RenderController {
 
     const target = await Q.player.get({ discordId: player });
     const [activity, tags] = await Promise.all([
-      playtimeRepo.getPlayerActivity(target),
+      getPlayerActivity(target),
       partyTagCodes([target.minecraftUuid]),
     ]);
 

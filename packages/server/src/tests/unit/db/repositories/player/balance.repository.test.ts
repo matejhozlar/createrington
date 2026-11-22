@@ -6,19 +6,21 @@ const { findAllPlayers, adminGrant, adminDeduct } = vi.hoisted(() => ({
   adminDeduct: vi.fn(),
 }));
 
-vi.mock("@/db", () => ({
+vi.mock("@/db/pool", () => ({
   Q: { player: { findAll: findAllPlayers } },
-  player: {},
-  balanceRepo: { adminGrant, adminDeduct },
 }));
 
 import { PlayerBalanceRepository } from "@/db/repositories/player/balance";
+import type { BalanceRepository } from "@/db/repositories/balance";
 
 const STEVE = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const ALEX = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
 const GHOST = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
 
-const repo = new PlayerBalanceRepository();
+const repo = new PlayerBalanceRepository({
+  adminGrant,
+  adminDeduct,
+} as unknown as BalanceRepository);
 
 beforeEach(() => {
   vi.clearAllMocks();

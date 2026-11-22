@@ -8,7 +8,7 @@ import {
   vi,
 } from "vitest";
 import { Q, balanceRepo } from "@/db";
-import { BalanceTransactionType } from "@/db/repositories/balance";
+import { BalanceTransactionType } from "@/db/utils/balance";
 import { AppError, BadRequestError, ConflictError } from "@/errors";
 import {
   hashRequest,

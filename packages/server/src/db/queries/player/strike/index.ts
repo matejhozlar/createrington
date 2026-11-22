@@ -4,7 +4,6 @@ import type {
   PlayerStrike,
   StrikeClassification,
 } from "@createrington/shared/db";
-import { DatabaseTable } from "@/generated/db";
 import type { Granularity } from "@/db/utils";
 
 export interface StrikeStatistics {
@@ -145,7 +144,7 @@ export class PlayerStrikeQueries extends PlayerStrikeBaseQueries {
       : { playerMinecraftUuid, removed: false };
 
     return await this.findAll(filters, {
-      orderBy: DatabaseTable.PLAYER_STRIKE.CAMEL_FIELDS.ISSUED_AT,
+      orderBy: "issuedAt",
       orderDirection: "desc",
     });
   }

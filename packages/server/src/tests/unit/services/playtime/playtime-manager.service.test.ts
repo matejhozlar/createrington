@@ -10,9 +10,13 @@ const { connectMock, getOpenSessionsMock, flushMock, forwarderConnectMock } =
 
 vi.mock("@/db", () => ({
   Q: { player: { session: { findOpenWithUsername: getOpenSessionsMock } } },
-  playtimeRepo: {
-    connectToService: connectMock,
-    flush: flushMock,
+  playtimeRepo: {},
+}));
+
+vi.mock("@/services/playtime/persistence", () => ({
+  PlaytimePersistence: class {
+    connect = connectMock;
+    flush = flushMock;
   },
 }));
 

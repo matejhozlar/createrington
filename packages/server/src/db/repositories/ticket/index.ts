@@ -1,9 +1,7 @@
-import {
-  type TicketMetadata,
-  TicketUserAction,
-} from "@/services/discord/tickets/types";
+import type { TicketMetadata } from "@/services/discord/tickets/types";
+import { TicketUserAction } from "@/db/utils/ticket";
 import type { Ticket, TicketCreate } from "@/generated/db";
-import { db, Q } from "@/db";
+import { db, Q } from "@/db/pool";
 
 /**
  * Ticket lifecycle. Owns create/close/reopen/delete transitions, the

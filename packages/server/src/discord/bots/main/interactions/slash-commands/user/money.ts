@@ -1,5 +1,5 @@
 import { Q } from "@/db";
-import { BalanceUtils } from "@/db/repositories/balance/utils";
+import { BalanceUtils } from "@/db/utils/balance";
 import { EmbedPresets } from "@/discord/embeds";
 import { CooldownType } from "@/discord/utils/cooldown";
 import { replyError } from "@/discord/utils/interaction-reply";

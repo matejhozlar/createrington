@@ -1,4 +1,6 @@
-import { Q, waitlistRepo } from "@/db";
+import { Q } from "@/db";
+import { updateProgressEmbed } from "./progress-embed";
+import { waitlistCapacityService } from "./capacity.service";
 import { BadRequestError } from "@/errors";
 import { UniqueViolationError } from "@/db/utils/errors";
 import type { WaitlistEntry } from "@createrington/shared/db";
@@ -209,7 +211,7 @@ export class WaitlistService {
         if (settled) return settled;
       }
 
-      if ((await waitlistRepo.getFreeSlots()) <= 0) return null;
+      if ((await waitlistCapacityService.getFreeSlots()) <= 0) return null;
 
       if (!existing) {
         try {
@@ -256,7 +258,7 @@ export class WaitlistService {
       logger.info(
         `Reserved a slot for ${discordUsername} (${discordId}) registering directly on waitlist entry #${result.entry.id}`,
       );
-      await waitlistRepo.updateProgressEmbed(result.entry.id);
+      await updateProgressEmbed(result.entry.id);
     }
 
     return { entry: result.entry, reserved: result.reserved };
