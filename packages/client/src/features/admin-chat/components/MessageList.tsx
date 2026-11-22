@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { MessageRow } from "./MessageRow";
 import { TypingIndicator } from "./TypingIndicator";
 import { readingColumnClass, type ChatLayout } from "../layout";
-import type { ChatMessage } from "../types";
+import type { ChatMessage } from "@createrington/shared/admin-chat";
 
 const NEAR_BOTTOM_PX = 64;
 const AT_BOTTOM_PX = 4;

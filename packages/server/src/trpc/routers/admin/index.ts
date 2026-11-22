@@ -4,6 +4,7 @@ import { auditActor } from "@/trpc/utils";
 import { adminAiRouter } from "./ai";
 import { autoMessagesRouter } from "./auto-messages";
 import { changelogRouter } from "./changelog";
+import { adminChatRouter } from "./chat";
 import { dashboardRouter } from "./dashboard";
 import { discordCommandsRouter } from "./discord-commands";
 import { embedsRouter } from "./embeds";
@@ -47,6 +48,7 @@ export const adminRouter = router({
   ai: adminAiRouter,
   autoMessages: autoMessagesRouter,
   changelog: changelogRouter,
+  chat: adminChatRouter,
   dashboard: dashboardRouter,
   discordCommands: discordCommandsRouter,
   embeds: embedsRouter,

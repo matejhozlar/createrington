@@ -1,29 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
-import { skipToken, useQuery } from "@tanstack/react-query";
+import { skipToken, useMutation, useQuery } from "@tanstack/react-query";
 import { useLocation } from "react-router";
+import type {
+  AdminChatModel,
+  ChatActionRecord,
+  ChatMessage,
+} from "@createrington/shared/admin-chat";
 import { useToastActions } from "@/hooks/use-toast";
-import { queryClient } from "@/lib/trpc";
-import {
-  endSession as endSessionRequest,
-  fetchChatMessages,
-  fetchSessionStatus,
-  runStream,
-  sendChatMessage,
-  startSession,
-} from "../api";
-import type { ChatActionRecord } from "../actions";
-import {
-  isAdminChatModel,
-  type AdminChatModel,
-  type ChatMessage,
-  type PageContext,
-} from "../types";
-
-interface ChatSession {
-  id: number | null;
-  active: boolean;
-  model: AdminChatModel | null;
-}
+import { queryClient, trpc } from "@/lib/trpc";
+import { runStream } from "../stream";
+import type { PageContext } from "../types";
 
 interface UseAdminChatSessionArgs {
   isAdmin: boolean;
@@ -43,26 +29,18 @@ interface UseAdminChatSessionResult {
   end: () => Promise<void>;
 }
 
-const SESSION_KEY = ["admin-chat", "session"] as const;
-
 const NO_MESSAGES: ChatMessage[] = [];
 
-function messagesKey(sessionId: number | null) {
-  return ["admin-chat", "messages", sessionId] as const;
+function sessionKey() {
+  return trpc.admin.chat.sessions.current.queryKey();
 }
 
-async function fetchSession(): Promise<ChatSession> {
-  const data = await fetchSessionStatus();
-  const model = data.active ? data.model : data.lastSessionModel;
-  return {
-    id: (data.active ? data.sessionId : data.lastSessionId) ?? null,
-    active: Boolean(data.active),
-    model: isAdminChatModel(model) ? model : null,
-  };
+function transcriptKey(sessionId: number) {
+  return trpc.admin.chat.messages.list.queryKey({ sessionId });
 }
 
 function setSessionActive(sessionId: number, active: boolean): void {
-  queryClient.setQueryData<ChatSession>(SESSION_KEY, (prev) =>
+  queryClient.setQueryData(sessionKey(), (prev) =>
     prev && prev.id === sessionId ? { ...prev, active } : prev,
   );
 }
@@ -71,9 +49,10 @@ function updateMessages(
   sessionId: number,
   update: (prev: ChatMessage[]) => ChatMessage[],
 ): void {
-  queryClient.setQueryData<ChatMessage[]>(messagesKey(sessionId), (prev) =>
-    update(prev ?? []),
-  );
+  queryClient.setQueryData(transcriptKey(sessionId), (prev) => ({
+    sessionActive: prev?.sessionActive ?? true,
+    messages: update(prev?.messages ?? []),
+  }));
 }
 
 function hasAssistantReply(messages: ChatMessage[]): boolean {
@@ -142,34 +121,49 @@ export function useAdminChatSession({
 }: UseAdminChatSessionArgs): UseAdminChatSessionResult {
   const location = useLocation();
   const toast = useToastActions();
-  const [starting, setStarting] = useState(false);
-  const [sending, setSending] = useState(false);
   const [awaitingReply, setAwaitingReply] = useState(false);
 
-  const sessionQuery = useQuery({
-    queryKey: SESSION_KEY,
-    queryFn: fetchSession,
-    enabled: open && isAdmin,
-    staleTime: 0,
-  });
+  const { mutateAsync: startSession, isPending: starting } = useMutation(
+    trpc.admin.chat.sessions.start.mutationOptions(),
+  );
+  const { mutateAsync: sendMessage, isPending: sending } = useMutation(
+    trpc.admin.chat.messages.send.mutationOptions(),
+  );
+  const { mutateAsync: endSession } = useMutation(
+    trpc.admin.chat.sessions.end.mutationOptions(),
+  );
+
+  const sessionQuery = useQuery(
+    trpc.admin.chat.sessions.current.queryOptions(undefined, {
+      enabled: open && isAdmin,
+      staleTime: 0,
+    }),
+  );
   const sessionId = sessionQuery.data?.id ?? null;
 
+  const transcriptOptions = trpc.admin.chat.messages.list.queryOptions(
+    sessionId !== null ? { sessionId } : skipToken,
+    { enabled: open, staleTime: 0 },
+  );
+  const fetchTranscript = transcriptOptions.queryFn;
   const historyQuery = useQuery({
-    queryKey: messagesKey(sessionId),
+    ...transcriptOptions,
     queryFn:
-      sessionId !== null && open
-        ? async () => {
-            const data = await fetchChatMessages(sessionId);
+      sessionId === null || typeof fetchTranscript !== "function"
+        ? skipToken
+        : async (context) => {
+            const data = await fetchTranscript(context);
             setSessionActive(sessionId, data.sessionActive);
             if (hasAssistantReply(data.messages)) setAwaitingReply(false);
-            return mergeMessages(
-              queryClient.getQueryData<ChatMessage[]>(messagesKey(sessionId)) ??
-                [],
-              data.messages,
-            );
-          }
-        : skipToken,
-    staleTime: 0,
+            return {
+              ...data,
+              messages: mergeMessages(
+                queryClient.getQueryData(transcriptKey(sessionId))?.messages ??
+                  [],
+                data.messages,
+              ),
+            };
+          },
   });
 
   useEffect(() => {
@@ -230,31 +224,21 @@ export function useAdminChatSession({
   const start = useCallback(
     async (prefillMessage?: string): Promise<void> => {
       if (!isAdmin) return;
-      setStarting(true);
       try {
-        const data = await startSession({
+        const { sessionId: id, model } = await startSession({
           pageContext: pageContext("admin-chat"),
         });
-        if (!data.sessionId) {
-          toast.error("Couldn't start a new chat");
-          return;
-        }
-        const id = data.sessionId;
         const prefill = prefillMessage?.trim();
         const optimistic = prefill ? optimisticUserMessage(prefill) : null;
-        await queryClient.cancelQueries({ queryKey: SESSION_KEY });
-        queryClient.setQueryData<ChatMessage[]>(
-          messagesKey(id),
-          optimistic ? [optimistic] : [],
-        );
-        queryClient.setQueryData<ChatSession>(SESSION_KEY, {
-          id,
-          active: true,
-          model: isAdminChatModel(data.model) ? data.model : null,
+        await queryClient.cancelQueries({ queryKey: sessionKey() });
+        queryClient.setQueryData(transcriptKey(id), {
+          messages: optimistic ? [optimistic] : [],
+          sessionActive: true,
         });
+        queryClient.setQueryData(sessionKey(), { id, active: true, model });
         if (!optimistic) return;
         setAwaitingReply(true);
-        sendChatMessage({
+        sendMessage({
           sessionId: id,
           message: optimistic.content,
           pageContext: pageContext("admin-chat"),
@@ -267,23 +251,20 @@ export function useAdminChatSession({
         });
       } catch {
         toast.error("Couldn't start a new chat");
-      } finally {
-        setStarting(false);
       }
     },
-    [isAdmin, pageContext, toast],
+    [isAdmin, pageContext, startSession, sendMessage, toast],
   );
 
   const send = useCallback(
     async (message: string): Promise<void> => {
       const trimmed = message.trim();
       if (!trimmed || sessionId === null) return;
-      setSending(true);
       const optimistic = optimisticUserMessage(trimmed);
       updateMessages(sessionId, (prev) => [...prev, optimistic]);
       setAwaitingReply(true);
       try {
-        await sendChatMessage({
+        await sendMessage({
           sessionId,
           message: trimmed,
           pageContext: pageContext(
@@ -296,28 +277,26 @@ export function useAdminChatSession({
           prev.filter((m) => m.id !== optimistic.id),
         );
         setAwaitingReply(false);
-      } finally {
-        setSending(false);
       }
     },
-    [sessionId, pageContext, location.pathname, toast],
+    [sessionId, pageContext, location.pathname, sendMessage, toast],
   );
 
   const end = useCallback(async (): Promise<void> => {
     if (sessionId === null) return;
     try {
-      await endSessionRequest(sessionId);
+      await endSession({ sessionId });
       setSessionActive(sessionId, false);
     } catch {
       toast.error("Couldn't end the chat");
     }
-  }, [sessionId, toast]);
+  }, [sessionId, endSession, toast]);
 
   return {
     sessionId,
     sessionActive: sessionQuery.data?.active ?? false,
     activeModel: sessionQuery.data?.model ?? null,
-    messages: historyQuery.data ?? NO_MESSAGES,
+    messages: historyQuery.data?.messages ?? NO_MESSAGES,
     starting,
     sending,
     awaitingReply,

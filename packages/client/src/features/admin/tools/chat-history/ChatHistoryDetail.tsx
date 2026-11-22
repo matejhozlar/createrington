@@ -1,44 +1,27 @@
-import { useCallback, useEffect, useState } from "react";
+import { skipToken, useQuery } from "@tanstack/react-query";
 import { useNavigate, useParams } from "react-router";
 import { LoadingState } from "@/components/query-states";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
-import { fetchChatMessages } from "@/features/admin-chat/api";
+import { trpc } from "@/lib/trpc";
 import { MessageRow } from "@/features/admin-chat/components/MessageRow";
-import type { ChatMessage } from "@/features/admin-chat/types";
 
 export function ChatHistoryDetail() {
   const { sessionId } = useParams<{ sessionId: string }>();
   const navigate = useNavigate();
   const numericId = sessionId ? parseInt(sessionId, 10) : NaN;
 
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
   const invalidId = !Number.isFinite(numericId);
 
-  const load = useCallback(() => {
-    return fetchChatMessages(numericId)
-      .then((data) => {
-        setMessages(data.messages);
-        setError(null);
-      })
-      .catch((error: unknown) => {
-        setError(
-          error instanceof Error ? error.message : "Failed to load transcript",
-        );
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  }, [numericId]);
-
-  useEffect(() => {
-    if (invalidId) return;
-    void load();
-  }, [invalidId, load]);
+  const transcriptQuery = useQuery(
+    trpc.admin.chat.messages.list.queryOptions(
+      invalidId ? skipToken : { sessionId: numericId },
+    ),
+  );
+  const messages = transcriptQuery.data?.messages ?? [];
+  const loading = transcriptQuery.isPending;
+  const error = transcriptQuery.error?.message ?? null;
 
   const shownError = invalidId ? "Invalid session id" : error;
 
@@ -80,10 +63,7 @@ export function ChatHistoryDetail() {
             {!invalidId && (
               <Button
                 variant="outline"
-                onClick={() => {
-                  setLoading(true);
-                  void load();
-                }}
+                onClick={() => void transcriptQuery.refetch()}
                 className="mt-2"
               >
                 Try Again

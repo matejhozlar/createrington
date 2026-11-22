@@ -122,78 +122,12 @@ function chat(path: string, init?: RequestInit): Promise<globalThis.Response> {
   return fetch(`${appUrl}/api/admin/chat${path}`, init);
 }
 
-function postJson(path: string, body: unknown): Promise<globalThis.Response> {
-  return chat(path, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-}
-
-describe("admin chat proxy", () => {
-  it("answers 503 when claude-automation is not configured", async () => {
-    adminChat.url = "";
-
-    const res = await chat("/enabled");
-
-    expect(res.status).toBe(503);
-    expect(seen).toHaveLength(0);
-  });
-
-  it("forwards a GET with its query and the shared secret", async () => {
-    respond = answerJson(200, { enabled: true });
-
-    const res = await chat("/enabled");
-
-    expect(res.status).toBe(200);
-    await expect(res.json()).resolves.toEqual({ enabled: true });
-    expect(seen).toEqual([
-      {
-        method: "GET",
-        path: "/api/chat/enabled",
-        query: { repo: "Createrington/app", environment: "dev" },
-        secret: "s".repeat(32),
-        body: undefined,
-      },
-    ]);
-  });
-
-  it("takes the username from the session and forwards only string query values", async () => {
-    await chat("/sessions?limit=20&cursor=a&cursor=b");
-
-    expect(seen[0]?.path).toBe("/api/chat/sessions");
-    expect(seen[0]?.query).toEqual({
-      username: "matej",
-      environment: "dev",
-      limit: "20",
-    });
-  });
-
-  it("forwards a POST body with the username added", async () => {
-    respond = answerJson(200, { messageId: 3 });
-
-    const res = await postJson("/send", { sessionId: 9, message: "hello" });
-
-    await expect(res.json()).resolves.toEqual({ messageId: 3 });
-    expect(seen[0]).toMatchObject({
-      method: "POST",
-      path: "/api/chat/send",
-      body: { username: "matej", sessionId: 9, message: "hello" },
-    });
-  });
-
-  it("rejects a messages request without a session id before calling upstream", async () => {
-    const res = await chat("/messages");
-
-    expect(res.status).toBe(400);
-    expect(seen).toHaveLength(0);
-  });
-
-  it("rejects an empty or zero session id before calling upstream", async () => {
+describe("admin chat stream", () => {
+  it("rejects a missing, empty or zero session id before calling upstream", async () => {
     for (const path of [
-      "/messages?sessionId=",
+      "/stream",
       "/stream?sessionId=",
-      "/messages?sessionId=0",
+      "/stream?sessionId=0",
     ]) {
       const res = await chat(path);
       expect(res.status).toBe(400);
@@ -204,54 +138,15 @@ describe("admin chat proxy", () => {
     expect(seen).toHaveLength(0);
   });
 
-  it("rejects an end request without a numeric session id before calling upstream", async () => {
-    const res = await postJson("/end", { sessionId: "9" });
+  it("answers 503 when claude-automation is not configured", async () => {
+    adminChat.url = "";
 
-    expect(res.status).toBe(400);
-    await expect(res.json()).resolves.toMatchObject({
-      message: "sessionId is required",
-    });
+    const res = await chat("/stream?sessionId=9");
+
+    expect(res.status).toBe(503);
     expect(seen).toHaveLength(0);
   });
 
-  it("starts a session from an empty body", async () => {
-    const res = await chat("/start", { method: "POST" });
-
-    expect(res.status).toBe(200);
-    expect(seen[0]).toMatchObject({
-      path: "/api/chat/start",
-      body: {
-        username: "matej",
-        repo: "Createrington/app",
-        environment: "dev",
-      },
-    });
-  });
-
-  it("answers with the upstream status and its error as the message", async () => {
-    respond = answerJson(403, { error: "admin chat is switched off" });
-
-    const res = await chat("/enabled");
-
-    expect(res.status).toBe(403);
-    await expect(res.json()).resolves.toMatchObject({
-      success: false,
-      message: "admin chat is switched off",
-    });
-  });
-
-  it("answers 500 when claude-automation cannot be reached", async () => {
-    const unused = createServer();
-    adminChat.url = await listen(unused);
-    await close(unused);
-
-    const res = await chat("/enabled");
-
-    expect(res.status).toBe(500);
-  });
-});
-
-describe("admin chat stream", () => {
   it("answers an upstream rejection with its status and error message", async () => {
     respond = answerJson(404, { error: "session not found" });
 

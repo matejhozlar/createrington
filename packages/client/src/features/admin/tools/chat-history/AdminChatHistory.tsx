@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
@@ -12,12 +12,12 @@ import {
   type DataTableColumn,
 } from "@/components/data-table";
 import { History, RefreshCw } from "lucide-react";
-import {
-  fetchChatSessions,
-  type ChatHistorySession,
-} from "@/features/admin-chat/api";
+import type { ChatHistorySession } from "@createrington/shared/admin-chat";
+import { trpc } from "@/lib/trpc";
 import { formatFullDate } from "@/features/admin/format";
 import { formatRelativeDate } from "@/lib/format";
+
+const PAGE_SIZE = 25;
 
 const STATUS_VARIANT: Record<
   string,
@@ -43,58 +43,24 @@ function displayTitle(raw: string): string {
 
 export function AdminChatHistory() {
   const navigate = useNavigate();
-  const [sessions, setSessions] = useState<ChatHistorySession[]>([]);
-  const [nextCursor, setNextCursor] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
-
-  const loadFirstPage = useCallback(() => {
-    return fetchChatSessions({ limit: 25 })
-      .then((page) => {
-        setSessions(page.sessions);
-        setNextCursor(page.nextCursor);
-        setError(null);
-        setLoadMoreError(null);
-      })
-      .catch((error: unknown) => {
-        setError(
-          error instanceof Error ? error.message : "Failed to load sessions",
-        );
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  }, []);
-
-  const reload = useCallback(() => {
-    setLoading(true);
-    setError(null);
-    setLoadMoreError(null);
-    void loadFirstPage();
-  }, [loadFirstPage]);
-
-  const loadMore = useCallback(async () => {
-    if (!nextCursor || loadingMore) return;
-    setLoadingMore(true);
-    setLoadMoreError(null);
-    try {
-      const page = await fetchChatSessions({ limit: 25, cursor: nextCursor });
-      setSessions((prev) => [...prev, ...page.sessions]);
-      setNextCursor(page.nextCursor);
-    } catch (error) {
-      setLoadMoreError(
-        error instanceof Error ? error.message : "Failed to load more",
-      );
-    } finally {
-      setLoadingMore(false);
-    }
-  }, [nextCursor, loadingMore]);
-
-  useEffect(() => {
-    void loadFirstPage();
-  }, [loadFirstPage]);
+  const historyQuery = useInfiniteQuery(
+    trpc.admin.chat.sessions.list.infiniteQueryOptions(
+      { limit: PAGE_SIZE },
+      { getNextPageParam: (page) => page.nextCursor },
+    ),
+  );
+  const sessions = historyQuery.data?.pages.flatMap((page) => page.items) ?? [];
+  const loading = historyQuery.isPending;
+  const refreshing =
+    historyQuery.isFetching && !historyQuery.isFetchingNextPage;
+  const error =
+    historyQuery.isError && !historyQuery.isFetchNextPageError
+      ? historyQuery.error.message
+      : null;
+  const loadMoreError = historyQuery.isFetchNextPageError
+    ? historyQuery.error.message
+    : null;
+  const reload = () => void historyQuery.refetch();
 
   const columns: DataTableColumn<ChatHistorySession>[] = [
     {
@@ -173,11 +139,11 @@ export function AdminChatHistory() {
               variant="outline"
               size="icon"
               onClick={reload}
-              disabled={loading}
+              disabled={refreshing}
               title="Refresh"
             >
               <RefreshCw
-                className={loading ? "size-4 animate-spin" : "size-4"}
+                className={refreshing ? "size-4 animate-spin" : "size-4"}
               />
             </Button>
           }
@@ -212,12 +178,12 @@ export function AdminChatHistory() {
               />
             </div>
 
-            {nextCursor !== null && (
+            {historyQuery.hasNextPage && (
               <div className="flex flex-col items-center gap-2">
                 <Button
                   variant="outline"
-                  onClick={() => void loadMore()}
-                  loading={loadingMore}
+                  onClick={() => void historyQuery.fetchNextPage()}
+                  loading={historyQuery.isFetchingNextPage}
                 >
                   Load more
                 </Button>

@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { coerceAction, parseActionsFromMessage } from "../actions";
 import { ActionCard } from "./ActionCard";
 import { AssistantMarkdown } from "./AssistantMarkdown";
-import type { ChatMessage } from "../types";
+import type { ChatMessage } from "@createrington/shared/admin-chat";
 
 interface MessageRowProps {
   message: ChatMessage;

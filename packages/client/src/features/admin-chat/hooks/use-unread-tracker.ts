@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { ChatMessage } from "../types";
+import type { ChatMessage } from "@createrington/shared/admin-chat";
 
 export function useUnreadTracker(
   messages: ChatMessage[],
