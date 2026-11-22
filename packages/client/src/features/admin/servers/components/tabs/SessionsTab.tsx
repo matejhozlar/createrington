@@ -1,17 +1,11 @@
-import { useState } from "react";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Link } from "react-router";
 import { Clock } from "lucide-react";
 import { formatCompactDuration } from "@createrington/shared/format";
 import { Badge } from "@/components/ui/badge";
 import { CellDate, CellText } from "@/components/cell-text";
-import {
-  DataTable,
-  loadingRowCount,
-  type DataTableColumn,
-} from "@/components/data-table";
-import { Paginator } from "@/components/paginator";
-import { EmptyState, ErrorState } from "@/components/query-states";
+import { type DataTableColumn } from "@/components/data-table";
+import { PagedTable } from "@/components/paged-table";
+import { usePagedQuery } from "@/hooks/use-paged-query";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { trpc, type RouterOutput } from "@/lib/trpc";
@@ -81,60 +75,17 @@ const COLUMNS: DataTableColumn<ServerSession>[] = [
 ];
 
 export function SessionsTab({ serverId }: SessionsTabProps) {
-  const [page, setPage] = useState(0);
-  const limit = 20;
-
-  const sessionsQuery = useQuery(
-    trpc.admin.servers.sessions.queryOptions(
-      {
-        serverId,
-        page,
-        limit,
-      },
-      { placeholderData: keepPreviousData },
-    ),
+  const sessions = usePagedQuery({ serverId }, (input) =>
+    trpc.admin.servers.sessions.queryOptions(input),
   );
 
-  const sessions = sessionsQuery.data?.items ?? [];
-  const pagination = sessionsQuery.data?.pagination;
-  const totalPages = pagination?.totalPages ?? 0;
-  const total = pagination?.total ?? 0;
-  const loading = sessionsQuery.isLoading || sessionsQuery.isPlaceholderData;
-  const loadingRows = loadingRowCount(page, limit, total);
-
-  if (sessionsQuery.isError) {
-    return (
-      <ErrorState
-        message={sessionsQuery.error.message}
-        onRetry={() => sessionsQuery.refetch()}
-      />
-    );
-  }
-
-  if (!loading && sessions.length === 0) {
-    return (
-      <EmptyState icon={Clock} message="No sessions found for this server" />
-    );
-  }
-
   return (
-    <div className="flex flex-col gap-4">
-      <DataTable
-        columns={COLUMNS}
-        rows={sessions}
-        loading={loading}
-        loadingRows={loadingRows}
-        rowKey={(session) => session.id}
-      />
-
-      <Paginator
-        page={page}
-        limit={limit}
-        total={total}
-        totalPages={totalPages}
-        onPageChange={setPage}
-        itemLabel="session"
-      />
-    </div>
+    <PagedTable
+      paged={sessions}
+      empty={{ icon: Clock, message: "No sessions found for this server" }}
+      itemLabel="session"
+      columns={COLUMNS}
+      rowKey={(session) => session.id}
+    />
   );
 }

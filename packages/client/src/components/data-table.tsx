@@ -234,6 +234,23 @@ function RowActionGroup({
   );
 }
 
+export type DataTableProps<T> = {
+  columns: DataTableColumn<T>[];
+  rows: T[];
+  rowKey: (row: T) => string | number;
+  onRowClick?: (row: T) => void;
+  rowClassName?: (row: T) => string | undefined;
+  actions?: (row: T) => DataTableAction[];
+  actionSlots?: 0 | 1 | 2;
+  isRowBusy?: (row: T) => boolean;
+  expandedKey?: string | number | null;
+  renderExpanded?: (row: T) => React.ReactNode;
+  headerClassName?: string;
+  headCellClassName?: string;
+  loading?: boolean;
+  loadingRows?: number;
+};
+
 export function DataTable<T>({
   columns,
   rows,
@@ -249,22 +266,7 @@ export function DataTable<T>({
   headCellClassName,
   loading = false,
   loadingRows = DEFAULT_LOADING_ROWS,
-}: {
-  columns: DataTableColumn<T>[];
-  rows: T[];
-  rowKey: (row: T) => string | number;
-  onRowClick?: (row: T) => void;
-  rowClassName?: (row: T) => string | undefined;
-  actions?: (row: T) => DataTableAction[];
-  actionSlots?: 0 | 1 | 2;
-  isRowBusy?: (row: T) => boolean;
-  expandedKey?: string | number | null;
-  renderExpanded?: (row: T) => React.ReactNode;
-  headerClassName?: string;
-  headCellClassName?: string;
-  loading?: boolean;
-  loadingRows?: number;
-}) {
+}: DataTableProps<T>) {
   const hasActions = Boolean(actions);
   const rowActions =
     actions && !loading ? rows.map((row) => actions(row)) : null;

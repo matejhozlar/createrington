@@ -20,7 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import { CellText } from "@/components/cell-text";
+import { CellDate, CellText } from "@/components/cell-text";
 import {
   BadgeCellSkeleton,
   DataTable,
@@ -40,7 +40,6 @@ import {
 import { formatDate } from "@createrington/shared/format";
 
 import { formatRelativeDate } from "@/lib/format";
-import { formatFullDate } from "./format";
 import { useQuery } from "@tanstack/react-query";
 
 export function AdminDashboard() {
@@ -173,18 +172,7 @@ export function AdminDashboard() {
       header: "Date",
       width: 110,
       cellClassName: "text-muted-foreground",
-      render: (ban) => {
-        const iso =
-          typeof ban.bannedAt === "string"
-            ? ban.bannedAt
-            : new Date(ban.bannedAt).toISOString();
-        return (
-          <CellText
-            value={formatFullDate(iso)}
-            display={formatRelativeDate(iso)}
-          />
-        );
-      },
+      render: (ban) => <CellDate value={ban.bannedAt} relative />,
     },
   ];
   const recentLogs = recentLogsQuery.data?.items ?? [];

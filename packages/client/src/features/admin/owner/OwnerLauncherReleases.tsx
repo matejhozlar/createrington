@@ -40,7 +40,6 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import {
   BadgeCellSkeleton,
   DataTable,
-  loadingRowCount,
   type DataTableAction,
   type DataTableColumn,
 } from "@/components/data-table";
@@ -51,7 +50,8 @@ import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { formatClockTimeWithSeconds, formatNumber } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { trpc, type RouterOutput, queryClient } from "@/lib/trpc";
-import { keepPreviousData, useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { usePagedQuery } from "@/hooks/use-paged-query";
 
 type ReleaseRow =
   RouterOutput["owner"]["launcherReleases"]["list"]["items"][number];
@@ -301,21 +301,18 @@ export function OwnerLauncherReleases() {
   );
   const [status, setStatus] = useState<StatusFilter>("all");
   const [search, setSearch] = useState("");
-  const [page, setPage] = useState(0);
   const needle = useDebouncedValue(search).trim();
 
-  const releasesQuery = useQuery(
-    trpc.owner.launcherReleases.list.queryOptions(
-      {
-        platform,
-        status: status === "all" ? undefined : status,
-        search: needle || undefined,
-        page,
-        limit: PAGE_SIZE,
-      },
-      { placeholderData: keepPreviousData },
-    ),
+  const releases = usePagedQuery(
+    {
+      platform,
+      status: status === "all" ? undefined : status,
+      search: needle || undefined,
+    },
+    (input) => trpc.owner.launcherReleases.list.queryOptions(input),
+    PAGE_SIZE,
   );
+  const releasesQuery = releases.query;
 
   const refresh = () =>
     void queryClient.invalidateQueries(
@@ -341,12 +338,8 @@ export function OwnerLauncherReleases() {
     ),
   );
 
-  const releases = releasesQuery.data?.items ?? [];
   const channel = releasesQuery.data?.channel;
   const enabled = releasesQuery.data?.enabled ?? true;
-  const total = releasesQuery.data?.pagination.total ?? 0;
-  const totalPages = releasesQuery.data?.pagination.totalPages ?? 0;
-  const loading = releasesQuery.isLoading || releasesQuery.isPlaceholderData;
   const filtered = status !== "all" || needle !== "";
   const tabs = LAUNCHER_PLATFORMS.map((value) => ({
     value,
@@ -466,19 +459,13 @@ export function OwnerLauncherReleases() {
       <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
         <FilterBar
           search={search}
-          onSearchChange={(value) => {
-            setSearch(value);
-            setPage(0);
-          }}
+          onSearchChange={setSearch}
           placeholder={LIST_COPY.search}
           activeCount={(search ? 1 : 0) + (status !== "all" ? 1 : 0)}
         >
           <Select
             value={status}
-            onValueChange={(value) => {
-              setStatus(value as StatusFilter);
-              setPage(0);
-            }}
+            onValueChange={(value) => setStatus(value as StatusFilter)}
           >
             <SelectTrigger className="min-w-[160px]">
               <SelectValue />
@@ -509,16 +496,15 @@ export function OwnerLauncherReleases() {
             {releasesQuery.isError ? (
               <ErrorState
                 message={`Failed to load launcher releases: ${releasesQuery.error.message}`}
-                onRetry={() => releasesQuery.refetch()}
+                onRetry={releases.retry}
                 compact
               />
             ) : (
               <Tabs
                 value={platform}
-                onValueChange={(value) => {
-                  setPlatform(value as LauncherPlatform);
-                  setPage(0);
-                }}
+                onValueChange={(value) =>
+                  setPlatform(value as LauncherPlatform)
+                }
               >
                 <TabsList className="mx-6">
                   {tabs.map(({ value, label, icon: Icon }) => (
@@ -529,7 +515,7 @@ export function OwnerLauncherReleases() {
                   ))}
                 </TabsList>
                 <TabsContent value={platform}>
-                  {!loading && releases.length === 0 ? (
+                  {!releases.loading && releases.total === 0 ? (
                     <EmptyState
                       icon={Rocket}
                       message={(filtered ? LIST_COPY.noMatch : LIST_COPY.empty)(
@@ -540,9 +526,9 @@ export function OwnerLauncherReleases() {
                   ) : (
                     <DataTable
                       columns={columns}
-                      rows={releases}
-                      loading={loading}
-                      loadingRows={loadingRowCount(page, PAGE_SIZE, total)}
+                      rows={releases.rows}
+                      loading={releases.loading}
+                      loadingRows={releases.loadingRows}
                       rowKey={(release) => release.id}
                       actions={rowActions}
                       actionSlots={2}
@@ -552,14 +538,14 @@ export function OwnerLauncherReleases() {
               </Tabs>
             )}
           </CardContent>
-          {total > 0 && !releasesQuery.isError && (
+          {releases.total > 0 && !releasesQuery.isError && (
             <CardFooter className="border-t">
               <Paginator
-                page={page}
-                limit={PAGE_SIZE}
-                total={total}
-                totalPages={totalPages}
-                onPageChange={setPage}
+                page={releases.page}
+                limit={releases.limit}
+                total={releases.total}
+                totalPages={releases.totalPages}
+                onPageChange={releases.setPage}
                 itemLabel="release"
                 className="w-full"
               />

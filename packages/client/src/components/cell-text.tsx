@@ -2,6 +2,7 @@ import * as React from "react";
 import { Copy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useClipboard } from "@/hooks/use-clipboard";
+import { formatRelativeDate } from "@/lib/format";
 import {
   Tooltip,
   TooltipContent,
@@ -19,9 +20,11 @@ const FULL_DATE_FORMAT: Intl.DateTimeFormatOptions = {
 
 export function CellDate({
   value,
+  relative = false,
   className,
 }: {
   value: string | Date | null | undefined;
+  relative?: boolean;
   className?: string;
 }) {
   if (!value) return null;
@@ -29,7 +32,7 @@ export function CellDate({
   return (
     <CellText
       value={date.toLocaleDateString("en-US", FULL_DATE_FORMAT)}
-      display={date.toLocaleDateString()}
+      display={relative ? formatRelativeDate(date) : date.toLocaleDateString()}
       className={cn("text-sm text-muted-foreground", className)}
     />
   );

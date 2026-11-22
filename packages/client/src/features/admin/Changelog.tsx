@@ -6,9 +6,7 @@ import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { ChangeTag } from "@/features/admin/components/ChangeTag";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
-import { Filter } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { SearchInput } from "@/components/search-input";
+import { FilterBar } from "@/features/admin/components/FilterBar";
 import {
   Select,
   SelectContent,
@@ -16,7 +14,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
 
 type Kind =
@@ -547,57 +544,41 @@ function Toolbar({
     (bumpFilter !== "all" ? 1 : 0);
 
   return (
-    <Card className="mb-7 gap-2">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
-          <Filter className="size-4 text-muted-foreground" />
-          Filters
-          {activeCount > 0 && (
-            <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">
-              {activeCount}
-            </Badge>
-          )}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-          <SearchInput
-            className="min-w-0 flex-1 sm:min-w-48"
-            value={search}
-            onValueChange={onSearch}
-            placeholder="Search the changelog..."
-          />
+    <FilterBar
+      search={search}
+      onSearchChange={onSearch}
+      placeholder="Search the changelog..."
+      activeCount={activeCount}
+      className="mb-7"
+    >
+      <Select value={packageFilter} onValueChange={onPackageFilter}>
+        <SelectTrigger className="w-full sm:w-[200px]">
+          <SelectValue placeholder="Package" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">All packages</SelectItem>
+          {allPackages.map((p) => (
+            <SelectItem key={p} value={p}>
+              {p}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
 
-          <Select value={packageFilter} onValueChange={onPackageFilter}>
-            <SelectTrigger className="w-full sm:w-[200px]">
-              <SelectValue placeholder="Package" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All packages</SelectItem>
-              {allPackages.map((p) => (
-                <SelectItem key={p} value={p}>
-                  {p}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select
-            value={bumpFilter}
-            onValueChange={(v) => onBumpFilter(v as "all" | "minor" | "patch")}
-          >
-            <SelectTrigger className="w-full sm:w-[160px]">
-              <SelectValue placeholder="Type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All types</SelectItem>
-              <SelectItem value="minor">Minor</SelectItem>
-              <SelectItem value="patch">Patch</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </CardContent>
-    </Card>
+      <Select
+        value={bumpFilter}
+        onValueChange={(v) => onBumpFilter(v as "all" | "minor" | "patch")}
+      >
+        <SelectTrigger className="w-full sm:w-[160px]">
+          <SelectValue placeholder="Type" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">All types</SelectItem>
+          <SelectItem value="minor">Minor</SelectItem>
+          <SelectItem value="patch">Patch</SelectItem>
+        </SelectContent>
+      </Select>
+    </FilterBar>
   );
 }
 

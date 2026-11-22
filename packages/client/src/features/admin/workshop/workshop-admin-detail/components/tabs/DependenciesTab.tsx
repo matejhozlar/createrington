@@ -1,24 +1,16 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Network, PackagePlus, Search } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { Badge } from "@/components/ui/badge";
-import { Paginator } from "@/components/paginator";
 import { CellText } from "@/components/cell-text";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
   BadgeCellSkeleton,
-  DataTable,
   type DataTableAction,
   type DataTableColumn,
 } from "@/components/data-table";
+import { TableCard } from "@/components/paged-table";
+import { useClientPagination } from "@/hooks/use-client-pagination";
 import { FilterBar } from "@/features/admin/components/FilterBar";
-import { EmptyState, ErrorState } from "@/components/query-states";
 import {
   DEPENDENCY_COVERAGE_STYLES,
   dependencyIsCovered,
@@ -51,7 +43,6 @@ export function DependenciesTab({
       workshopId,
     }),
   );
-  const [requestedPage, setRequestedPage] = useState(0);
 
   const rows = useMemo(() => depsQuery.data ?? [], [depsQuery.data]);
   const query = search.trim().toLowerCase();
@@ -75,12 +66,13 @@ export function DependenciesTab({
     );
   }, [sorted, query]);
 
-  const totalPages = Math.ceil(filtered.length / DEPS_PER_PAGE);
-  const page = Math.min(requestedPage, Math.max(0, totalPages - 1));
-  const visible = filtered.slice(
-    page * DEPS_PER_PAGE,
-    (page + 1) * DEPS_PER_PAGE,
-  );
+  const paged = useClientPagination(filtered, {
+    perPage: DEPS_PER_PAGE,
+    resetKey: query,
+    loading: depsQuery.isLoading,
+    error: depsQuery.error?.message ?? null,
+    retry: () => void depsQuery.refetch(),
+  });
 
   const columns: DataTableColumn<WorkshopDependency>[] = [
     {
@@ -172,66 +164,32 @@ export function DependenciesTab({
     <>
       <FilterBar
         search={search}
-        onSearchChange={(value) => {
-          onSearchChange(value);
-          setRequestedPage(0);
-        }}
+        onSearchChange={onSearchChange}
         placeholder="Search dependencies..."
         activeCount={query ? 1 : 0}
       />
 
-      <Card className="gap-0">
-        <CardHeader className="border-b">
-          <CardTitle>
-            Dependencies (
-            {query
-              ? `${filtered.length.toLocaleString()} of ${rows.length.toLocaleString()}`
-              : rows.length.toLocaleString()}
-            )
-          </CardTitle>
-          <CardDescription>
-            Everything the workshop's mods pull in, with where each dependency
-            stands relative to the pack. Gaps in required coverage sort first.
-          </CardDescription>
-        </CardHeader>
-
-        {depsQuery.error ? (
-          <ErrorState
-            message={depsQuery.error.message}
-            onRetry={() => depsQuery.refetch()}
-          />
-        ) : !depsQuery.isLoading && rows.length === 0 ? (
-          <EmptyState icon={Network} message="No dependencies pulled in yet" />
-        ) : !depsQuery.isLoading && filtered.length === 0 ? (
-          <EmptyState
-            icon={Search}
-            message="No dependencies match your search"
-          />
-        ) : (
-          <CardContent className="px-0">
-            <DataTable
-              columns={columns}
-              rows={visible}
-              loading={depsQuery.isLoading}
-              loadingRows={DEPS_PER_PAGE}
-              rowKey={(row) => row.curseforgeProjectId}
-              actions={rowActions}
-              actionSlots={1}
-              isRowBusy={(row) => busyProjectId === row.curseforgeProjectId}
-            />
-
-            <Paginator
-              page={page}
-              limit={DEPS_PER_PAGE}
-              total={filtered.length}
-              totalPages={totalPages}
-              onPageChange={setRequestedPage}
-              itemLabel="dependency"
-              className="px-4 pt-4"
-            />
-          </CardContent>
-        )}
-      </Card>
+      <TableCard
+        title="Dependencies"
+        count={
+          query
+            ? `${filtered.length.toLocaleString()} of ${rows.length.toLocaleString()}`
+            : rows.length.toLocaleString()
+        }
+        description="Everything the workshop's mods pull in, with where each dependency stands relative to the pack. Gaps in required coverage sort first."
+        paged={paged}
+        empty={
+          rows.length === 0
+            ? { icon: Network, message: "No dependencies pulled in yet" }
+            : { icon: Search, message: "No dependencies match your search" }
+        }
+        itemLabel="dependency"
+        columns={columns}
+        rowKey={(row) => row.curseforgeProjectId}
+        actions={rowActions}
+        actionSlots={1}
+        isRowBusy={(row) => busyProjectId === row.curseforgeProjectId}
+      />
     </>
   );
 }

@@ -1,39 +1,28 @@
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { CardDescription, CardTitle } from "@/components/ui/card";
 import { SearchInput } from "@/components/search-input";
-import { Paginator } from "@/components/paginator";
+import { TableCard } from "@/components/paged-table";
 import {
-  DataTable,
-  loadingRowCount,
   TwoLineCellSkeleton,
   type DataTableColumn,
 } from "@/components/data-table";
 import { Ghost, RefreshCw, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { keepPreviousData, useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
-import { CellText } from "@/components/cell-text";
-import { formatFullDate, toIso } from "@/features/admin/format";
+import { usePagedQuery } from "@/hooks/use-paged-query";
+import { CellDate, CellText } from "@/components/cell-text";
+import { toIso } from "@/features/admin/format";
 import { formatRelativeDate } from "@/lib/format";
 import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
 import { RemoveGhostModal } from "./modals/RemoveGhostModal";
-import { EmptyState, ErrorState } from "@/components/query-states";
 
 type GhostMember =
   RouterOutput["admin"]["inactivity"]["ghosts"]["list"]["items"][number];
 
 export function GhostsCard({ canMutate }: { canMutate: boolean }) {
-  const [page, setPage] = useState(0);
-  const [limit] = useState(20);
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearch = useDebouncedValue(searchQuery);
 
@@ -42,15 +31,9 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
   const capabilitiesQuery = useQuery(
     trpc.admin.inactivity.ghosts.capabilities.queryOptions(),
   );
-  const listQuery = useQuery(
-    trpc.admin.inactivity.ghosts.list.queryOptions(
-      {
-        search: debouncedSearch.trim() || undefined,
-        page,
-        limit,
-      },
-      { placeholderData: keepPreviousData },
-    ),
+  const ghosts = usePagedQuery(
+    { search: debouncedSearch.trim() || undefined },
+    (input) => trpc.admin.inactivity.ghosts.list.queryOptions(input),
   );
 
   const refreshGhosts = useMutation(
@@ -65,21 +48,10 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
     ),
   );
 
-  const ghosts = listQuery.data?.items ?? [];
-  const total = listQuery.data?.pagination.total ?? 0;
-  const totalPages = listQuery.data?.pagination.totalPages ?? 0;
   const lastRefreshedAt =
     capabilitiesQuery.data?.lastRefreshedAt ??
-    listQuery.data?.lastRefreshedAt ??
+    ghosts.query.data?.lastRefreshedAt ??
     null;
-  const loading = listQuery.isLoading || listQuery.isPlaceholderData;
-  const loadingRows = loadingRowCount(page, limit, total);
-  const error = listQuery.error?.message ?? null;
-
-  const handleSearchChange = useCallback((value: string) => {
-    setSearchQuery(value);
-    setPage(0);
-  }, []);
 
   const handleRefresh = () => refreshGhosts.mutate();
 
@@ -122,130 +94,87 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
       header: "Registered",
       width: 140,
       cellClassName: "text-sm text-muted-foreground",
-      render: (ghost) => {
-        const iso = toIso(ghost.playerCreatedAt);
-        return (
-          <CellText
-            value={formatFullDate(iso)}
-            display={formatRelativeDate(iso)}
-          />
-        );
-      },
+      render: (ghost) => <CellDate value={ghost.playerCreatedAt} relative />,
     },
     {
       key: "lastSeen",
       header: "Last Seen",
       width: 140,
       cellClassName: "text-sm text-muted-foreground",
-      render: (ghost) => {
-        const iso = toIso(ghost.playerLastSeen);
-        return (
-          <CellText
-            value={formatFullDate(iso)}
-            display={formatRelativeDate(iso)}
-          />
-        );
-      },
+      render: (ghost) => <CellDate value={ghost.playerLastSeen} relative />,
     },
   ];
 
   return (
     <>
-      <Card className="gap-0">
-        <CardHeader className="border-b">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <Ghost className="size-5 text-muted-foreground" />
-                Members Missing from Discord
-              </CardTitle>
-              <CardDescription className="mt-1">
-                Registered players who are no longer in the Discord guild.
-                Manual cleanup only, cache populated on demand.
-              </CardDescription>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-muted-foreground">
-                {lastRefreshedAt
-                  ? `Last refreshed ${formatRelativeDate(toIso(lastRefreshedAt))}`
-                  : "Cache not yet populated"}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleRefresh}
-                disabled={refreshGhosts.isPending}
-              >
-                <RefreshCw
-                  className={cn(
-                    "mr-2 size-4",
-                    refreshGhosts.isPending && "animate-spin",
-                  )}
-                />
-                Refresh
-              </Button>
-            </div>
-          </div>
-
-          <SearchInput
-            className="mt-3"
-            placeholder="Search by Minecraft username..."
-            value={searchQuery}
-            onValueChange={handleSearchChange}
-          />
-        </CardHeader>
-
-        {error ? (
-          <ErrorState message={error} onRetry={() => listQuery.refetch()} />
-        ) : !loading && ghosts.length === 0 ? (
-          <EmptyState
-            icon={Ghost}
-            message={
-              lastRefreshedAt
-                ? "No ghost members in the cache"
-                : "Click Refresh to populate the cache"
-            }
-          />
-        ) : (
+      <TableCard
+        header={
           <>
-            <CardContent className="px-0">
-              <DataTable
-                columns={columns}
-                rows={ghosts}
-                loading={loading}
-                loadingRows={loadingRows}
-                rowKey={(ghost) => ghost.discordId}
-                actions={(ghost) => [
-                  {
-                    label: canMutate
-                      ? "Remove now"
-                      : "Only available on the production deployment",
-                    icon: Trash2,
-                    variant: "destructive",
-                    disabled: !canMutate,
-                    onClick: () => setRemoveTarget(ghost),
-                  },
-                ]}
-                actionSlots={1}
-              />
-            </CardContent>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Ghost className="size-5 text-muted-foreground" />
+                  Members Missing from Discord
+                </CardTitle>
+                <CardDescription className="mt-1">
+                  Registered players who are no longer in the Discord guild.
+                  Manual cleanup only, cache populated on demand.
+                </CardDescription>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-muted-foreground">
+                  {lastRefreshedAt
+                    ? `Last refreshed ${formatRelativeDate(toIso(lastRefreshedAt))}`
+                    : "Cache not yet populated"}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRefresh}
+                  disabled={refreshGhosts.isPending}
+                >
+                  <RefreshCw
+                    className={cn(
+                      "mr-2 size-4",
+                      refreshGhosts.isPending && "animate-spin",
+                    )}
+                  />
+                  Refresh
+                </Button>
+              </div>
+            </div>
 
-            {total > 0 && (
-              <CardFooter className="border-t">
-                <Paginator
-                  page={page}
-                  limit={limit}
-                  total={total}
-                  totalPages={totalPages}
-                  onPageChange={setPage}
-                  itemLabel="ghost"
-                  className="w-full"
-                />
-              </CardFooter>
-            )}
+            <SearchInput
+              className="mt-3"
+              placeholder="Search by Minecraft username..."
+              value={searchQuery}
+              onValueChange={setSearchQuery}
+            />
           </>
-        )}
-      </Card>
+        }
+        paged={ghosts}
+        empty={{
+          icon: Ghost,
+          message: lastRefreshedAt
+            ? "No ghost members in the cache"
+            : "Click Refresh to populate the cache",
+        }}
+        itemLabel="ghost"
+        columns={columns}
+        rowKey={(ghost) => ghost.discordId}
+        actions={(ghost) => [
+          {
+            label: canMutate
+              ? "Remove now"
+              : "Only available on the production deployment",
+            icon: Trash2,
+            variant: "destructive",
+            disabled: !canMutate,
+            onClick: () => setRemoveTarget(ghost),
+          },
+        ]}
+        actionSlots={1}
+      />
 
       <RemoveGhostModal
         ghost={removeTarget}

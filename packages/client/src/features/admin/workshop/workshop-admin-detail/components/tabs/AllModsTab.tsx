@@ -1,15 +1,14 @@
 import { useMemo, useState } from "react";
 import { Heart, Lightbulb, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Paginator } from "@/components/paginator";
 import { CellDate } from "@/components/cell-text";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   AvatarCellSkeleton,
   BadgeCellSkeleton,
-  DataTable,
   type DataTableColumn,
 } from "@/components/data-table";
+import { TableCard } from "@/components/paged-table";
+import { useClientPagination } from "@/hooks/use-client-pagination";
 import { PlayerLabel } from "@/components/player-label";
 import {
   Select,
@@ -19,7 +18,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { FilterBar } from "@/features/admin/components/FilterBar";
-import { EmptyState, ErrorState } from "@/components/query-states";
 import {
   MOD_STATUS_STYLES,
   projectCategories,
@@ -43,8 +41,6 @@ export function AllModsTab({
   onRetry,
   search,
   onSearchChange,
-  page: requestedPage,
-  onPageChange,
   busyModId,
   onView,
   envDisplay,
@@ -58,8 +54,6 @@ export function AllModsTab({
   onRetry: () => void;
   search: string;
   onSearchChange: (value: string) => void;
-  page: number;
-  onPageChange: (page: number) => void;
   busyModId: number | null;
   onView: (workshopModId: number) => void;
   envDisplay: EnvironmentDisplay;
@@ -94,12 +88,13 @@ export function AllModsTab({
   }, [mods, category, query]);
 
   const filtering = query !== "" || category !== "all";
-  const totalPages = Math.ceil(filtered.length / MODS_PER_PAGE);
-  const page = Math.min(requestedPage, Math.max(0, totalPages - 1));
-  const visible = filtered.slice(
-    page * MODS_PER_PAGE,
-    (page + 1) * MODS_PER_PAGE,
-  );
+  const paged = useClientPagination(filtered, {
+    perPage: MODS_PER_PAGE,
+    resetKey: [query, category],
+    loading: isLoading,
+    error,
+    retry: onRetry,
+  });
 
   const columns: DataTableColumn<AdminWorkshopMod>[] = [
     {
@@ -189,13 +184,7 @@ export function AllModsTab({
         placeholder="Search by mod or player..."
         activeCount={(query ? 1 : 0) + (category !== "all" ? 1 : 0)}
       >
-        <Select
-          value={category}
-          onValueChange={(value) => {
-            setCategory(value);
-            onPageChange(0);
-          }}
-        >
+        <Select value={category} onValueChange={setCategory}>
           <SelectTrigger className="min-w-[170px]">
             <SelectValue />
           </SelectTrigger>
@@ -210,51 +199,29 @@ export function AllModsTab({
         </Select>
       </FilterBar>
 
-      <Card className="gap-0">
-        <CardHeader className="gap-0 border-b">
-          <CardTitle>
-            All Mods (
-            {filtering
-              ? `${filtered.length.toLocaleString()} of ${mods.length.toLocaleString()}`
-              : mods.length.toLocaleString()}
-            )
-          </CardTitle>
-        </CardHeader>
-
-        {error ? (
-          <ErrorState message={error} onRetry={onRetry} />
-        ) : !isLoading && mods.length === 0 ? (
-          <EmptyState icon={Lightbulb} message="No suggestions yet" />
-        ) : !isLoading && filtered.length === 0 ? (
-          <EmptyState icon={Search} message="No mods match your filters" />
-        ) : (
-          <CardContent className="px-0">
-            <DataTable
-              columns={columns}
-              rows={visible}
-              loading={isLoading}
-              loadingRows={MODS_PER_PAGE}
-              rowKey={(mod) => mod.id}
-              onRowClick={(mod) => onView(mod.id)}
-              actions={(mod) =>
-                modReviewActions(mod, { onReview, onReject }, envDisplay)
-              }
-              actionSlots={0}
-              isRowBusy={(mod) => busyModId === mod.id}
-            />
-
-            <Paginator
-              page={page}
-              limit={MODS_PER_PAGE}
-              total={filtered.length}
-              totalPages={totalPages}
-              onPageChange={onPageChange}
-              itemLabel="mod"
-              className="px-4 pt-4"
-            />
-          </CardContent>
-        )}
-      </Card>
+      <TableCard
+        title="All Mods"
+        count={
+          filtering
+            ? `${filtered.length.toLocaleString()} of ${mods.length.toLocaleString()}`
+            : mods.length.toLocaleString()
+        }
+        paged={paged}
+        empty={
+          mods.length === 0
+            ? { icon: Lightbulb, message: "No suggestions yet" }
+            : { icon: Search, message: "No mods match your filters" }
+        }
+        itemLabel="mod"
+        columns={columns}
+        rowKey={(mod) => mod.id}
+        onRowClick={(mod) => onView(mod.id)}
+        actions={(mod) =>
+          modReviewActions(mod, { onReview, onReject }, envDisplay)
+        }
+        actionSlots={0}
+        isRowBusy={(mod) => busyModId === mod.id}
+      />
     </>
   );
 }

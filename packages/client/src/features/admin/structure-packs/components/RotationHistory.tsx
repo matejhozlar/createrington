@@ -1,15 +1,12 @@
-import { useState } from "react";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { History, CheckCircle2, XCircle } from "lucide-react";
-import { Paginator } from "@/components/paginator";
-import { EmptyState, ErrorState } from "@/components/query-states";
+import { PagedTable } from "@/components/paged-table";
+import { usePagedQuery } from "@/hooks/use-paged-query";
 import { Badge } from "@/components/ui/badge";
 import { CellDate, CellText } from "@/components/cell-text";
 import {
   BadgeCellSkeleton,
-  DataTable,
-  loadingRowCount,
   type DataTableColumn,
 } from "@/components/data-table";
 
@@ -17,23 +14,11 @@ type Rotation =
   RouterOutput["admin"]["structurePacks"]["rotation"]["history"]["items"][number];
 
 export function RotationHistory() {
-  const [page, setPage] = useState(0);
-  const limit = 10;
-
-  const historyQuery = useQuery(
-    trpc.admin.structurePacks.rotation.history.queryOptions(
-      {
-        page,
-        limit,
-      },
-      { placeholderData: keepPreviousData },
-    ),
+  const history = usePagedQuery(
+    {},
+    (input) => trpc.admin.structurePacks.rotation.history.queryOptions(input),
+    10,
   );
-  const data = historyQuery.data;
-  const total = data?.pagination.total ?? 0;
-  const totalPages = data?.pagination.totalPages ?? 0;
-  const loading = historyQuery.isLoading || historyQuery.isPlaceholderData;
-  const loadingRows = loadingRowCount(page, limit, total);
 
   const packsQuery = useQuery(trpc.admin.structurePacks.list.queryOptions());
   const packMap = new Map((packsQuery.data ?? []).map((p) => [p.id, p.name]));
@@ -103,39 +88,18 @@ export function RotationHistory() {
         </h2>
         <p className="text-sm text-muted-foreground">Past rotation events</p>
       </div>
-      {historyQuery.isError ? (
-        <ErrorState
-          message={historyQuery.error.message}
-          onRetry={() => historyQuery.refetch()}
-          compact
-        />
-      ) : !loading && (!data || data.items.length === 0) ? (
-        <EmptyState
-          icon={History}
-          message="No rotations yet"
-          className="py-4"
-        />
-      ) : (
-        <>
-          <DataTable
-            columns={columns}
-            rows={data?.items ?? []}
-            loading={loading}
-            loadingRows={loadingRows}
-            rowKey={(rotation) => rotation.id}
-          />
-
-          <Paginator
-            page={page}
-            limit={limit}
-            total={total}
-            totalPages={totalPages}
-            onPageChange={setPage}
-            itemLabel="rotation"
-            className="mt-4"
-          />
-        </>
-      )}
+      <PagedTable
+        paged={history}
+        empty={{
+          icon: History,
+          message: "No rotations yet",
+          className: "py-4",
+        }}
+        itemLabel="rotation"
+        compact
+        columns={columns}
+        rowKey={(rotation) => rotation.id}
+      />
     </div>
   );
 }
