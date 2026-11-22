@@ -44,6 +44,8 @@ beforeEach(() => {
 afterEach(() => {
   vi.useRealTimers();
   vi.clearAllMocks();
+  vi.restoreAllMocks();
+  markJoinedMinecraft.mockReset();
 });
 
 describe("PlaytimePersistence", () => {
@@ -91,6 +93,32 @@ describe("PlaytimePersistence", () => {
     await persistence.flush(1000);
 
     expect(markJoinedMinecraft).not.toHaveBeenCalled();
+    service.shutdown();
+  });
+
+  it("reports a failed waitlist step as such, not as a failed session start", async () => {
+    const { service, writer, persistence } = startedService();
+    writer.startSession.mockResolvedValue({
+      sessionId: 42,
+      discordId: "discord-steve",
+    });
+    markJoinedMinecraft.mockRejectedValue(new Error("update failed"));
+    const error = vi.spyOn(logger, "error");
+    const warn = vi.spyOn(logger, "warn");
+
+    service.handlePlayerJoinFromMod({
+      uuid: STEVE,
+      username: "steve",
+      playTimeTicks: ticks(1000),
+    });
+    await persistence.flush(1000);
+
+    expect(sessionOf(service, STEVE)?.sessionId).toBe(42);
+    expect(error).not.toHaveBeenCalled();
+    expect(warn).toHaveBeenCalledWith(
+      'Failed to mark waitlist "joined Minecraft" for discord-steve:',
+      expect.any(Error),
+    );
     service.shutdown();
   });
 

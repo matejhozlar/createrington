@@ -29,9 +29,12 @@ export class PlaytimePersistence {
           .then(async (started) => {
             if (!started) return;
             service.setSessionId(event.uuid, started.sessionId);
-            if (started.discordId) {
-              await markJoinedMinecraft(started.discordId);
-            }
+            await markJoinedMinecraft(started.discordId).catch((error) => {
+              logger.warn(
+                `Failed to mark waitlist "joined Minecraft" for ${started.discordId}:`,
+                error,
+              );
+            });
           })
           .catch((error) => {
             logger.error(
