@@ -456,3 +456,23 @@ describe("PlaytimeService relay shutdown", () => {
     expect(service.getServerState()).toBe(ServerState.OFFLINE);
   });
 });
+
+describe("PlaytimeService session duration", () => {
+  it("measures a session handed over as an object from the tracked session, not the snapshot", () => {
+    const { service } = makeService();
+    service.initialize();
+
+    service.handlePlayerJoinFromMod({ uuid: STEVE, username: "steve" });
+    const firstSession = sessionOf(service, STEVE)!;
+
+    vi.setSystemTime(new Date(T0.getTime() + seconds(90)));
+    expect(service.getSessionDuration(firstSession)).toBe(90);
+
+    service.handlePlayerLeaveFromMod({ uuid: STEVE, username: "steve" });
+    expect(service.getSessionDuration(firstSession)).toBeNull();
+
+    service.handlePlayerJoinFromMod({ uuid: STEVE, username: "steve" });
+    vi.setSystemTime(new Date(T0.getTime() + seconds(120)));
+    expect(service.getSessionDuration(firstSession)).toBe(30);
+  });
+});

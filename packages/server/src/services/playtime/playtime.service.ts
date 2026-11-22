@@ -565,10 +565,9 @@ export class PlaytimeService extends typedEmitter<PlaytimeServiceEvents>() {
 
   /** Wall-clock seconds elapsed in the player's current session, or null if no session is tracked. Accepts a UUID or an ActiveSession. */
   getSessionDuration(identifier: string | ActiveSession): number | null {
-    const session =
-      typeof identifier === "string"
-        ? this.activeSessions.get(identifier)
-        : identifier;
+    const session = this.activeSessions.get(
+      typeof identifier === "string" ? identifier : identifier.uuid,
+    );
     if (!session) {
       return null;
     }
