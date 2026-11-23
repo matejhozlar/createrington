@@ -1,4 +1,5 @@
 import type { ObstacleSprite, Sprites } from "./sprites";
+import type { Rgb } from "./util";
 
 export type LevelId = "overworld" | "nether" | "end";
 export type PortalKind = "nether" | "end";
@@ -42,7 +43,7 @@ export type DrifterConfig = {
 
 export type ExitPortal = {
   kind: PortalKind;
-  color: string;
+  color: Rgb;
 };
 
 export type Level = {
@@ -50,7 +51,7 @@ export type Level = {
   name: string;
   span: number;
   portal: ExitPortal | null;
-  dust: string;
+  dust: Rgb;
   gap: readonly [number, number];
   drifters: DrifterConfig;
   roster: readonly Spawn[];
@@ -61,8 +62,8 @@ export const LEVELS: readonly [Level, ...Level[]] = [
     id: "overworld",
     name: "OVERWORLD",
     span: 500,
-    portal: { kind: "nether", color: "120, 80, 240" },
-    dust: "201, 180, 138",
+    portal: { kind: "nether", color: [120, 80, 240] },
+    dust: [201, 180, 138],
     gap: [110, 220],
     drifters: {
       count: 5,
@@ -109,8 +110,8 @@ export const LEVELS: readonly [Level, ...Level[]] = [
     id: "nether",
     name: "THE NETHER",
     span: 700,
-    portal: { kind: "end", color: "50, 190, 160" },
-    dust: "150, 90, 80",
+    portal: { kind: "end", color: [50, 190, 160] },
+    dust: [150, 90, 80],
     gap: [100, 200],
     drifters: {
       count: 2,
@@ -152,7 +153,7 @@ export const LEVELS: readonly [Level, ...Level[]] = [
     name: "THE END",
     span: Infinity,
     portal: null,
-    dust: "214, 214, 178",
+    dust: [214, 214, 178],
     gap: [90, 180],
     drifters: {
       count: 1,

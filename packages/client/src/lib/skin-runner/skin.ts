@@ -1,6 +1,7 @@
 import { mcHeadsSkin } from "@/lib/externalUrls";
+import { context2d, createCanvas } from "@/lib/canvas";
 import { loadImage } from "@/lib/image";
-import { STEVE_SKIN_DATA_URI } from "./steve";
+import { STEVE_SKIN_DATA_URI } from "@/lib/steveSkin";
 
 export type SkinModel = "classic" | "slim";
 export type Part = HTMLCanvasElement;
@@ -36,20 +37,6 @@ const LEGACY_SKIN_HEIGHT = 32;
 const SLIM_PROBE_X = 55;
 const SLIM_PROBE_Y = 20;
 const FAR_LIMB_SHADE = "rgba(0, 0, 0, 0.32)";
-
-export function createCanvas(width: number, height: number): HTMLCanvasElement {
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-  return canvas;
-}
-
-export function context2d(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("2D canvas context unavailable");
-  ctx.imageSmoothingEnabled = false;
-  return ctx;
-}
 
 export async function loadSkinParts(uuid: string): Promise<SkinParts> {
   const image = await loadImage(mcHeadsSkin(uuid), {
