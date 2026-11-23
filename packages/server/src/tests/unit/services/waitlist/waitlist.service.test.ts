@@ -6,6 +6,12 @@ vi.mock("@/db/utils/errors", async () =>
 vi.mock("@/db", async () =>
   (await import("@/tests/helpers/waitlist")).waitlistMocks.db(),
 );
+vi.mock("@/services/waitlist/capacity.service", async () =>
+  (await import("@/tests/helpers/waitlist")).waitlistMocks.capacity(),
+);
+vi.mock("@/services/waitlist/progress-embed", async () =>
+  (await import("@/tests/helpers/waitlist")).waitlistMocks.progressEmbed(),
+);
 vi.mock("@/config", async () =>
   (await import("@/tests/helpers/waitlist")).waitlistMocks.config(),
 );
@@ -31,8 +37,8 @@ vi.mock("@/discord/bots/main/registration/verification-channel", async () =>
     await import("@/tests/helpers/waitlist")
   ).waitlistMocks.verificationChannel(),
 );
-vi.mock("@/app/middleware/error-handler", async () =>
-  (await import("@/tests/helpers/waitlist")).waitlistMocks.errorHandler(),
+vi.mock("@/errors", async () =>
+  (await import("@/tests/helpers/waitlist")).waitlistMocks.appErrors(),
 );
 
 import { WaitlistService } from "@/services/waitlist/waitlist.service";

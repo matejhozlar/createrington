@@ -1,6 +1,7 @@
+import { userMention } from "discord.js";
 import { EmbedColors } from "../../colors";
 import { createEmbed } from "../../embed-builder";
-import { discordTimestamp } from "@/utils/format";
+import { discordTimestamp, pluralize } from "@/utils/format";
 
 export interface InactivePlayerInfo {
   discordId: string;
@@ -9,13 +10,9 @@ export interface InactivePlayerInfo {
 }
 
 export const InactivityEmbedPresets = {
-  /**
-   * Warning embed sent to announcements when inactive players are detected.
-   * Lists all warned players with their Discord mentions and last-seen timestamps.
-   */
   warning(data: { players: InactivePlayerInfo[]; deadlineDate: Date }) {
     const playerLines = data.players.map((p) => {
-      return `- <@${p.discordId}> (\`${p.minecraftUsername}\`) - last seen ${discordTimestamp(p.lastSeen, "R")}`;
+      return `- ${userMention(p.discordId)} (\`${p.minecraftUsername}\`) - last seen ${discordTimestamp(p.lastSeen, "R")}`;
     });
 
     const description = [
@@ -24,7 +21,6 @@ export const InactivityEmbedPresets = {
       ...playerLines,
     ].join("\n");
 
-    // Discord embed description limit is 4096 characters
     const truncatedDescription =
       description.length > 4096
         ? `${description.slice(0, 4050)}\n\n...and ${data.players.length} players total`
@@ -38,19 +34,13 @@ export const InactivityEmbedPresets = {
       .timestamp();
   },
 
-  /**
-   * Admin-facing embed posted to #admin-notifications after an inactivity
-   * removal run. Mirrors the public `removed` embed's player list but
-   * additionally names who triggered the run (admin mention or
-   * "Automated" for the scheduled cycle / startup sweep).
-   */
   adminRemoval(data: {
     players: string[];
     triggeredBy: { discordId: string; username: string | null } | null;
     removedAt: Date;
   }) {
     const triggeredByLine = data.triggeredBy
-      ? `<@${data.triggeredBy.discordId}>${data.triggeredBy.username ? ` (\`${data.triggeredBy.username}\`)` : ""}`
+      ? `${userMention(data.triggeredBy.discordId)}${data.triggeredBy.username ? ` (\`${data.triggeredBy.username}\`)` : ""}`
       : "Automated";
 
     const playerLines = data.players
@@ -58,7 +48,7 @@ export const InactivityEmbedPresets = {
       .join("\n");
 
     const description = [
-      `**${data.players.length}** inactive player${data.players.length === 1 ? "" : "s"} removed at ${discordTimestamp(data.removedAt, "F")}.`,
+      `**${data.players.length}** inactive ${pluralize(data.players.length, "player")} removed at ${discordTimestamp(data.removedAt, "F")}.`,
       `**Triggered by:** ${triggeredByLine}`,
       "",
       playerLines,
@@ -76,9 +66,6 @@ export const InactivityEmbedPresets = {
       .timestamp();
   },
 
-  /**
-   * Announcement embed when inactive players are removed after their grace period expired.
-   */
   removed(data: { players: string[]; removedAt: Date }) {
     const playerLines = data.players
       .map((username) => `- \`${username}\``)

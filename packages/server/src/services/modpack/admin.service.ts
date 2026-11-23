@@ -1,12 +1,11 @@
 import { Q } from "@/db";
-import { BadRequestError, ConflictError } from "@/app/middleware/error-handler";
+import { BadRequestError, ConflictError } from "@/errors";
 import {
   ForeignKeyViolationError,
   UniqueViolationError,
 } from "@/db/utils/errors";
 import type { Modpack } from "@createrington/shared/db";
-import { CurseForgeClass } from "@/services/curseforge/client";
-import { getMod, type CurseForgeProjectData } from "@/services/curseforge/mods";
+import { assertCurseForgeModpack } from "@/services/curseforge/mods";
 import { modpackService } from "./modpack.service";
 import { modpackSyncService } from "./sync.service";
 
@@ -27,7 +26,7 @@ export class ModpackAdminService {
     adminId: string,
   ): Promise<Modpack> {
     if (input.curseforgeProjectId) {
-      await this.assertModpackProject(input.curseforgeProjectId);
+      await assertCurseForgeModpack(input.curseforgeProjectId);
     }
     if (input.serverId) await this.assertServer(input.serverId);
     try {
@@ -70,7 +69,7 @@ export class ModpackAdminService {
         "its CurseForge project cannot be changed",
       );
       if (patch.curseforgeProjectId) {
-        await this.assertModpackProject(patch.curseforgeProjectId);
+        await assertCurseForgeModpack(patch.curseforgeProjectId);
       }
     }
     if (patch.serverId) await this.assertServer(patch.serverId);
@@ -136,22 +135,6 @@ export class ModpackAdminService {
     if (pack) {
       throw new ConflictError(
         `The launcher offers this modpack as "${pack.slug}", so ${consequence}. Remove that launcher pack on the owner Launcher packs page first.`,
-      );
-    }
-  }
-
-  private async assertModpackProject(projectId: number): Promise<void> {
-    let data: CurseForgeProjectData;
-    try {
-      data = await getMod(projectId);
-    } catch {
-      throw new BadRequestError(
-        `Could not resolve CurseForge project #${projectId}`,
-      );
-    }
-    if (data.classId !== CurseForgeClass.modpacks) {
-      throw new BadRequestError(
-        `"${data.name}" is not a modpack on CurseForge`,
       );
     }
   }

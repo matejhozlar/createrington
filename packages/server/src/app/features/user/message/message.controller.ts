@@ -1,17 +1,17 @@
-import { BadRequestError, NotFoundError } from "@/app/middleware";
+import { BadRequestError, NotFoundError } from "@/errors";
 import { getService, Services } from "@/services";
 import { MESSAGE_CACHE_CONFIG } from "@/services/discord/message/cache";
 import { AttachmentBuilder } from "discord.js";
 import type { Request, Response } from "express";
-import {
-  SendMessageBodySchema,
-  type SendMessageResponse,
+import { getValidated } from "@/app/middleware/validation.middleware";
+import { respondSuccess } from "@/app/middleware/api-envelope";
+import type {
+  SendMessageBody,
+  SendMessageResponse,
 } from "@createrington/shared/api";
 
-/** 10 MB hard cap for uploaded images (must match multer config in routes) */
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
 
-/** MIME types we accept for image uploads */
 const ALLOWED_IMAGE_TYPES = new Set([
   "image/png",
   "image/jpeg",
@@ -19,11 +19,6 @@ const ALLOWED_IMAGE_TYPES = new Set([
   "image/webp",
 ]);
 
-/**
- * Resolves the monitored Discord channel ID for a given Minecraft Server
- * Only servers present in MESSAGE_CACHE_CONFIG are valid targets - sending to
- * any other channel would bypass the cache entirely
- */
 function resolveChannelForServer(serverId: number): string | null {
   const entry = MESSAGE_CACHE_CONFIG.servers.find(
     (s) => s.serverId === serverId,
@@ -31,33 +26,11 @@ function resolveChannelForServer(serverId: number): string | null {
   return entry?.channelId ?? null;
 }
 
-/**
- * Message Controller
- *
- * Handles sending messages from the web client to a monitored Discord channel:
- * - Validates image attachments (MIME type and size)
- * - Resolves the target Discord channel for the requested Minecraft server
- * - Prefixes every message, image-only ones included, with the sender's Minecraft username
- * - Delegates delivery to MESSAGE_SERVICE
- *
- * NOTE: The main bot's messageCreate listener picks up the sent message and
- * inserts it into MessageCacheService, there is no need to update the cache
- * manually here. The WebSocket broadcast is a side-effect of that pipeline.
- */
 export class MessageController {
-  /**
-   * Sends a message to the Discord channel linked to a Minecraft server.
-   *
-   * Validates the uploaded image if present, resolves the channel for the
-   * given `serverId`, prepends the sender's display name to the message content,
-   * and forwards the payload to MESSAGE_SERVICE.
-   *
-   * @param req - Express request with multipart body (serverId, content, image)
-   * @param res - Express response; returns 201 with messageId, serverId, channelId
-   * @returns Promise that resolves when the message has been delivered
-   */
   static async sendMessage(req: Request, res: Response): Promise<void> {
-    const { serverId, content } = SendMessageBodySchema.parse(req.body);
+    const {
+      body: { serverId, content },
+    } = getValidated<{ body: SendMessageBody }>(res);
 
     const channelId = resolveChannelForServer(serverId);
     if (!channelId) {
@@ -107,31 +80,28 @@ export class MessageController {
 
     const messageService = await getService(Services.MESSAGE_SERVICE);
 
-    const result = await messageService.send({
-      channelId,
-      content: messageContent,
-      files: attachment ? [attachment] : undefined,
-    });
+    const message = await messageService
+      .send({
+        channelId,
+        content: messageContent,
+        files: attachment ? [attachment] : undefined,
+      })
+      .catch((error: unknown) => {
+        logger.error(
+          `Failed to send web message to channel ${channelId}:`,
+          error,
+        );
+        throw new BadRequestError("Failed to send message");
+      });
 
-    if (!result.success) {
-      logger.error(
-        `Failed to send web message to channel ${channelId}:`,
-        result.error,
-      );
-
-      throw new BadRequestError("Failed to send message");
-    }
-
-    const response: SendMessageResponse = {
-      success: true,
+    respondSuccess<SendMessageResponse["data"]>(res, {
+      status: 201,
+      message: "Message sent successfully",
       data: {
-        messageId: result.messageId!,
+        messageId: message.id,
         serverId,
         channelId,
       },
-      message: "Message sent successfully",
-    };
-
-    res.status(201).json(response);
+    });
   }
 }

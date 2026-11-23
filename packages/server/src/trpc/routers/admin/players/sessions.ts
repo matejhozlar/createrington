@@ -1,9 +1,14 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
-import { playerService } from "@/services/player";
-import { parsePlayerId, paginationInput, buildPagination } from "@/trpc/utils";
+import { playerSessionRepo } from "@/db";
+import {
+  paginationInput,
+  buildPagination,
+  id,
+  playerId,
+  pageOffset,
+} from "@/trpc/utils";
 
-/** Admin sessions router: paginated session history for a player. */
 export const sessionsRouter = router({
   list: adminProcedure
     .meta({
@@ -12,29 +17,26 @@ export const sessionsRouter = router({
     })
     .input(
       z.object({
-        id: z.string().min(1),
-        serverId: z.number().int().positive().optional(),
+        id: playerId(),
+        serverId: id().optional(),
         ...paginationInput({ maxLimit: 200, defaultLimit: 50 }),
       }),
     )
     .query(async ({ input }) => {
-      const identifier = parsePlayerId(input.id);
-
-      const { sessions, total: totalSessions } =
-        await playerService.sessions.getHistoryPage(
-          identifier,
-          input.serverId,
-          input.limit,
-          input.page * input.limit,
-        );
+      const { rows, total } = await playerSessionRepo.getHistoryPage(
+        input.id,
+        input.serverId,
+        input.limit,
+        pageOffset(input),
+      );
 
       return {
-        sessions: sessions.map((s) => ({
+        items: rows.map((s) => ({
           ...s,
           secondsPlayed: s.secondsPlayed?.toString() || null,
           activeSeconds: s.activeSeconds.toString(),
         })),
-        pagination: buildPagination(input.page, input.limit, totalSessions),
+        pagination: buildPagination(input.page, input.limit, total),
       };
     }),
 });

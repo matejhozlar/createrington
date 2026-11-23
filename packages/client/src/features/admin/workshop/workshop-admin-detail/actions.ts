@@ -6,7 +6,8 @@ import {
   type WorkshopModReviewAction,
 } from "@createrington/shared/workshop";
 import type { EnvironmentDisplay } from "@/features/workshop/components/EnvironmentCell";
-import type { AdminWorkshopMod } from "./types";
+import type { ModEnvironment } from "@createrington/shared/db";
+import type { AdminWorkshopMod } from "@/features/admin/workshop/workshop-admin-detail/types";
 
 export interface ModReviewHandlers {
   onReview: (
@@ -14,6 +15,18 @@ export interface ModReviewHandlers {
     action: Exclude<WorkshopModReviewAction, "reject">,
   ) => void;
   onReject: (target: { workshopModId: number; name: string }) => void;
+}
+
+export interface ModTableProps extends ModReviewHandlers {
+  isLoading: boolean;
+  error: string | null;
+  onRetry: () => void;
+  search: string;
+  onSearchChange: (value: string) => void;
+  busyModId: number | null;
+  onView: (workshopModId: number) => void;
+  envDisplay: EnvironmentDisplay;
+  onSetEnvironment: (projectId: number, environment: ModEnvironment) => void;
 }
 
 export function modReviewActions(

@@ -1,4 +1,12 @@
 import { pgEnum } from "drizzle-orm/pg-core";
+import { BALANCE_TRANSACTION_TYPES } from "@createrington/shared/balance";
+import { DONATION_STATUSES } from "@createrington/shared/donation";
+import { FAQ_MATCH_MODES } from "@createrington/shared/faq";
+import { MAINTENANCE_SCHEDULE_STATUSES } from "@createrington/shared/maintenance";
+import { REWARD_TYPES } from "@createrington/shared/reward";
+import { STRIKE_CLASSIFICATIONS } from "@createrington/shared/strike";
+import { WAITLIST_STATUSES } from "@createrington/shared/waitlist";
+import { TICKET_ACTION_TYPES } from "@createrington/shared/ticket";
 import { GALLERY_SUBMISSION_STATUSES } from "@createrington/shared/gallery";
 import {
   LAUNCHER_PACK_FILE_SOURCES,
@@ -6,6 +14,10 @@ import {
   LAUNCHER_RELEASE_STATUSES,
 } from "@createrington/shared/launcher";
 import { PARTY_MEMBER_RANKS } from "@createrington/shared/party";
+import {
+  PLANNING_CATEGORIES,
+  PLANNING_ITEM_STATUSES,
+} from "@createrington/shared/planning";
 import { PLAYER_PROMPT_ENTRY_MODES } from "@createrington/shared/player-prompt";
 import {
   MOD_ENVIRONMENTS,
@@ -18,17 +30,10 @@ import {
 
 export const banTypeEnum = pgEnum("ban_type", ["temporary", "permanent"]);
 
-export const strikeClassificationEnum = pgEnum("strike_classification", [
-  "pvp",
-  "theft",
-  "griefing",
-  "laggy_machines",
-  "inappropriate_chat",
-  "harassment",
-  "exploiting",
-  "rule_violation",
-  "other",
-]);
+export const strikeClassificationEnum = pgEnum(
+  "strike_classification",
+  STRIKE_CLASSIFICATIONS,
+);
 
 export const ticketStatusEnum = pgEnum("ticket_status", [
   "open",
@@ -38,12 +43,7 @@ export const ticketStatusEnum = pgEnum("ticket_status", [
 
 export const ticketTypeEnum = pgEnum("ticket_type", ["general", "report"]);
 
-export const waitlistStatusEnum = pgEnum("waitlist_status", [
-  "queued",
-  "promoted",
-  "registered",
-  "expired",
-]);
+export const waitlistStatusEnum = pgEnum("waitlist_status", WAITLIST_STATUSES);
 
 export const discordAutoMessageRotationEnum = pgEnum(
   "discord_auto_message_rotation",
@@ -158,3 +158,38 @@ export const partyMemberRankEnum = pgEnum(
   "party_member_rank",
   PARTY_MEMBER_RANKS,
 );
+
+// Where a planning item gets built; subcategories under it are data
+export const planningCategoryEnum = pgEnum(
+  "planning_category",
+  PLANNING_CATEGORIES,
+);
+
+// draft: just written, by a person or by Claude. open: up for discussion.
+// approved: agreed, and can later be tied to a roadmap entry
+export const planningItemStatusEnum = pgEnum(
+  "planning_item_status",
+  PLANNING_ITEM_STATUSES,
+);
+
+// lottery_*: written by the retired lottery, kept for its ledger rows
+export const playerBalanceTransactionTypeEnum = pgEnum(
+  "player_balance_transaction_type",
+  BALANCE_TRANSACTION_TYPES,
+);
+
+export const rewardTypeEnum = pgEnum("reward_type", REWARD_TYPES);
+
+export const donationStatusEnum = pgEnum("donation_status", DONATION_STATUSES);
+
+export const serverMaintenanceScheduleStatusEnum = pgEnum(
+  "server_maintenance_schedule_status",
+  MAINTENANCE_SCHEDULE_STATUSES,
+);
+
+export const ticketActionTypeEnum = pgEnum(
+  "ticket_action_type",
+  TICKET_ACTION_TYPES,
+);
+
+export const faqMatchModeEnum = pgEnum("faq_match_mode", FAQ_MATCH_MODES);

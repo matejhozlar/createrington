@@ -1,29 +1,23 @@
+import { ADMIN_REASON_MAX_LENGTH } from "@createrington/shared/admin-reason";
 import { useState } from "react";
 import { FormDialog } from "@/components/form-dialog";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Check, X } from "lucide-react";
 import { trpc, queryClient } from "@/lib/trpc";
-import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Textarea } from "@/components/ui/textarea";
+import { pluralize } from "@/lib/format";
+import type { AdminRow, DemoteResult } from "@/features/admin/owner/types";
 
 interface DemoteDialogProps {
-  admin: {
-    discordId: string;
-    minecraftUsername: string | null;
-  } | null;
+  admin: Pick<AdminRow, "discordId" | "minecraftUsername"> | null;
   onClose: () => void;
-  onSuccess: (result: {
-    minecraftUsername: string | null;
-    removedFromDb: boolean;
-    discordRoleRemoved: boolean;
-    rconResults: Array<{ serverId: number; success: boolean; error?: string }>;
-  }) => void;
+  onSuccess: (result: DemoteResult) => void;
 }
 
 export function DemoteDialog({ admin, onClose, onSuccess }: DemoteDialogProps) {
-  const toast = useToastActions();
   const [reason, setReason] = useState("");
 
   const previewQuery = useQuery(
@@ -33,27 +27,26 @@ export function DemoteDialog({ admin, onClose, onSuccess }: DemoteDialogProps) {
     ),
   );
   const demoteMutation = useMutation(
-    trpc.owner.admins.demote.mutationOptions({
-      onSuccess: () =>
-        void queryClient.invalidateQueries(trpc.owner.admins.pathFilter()),
-    }),
+    trpc.owner.admins.demote.mutationOptions(
+      useMutationToast({
+        onSuccess: (result) => {
+          void queryClient.invalidateQueries(trpc.owner.admins.pathFilter());
+          onSuccess(result);
+          setReason("");
+        },
+      }),
+    ),
   );
 
   const preview = previewQuery.data;
   const displayName = admin?.minecraftUsername ?? admin?.discordId ?? "";
 
-  const handleDemote = async () => {
+  const handleDemote = () => {
     if (!admin) return;
-    try {
-      const result = await demoteMutation.mutateAsync({
-        discordId: admin.discordId,
-        reason: reason.trim() || undefined,
-      });
-      onSuccess(result);
-      setReason("");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to demote");
-    }
+    demoteMutation.mutate({
+      discordId: admin.discordId,
+      reason: reason.trim() || undefined,
+    });
   };
 
   const actionRow = (label: string, enabled: boolean, detail?: string) => (
@@ -86,7 +79,7 @@ export function DemoteDialog({ admin, onClose, onSuccess }: DemoteDialogProps) {
       title={<>Demote {displayName}</>}
       description="This is a scorched-earth revoke — all admin state across every system is removed."
       confirmLabel="Demote"
-      onConfirm={() => void handleDemote()}
+      onConfirm={handleDemote}
       loading={demoteMutation.isPending}
       destructive
       contentClassName="sm:max-w-lg"
@@ -108,12 +101,12 @@ export function DemoteDialog({ admin, onClose, onSuccess }: DemoteDialogProps) {
             {actionRow(
               "Run /deop on Minecraft servers",
               preview.serverCount > 0 && !!preview.minecraftUsername,
-              `${preview.serverCount} server${preview.serverCount !== 1 ? "s" : ""}`,
+              pluralize(preview.serverCount, "server"),
             )}
             {actionRow(
               "Revoke active web sessions",
               preview.activeSessions > 0,
-              `${preview.activeSessions} session${preview.activeSessions !== 1 ? "s" : ""}`,
+              pluralize(preview.activeSessions, "session"),
             )}
           </div>
         ) : (
@@ -130,7 +123,7 @@ export function DemoteDialog({ admin, onClose, onSuccess }: DemoteDialogProps) {
           value={reason}
           onChange={(e) => setReason(e.target.value)}
           placeholder="e.g. Stepped down, inactive, trust concerns"
-          maxLength={500}
+          maxLength={ADMIN_REASON_MAX_LENGTH}
           rows={3}
         />
       </Field>

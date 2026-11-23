@@ -8,8 +8,8 @@ import { trpc } from "@/lib/trpc";
 import { PartyMembersPanel } from "@/features/admin/tools/parties/components/PartyMembersPanel";
 import { PartyRankBadge } from "@/features/admin/tools/parties/components/PartyRankBadge";
 import { useQuery } from "@tanstack/react-query";
-
-const SERVER_ID = 1;
+import { MAIN_SERVER_ID } from "@/lib/minecraft";
+import { pluralize } from "@/lib/format";
 
 const SECTION_LABEL =
   "text-xs font-semibold uppercase tracking-wider text-muted-foreground";
@@ -17,7 +17,7 @@ const SECTION_LABEL =
 export function PartyTab({ playerUuid }: { playerUuid: string }) {
   const statusQuery = useQuery(
     trpc.admin.parties.playerStatus.queryOptions({
-      serverId: SERVER_ID,
+      serverId: MAIN_SERVER_ID,
       playerUuid,
     }),
   );
@@ -80,7 +80,7 @@ export function PartyTab({ playerUuid }: { playerUuid: string }) {
                   {ally.name}
                 </span>
                 <span className="text-xs text-muted-foreground">
-                  {ally.memberCount} member{ally.memberCount === 1 ? "" : "s"}
+                  {pluralize(ally.memberCount, "member")}
                 </span>
               </li>
             ))}

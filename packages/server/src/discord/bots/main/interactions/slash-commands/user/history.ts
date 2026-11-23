@@ -1,5 +1,6 @@
-import { balanceRepo, player } from "@/db";
-import { BalanceUtils } from "@/db/repositories/balance/utils";
+import { Q, balanceRepo } from "@/db";
+import type { BalanceTransactionType } from "@createrington/shared/balance";
+import { BalanceUtils } from "@/db/utils/balance";
 import { EmbedPresets } from "@/discord/embeds";
 import { replyError } from "@/discord/utils/interaction-reply";
 import { CooldownType } from "@/discord/utils/cooldown";
@@ -9,10 +10,14 @@ import {
   MessageFlags,
   SlashCommandBuilder,
 } from "discord.js";
+import type {
+  CommandCooldown,
+  CommandModule,
+} from "@/discord/bots/common/loaders/command-loader";
 
 const TRANSACTION_LIMIT = 10;
 
-const typeLabels: Record<string, string> = {
+const typeLabels: Record<BalanceTransactionType, string> = {
   transfer_send: "Transfer (sent)",
   transfer_receive: "Transfer (received)",
   deposit: "Deposit",
@@ -21,100 +26,75 @@ const typeLabels: Record<string, string> = {
   admin_deduct: "Admin Deduct",
   admin_set: "Admin Set",
   purchase: "Purchase",
-  sale: "Sale",
   reward: "Reward",
   refund: "Refund",
+  gallery_reward: "Gallery Reward",
   lottery_entry: "Lottery Entry",
   lottery_win: "Lottery Win",
   lottery_refund: "Lottery Refund",
-  other: "Other",
 };
 
-/**
- * Slash command definition for the history command
- * Displays a player's recent balance transactions
- */
-export const data = new SlashCommandBuilder()
+const data = new SlashCommandBuilder()
   .setName("history")
   .setDescription("View your recent balance transactions");
 
-/**
- * Cooldown configuration for the history command
- *
- * - duration: 5 seconds
- * - type: "user" - Each user has their own cooldown
- * - message: Custom message shown when the user is on cooldown
- */
-export const cooldown = {
+const cooldown: CommandCooldown = {
   duration: 5,
   type: CooldownType.USER,
   message: "Please wait before checking history again!",
 };
 
-/**
- * Executes the history command to display recent balance transactions
- *
- * Process:
- * 1. Verify the player is registered
- * 2. Fetch the last 10 transactions from the balance repository
- * 3. Format each transaction with timestamp, amount, type, and description
- * 4. Reply with an ephemeral embed listing the transactions
- */
-export async function execute(
+async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
-  try {
-    const playerEntry = await player.find({ discordId: interaction.user.id });
+  const playerEntry = await Q.player.find({ discordId: interaction.user.id });
 
-    if (!playerEntry) {
-      await replyError(
-        interaction,
-        "Not Registered",
-        "You must be registered to view history. Use `/register` to get started.",
-      );
-      return;
-    }
-
-    const transactions = await balanceRepo.getHistory(
-      playerEntry,
-      TRANSACTION_LIMIT,
+  if (!playerEntry) {
+    await replyError(
+      interaction,
+      "Not Registered",
+      "You must be registered to view history. Use `/register` to get started.",
     );
+    return;
+  }
 
-    if (transactions.length === 0) {
-      const embed = EmbedPresets.info(
-        "Transaction History",
-        "You don't have any transactions yet.",
-      );
-      await interaction.reply({
-        embeds: [embed.build()],
-        flags: MessageFlags.Ephemeral,
-      });
-      return;
-    }
+  const transactions = await balanceRepo.getHistory(
+    playerEntry,
+    TRANSACTION_LIMIT,
+  );
 
-    const lines = transactions.map((tx) => {
-      const isPositive = tx.amount >= 0n;
-      const sign = isPositive ? "+" : "";
-      const amount = BalanceUtils.formatTrimmed(tx.amount);
-      const label = typeLabels[tx.transactionType] ?? tx.transactionType;
-      const desc = tx.description ? ` - ${tx.description}` : "";
-
-      return `${discordTimestamp(tx.createdAt, "R")} **${sign}$${amount}** ${label}${desc}`;
-    });
-
-    const embed = EmbedPresets.info("Transaction History", lines.join("\n"));
-
+  if (transactions.length === 0) {
+    const embed = EmbedPresets.info(
+      "Transaction History",
+      "You don't have any transactions yet.",
+    );
     await interaction.reply({
       embeds: [embed.build()],
       flags: MessageFlags.Ephemeral,
     });
-  } catch (error) {
-    logger.error("/history failed:", error);
-
-    await replyError(
-      interaction,
-      "History Error",
-      "Failed to fetch transaction history. Please try again.",
-    );
+    return;
   }
+
+  const lines = transactions.map((tx) => {
+    const isPositive = tx.amount >= 0n;
+    const sign = isPositive ? "+" : "";
+    const amount = BalanceUtils.formatMoney(tx.amount);
+    const label = typeLabels[tx.transactionType];
+    const desc = tx.description ? ` - ${tx.description}` : "";
+
+    return `${discordTimestamp(tx.createdAt, "R")} **${sign}${amount}** ${label}${desc}`;
+  });
+
+  const embed = EmbedPresets.info("Transaction History", lines.join("\n"));
+
+  await interaction.reply({
+    embeds: [embed.build()],
+    flags: MessageFlags.Ephemeral,
+  });
 }
+
+export default {
+  data,
+  cooldown,
+  execute,
+} satisfies CommandModule;

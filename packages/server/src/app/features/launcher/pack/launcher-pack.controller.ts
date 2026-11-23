@@ -1,4 +1,5 @@
 import { Readable, Transform } from "node:stream";
+import { errorMessage } from "@/errors";
 import { pipeline } from "node:stream/promises";
 import type { ReadableStream as NodeReadableStream } from "node:stream/web";
 import type { Request, Response } from "express";
@@ -9,6 +10,7 @@ import type {
   LauncherPacksData,
   LauncherSuccessResponse,
 } from "@createrington/shared/launcher";
+import { respondSuccess } from "@/app/middleware/api-envelope";
 import { getValidated } from "@/app/middleware/validation.middleware";
 import { sendCachedJson } from "@/app/utils/cached-json";
 import { createKeyValueStore } from "@/services/key-value-store";
@@ -84,7 +86,7 @@ async function streamStorage(
   } catch (error) {
     if (!res.headersSent) throw error;
     logger.debug(
-      `Storage download ${req.originalUrl} ended early: ${error instanceof Error ? error.message : String(error)}`,
+      `Storage download ${req.originalUrl} ended early: ${errorMessage(error)}`,
     );
     res.destroy();
   }
@@ -150,11 +152,9 @@ export class LauncherPackController {
   static async resolveFiles(_req: Request, res: Response): Promise<void> {
     const { body } = getValidated<{ body: ResolveFilesBody }>(res);
 
-    const response: LauncherSuccessResponse<LauncherPackFilesData> = {
-      success: true,
+    respondSuccess<LauncherPackFilesData>(res, {
       data: await launcherPackFileService.resolveFiles(body.fileIds),
-    };
-    res.json(response);
+    });
   }
 
   static async storageFile(req: Request, res: Response): Promise<void> {

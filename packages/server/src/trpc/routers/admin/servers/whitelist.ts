@@ -1,24 +1,18 @@
-import { z } from "zod";
-import { adminProcedure } from "@/trpc/trpc";
+import { adminProcedure, router } from "@/trpc/trpc";
 import { Q } from "@/db";
 import { whitelistService } from "@/services/whitelist";
-import { getServerById } from "@/services/playtime/config";
-import { trpcError, auditActor } from "@/trpc/utils";
+import { requireServer } from "@/services/mc-server/servers";
+import { trpcError, auditActor, serverIdInput } from "@/trpc/utils";
 
-export const serverWhitelistProcedures = {
-  resyncWhitelist: adminProcedure
+export const serverWhitelistRouter = router({
+  resync: adminProcedure
     .meta({
       description:
         "Regenerate the server whitelist from registered players, then reload it via RCON",
     })
-    .input(z.object({ serverId: z.coerce.number().int().positive() }))
+    .input(serverIdInput)
     .mutation(async ({ input, ctx }) => {
-      const serverConfig = getServerById(input.serverId);
-      if (!serverConfig) {
-        throw trpcError.badRequest(
-          `Server with id ${input.serverId} not found`,
-        );
-      }
+      const serverConfig = requireServer(input.serverId);
 
       let count: number;
       try {
@@ -38,4 +32,4 @@ export const serverWhitelistProcedures = {
 
       return { count };
     }),
-};
+});

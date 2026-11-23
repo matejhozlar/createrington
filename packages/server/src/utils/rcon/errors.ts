@@ -1,8 +1,5 @@
 import type { ServerId } from "./types";
 
-/**
- * Rcon command error with additional context
- */
 export class RconCommandError extends Error {
   constructor(
     message: string,
@@ -15,9 +12,6 @@ export class RconCommandError extends Error {
   }
 }
 
-/**
- * Server not found error
- */
 export class ServerNotFoundError extends Error {
   constructor(public readonly serverId: ServerId) {
     super(`Server with ID ${serverId} not found in configuration`);

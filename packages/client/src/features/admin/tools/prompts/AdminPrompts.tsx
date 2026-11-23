@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
+import { AdminPage } from "@/features/admin/components/AdminPage";
 import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,13 +8,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { CellText } from "@/components/cell-text";
 import {
   BadgeCellSkeleton,
-  DataTable,
-  loadingRowCount,
   TwoLineCellSkeleton,
   type DataTableAction,
   type DataTableColumn,
 } from "@/components/data-table";
-import { Paginator } from "@/components/paginator";
+import { TableCard } from "@/components/paged-table";
 import {
   Select,
   SelectContent,
@@ -24,12 +22,19 @@ import {
 } from "@/components/ui/select";
 import { MessageSquare, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { formatFullDate } from "@/features/admin/format";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { PROMPT_STATUS_DISPLAY } from "./format";
+import { usePagedQuery } from "@/hooks/use-paged-query";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { CreatePromptModal } from "./components/CreatePromptModal";
 import { DeletePromptModal } from "./components/DeletePromptModal";
 
 type StatusFilter = "all" | "active" | "closed";
+
+const STATUS_FILTER_OPTIONS: { value: StatusFilter; label: string }[] = [
+  { value: "all", label: "All" },
+  { value: "active", label: "Active" },
+  { value: "closed", label: "Closed" },
+];
 type PromptRow = RouterOutput["admin"]["prompts"]["list"]["items"][number];
 
 function formatEndsAt(date: Date | string): string {
@@ -47,27 +52,13 @@ function formatEndsAt(date: Date | string): string {
 export function AdminPrompts() {
   const navigate = useNavigate();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
-  const [page, setPage] = useState(0);
-  const limit = 20;
   const [createOpen, setCreateOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<PromptRow | null>(null);
 
-  const listQuery = useQuery(
-    trpc.admin.prompts.list.queryOptions(
-      {
-        page,
-        limit,
-        status: statusFilter === "all" ? undefined : statusFilter,
-      },
-      { placeholderData: keepPreviousData },
-    ),
+  const prompts = usePagedQuery(
+    { status: statusFilter === "all" ? undefined : statusFilter },
+    (input) => trpc.admin.prompts.list.queryOptions(input),
   );
-
-  const items = listQuery.data?.items ?? [];
-  const total = listQuery.data?.pagination.total ?? 0;
-  const totalPages = listQuery.data?.pagination.totalPages ?? 0;
-  const loading = listQuery.isLoading || listQuery.isPlaceholderData;
-  const loadingRows = loadingRowCount(page, limit, total);
 
   const columns: DataTableColumn<PromptRow>[] = [
     {
@@ -93,8 +84,8 @@ export function AdminPrompts() {
       width: 100,
       skeleton: () => <BadgeCellSkeleton />,
       render: (row) => (
-        <Badge variant={row.status === "active" ? "default" : "secondary"}>
-          {row.status === "active" ? "Active" : "Closed"}
+        <Badge tone={PROMPT_STATUS_DISPLAY[row.status].tone}>
+          {PROMPT_STATUS_DISPLAY[row.status].label}
         </Badge>
       ),
     },
@@ -161,92 +152,67 @@ export function AdminPrompts() {
   ];
 
   return (
-    <div className="flex flex-1 flex-col gap-4">
-      <AdminPageHeader
-        trail={[
-          { label: "Admin", href: "/admin/dashboard" },
-          { label: "Tools", href: "/admin/tools" },
-          { label: "Player Prompts" },
-        ]}
+    <AdminPage
+      trail={[
+        { label: "Admin", href: "/admin/dashboard" },
+        { label: "Tools", href: "/admin/tools" },
+        { label: "Player Prompts" },
+      ]}
+    >
+      <AdminPageTitle
+        title="Player Prompts"
+        actions={
+          <>
+            <Select
+              value={statusFilter}
+              onValueChange={(v) => setStatusFilter(v as StatusFilter)}
+            >
+              <SelectTrigger className="w-full xs:w-36">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {STATUS_FILTER_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={prompts.retry}
+              disabled={prompts.query.isFetching}
+              title="Refresh"
+            >
+              <RefreshCw
+                className={
+                  prompts.query.isFetching ? "size-4 animate-spin" : "size-4"
+                }
+              />
+            </Button>
+            <Button onClick={() => setCreateOpen(true)}>
+              <Plus className="size-4" /> New Prompt
+            </Button>
+          </>
+        }
       />
 
-      <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
-        <AdminPageTitle
-          title="Player Prompts"
-          actions={
-            <>
-              <Select
-                value={statusFilter}
-                onValueChange={(v) => {
-                  setStatusFilter(v as StatusFilter);
-                  setPage(0);
-                }}
-              >
-                <SelectTrigger className="w-full xs:w-36">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="closed">Closed</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => void listQuery.refetch()}
-                disabled={listQuery.isFetching}
-                title="Refresh"
-              >
-                <RefreshCw
-                  className={
-                    listQuery.isFetching ? "size-4 animate-spin" : "size-4"
-                  }
-                />
-              </Button>
-              <Button onClick={() => setCreateOpen(true)}>
-                <Plus className="size-4" /> New Prompt
-              </Button>
-            </>
-          }
-        />
-
-        {!loading && items.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-border bg-card py-16 text-center">
-            <MessageSquare className="size-10 text-muted-foreground" />
-            <p className="text-muted-foreground">No prompts yet.</p>
-            <p className="text-sm text-muted-foreground/80">
-              Create one to ask players a question in Discord.
-            </p>
-          </div>
-        ) : (
-          <div className="rounded-lg border border-border bg-card">
-            <DataTable
-              columns={columns}
-              rows={items}
-              loading={loading}
-              loadingRows={loadingRows}
-              rowKey={(row) => row.id}
-              onRowClick={(row) => navigate(`/admin/tools/prompts/${row.id}`)}
-              actions={promptActions}
-              actionSlots={1}
-            />
-            {total > 0 && (
-              <div className="border-t px-6 py-4">
-                <Paginator
-                  page={page}
-                  limit={limit}
-                  total={total}
-                  totalPages={totalPages}
-                  onPageChange={setPage}
-                  itemLabel="prompt"
-                  className="w-full"
-                />
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+      <TableCard
+        paged={prompts}
+        empty={{
+          icon: MessageSquare,
+          message: "No prompts yet.",
+          hint: "Create one to ask players a question in Discord.",
+          className: "py-16",
+        }}
+        itemLabel="prompt"
+        columns={columns}
+        rowKey={(row) => row.id}
+        onRowClick={(row) => navigate(`/admin/tools/prompts/${row.id}`)}
+        actions={promptActions}
+        actionSlots={1}
+      />
 
       <CreatePromptModal
         open={createOpen}
@@ -259,9 +225,11 @@ export function AdminPrompts() {
         onClose={() => setDeleteTarget(null)}
         onSuccess={() => {
           setDeleteTarget(null);
-          if (items.length === 1 && page > 0) setPage(page - 1);
+          if (prompts.rows.length === 1 && prompts.page > 0) {
+            prompts.setPage(prompts.page - 1);
+          }
         }}
       />
-    </div>
+    </AdminPage>
   );
 }

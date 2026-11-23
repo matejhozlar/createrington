@@ -1,99 +1,8 @@
 import config from "@/config";
-import { DatabaseError } from "@/db/utils";
+import { DatabaseError, NotFoundError as DbNotFoundError } from "@/db/utils";
 import type { NextFunction, Request, Response } from "express";
 import { ZodError } from "zod";
-
-/**
- * Custom app error class with HTTP status code
- *
- * `playerMessage` is an optional player-facing message intended for in-game
- * chat display (mod endpoints). When omitted, only the system `message` is
- * surfaced.
- */
-export class AppError extends Error {
-  public playerMessage?: string;
-  public code?: string;
-  public headers?: Record<string, string>;
-
-  constructor(
-    message: string,
-    public statusCode: number = 500,
-    public isOperational: boolean = true,
-    public details?: unknown,
-    options?: {
-      playerMessage?: string;
-      code?: string;
-      headers?: Record<string, string>;
-    },
-  ) {
-    super(message);
-    this.name = "AppError";
-    if (options?.playerMessage) this.playerMessage = options.playerMessage;
-    if (options?.code) this.code = options.code;
-    if (options?.headers) this.headers = options.headers;
-    Error.captureStackTrace(this, this.constructor);
-  }
-}
-
-/** 400 Bad Request */
-export class BadRequestError extends AppError {
-  constructor(
-    message: string = "Bad Request",
-    details?: unknown,
-    options?: { playerMessage?: string },
-  ) {
-    super(message, 400, true, details, options);
-    this.name = "BadRequestError";
-  }
-}
-
-/** 401 Unauthorized */
-export class UnauthorizedError extends AppError {
-  constructor(message: string = "Unauthorized", options?: { code?: string }) {
-    super(message, 401, true, undefined, options);
-    this.name = "UnauthorizedError";
-  }
-}
-
-/** 403 Forbidden */
-export class ForbiddenError extends AppError {
-  constructor(message: string = "Forbidden") {
-    super(message, 403);
-    this.name = "ForbiddenError";
-  }
-}
-
-/** 404 Not Found */
-export class NotFoundError extends AppError {
-  constructor(message: string = "Resource not found") {
-    super(message, 404);
-    this.name = "NotFoundError";
-  }
-}
-
-/** 409 Conflict */
-export class ConflictError extends AppError {
-  constructor(message: string = "Conflict") {
-    super(message, 409);
-    this.name = "ConflictError";
-  }
-}
-
-/** 429 Too Many Requests */
-export class TooManyRequestsError extends AppError {
-  constructor(message: string = "Too Many Requests") {
-    super(message, 429);
-    this.name = "TooManyRequestsError";
-  }
-}
-
-/** 500 Internal Server Error */
-export class InternalServerError extends AppError {
-  constructor(message: string = "Internal Server Error") {
-    super(message, 500);
-    this.name = "InternalServerError";
-  }
-}
+import { AppError, NotFoundError } from "@/errors";
 
 interface RequestBodyError extends Error {
   status: number;
@@ -117,9 +26,6 @@ function isRequestBodyError(err: Error): err is RequestBodyError {
   );
 }
 
-/**
- * Error response interface
- */
 interface ErrorResponse {
   success: false;
   message: string;
@@ -133,17 +39,10 @@ interface ErrorResponse {
   };
 }
 
-/**
- * Format Zod validation errors into a readable structure
- *
- * @param error - The ZodError instance to format
- * @returns Object containing a human-readable message and per-field error details
- */
 export function formatZodError(error: ZodError<unknown>): {
   message: string;
   fieldErrors: Array<{ field: string; message: string }>;
 } {
-  // Zod v3 uses `issues` (not `errors`)
   const fieldErrors = error.issues.map((issue) => ({
     field: issue.path.map(String).join("."),
     message: issue.message,
@@ -157,12 +56,11 @@ export function formatZodError(error: ZodError<unknown>): {
   return { message, fieldErrors };
 }
 
-// Substring (not anchored) so camelCase / prefixed / header variants like
-// accessToken, client_secret, and X-Admin-Chat-Secret are also redacted.
 const SENSITIVE_KEYS =
   /(password|secret|token|api_?key|authorization|cookie|jwt)/i;
 
 function redactSensitive(value: unknown): unknown {
+  if (Buffer.isBuffer(value)) return `[${value.length} bytes]`;
   if (Array.isArray(value)) return value.map(redactSensitive);
   if (!value || typeof value !== "object") return value;
   const result: Record<string, unknown> = {};
@@ -174,21 +72,6 @@ function redactSensitive(value: unknown): unknown {
   return result;
 }
 
-/**
- * Centralized error handling middleware
- *
- * Automatically handles:
- * - Zod validation errors
- * - App errors (custom errors)
- * - Database errors
- * - Request body errors from the body parsers (malformed JSON, body too large)
- * - Unknown errors
- *
- * @param err - Error object
- * @param req - Express request
- * @param res - Express response
- * @param next - Express next function
- */
 export function errorHandler(
   err: Error | AppError | DatabaseError | ZodError,
   req: Request,
@@ -223,21 +106,16 @@ export function errorHandler(
     playerMessage = err.playerMessage;
     code = err.code;
     if (err.headers) res.set(err.headers);
+  } else if (err instanceof DbNotFoundError) {
+    statusCode = 404;
+    message = err.message;
+    isOperational = true;
   } else if (err instanceof DatabaseError) {
     statusCode = 500;
     message = config.envMode.isDev ? err.message : "Database error occurred";
-
-    if (err.name === "NotFoundError") {
-      statusCode = 404;
-      message = err.message;
-    }
   } else if (isRequestBodyError(err)) {
     statusCode = err.status;
     message = REQUEST_BODY_ERROR_MESSAGES[err.type] ?? err.message;
-    isOperational = true;
-  } else if (err.name === "ValidationError") {
-    statusCode = 400;
-    message = err.message;
     isOperational = true;
   } else {
     message = config.envMode.isDev ? err.message : "Internal Server Error";
@@ -279,13 +157,6 @@ export function errorHandler(
   res.status(statusCode).json(errorResponse);
 }
 
-/**
- * 404 Not Found error handler for undefined routes, should be registered after all other routes
- *
- * @param req - Express request
- * @param res - Express response
- * @param next - Express next function
- */
 export function notFoundHandler(
   req: Request,
   res: Response,

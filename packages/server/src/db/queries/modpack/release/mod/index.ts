@@ -27,13 +27,6 @@ export interface ReleaseModRow {
   websiteUrl: string | null;
 }
 
-/**
- * Custom queries for modpack_release_mod table
- *
- * Extends the auto-generated base class with custom methods.
- * This file is scaffolded once and never overwritten - add your custom
- * query methods here while inheriting all generated CRUD operations.
- */
 export class ModpackReleaseModQueries extends ModpackReleaseModBaseQueries {
   constructor(db: Pool | PoolClient) {
     super(db);
@@ -89,14 +82,11 @@ export class ModpackReleaseModQueries extends ModpackReleaseModBaseQueries {
       [releaseIds],
     );
 
-    return result.rows.map((row) => ({
-      releaseId: row.release_id,
-      fileId: row.file_id,
-    }));
+    return this.mapRowsToEntities(result.rows);
   }
 
   /** Frozen membership of releases, joined to the projects for display. */
-  async listForReleases(
+  async getForReleases(
     releaseIds: number[],
   ): Promise<Array<ReleaseModRow & { releaseId: number }>> {
     if (releaseIds.length === 0) return [];
@@ -135,20 +125,6 @@ export class ModpackReleaseModQueries extends ModpackReleaseModBaseQueries {
       website_url: string | null;
     }>("list release mods", query, [releaseIds]);
 
-    return result.rows.map((row) => ({
-      releaseId: row.release_id,
-      curseforgeProjectId: row.curseforge_project_id,
-      fileId: row.file_id,
-      fileName: row.file_name,
-      displayName: row.display_name,
-      fileReleaseType: row.file_release_type,
-      fileDate: row.file_date,
-      required: row.required,
-      classId: row.class_id,
-      projectName: row.project_name,
-      projectSlug: row.project_slug,
-      thumbnailUrl: row.thumbnail_url,
-      websiteUrl: row.website_url,
-    }));
+    return this.mapRowsToEntities(result.rows);
   }
 }

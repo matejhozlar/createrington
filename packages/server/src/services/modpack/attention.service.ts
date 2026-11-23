@@ -1,25 +1,26 @@
 import { Q, db } from "@/db";
-import {
-  BadRequestError,
-  ConflictError,
-  NotFoundError,
-} from "@/app/middleware/error-handler";
+import { BadRequestError, ConflictError, NotFoundError } from "@/errors";
 import type {
+  CurseforgeProject,
+  Modpack,
   ModpackMod,
   Workshop,
   WorkshopMod,
 } from "@createrington/shared/db";
 import type { ModpackManifest } from "@/services/curseforge/modpack";
-import { getModpackManifest } from "@/services/curseforge/modpack-manifest";
+import { getModpackManifest } from "@/services/modpack/manifest";
 import {
   REQUIRED_DEPENDENCY,
+  type DependencyCoverage,
+} from "@createrington/shared/workshop";
+import {
   loadDependencyContext,
   pruneStaleDependencyEdges,
-  type DependencyCoverage,
 } from "@/services/workshop/dependencies";
 import { announceReview } from "@/services/workshop/discord";
 import { recordModEvent } from "@/services/workshop/events";
 import { modpackService } from "./modpack.service";
+import { projectLabel } from "@/services/curseforge/project";
 
 interface AttentionSubject {
   curseforgeProjectId: number;
@@ -61,6 +62,178 @@ export type ModpackAttentionItem =
       type: "duplicate_manifest_entry";
     });
 
+interface DependencyGap {
+  coverage: DependencyCoverage;
+  requiredByProjectIds: number[];
+}
+
+type SubjectOf = (projectId: number) => AttentionSubject;
+
+async function loadAttentionManifest(
+  modpack: Modpack,
+): Promise<ModpackManifest | null> {
+  if (!modpack.curseforgeProjectId) return null;
+  let manifest: ModpackManifest | null;
+  try {
+    manifest = await getModpackManifest(modpack.curseforgeProjectId);
+  } catch (error) {
+    logger.warn(
+      `Modpack #${modpack.id} attention: manifest of CurseForge project #${modpack.curseforgeProjectId} could not be read, manifest checks skipped:`,
+      error,
+    );
+    return null;
+  }
+  if (modpack.shipsServerPack && manifest?.serverPackFileId === null) {
+    return null;
+  }
+  return manifest;
+}
+
+function shippedSuggestions(
+  suggestions: WorkshopMod[],
+  manifest: ModpackManifest | null,
+): WorkshopMod[] {
+  if (!manifest) return [];
+  return suggestions.filter(
+    (mod) =>
+      manifest.modIds.has(mod.curseforgeProjectId) &&
+      mod.status !== "next_update" &&
+      mod.status !== "in_pack",
+  );
+}
+
+function duplicateManifestProjects(
+  manifest: ModpackManifest | null,
+): Set<number> {
+  const duplicates = new Set<number>();
+  if (!manifest) return duplicates;
+  const seen = new Set<number>();
+  for (const entry of manifest.entries) {
+    if (seen.has(entry.projectId)) duplicates.add(entry.projectId);
+    seen.add(entry.projectId);
+  }
+  return duplicates;
+}
+
+function unclassifiedTargets(
+  active: ModpackMod[],
+  suggestions: WorkshopMod[],
+): Map<number, number | null> {
+  const targets = new Map<number, number | null>();
+  for (const row of active) targets.set(row.curseforgeProjectId, null);
+  for (const mod of suggestions) {
+    if (mod.status !== "testing" && mod.status !== "next_update") continue;
+    targets.set(mod.curseforgeProjectId, mod.id);
+  }
+  return targets;
+}
+
+async function dependencyGaps(
+  workshop: Workshop,
+  suggestionByProject: Map<number, WorkshopMod>,
+): Promise<Map<number, DependencyGap>> {
+  const context = await loadDependencyContext(workshop);
+  const edges = await Q.workshop.project.dependency.findAll({
+    workshopId: workshop.id,
+    relationType: REQUIRED_DEPENDENCY,
+  });
+  const gaps = new Map<number, DependencyGap>();
+  for (const edge of edges) {
+    const coverage = context.coverage.get(edge.dependsOnProjectId) ?? "missing";
+    if (coverage === "published" || coverage === "staged") continue;
+    const subject = context.coverage.get(edge.curseforgeProjectId);
+    const shipping = subject === "staged" || subject === "published";
+    const status = suggestionByProject.get(edge.curseforgeProjectId)?.status;
+    const qualifies =
+      coverage === "rejected"
+        ? shipping || status === "approved" || status === "testing"
+        : shipping;
+    if (!qualifies) continue;
+    const gap = gaps.get(edge.dependsOnProjectId) ?? {
+      coverage,
+      requiredByProjectIds: [],
+    };
+    gap.requiredByProjectIds.push(edge.curseforgeProjectId);
+    gaps.set(edge.dependsOnProjectId, gap);
+  }
+  return gaps;
+}
+
+function droppedItem(
+  row: ModpackMod,
+  subjectOf: SubjectOf,
+): ModpackAttentionItem {
+  return {
+    type: "dropped_from_pack",
+    modpackModId: row.id,
+    workshopModId: row.workshopModId,
+    ...subjectOf(row.curseforgeProjectId),
+    droppedAt: row.droppedFromManifestAt!,
+  };
+}
+
+function shippedItem(
+  mod: WorkshopMod,
+  subjectOf: SubjectOf,
+): ModpackAttentionItem {
+  return {
+    type: mod.status === "rejected" ? "shipped_rejected" : "shipped_unreviewed",
+    workshopModId: mod.id,
+    ...subjectOf(mod.curseforgeProjectId),
+  };
+}
+
+function dependencyGapItems(
+  gaps: Map<number, DependencyGap>,
+  suggestionByProject: Map<number, WorkshopMod>,
+  subjectOf: SubjectOf,
+): ModpackAttentionItem[] {
+  return [...gaps].flatMap(([projectId, gap]): ModpackAttentionItem[] => {
+    const suggestion = suggestionByProject.get(projectId);
+    if (!suggestion) return [];
+    return [
+      {
+        type:
+          gap.coverage === "rejected"
+            ? "rejected_dependency"
+            : "unpromoted_dependency",
+        workshopModId: suggestion.id,
+        ...subjectOf(projectId),
+        requiredBy: gap.requiredByProjectIds.map((id) => {
+          const { curseforgeProjectId, name } = subjectOf(id);
+          return { curseforgeProjectId, name };
+        }),
+      },
+    ];
+  });
+}
+
+function duplicateItem(
+  projectId: number,
+  subjectOf: SubjectOf,
+): ModpackAttentionItem {
+  return { type: "duplicate_manifest_entry", ...subjectOf(projectId) };
+}
+
+function environmentItems(
+  targets: Map<number, number | null>,
+  projectById: Map<number, CurseforgeProject>,
+  subjectOf: SubjectOf,
+): ModpackAttentionItem[] {
+  return [...targets].flatMap(
+    ([projectId, workshopModId]): ModpackAttentionItem[] =>
+      projectById.get(projectId)?.environment === "unspecified"
+        ? [
+            {
+              type: "environment_unspecified",
+              workshopModId,
+              ...subjectOf(projectId),
+            },
+          ]
+        : [],
+  );
+}
+
 /**
  * What a workshop's modpack needs an admin to decide: members the latest
  * publish dropped, shipped suggestions nobody reviewed, dependency gaps,
@@ -73,99 +246,29 @@ export class ModpackAttentionService {
     workshop: Workshop,
   ): Promise<ModpackAttentionItem[]> {
     const modpack = await modpackService.getModpack(workshop.modpackId);
-    const items: ModpackAttentionItem[] = [];
-
     const rows = await Q.modpack.mod.findAll({ modpackId: modpack.id });
     const dropped = rows.filter((row) => row.droppedFromManifestAt !== null);
     const active = rows.filter((row) => row.droppedFromManifestAt === null);
-
-    let manifest: ModpackManifest | null = null;
-    if (modpack.curseforgeProjectId) {
-      try {
-        manifest = await getModpackManifest(modpack.curseforgeProjectId);
-      } catch {
-        manifest = null;
-      }
-      if (modpack.shipsServerPack && manifest?.serverPackFileId === null) {
-        manifest = null;
-      }
-    }
-
+    const manifest = await loadAttentionManifest(modpack);
     const suggestions = await Q.workshop.mod.findAll({
       workshopId: workshop.id,
-    });
-
-    let shipped: WorkshopMod[] = [];
-    const duplicateIds = new Set<number>();
-    if (manifest) {
-      const { modIds } = manifest;
-      shipped = suggestions.filter(
-        (mod) =>
-          modIds.has(mod.curseforgeProjectId) &&
-          mod.status !== "next_update" &&
-          mod.status !== "in_pack",
-      );
-      const seen = new Set<number>();
-      for (const entry of manifest.entries) {
-        if (seen.has(entry.projectId)) duplicateIds.add(entry.projectId);
-        seen.add(entry.projectId);
-      }
-    }
-
-    // A dependency is only a problem for something that ships, so the gaps are
-    // read off the mods staged for the next update and the ones already in
-    const context = await loadDependencyContext(workshop);
-    const edges = await Q.workshop.project.dependency.findAll({
-      workshopId: workshop.id,
-      relationType: REQUIRED_DEPENDENCY,
     });
     const suggestionByProject = new Map(
       suggestions.map((mod) => [mod.curseforgeProjectId, mod]),
     );
-    // A project can be both a pack member and a live suggestion; the
-    // suggestion wins so the item can link through to the mod
-    const unclassifiedTargets = new Map<number, number | null>();
-    for (const row of active) {
-      unclassifiedTargets.set(row.curseforgeProjectId, null);
-    }
-    for (const mod of suggestions) {
-      if (mod.status !== "testing" && mod.status !== "next_update") continue;
-      unclassifiedTargets.set(mod.curseforgeProjectId, mod.id);
-    }
-    const gaps = new Map<
-      number,
-      { coverage: DependencyCoverage; requiredByProjectIds: number[] }
-    >();
-    for (const edge of edges) {
-      const coverage =
-        context.coverage.get(edge.dependsOnProjectId) ?? "missing";
-      if (coverage === "published" || coverage === "staged") continue;
-      const subject = context.coverage.get(edge.curseforgeProjectId);
-      const shipping = subject === "staged" || subject === "published";
-      // A ruled-out dependency also blocks mods still walking review, so
-      // approved and testing subjects surface for that case; other gap kinds
-      // only matter for shipping mods
-      const status = suggestionByProject.get(edge.curseforgeProjectId)?.status;
-      const qualifies =
-        coverage === "rejected"
-          ? shipping || status === "approved" || status === "testing"
-          : shipping;
-      if (!qualifies) continue;
-      const gap = gaps.get(edge.dependsOnProjectId) ?? {
-        coverage,
-        requiredByProjectIds: [],
-      };
-      gap.requiredByProjectIds.push(edge.curseforgeProjectId);
-      gaps.set(edge.dependsOnProjectId, gap);
-    }
+
+    const shipped = shippedSuggestions(suggestions, manifest);
+    const duplicateIds = duplicateManifestProjects(manifest);
+    const gaps = await dependencyGaps(workshop, suggestionByProject);
+    const unclassified = unclassifiedTargets(active, suggestions);
 
     const projectIds = [
       ...new Set([
         ...dropped.map((row) => row.curseforgeProjectId),
-        ...unclassifiedTargets.keys(),
+        ...unclassified.keys(),
         ...shipped.map((mod) => mod.curseforgeProjectId),
         ...duplicateIds,
-        ...[...gaps.entries()].flatMap(([depId, gap]) => [
+        ...[...gaps].flatMap(([depId, gap]) => [
           depId,
           ...gap.requiredByProjectIds,
         ]),
@@ -176,65 +279,22 @@ export class ModpackAttentionService {
         ? await Q.curseforge.project.findAll({ id: { $in: projectIds } })
         : [];
     const projectById = new Map(projects.map((p) => [p.id, p]));
-    const label = (id: number) => projectById.get(id)?.name ?? `#${id}`;
-    const attentionSubject = (id: number): AttentionSubject => {
+    const subjectOf: SubjectOf = (id) => {
       const project = projectById.get(id);
       return {
         curseforgeProjectId: id,
-        name: project?.name ?? `#${id}`,
+        name: projectLabel(project?.name, id),
         websiteUrl: project?.websiteUrl ?? null,
       };
     };
 
-    for (const row of dropped) {
-      items.push({
-        type: "dropped_from_pack",
-        modpackModId: row.id,
-        workshopModId: row.workshopModId,
-        ...attentionSubject(row.curseforgeProjectId),
-        droppedAt: row.droppedFromManifestAt!,
-      });
-    }
-    for (const mod of shipped) {
-      items.push({
-        type:
-          mod.status === "rejected" ? "shipped_rejected" : "shipped_unreviewed",
-        workshopModId: mod.id,
-        ...attentionSubject(mod.curseforgeProjectId),
-      });
-    }
-    for (const [projectId, gap] of gaps) {
-      const suggestion = suggestionByProject.get(projectId);
-      if (!suggestion) continue;
-      items.push({
-        type:
-          gap.coverage === "rejected"
-            ? "rejected_dependency"
-            : "unpromoted_dependency",
-        workshopModId: suggestion.id,
-        ...attentionSubject(projectId),
-        requiredBy: gap.requiredByProjectIds.map((id) => ({
-          curseforgeProjectId: id,
-          name: label(id),
-        })),
-      });
-    }
-    for (const projectId of duplicateIds) {
-      items.push({
-        type: "duplicate_manifest_entry",
-        ...attentionSubject(projectId),
-      });
-    }
-    for (const [projectId, workshopModId] of unclassifiedTargets) {
-      const project = projectById.get(projectId);
-      if (project?.environment !== "unspecified") continue;
-      items.push({
-        type: "environment_unspecified",
-        workshopModId,
-        ...attentionSubject(projectId),
-      });
-    }
-    return items;
+    return [
+      ...dropped.map((row) => droppedItem(row, subjectOf)),
+      ...shipped.map((mod) => shippedItem(mod, subjectOf)),
+      ...dependencyGapItems(gaps, suggestionByProject, subjectOf),
+      ...[...duplicateIds].map((id) => duplicateItem(id, subjectOf)),
+      ...environmentItems(unclassified, projectById, subjectOf),
+    ];
   }
 
   /**
@@ -328,7 +388,7 @@ export class ModpackAttentionService {
     await Promise.all(workshops.map((row) => pruneStaleDependencyEdges(row)));
     return {
       member,
-      projectName: project?.name ?? `#${member.curseforgeProjectId}`,
+      projectName: projectLabel(project?.name, member.curseforgeProjectId),
       mod: updated,
     };
   }

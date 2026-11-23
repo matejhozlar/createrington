@@ -10,16 +10,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DataTable, type DataTableColumn } from "@/components/data-table";
-import {
-  BarChart3,
-  ChevronDown,
-  ChevronRight,
-  RefreshCw,
-  Search,
-  X,
-} from "lucide-react";
+import { TabSectionHeader } from "@/features/admin/players/components/TabSectionHeader";
+import { BarChart3, ChevronDown, ChevronRight, Search, X } from "lucide-react";
 import { formatNumber } from "@/lib/format";
-import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import {
@@ -109,11 +102,9 @@ export function StatsTab({ playerId, getServerName }: StatsTabProps) {
     }));
   }, [statsEntries, getServerName]);
 
-  // Get the active stats entry (selected server or first available)
   const activeStats = useMemo(() => {
     if (statsEntries.length === 0) return null;
     if (selectedServer === "all") {
-      // Merge stats from all servers
       const merged: Record<string, Record<string, number>> = {};
       for (const entry of statsEntries) {
         const stats = entry.stats;
@@ -153,7 +144,6 @@ export function StatsTab({ playerId, getServerName }: StatsTabProps) {
     return { flatStats: flat, categories: cats };
   }, [activeStats]);
 
-  // Apply search and category filters
   const filteredStats = useMemo(() => {
     let result = flatStats;
 
@@ -205,27 +195,19 @@ export function StatsTab({ playerId, getServerName }: StatsTabProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold">Minecraft Stats</h3>
-          <p className="text-sm text-muted-foreground">
+      <TabSectionHeader
+        title="Minecraft Stats"
+        description={
+          <>
             {filteredStats.length.toLocaleString()} stats
             {debouncedSearch || selectedCategory !== "all"
               ? ` (filtered from ${flatStats.length.toLocaleString()})`
               : ""}
-          </p>
-        </div>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => statsQuery.refetch()}
-          disabled={loading}
-        >
-          <RefreshCw className={cn("size-4", loading && "animate-spin")} />
-          Refresh
-        </Button>
-      </div>
+          </>
+        }
+        onRefresh={() => statsQuery.refetch()}
+        refreshing={loading}
+      />
 
       {loading ? (
         <LoadingState text="Loading stats..." />
@@ -238,7 +220,6 @@ export function StatsTab({ playerId, getServerName }: StatsTabProps) {
         />
       ) : (
         <>
-          {/* Filters */}
           <div className="flex flex-wrap items-center gap-2">
             <SearchInput
               className="min-w-48 flex-1"
@@ -310,7 +291,6 @@ export function StatsTab({ playerId, getServerName }: StatsTabProps) {
             </div>
           </div>
 
-          {/* Stats grouped by category */}
           {Object.keys(groupedStats).length === 0 ? (
             <EmptyState icon={Search} message="No stats match your search" />
           ) : (
@@ -328,7 +308,6 @@ export function StatsTab({ playerId, getServerName }: StatsTabProps) {
                       key={category}
                       className="overflow-hidden rounded-lg border border-border"
                     >
-                      {/* Category header */}
                       <button
                         type="button"
                         onClick={() => toggleCategory(category)}
@@ -354,7 +333,6 @@ export function StatsTab({ playerId, getServerName }: StatsTabProps) {
                         )}
                       </button>
 
-                      {/* Category stats table */}
                       {isExpanded && (
                         <DataTable
                           columns={STAT_COLUMNS}

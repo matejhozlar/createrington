@@ -1,25 +1,15 @@
 import { formatStatValue } from "@createrington/shared/minecraft-stats";
 import { LoadingScreen } from "@/components/query-states";
-import { PodiumCard, type PodiumPlayer } from "./components/PodiumCard";
+import { PodiumCard } from "./components/PodiumCard";
 import { RenderUnavailable } from "./components/RenderUnavailable";
 import { usePodiumSkins } from "./hooks/use-podium-skins";
 import { useRenderData } from "./hooks/use-render-data";
 import { useRenderPlatesReady } from "./hooks/use-render-plates";
 
-interface TopData {
-  category: string;
-  item: string;
-  displayTitle: string;
-  players: PodiumPlayer[];
-}
-
 const BANNER = { src: "/assets/render/player-top.webp", alt: "Top Players" };
 
 export function TopRender() {
-  const { data, unavailable } = useRenderData<TopData>("top", [
-    "category",
-    "item",
-  ]);
+  const { data, unavailable } = useRenderData("top", ["category", "item"]);
   const skins = usePodiumSkins(data?.players ?? null);
   const platesReady = useRenderPlatesReady();
 

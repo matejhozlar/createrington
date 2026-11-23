@@ -1,6 +1,7 @@
 import { Q } from "@/db";
+import { createKeyedLock } from "@/utils/keyed-lock";
 import { getService, Services } from "@/services";
-import { getServerById } from "@/services/playtime/config";
+import { getServerById } from "@/services/mc-server/servers";
 import type { ServerMaintenanceSchedule } from "@createrington/shared/db/server_maintenance_schedule.types";
 import { MaintenanceModeClient, MaintenanceModeCommandError } from "./mmode";
 import {
@@ -9,6 +10,7 @@ import {
   renderMaintenanceTemplate,
 } from "./presets";
 import type { MaintenanceScheduler } from "./scheduler";
+import type { PlaytimeManagerService } from "@/services/playtime/playtime-manager.service";
 
 const RECONCILE_INTERVAL_MS = 5 * 60 * 1000;
 
@@ -73,37 +75,37 @@ export class MaintenanceService {
   private scheduler: MaintenanceScheduler | null = null;
   private reconcileTimer: NodeJS.Timeout | null = null;
   private reconciling = new Set<number>();
-  private locks = new Map<number, Promise<unknown>>();
-  private serverIds: number[] = [];
+  private withLock = createKeyedLock<number>();
+  private serverIds: readonly number[] = [];
+  private playtimeManager: PlaytimeManagerService | null = null;
 
   constructor(
     private readonly mmode: MaintenanceModeClient = new MaintenanceModeClient(),
   ) {}
 
-  /** Wire the scheduler after both are constructed (avoids a circular import). */
-  setScheduler(scheduler: MaintenanceScheduler): void {
-    this.scheduler = scheduler;
+  /** Wire the scheduler and the playtime manager after all are constructed (avoids a circular import). */
+  attach(deps: {
+    scheduler: MaintenanceScheduler;
+    playtimeManager: PlaytimeManagerService;
+    serverIds: readonly number[];
+  }): void {
+    this.scheduler = deps.scheduler;
+    this.playtimeManager = deps.playtimeManager;
+    this.serverIds = deps.serverIds;
   }
 
-  /** Subscribe to server online events, run the first reconcile, and start the periodic one. */
-  async initialize(serverIds: number[]): Promise<void> {
-    this.serverIds = serverIds;
+  /** Start the scheduler, subscribe to server online events, start the periodic reconcile, and kick off the first one in the background. */
+  async initialize(): Promise<void> {
+    await this.scheduler?.initialize();
 
-    try {
-      const manager = await getService(Services.PLAYTIME_MANAGER_SERVICE);
-      for (const serverId of serverIds) {
-        manager.getService(serverId)?.on("serverOnline", () => {
-          this.onServerOnline(serverId).catch((error) =>
-            logger.warn(
-              `Maintenance sync after server ${serverId} came online failed: ${error}`,
-            ),
-          );
-        });
-      }
-    } catch (error) {
-      logger.warn(
-        `Maintenance service could not subscribe to server online events: ${error}`,
-      );
+    for (const serverId of this.serverIds) {
+      this.playtimeManager?.getService(serverId)?.on("serverOnline", () => {
+        this.onServerOnline(serverId).catch((error) =>
+          logger.warn(
+            `Maintenance sync after server ${serverId} came online failed: ${error}`,
+          ),
+        );
+      });
     }
 
     this.reconcileTimer = setInterval(() => {
@@ -116,15 +118,13 @@ export class MaintenanceService {
       }
     }, RECONCILE_INTERVAL_MS);
 
-    await Promise.all(
-      serverIds.map((serverId) =>
-        this.reconcile(serverId).catch((error) =>
-          logger.warn(
-            `Initial maintenance reconcile for server ${serverId} failed: ${error}`,
-          ),
+    for (const serverId of this.serverIds) {
+      this.reconcile(serverId).catch((error) =>
+        logger.warn(
+          `Initial maintenance reconcile for server ${serverId} failed: ${error}`,
         ),
-      ),
-    );
+      );
+    }
   }
 
   /** Stop the periodic reconcile and the scheduler's timers. */
@@ -627,16 +627,6 @@ export class MaintenanceService {
       throw new Error("Maintenance scheduler not initialized");
     }
     return this.scheduler;
-  }
-
-  private withLock<T>(serverId: number, fn: () => Promise<T>): Promise<T> {
-    const previous = this.locks.get(serverId) ?? Promise.resolve();
-    const run = previous.then(fn, fn);
-    this.locks.set(
-      serverId,
-      run.catch(() => undefined),
-    );
-    return run;
   }
 
   private async broadcast(serverId: number): Promise<void> {

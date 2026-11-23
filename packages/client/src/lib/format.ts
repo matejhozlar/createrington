@@ -1,25 +1,26 @@
-import {
-  formatMoney as formatCurrency,
-  parseDateOnly,
-} from "@createrington/shared/format";
+import { parseDateOnly } from "@createrington/shared/format";
+import { DAY_MS, HOUR_MS, MINUTE_MS } from "./time";
 
 const BYTE_UNITS = ["B", "KB", "MB", "GB"];
-const MINUTE_MS = 60_000;
-const HOUR_MS = 3_600_000;
-const DAY_MS = 86_400_000;
-
-export function formatMoney(value: number | string, fallback = "$0"): string {
-  const num = typeof value === "string" ? parseFloat(value) : value;
-  if (Number.isNaN(num)) return fallback;
-  return formatCurrency(num);
-}
 
 export function formatNumber(value: number): string {
   return value.toLocaleString("en-US");
 }
 
-export function pluralize(count: number, noun: string): string {
-  return `${count} ${noun}${count === 1 ? "" : "s"}`;
+export function plural(
+  count: number,
+  noun: string,
+  pluralNoun = `${noun}s`,
+): string {
+  return count === 1 ? noun : pluralNoun;
+}
+
+export function pluralize(
+  count: number,
+  noun: string,
+  pluralNoun?: string,
+): string {
+  return `${formatNumber(count)} ${plural(count, noun, pluralNoun)}`;
 }
 
 export function formatBytes(bytes: number): string {

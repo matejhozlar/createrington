@@ -2,12 +2,6 @@ import { Rcon } from "rcon-client";
 import { RconCommandError } from "./errors";
 import type { RconConfig, ServerId } from "./types";
 
-/**
- * Single server RCON connection manager
- * Handles connection lifecycle for one server
- *
- * @private - Not expected, only used internally by MinecraftRconManager
- */
 export class ServerRconConnection {
   private connection: Rcon | null = null;
   private isConnecting = false;
@@ -19,9 +13,6 @@ export class ServerRconConnection {
     private readonly cfg: RconConfig,
   ) {}
 
-  /**
-   * Establishes connection to the RCON server
-   */
   private async connect(): Promise<Rcon> {
     if (this.connection) {
       this.lastUsed = Date.now();
@@ -79,10 +70,7 @@ export class ServerRconConnection {
     }
   }
 
-  /**
-   * Disconnects from the RCON server
-   */
-  public async disconnect(): Promise<void> {
+  async disconnect(): Promise<void> {
     if (this.connection) {
       try {
         await this.connection.end();
@@ -100,11 +88,7 @@ export class ServerRconConnection {
     }
   }
 
-  /**
-   * Sends a command to the server.
-   * Automatically reconnects and retries once if the connection is stale.
-   */
-  public async send(command: string): Promise<string> {
+  async send(command: string): Promise<string> {
     if (!command || command.trim().length === 0) {
       throw new RconCommandError(
         "Command cannot be empty",
@@ -172,17 +156,11 @@ export class ServerRconConnection {
     return response;
   }
 
-  /**
-   * Gets the last time this connection was used
-   */
-  public getLastUsed(): number {
+  getLastUsed(): number {
     return this.lastUsed;
   }
 
-  /**
-   * Checks if a connection is currently active
-   */
-  public isConnected(): boolean {
+  isConnected(): boolean {
     return this.connection !== null;
   }
 }

@@ -52,7 +52,7 @@ function intake(
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mocks.send.mockResolvedValue({ success: true, messageId: "1" });
+  mocks.send.mockResolvedValue({ id: "1" });
   mocks.payout.mockResolvedValue(undefined);
   mocks.recordVote.mockImplementation(async (data) => ({ id: 7, ...data }));
 });
@@ -198,7 +198,7 @@ describe("VoteIntake.accept", () => {
 
   it("keeps the stored vote when the announcement fails", async () => {
     mocks.findPlayers.mockResolvedValue([PLAYER]);
-    mocks.send.mockResolvedValue({ success: false, error: "no channel" });
+    mocks.send.mockRejectedValue(new Error("no channel"));
 
     await expect(
       intake().accept({

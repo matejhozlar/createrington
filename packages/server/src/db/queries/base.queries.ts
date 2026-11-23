@@ -1,9 +1,10 @@
 import type { Pool, PoolClient, QueryResult, QueryResultRow } from "pg";
 import logger from "@/logger.global";
-import { createNotFoundError } from "../utils/query-helpers";
+import { createNotFoundError, type Granularity } from "../utils/query-helpers";
 import { translateDbError } from "../utils/errors";
 import { isJsonColumn } from "../utils/jsonb-columns";
 import type { FilterValue } from "@createrington/shared/db/base.types";
+import type { CamelCaseKeys } from "@createrington/shared/types";
 import {
   QueryBuilder,
   type OrderBy,
@@ -147,10 +148,10 @@ export abstract class BaseQueries<
    * @param row - Database row object with snake_case keys
    * @returns Entity object with camelCase keys
    */
+  protected mapRowToEntity<TDbRow extends object>(
+    row: TDbRow,
+  ): CamelCaseKeys<TDbRow>;
   protected mapRowToEntity(row: TConfig["DbEntity"]): TConfig["Entity"];
-  protected mapRowToEntity<TBdRow extends Record<string, unknown>, TEntity>(
-    row: TBdRow,
-  ): TEntity;
   protected mapRowToEntity(
     row: Record<string, unknown>,
   ): Record<string, unknown> {
@@ -167,10 +168,10 @@ export abstract class BaseQueries<
    * @param rows - Array of database row objects with snake_case keys
    * @returns Array of entity objects with camelCase keys
    */
-  protected mapRowsToEntities(rows: TConfig["DbEntity"][]): TConfig["Entity"][];
-  protected mapRowsToEntities<TDbRow extends Record<string, unknown>, TEntity>(
+  protected mapRowsToEntities<TDbRow extends object>(
     rows: TDbRow[],
-  ): TEntity[];
+  ): CamelCaseKeys<TDbRow>[];
+  protected mapRowsToEntities(rows: TConfig["DbEntity"][]): TConfig["Entity"][];
   protected mapRowsToEntities(
     rows: Record<string, unknown>[],
   ): Record<string, unknown>[] {
@@ -1706,6 +1707,52 @@ export abstract class BaseQueries<
   }
 
   /**
+   * Buckets the rows whose `column` falls in [start, end) by
+   * DATE_TRUNC(granularity, column) and computes one SQL expression per
+   * output field in each bucket. Buckets without rows are absent. Each
+   * expression casts its own result (`COUNT(*)::int`); `where` is an extra
+   * parameter-free predicate on this table's columns.
+   *
+   * @example
+   * await this.aggregateByPeriod<{ count: number }>(
+   *   "get joins by period", "joinedAt", { count: "COUNT(*)::int" },
+   *   start, end, granularity,
+   * )
+   */
+  protected async aggregateByPeriod<TAggregates extends object>(
+    label: string,
+    column: keyof TConfig["Entity"] & string,
+    aggregates: { [K in keyof TAggregates]: string },
+    start: Date,
+    end: Date,
+    granularity: Granularity,
+    where = "TRUE",
+  ): Promise<CamelCaseKeys<{ period: string } & TAggregates>[]> {
+    const bucketColumn = this.getColumnName(column);
+    const selects = Object.entries<string>(aggregates)
+      .map(([name, expression]) => {
+        if (!/^[a-z_][a-z0-9_]*$/.test(name)) {
+          throw new Error(
+            `Invalid aggregate name "${name}": use a snake_case column alias`,
+          );
+        }
+        return `${expression} AS ${name}`;
+      })
+      .join(", ");
+
+    const result = await this.runQuery<{ period: string } & TAggregates>(
+      label,
+      `SELECT DATE_TRUNC($3, ${bucketColumn})::text AS period, ${selects}
+       FROM ${this.table}
+       WHERE ${bucketColumn} >= $1 AND ${bucketColumn} < $2 AND ${where}
+       GROUP BY 1
+       ORDER BY 1`,
+      [start, end, granularity],
+    );
+    return this.mapRowsToEntities(result.rows);
+  }
+
+  /**
    * Runs a parameterized query, logging and rethrowing on failure.
    * Centralizes the try/catch + logger.error pattern used by custom query
    * methods. `label` is the action phrase logged as `Failed to ${label}:`.
@@ -1748,14 +1795,12 @@ export abstract class BaseQueries<
    * @returns New instance using the transaction client
    *
    * @example
-   * import { transaction } from "@/db/utils/transactions";
    * import { PlayerQueries } from "@/db/queries/player";
    *
-   * await transaction(db, async (client) => {
-   *    const queries = new PlayerQueries(db).useClient(client);
-   *    await queries.create({...});
-   *    await queries.balance.create({...});
-   * })
+   * const client = await pool.connect();
+   * const queries = new PlayerQueries(pool).useClient(client);
+   *
+   * For an ordinary transaction use `db.inTransaction(async (tx) => ...)`.
    */
   useClient(client: PoolClient): this {
     const Constructor = this.constructor as new (db: Pool | PoolClient) => this;

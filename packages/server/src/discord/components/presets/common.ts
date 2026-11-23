@@ -1,5 +1,6 @@
+import { roleMention } from "discord.js";
 import { container, text } from "../component-builder";
-import { ComponentColors } from "../colors";
+import { EmbedColors } from "@/discord/embeds/colors";
 import { Discord } from "@/discord/constants";
 import type {
   ComponentContainer,
@@ -12,14 +13,7 @@ function stripe(accentColor: number, accent?: boolean) {
 
 type AccentOptions = { accent?: boolean };
 
-/**
- * Reusable Components V2 presets for common response patterns. Each returns a
- * `ComponentsData` tree; pass it to `buildComponentsMessage` before sending.
- * Containers are stripeless by default; pass `{ accent: true }` to add the
- * semantic colored stripe.
- */
 export const CommonComponentPresets = {
-  /** A success container, optionally green-accented */
   success(
     title: string,
     description?: string,
@@ -31,12 +25,11 @@ export const CommonComponentPresets = {
     if (description) children.push(text(description));
     return {
       components: [
-        container(children, stripe(ComponentColors.Success, options.accent)),
+        container(children, stripe(EmbedColors.Success, options.accent)),
       ],
     };
   },
 
-  /** An error container, optionally red-accented */
   error(
     title: string,
     description?: string,
@@ -48,18 +41,17 @@ export const CommonComponentPresets = {
     if (description) children.push(text(description));
     return {
       components: [
-        container(children, stripe(ComponentColors.Error, options.accent)),
+        container(children, stripe(EmbedColors.Error, options.accent)),
       ],
     };
   },
 
-  /** An error container with an admin contact prompt appended */
   errorWithAdmin(
     title: string,
     description?: string,
     options: AccentOptions = {},
   ): ComponentsData {
-    const contact = `If this issue persists, please contact ${Discord.Roles.mention(
+    const contact = `If this issue persists, please contact ${roleMention(
       Discord.Roles.ADMIN,
     )}`;
     const children: ComponentContainer["components"] = [
@@ -69,12 +61,11 @@ export const CommonComponentPresets = {
     children.push(text(contact));
     return {
       components: [
-        container(children, stripe(ComponentColors.Error, options.accent)),
+        container(children, stripe(EmbedColors.Error, options.accent)),
       ],
     };
   },
 
-  /** An info container, optionally blue-accented */
   info(
     title: string,
     description?: string,
@@ -86,12 +77,11 @@ export const CommonComponentPresets = {
     if (description) children.push(text(description));
     return {
       components: [
-        container(children, stripe(ComponentColors.Info, options.accent)),
+        container(children, stripe(EmbedColors.Info, options.accent)),
       ],
     };
   },
 
-  /** A bare container with a title and/or description and an optional stripe */
   plain(
     data: { accentColor?: number } & (
       | { title: string; description?: string }
@@ -113,7 +103,6 @@ export const CommonComponentPresets = {
     };
   },
 
-  /** A loading/processing container, optionally gray-accented */
   loading(
     message: string = "Processing...",
     options: AccentOptions = {},
@@ -122,7 +111,7 @@ export const CommonComponentPresets = {
       components: [
         container(
           [text("⏳ **Please wait**"), text(message)],
-          stripe(ComponentColors.Loading, options.accent),
+          stripe(EmbedColors.Loading, options.accent),
         ),
       ],
     };

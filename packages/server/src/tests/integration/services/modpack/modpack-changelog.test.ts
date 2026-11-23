@@ -10,17 +10,11 @@ import {
 } from "vitest";
 import { ComponentType } from "discord.js";
 
-type SendResult = {
-  success: boolean;
-  messageId: string | undefined;
-  error: string | undefined;
-};
+type SendResult = { id: string };
 
 const sendMock = vi.hoisted(() =>
   vi.fn(async (_options: unknown): Promise<SendResult> => ({
-    success: true,
-    messageId: "message-1",
-    error: undefined,
+    id: "message-1",
   })),
 );
 
@@ -28,10 +22,6 @@ vi.mock("@/services", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/services")>();
   return { ...actual, getService: vi.fn(async () => ({})) };
 });
-
-vi.mock("@/services/discord/message/message.service", () => ({
-  DiscordMessageService: { getInstance: () => ({ send: sendMock }) },
-}));
 
 import { Q, db } from "@/db";
 import { modpackReleaseService } from "@/services/modpack/release.service";
@@ -203,6 +193,9 @@ async function trackPresets(): Promise<void> {
 }
 
 beforeAll(async () => {
+  Discord._setMessageService({ send: sendMock } as unknown as Parameters<
+    typeof Discord._setMessageService
+  >[0]);
   const flag = await Q.feature.flag.find({
     name: FeatureFlags.modpackChangelog,
   });
@@ -217,11 +210,7 @@ beforeAll(async () => {
 beforeEach(() => {
   sendMock.mockReset();
   let seq = 0;
-  sendMock.mockImplementation(async () => ({
-    success: true,
-    messageId: `message-${++seq}`,
-    error: undefined,
-  }));
+  sendMock.mockImplementation(async () => ({ id: `message-${++seq}` }));
 });
 
 afterEach(async () => {
@@ -351,16 +340,10 @@ describe("announceReleaseChangelog", () => {
     );
 
     sendMock
-      .mockImplementationOnce(async () => ({
-        success: true,
-        messageId: "first",
-        error: undefined,
-      }))
-      .mockImplementationOnce(async () => ({
-        success: false,
-        messageId: undefined,
-        error: "rate limited",
-      }));
+      .mockImplementationOnce(async () => ({ id: "first" }))
+      .mockImplementationOnce(async () => {
+        throw new Error("rate limited");
+      });
 
     await announce(modpack, release, true);
 
@@ -409,8 +392,11 @@ describe("announceReleaseChangelog", () => {
       expect(message.lead).toEqual([]);
       expect(message.allowedMentions).toBeUndefined();
       expect(message.types[0]).toBe(ComponentType.MediaGallery);
-      expect(message.texts.join("\n")).not.toContain("## Vitest Pack");
-      expect(message.texts.join("\n")).not.toContain("(continued)");
+      expect(
+        message.texts.every(
+          (content) => content.startsWith("### ") || content.startsWith("**["),
+        ),
+      ).toBe(true);
     }
   });
 
@@ -421,11 +407,9 @@ describe("announceReleaseChangelog", () => {
     const release = await seedRelease(modpack, "2.6.0", [
       fileRow(project, "1.0.0"),
     ]);
-    sendMock.mockImplementationOnce(async () => ({
-      success: false,
-      messageId: undefined,
-      error: "boom",
-    }));
+    sendMock.mockImplementationOnce(async () => {
+      throw new Error("boom");
+    });
     await announce(modpack, release, true);
 
     sendMock.mockClear();
@@ -458,11 +442,9 @@ describe("announceReleaseChangelog", () => {
     const release = await seedRelease(modpack, "3.1.0", [
       fileRow(project, "1.0.0"),
     ]);
-    sendMock.mockImplementationOnce(async () => ({
-      success: false,
-      messageId: undefined,
-      error: "boom",
-    }));
+    sendMock.mockImplementationOnce(async () => {
+      throw new Error("boom");
+    });
     await announce(modpack, release, true);
     const [row] = await Q.modpack.release.announcement.findAll({
       releaseId: release.id,
@@ -609,9 +591,10 @@ describe("announceReleaseChangelog", () => {
 
     const [message] = sentMessages();
     expect(message.types[0]).toBe(ComponentType.MediaGallery);
-    expect(message.texts[0].startsWith("**9.1.0**\n-# Minecraft 1.21.1")).toBe(
-      true,
+    expect(message.texts[0]).toBe(
+      "**9.1.0**\n" +
+        "-# Minecraft 1.21.1 · NeoForge 21.1.172 · 1 mod · Published <t:1893456000:R>\n" +
+        "Changes since 9.0.0: **1 added** · **0 updated** · **0 removed** · 0 unchanged",
     );
-    expect(message.texts[0]).not.toContain("## ");
   });
 });

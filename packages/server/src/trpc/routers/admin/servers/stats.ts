@@ -1,11 +1,19 @@
 import { z } from "zod";
 import { adminProcedure } from "@/trpc/trpc";
-import { Q, R } from "@/db";
+import { Q, playtimeRepo } from "@/db";
 import { getService, Services } from "@/services";
-import { MINECRAFT_SERVERS, getServerById } from "@/services/playtime/config";
-import { buildPagination, paginationInput, trpcError } from "@/trpc/utils";
-import { buildServerStatus } from "@/services/playtime/server-status";
-import type { ServerStatus } from "@/services/playtime/server-status";
+import { requireServer } from "@/services/mc-server/servers";
+import {
+  buildPagination,
+  pageOffset,
+  paginationInput,
+  serverIdInput,
+} from "@/trpc/utils";
+import {
+  buildServerStatus,
+  buildServerStatuses,
+  summarizeServerStatuses,
+} from "@/services/playtime/server-status";
 
 export const serverStatsProcedures = {
   list: adminProcedure
@@ -13,55 +21,35 @@ export const serverStatsProcedures = {
     .query(async () => {
       const manager = await getService(Services.PLAYTIME_MANAGER_SERVICE);
 
-      const servers: Array<
-        ServerStatus & {
-          stats: {
-            uniquePlayers: number;
-            totalHours: number;
-            totalSessions: number;
-            avgSessionSeconds: number;
+      const statuses = buildServerStatuses(manager, buildServerStatus);
+      const servers = await Promise.all(
+        statuses.map(async (status) => {
+          const serverStats = await Q.player.playtime.summary.getServerStats(
+            status.serverId,
+          );
+          return {
+            ...status,
+            stats: {
+              uniquePlayers: Number(serverStats.totalPlayers) || 0,
+              totalHours: Math.floor(
+                Number(serverStats.totalSeconds || 0) / 3600,
+              ),
+              totalSessions: serverStats.totalSessions,
+              avgSessionSeconds: Number(serverStats.avgSessionSeconds) || 0,
+            },
           };
-        }
-      > = [];
-
-      for (const [serverId, serverConfig] of Object.entries(
-        MINECRAFT_SERVERS,
-      )) {
-        const id = parseInt(serverId, 10);
-        const service = manager.getService(id);
-        const status = buildServerStatus(id, serverConfig, service);
-
-        const serverStats = await Q.player.playtime.summary.getServerStats(id);
-
-        servers.push({
-          ...status,
-          stats: {
-            uniquePlayers: Number(serverStats.totalPlayers) || 0,
-            totalHours: Math.floor(
-              Number(serverStats.totalSeconds || 0) / 3600,
-            ),
-            totalSessions:
-              Number(serverStats.totalSeconds || 0) > 0
-                ? Number(serverStats.totalPlayers || 0)
-                : 0,
-            avgSessionSeconds: Number(serverStats.avgSessionSeconds) || 0,
-          },
-        });
-      }
-
-      servers.sort((a, b) => a.serverId - b.serverId);
+        }),
+      );
 
       const totalHours = await Q.player.playtime.summary.getTotalHours();
+      const summary = summarizeServerStatuses(statuses);
 
       return {
         servers,
         totals: {
-          totalServers: servers.length,
-          onlineServers: servers.filter((s) => s.status === "online").length,
-          totalPlayersOnline: servers.reduce(
-            (sum, s) => sum + s.playerCount,
-            0,
-          ),
+          totalServers: summary.totalServers,
+          onlineServers: summary.onlineServers,
+          totalPlayersOnline: summary.totalPlayers,
           totalHours,
         },
       };
@@ -71,16 +59,13 @@ export const serverStatsProcedures = {
     .meta({ description: "Get a single server with stats and leaderboard" })
     .input(z.object({ id: z.coerce.number().int().positive() }))
     .query(async ({ input }) => {
-      const serverConfig = getServerById(input.id);
-      if (!serverConfig) {
-        throw trpcError.badRequest(`Server with id ${input.id} not found`);
-      }
+      const serverConfig = requireServer(input.id);
 
       const manager = await getService(Services.PLAYTIME_MANAGER_SERVICE);
 
       const service = manager.getService(input.id);
       const status = buildServerStatus(input.id, serverConfig, service);
-      const { summary, leaderboard } = await R.playtimeRepo.getServerStats(
+      const { summary, leaderboard } = await playtimeRepo.getServerStats(
         input.id,
       );
 
@@ -103,20 +88,14 @@ export const serverStatsProcedures = {
   activity: adminProcedure
     .meta({ description: "Get daily activity for a server" })
     .input(
-      z.object({
-        serverId: z.coerce.number().int().positive(),
+      serverIdInput.extend({
         days: z.number().int().min(7).max(365).default(30),
       }),
     )
     .query(async ({ input }) => {
-      const serverConfig = getServerById(input.serverId);
-      if (!serverConfig) {
-        throw trpcError.badRequest(
-          `Server with id ${input.serverId} not found`,
-        );
-      }
+      requireServer(input.serverId);
 
-      const activity = await R.playtimeRepo.getServerActivity(
+      const activity = await playtimeRepo.getServerActivity(
         input.serverId,
         input.days,
       );
@@ -150,20 +129,14 @@ export const serverStatsProcedures = {
   heatmap: adminProcedure
     .meta({ description: "Get hourly activity heatmap for a server" })
     .input(
-      z.object({
-        serverId: z.coerce.number().int().positive(),
+      serverIdInput.extend({
         days: z.number().int().min(7).max(365).default(30),
       }),
     )
     .query(async ({ input }) => {
-      const serverConfig = getServerById(input.serverId);
-      if (!serverConfig) {
-        throw trpcError.badRequest(
-          `Server with id ${input.serverId} not found`,
-        );
-      }
+      requireServer(input.serverId);
 
-      const heatmapData = await R.playtimeRepo.getServerHeatmap(
+      const heatmapData = await Q.player.playtime.hourly.getServerHeatmap(
         input.serverId,
         input.days,
       );
@@ -180,29 +153,18 @@ export const serverStatsProcedures = {
 
   sessions: adminProcedure
     .meta({ description: "Get paginated sessions for a server" })
-    .input(
-      z.object({
-        serverId: z.coerce.number().int().positive(),
-        ...paginationInput({ defaultLimit: 20 }),
-      }),
-    )
+    .input(serverIdInput.extend(paginationInput({ defaultLimit: 20 })))
     .query(async ({ input }) => {
-      const serverConfig = getServerById(input.serverId);
-      if (!serverConfig) {
-        throw trpcError.badRequest(
-          `Server with id ${input.serverId} not found`,
-        );
-      }
+      requireServer(input.serverId);
 
-      const offset = input.page * input.limit;
-      const { sessions, total } = await Q.player.session.getServerSessions(
+      const { rows, total } = await Q.player.session.getServerSessions(
         input.serverId,
         input.limit,
-        offset,
+        pageOffset(input),
       );
 
       return {
-        sessions,
+        items: rows,
         pagination: buildPagination(input.page, input.limit, total),
       };
     }),

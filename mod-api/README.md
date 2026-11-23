@@ -30,11 +30,11 @@ import com.saunhardy.createrington.api.Endpoints;
 import com.saunhardy.createrington.api.currency.PayRequest;
 import com.saunhardy.createrington.api.currency.PayResponse;
 
-PayRequest req = new PayRequest(targetUuid, 100.0, null);
+PayRequest req = new PayRequest(targetUuid, 100.0);
 client.post(Endpoints.CURRENCY_PAY, gson.toJson(req), PayResponse.class, playerUuid)
       .thenAccept(response -> {
           PayResponse data = response.getData();
-          // data.success(), data.newSenderBalance() - IDE autocomplete, compile-time safe
+          // data.newSenderBalance() - IDE autocomplete, compile-time safe
       });
 ```
 
@@ -44,7 +44,6 @@ client.post(Endpoints.CURRENCY_PAY, gson.toJson(req), PayResponse.class, playerU
 
 | Constant | Path |
 |----------|------|
-| `CURRENCY_LOGIN` | `/api/currency/login` |
 | `CURRENCY_BALANCE` | `/api/currency/balance` |
 | `CURRENCY_PAY` | `/api/currency/pay` |
 | `CURRENCY_DEPOSIT` | `/api/currency/deposit` |
@@ -52,6 +51,8 @@ client.post(Endpoints.CURRENCY_PAY, gson.toJson(req), PayResponse.class, playerU
 | `CURRENCY_TOP` | `/api/currency/top` |
 | `CURRENCY_DAILY` | `/api/currency/daily` |
 | `CURRENCY_HISTORY` | `/api/currency/history` |
+| `PARTIES_SYNC` | `/api/parties/sync` |
+| `PARTIES_CLAIMS` | `/api/parties/claims` |
 | `PRESENCE` | `/api/presence` |
 | `PRESENCE_HEARTBEAT` | `/api/presence/heartbeat` |
 | `TRAINS_CRASH` | `/api/trains/crash` |
@@ -60,41 +61,51 @@ client.post(Endpoints.CURRENCY_PAY, gson.toJson(req), PayResponse.class, playerU
 
 | Record | Fields |
 |--------|--------|
-| `LoginRequest` | `String uuid`, `String name` |
-| `LoginResponse` | `String token` |
 | `BalanceResponse` | `double balance` |
-| `PayRequest` | `String toUuid`, `double amount` |
-| `PayResponse` | `boolean success`, `double newSenderBalance` |
-| `DepositRequest` | `double amount`, `@Nullable String reason` |
-| `DepositResponse` | `boolean success`, `double newBalance` |
-| `WithdrawRequest` | `double denomination`, `int count` |
-| `WithdrawResponse` | `boolean success`, `double withdrawn`, `double newBalance`, `double denomination`, `int count` |
-| `TopEntry` | `String name`, `double balance` |
-| `DailyResponse` | `String message` |
+| `DailyResponse` | `@Nullable Double amount` |
+| `DepositRequest` | `double amount`, `@Nullable String reason`, `@Nullable String idempotencyKey` |
+| `DepositResponse` | `double newBalance` |
 | `HistoryResponse` | `List<Transaction> transactions`, `int page`, `boolean hasMore` |
+| `PayRequest` | `String toUuid`, `double amount` |
+| `PayResponse` | `double newSenderBalance` |
+| `TopEntry` | `String name`, `double balance` |
 | `Transaction` | `int id`, `String amount`, `String balanceBefore`, `String balanceAfter`, `String transactionType`, `@Nullable String description`, `String createdAt` |
+| `WithdrawRequest` | `double denomination`, `int count`, `@Nullable String idempotencyKey` |
+| `WithdrawResponse` | `double withdrawn`, `double newBalance`, `double denomination`, `int count` |
+
+**Parties** - `com.saunhardy.createrington.api.parties.*`
+
+| Record | Fields |
+|--------|--------|
+| `PartyClaimDimensionData` | `String dimension`, `List<PartyClaimOwnerData> owners` |
+| `PartyClaimOwnerData` | `String owner`, `List<List<Integer>> claims`, `List<List<Integer>> forceloads` |
+| `PartyClaimsRequest` | `int serverId`, `String hash`, `List<PartyClaimDimensionData> dimensions` |
+| `PartyClaimsResponse` | `boolean success`, `int stored` |
+| `PartyData` | `String teamId`, `String name`, `String description`, `int color`, `boolean freeToJoin`, `List<PartyMemberData> members`, `List<String> allies`, `@Nullable String tagCode` |
+| `PartyMemberData` | `String uuid`, `String rank`, `@Nullable Integer claims`, `@Nullable Integer forceloads` |
+| `PartySyncRequest` | `int serverId`, `List<PartyData> parties` |
+| `PartySyncResponse` | `boolean success` |
 
 **Presence** - `com.saunhardy.createrington.api.presence.*`
 
 | Record | Fields |
 |--------|--------|
-| `PresenceRequest` | `String minecraftUsername`, `String uuid`, `String state`, `@Nullable Long timestamp`, `@Nullable Integer serverId`, `@Nullable Position position`, `@Nullable String dimension` |
-| `PresenceResponse` | `boolean success`, `String message`, `PresenceData data` |
-| `PresenceData` | `String minecraftUsername`, `String uuid`, `String state`, `int serverId`, `String receivedAt` |
+| `HeartbeatData` | `int serverId`, `int playersReported`, `String receivedAt` |
+| `HeartbeatPlayer` | `String uuid`, `String minecraftUsername`, `@Nullable Integer playTimeTicks` |
 | `HeartbeatRequest` | `List<HeartbeatPlayer> players`, `@Nullable Integer serverId`, `@Nullable Long timestamp` |
 | `HeartbeatResponse` | `boolean success`, `String message`, `HeartbeatData data` |
-| `HeartbeatData` | `int serverId`, `int playersReported`, `String receivedAt` |
-| `HeartbeatPlayer` | `String uuid`, `String username` |
 | `Position` | `double x`, `double y`, `double z` |
+| `PresenceData` | `String minecraftUsername`, `String uuid`, `String state`, `int serverId`, `String receivedAt` |
+| `PresenceRequest` | `String minecraftUsername`, `String uuid`, `String state`, `@Nullable Long timestamp`, `@Nullable Integer serverId`, `@Nullable Position position`, `@Nullable String dimension`, `@Nullable Integer playTimeTicks` |
+| `PresenceResponse` | `boolean success`, `String message`, `PresenceData data` |
 
 **Trains** - `com.saunhardy.createrington.api.trains.*`
 
 | Record | Fields |
 |--------|--------|
-| `CrashRequest` | `String trainId`, `String trainName`, `@Nullable Double speed`, `@Nullable Integer carriageCount`, `@Nullable Position position`, `@Nullable String dimension`, `@Nullable Long timestamp`, `@Nullable String owner`, `@Nullable String driverUuid`, `@Nullable List<CrashPassenger> passengers`, `@Nullable BackwardsDriver backwardsDriver` |
-| `CrashResponse` | `boolean success` |
-| `CrashPassenger` | `String uuid`, `@Nullable String name`, `boolean isDriver` |
 | `BackwardsDriver` | `String uuid`, `@Nullable String name` |
+| `CrashPassenger` | `String uuid`, `@Nullable String name`, `boolean isDriver` |
+| `CrashRequest` | `String trainId`, `String trainName`, `@Nullable Double speed`, `@Nullable Integer carriageCount`, `@Nullable Position position`, `@Nullable String dimension`, `@Nullable Long timestamp`, `@Nullable String owner`, `@Nullable String driverUuid`, `@Nullable List<CrashPassenger> passengers`, `@Nullable BackwardsDriver backwardsDriver` |
 | `Position` | `double x`, `double y`, `double z` |
 
 ## For maintainers
@@ -106,6 +117,7 @@ The Java source files are **auto-generated** from API spec files that live along
 ```
 packages/server/src/app/features/mod/
   currency/currency.api-spec.ts    → currency/*.java
+  parties/parties.api-spec.ts      → parties/*.java
   presence/presence.api-spec.ts    → presence/*.java
   trains/trains.api-spec.ts        → trains/*.java
 ```
@@ -135,12 +147,12 @@ Since versions are published from `dev` before the matching server is live on `c
 
 ### Change detection
 
-CI triggers a publish when **either** of these is true between the previous branch tip and the new one:
+The dev deploy workflow (`.gitea/workflows/deploy-dev.yml`) publishes when **either** of these is true:
 
-- Any `*.api-spec.ts` file changed, or
-- The `version=` line in `mod-api/gradle.properties` changed
+- The `version=` in `mod-api/gradle.properties` is not in the Maven repo yet, or
+- The merge commit of the PR changed any `*.api-spec.ts` file (`git diff HEAD^1..HEAD`), which covers every change in the merged PR
 
-This compares `${{ github.event.before }}..HEAD`, so it captures **all changes in a merged PR**, not just the last commit. A duplicate version check prevents overwriting an already-published version - if you change specs without bumping the version, CI will fail with a clear error. A pure version bump (no spec change) is a valid trigger, useful when the generator or build config changes and you want to republish under a fresh version.
+A duplicate version check prevents overwriting an already-published version: if you change specs without bumping the version, the deploy fails with a clear error. A pure version bump (no spec change) is a valid trigger, useful when the generator or build config changes and you want to republish under a fresh version.
 
 ### Local development
 

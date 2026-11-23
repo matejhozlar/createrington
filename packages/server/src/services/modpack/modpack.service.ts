@@ -1,34 +1,16 @@
 import { Q } from "@/db";
-import { NotFoundError } from "@/app/middleware/error-handler";
-import type {
-  CurseforgeProject,
-  Modpack,
-  ModpackMod,
-  Workshop,
-} from "@createrington/shared/db";
+import { NotFoundError } from "@/errors";
+import type { Modpack, ModpackMod, Workshop } from "@createrington/shared/db";
 import { refreshProjects } from "@/services/curseforge/ingest";
-import { REQUIRED_DEPENDENCY } from "@/services/workshop/dependencies";
-
-export type ModpackProjectSummary = Pick<
-  CurseforgeProject,
-  | "id"
-  | "classId"
-  | "name"
-  | "slug"
-  | "summary"
-  | "thumbnailUrl"
-  | "websiteUrl"
-  | "primaryAuthor"
-  | "categories"
-  | "downloadCount"
-  | "dateReleased"
-  | "allowModDistribution"
-  | "environment"
-  | "environmentSource"
->;
+import { REQUIRED_DEPENDENCY } from "@createrington/shared/workshop";
+import {
+  projectLabel,
+  toProjectSummary,
+  type CurseforgeProjectSummary,
+} from "@/services/curseforge/project";
 
 export interface ModpackModListItem extends ModpackMod {
-  project: ModpackProjectSummary;
+  project: CurseforgeProjectSummary;
   suggestedByName: string | null;
   upvoteCount: number | null;
   requiredBy: Array<{ curseforgeProjectId: number; name: string }>;
@@ -105,7 +87,11 @@ export class ModpackService {
     if (!cached) {
       try {
         await refreshProjects([modpack.curseforgeProjectId]);
-      } catch {
+      } catch (error) {
+        logger.warn(
+          `Modpack #${modpack.id}: CurseForge project #${modpack.curseforgeProjectId} could not be fetched for its page URL:`,
+          error,
+        );
         return null;
       }
       cached = await Q.curseforge.project.find({
@@ -188,14 +174,14 @@ export class ModpackService {
           ? (requirersByDependency.get(row.curseforgeProjectId) ?? []).map(
               (id) => ({
                 curseforgeProjectId: id,
-                name: projectById.get(id)?.name ?? `#${id}`,
+                name: projectLabel(projectById.get(id)?.name, id),
               }),
             )
           : [];
       return [
         {
           ...row,
-          project: this.toProjectSummary(project),
+          project: toProjectSummary(project),
           suggestedByName: suggestion
             ? (nameByDiscordId.get(suggestion.submittedBy) ?? null)
             : null,
@@ -208,25 +194,6 @@ export class ModpackService {
         },
       ];
     });
-  }
-
-  private toProjectSummary(project: CurseforgeProject): ModpackProjectSummary {
-    return {
-      id: project.id,
-      classId: project.classId,
-      name: project.name,
-      slug: project.slug,
-      summary: project.summary,
-      thumbnailUrl: project.thumbnailUrl,
-      websiteUrl: project.websiteUrl,
-      primaryAuthor: project.primaryAuthor,
-      categories: project.categories,
-      downloadCount: project.downloadCount,
-      dateReleased: project.dateReleased,
-      allowModDistribution: project.allowModDistribution,
-      environment: project.environment,
-      environmentSource: project.environmentSource,
-    };
   }
 }
 

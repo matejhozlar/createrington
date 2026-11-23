@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   formatBalance,
-  formatDaysCount,
+  formatCount,
   formatDuration,
   pluralize,
 } from "@/utils/format";
@@ -38,14 +38,14 @@ describe("formatBalance", () => {
   });
 });
 
-describe("formatDaysCount", () => {
+describe("formatCount", () => {
   it("uses singular for 1", () => {
-    expect(formatDaysCount(1)).toBe("1 day");
+    expect(formatCount(1, "day")).toBe("1 day");
   });
 
   it("uses plural for 0 and >1", () => {
-    expect(formatDaysCount(0)).toBe("0 days");
-    expect(formatDaysCount(5)).toBe("5 days");
+    expect(formatCount(0, "day")).toBe("0 days");
+    expect(formatCount(5, "day")).toBe("5 days");
   });
 });
 

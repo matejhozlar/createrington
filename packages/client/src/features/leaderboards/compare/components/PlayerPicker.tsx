@@ -96,7 +96,7 @@ function PlayerResults({
   const available = (minecraftUsername: string) =>
     !excluded.includes(minecraftUsername.toLowerCase());
   const asPickable = (rows: typeof searchQuery.data) =>
-    (rows?.rows ?? [])
+    (rows?.items ?? [])
       .filter((row) => available(row.minecraftUsername))
       .map((row) => ({ ...row, note: `#${row.rank} Playtime` }));
   const you =

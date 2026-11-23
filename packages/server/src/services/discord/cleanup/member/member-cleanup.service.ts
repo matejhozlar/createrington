@@ -14,7 +14,7 @@ import { playerDeletionService } from "@/services/player/deletion";
  */
 export class MemberCleanupService {
   private intervalId?: NodeJS.Timeout;
-  private readonly CHECK_INTERVAL = 6 * 60 * 60 * 1000; // 6 hours
+  private readonly CHECK_INTERVAL = 6 * 60 * 60 * 1000;
 
   /** Run an immediate cleanup pass and arm the 6-hour interval. */
   initialize(): void {
@@ -44,7 +44,7 @@ export class MemberCleanupService {
 
   private async cleanup(): Promise<void> {
     try {
-      const expiredMembers = await Q.discord.guild.member.leave.expired();
+      const expiredMembers = await Q.discord.guild.member.leave.getExpired();
 
       if (expiredMembers.length === 0) {
         logger.debug("No departed members to clean up");
@@ -73,23 +73,18 @@ export class MemberCleanupService {
 
           if (member.notificationMessageId) {
             try {
-              const result = await Discord.Messages.fetchMessage({
-                channelId: Discord.Channels.administration.NOTIFICATIONS,
-                messageId: member.notificationMessageId,
+              const autoDeleted = EmbedPresets.departed.autoDeleted({
+                minecraftUsername: member.minecraftUsername,
+                departedAt: member.departedAt,
+                deletedAt: new Date(),
               });
 
-              if (result.success) {
-                const autoDeleted = EmbedPresets.departed.autoDeleted({
-                  minecraftUsername: member.minecraftUsername,
-                  departedAt: member.departedAt,
-                  deletedAt: new Date(),
-                });
-
-                await result.message.edit({
-                  embeds: [autoDeleted.build()],
-                  components: [],
-                });
-              }
+              await Discord.Messages.edit({
+                channelId: Discord.Channels.administration.NOTIFICATIONS,
+                messageId: member.notificationMessageId,
+                embeds: autoDeleted.build(),
+                components: null,
+              });
             } catch (error) {
               logger.warn(
                 `Could not update notification message for ${member.minecraftUsername}:`,

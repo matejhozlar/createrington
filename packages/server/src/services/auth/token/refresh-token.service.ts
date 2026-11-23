@@ -1,6 +1,9 @@
 import crypto from "node:crypto";
 import config from "@/config";
 import type { Request, Response } from "express";
+import { baseCookieOptions } from "./cookie-options";
+
+const COOKIE_PATH = "/api/auth";
 
 /**
  * Generates, hashes, and ferries opaque refresh tokens between the database and the
@@ -8,30 +11,17 @@ import type { Request, Response } from "express";
  * everything persisted (and looked up against) is the SHA-256 hash. Singleton.
  */
 class RefreshTokenService {
-  private static instance: RefreshTokenService;
-
   private readonly expiresInDays: number;
   private readonly cookieName: string;
   private readonly cookieDomain: string | undefined;
 
-  private constructor() {
+  constructor() {
     this.expiresInDays = config.app.auth.refreshToken.expiresInDays;
     this.cookieName = config.app.auth.cookie.name;
     this.cookieDomain = config.app.auth.cookie.domain;
   }
 
-  static getInstance(): RefreshTokenService {
-    if (!RefreshTokenService.instance) {
-      RefreshTokenService.instance = new RefreshTokenService();
-    }
-    return RefreshTokenService.instance;
-  }
-
-  /**
-   * Generates a fresh opaque refresh token.
-   *
-   * @returns An 80-character lowercase hex string (40 random bytes).
-   */
+  /** Generates a fresh opaque refresh token. */
   generate(): string {
     return crypto.randomBytes(40).toString("hex");
   }
@@ -53,28 +43,10 @@ class RefreshTokenService {
    * and trip the rotation system's theft detection.
    */
   setCookie(res: Response, token: string): void {
-    // Defensive clear of any leftover host-only cookie from before the
-    // COOKIE_DOMAIN migration. Without this the browser can hold both a
-    // host-only and a domain-scoped cookie under the same name; cookie-parser
-    // picks one non-deterministically, and if it grabs the stale host-only
-    // value the rotation system flags it as token theft and revokes the
-    // user's whole token family. Once each user has logged in once after
-    // this fix ships the legacy cookie is gone forever.
-    if (this.cookieDomain) {
-      res.clearCookie(this.cookieName, {
-        httpOnly: true,
-        secure: config.envMode.isProd,
-        sameSite: "lax",
-        path: "/api/auth",
-      });
-    }
+    this.clearHostOnlyCookie(res);
     res.cookie(this.cookieName, token, {
-      httpOnly: true,
-      secure: config.envMode.isProd,
-      sameSite: "lax",
-      path: "/api/auth",
+      ...this.cookieOptions(),
       maxAge: this.expiresInDays * 86_400_000,
-      ...(this.cookieDomain ? { domain: this.cookieDomain } : {}),
     });
   }
 
@@ -84,21 +56,8 @@ class RefreshTokenService {
    * matches and removes them.
    */
   clearCookie(res: Response): void {
-    if (this.cookieDomain) {
-      res.clearCookie(this.cookieName, {
-        httpOnly: true,
-        secure: config.envMode.isProd,
-        sameSite: "lax",
-        path: "/api/auth",
-      });
-    }
-    res.clearCookie(this.cookieName, {
-      httpOnly: true,
-      secure: config.envMode.isProd,
-      sameSite: "lax",
-      path: "/api/auth",
-      ...(this.cookieDomain ? { domain: this.cookieDomain } : {}),
-    });
+    this.clearHostOnlyCookie(res);
+    res.clearCookie(this.cookieName, this.cookieOptions());
   }
 
   /** Reads the raw refresh token from the request's cookies, or `undefined` if absent. */
@@ -106,6 +65,19 @@ class RefreshTokenService {
     const value: unknown = req.cookies?.[this.cookieName];
     return typeof value === "string" ? value : undefined;
   }
+
+  private cookieOptions() {
+    return {
+      ...baseCookieOptions(COOKIE_PATH),
+      ...(this.cookieDomain ? { domain: this.cookieDomain } : {}),
+    };
+  }
+
+  private clearHostOnlyCookie(res: Response): void {
+    if (this.cookieDomain) {
+      res.clearCookie(this.cookieName, baseCookieOptions(COOKIE_PATH));
+    }
+  }
 }
 
-export const refreshTokenService = RefreshTokenService.getInstance();
+export const refreshTokenService = new RefreshTokenService();

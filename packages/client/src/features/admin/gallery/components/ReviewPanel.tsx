@@ -9,7 +9,8 @@ import {
 } from "lucide-react";
 import { trpc, queryClient } from "@/lib/trpc";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
-import { formatBytes, formatMoney, formatRelativeDate } from "@/lib/format";
+import { formatBytes, formatDateTime, formatRelativeDate } from "@/lib/format";
+import { formatMoney } from "@createrington/shared/format";
 import { PlayerLabel } from "@/components/player-label";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,10 +22,10 @@ import {
   GALLERY_STATUS,
   type GalleryCredit,
   type GallerySubmissionDetail,
-} from "../format";
+} from "@/features/admin/gallery/format";
 import { ApproveDialog } from "./ApproveDialog";
 import { CreditsPicker } from "./CreditsPicker";
-import { RejectDialog } from "./RejectDialog";
+import { RejectDialog } from "@/features/admin/gallery/components/RejectDialog";
 import { SubmissionImage } from "./SubmissionImage";
 import { useMutation } from "@tanstack/react-query";
 import { Textarea } from "@/components/ui/textarea";
@@ -53,7 +54,6 @@ export function ReviewPanel({
   const [credits, setCredits] = useState<GalleryCredit[]>(item.credits);
   const [approveOpen, setApproveOpen] = useState(false);
   const [rejectOpen, setRejectOpen] = useState(false);
-  const [rejectKey, setRejectKey] = useState(0);
 
   const invalidate = () => {
     void queryClient.invalidateQueries(trpc.admin.gallery.list.pathFilter());
@@ -106,11 +106,6 @@ export function ReviewPanel({
       creditPlayerUuids: credits.map((credit) => credit.minecraftUuid),
     });
 
-  const openReject = () => {
-    setRejectKey((key) => key + 1);
-    setRejectOpen(true);
-  };
-
   return (
     <>
       <Card className="gap-0 overflow-hidden">
@@ -158,7 +153,7 @@ export function ReviewPanel({
                 uuid={item.author.minecraftUuid}
                 name={item.author.minecraftUsername}
               />
-              <span title={submittedAt.toLocaleString()}>
+              <span title={formatDateTime(submittedAt)}>
                 Submitted {formatRelativeDate(submittedAt)}
               </span>
               {dimensions && <span>{dimensions}</span>}
@@ -247,7 +242,7 @@ export function ReviewPanel({
                 variant="destructive"
                 size="lg"
                 disabled={busy}
-                onClick={openReject}
+                onClick={() => setRejectOpen(true)}
               >
                 <X className="mr-2 size-4" />
                 Reject
@@ -267,7 +262,6 @@ export function ReviewPanel({
       />
 
       <RejectDialog
-        key={rejectKey}
         open={rejectOpen}
         onOpenChange={setRejectOpen}
         authorName={item.author.minecraftUsername}

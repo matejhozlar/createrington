@@ -1,19 +1,20 @@
 import { Q } from "@/db";
-import { BadRequestError } from "@/app/middleware/error-handler";
+import { BadRequestError } from "@/errors";
 import type {
   Modpack,
+  ModpackMod,
   Workshop,
   WorkshopMod,
   WorkshopModStatus,
 } from "@createrington/shared/db";
-import { CurseForgeLoader } from "@/services/curseforge/client";
+import { loaderTypeOf } from "@/services/curseforge/loader";
 import {
   manifestDisabledModIds,
   type ModpackManifest,
 } from "@/services/curseforge/modpack";
-import { getModpackManifest } from "@/services/curseforge/modpack-manifest";
+import { getModpackManifest } from "@/services/modpack/manifest";
 import { refreshProjects } from "@/services/curseforge/ingest";
-import { REQUIRED_DEPENDENCY } from "@/services/workshop/dependencies";
+import { REQUIRED_DEPENDENCY } from "@createrington/shared/workshop";
 import {
   announcePackDropOut,
   announceReview,
@@ -29,12 +30,6 @@ const SHIP_CLAIMABLE_STATUSES: WorkshopModStatus[] = [
   "next_update",
 ];
 
-/**
- * Post pipeline moves to their threads off the caller's path: reconcile runs
- * from an admin mutation, and a pack's worth of posts would both stall that
- * request and hit Discord in one burst. Sequential so the rate limiter paces
- * itself; the announce helpers swallow their own errors.
- */
 function announceStatusMoves(mods: WorkshopMod[]): void {
   if (mods.length === 0) return;
   void (async () => {
@@ -50,6 +45,107 @@ type ManifestMembership = Pick<
   ModpackManifest,
   "modIds" | "disabledModIds" | "version"
 >;
+
+interface MembershipPlan {
+  goingLive: Map<boolean, number[]>;
+  restored: Map<boolean, number[]>;
+  removedImportIds: number[];
+  droppedRowIds: number[];
+  shippedModIds: number[];
+  droppedModIds: number[];
+  droppedRequired: Map<number, boolean>;
+}
+
+function pushByRequired(
+  map: Map<boolean, number[]>,
+  required: boolean,
+  id: number,
+): void {
+  const ids = map.get(required) ?? [];
+  ids.push(id);
+  map.set(required, ids);
+}
+
+function planMembership(
+  rows: ModpackMod[],
+  manifest: ManifestMembership,
+): MembershipPlan {
+  const plan: MembershipPlan = {
+    goingLive: new Map(),
+    restored: new Map(),
+    removedImportIds: [],
+    droppedRowIds: [],
+    shippedModIds: [],
+    droppedModIds: [],
+    droppedRequired: new Map(),
+  };
+
+  for (const row of rows) {
+    if (manifest.modIds.has(row.curseforgeProjectId)) {
+      const required = !manifest.disabledModIds.has(row.curseforgeProjectId);
+      if (row.liveAt === null) {
+        pushByRequired(plan.goingLive, required, row.id);
+      } else if (
+        row.droppedFromManifestAt !== null ||
+        row.required !== required
+      ) {
+        pushByRequired(plan.restored, required, row.id);
+      }
+      if (row.workshopModId) plan.shippedModIds.push(row.workshopModId);
+      continue;
+    }
+
+    if (row.origin === "import") {
+      plan.removedImportIds.push(row.id);
+      continue;
+    }
+    if (row.droppedFromManifestAt === null) plan.droppedRowIds.push(row.id);
+    if (row.workshopModId) {
+      plan.droppedModIds.push(row.workshopModId);
+      plan.droppedRequired.set(row.workshopModId, row.required);
+    }
+  }
+  return plan;
+}
+
+async function writeMembership(
+  plan: MembershipPlan,
+  version: string | null,
+  now: Date,
+): Promise<void> {
+  for (const [required, ids] of plan.goingLive) {
+    await Q.modpack.mod.updateAll(
+      {
+        liveAt: now,
+        liveInVersion: version,
+        droppedFromManifestAt: null,
+        required,
+        updatedAt: now,
+      },
+      { id: { $in: ids } },
+    );
+  }
+  for (const [required, ids] of plan.restored) {
+    await Q.modpack.mod.updateAll(
+      { droppedFromManifestAt: null, required, updatedAt: now },
+      { id: { $in: ids } },
+    );
+  }
+  if (plan.removedImportIds.length > 0) {
+    await Q.modpack.mod.deleteAll({ id: { $in: plan.removedImportIds } });
+  }
+  if (plan.droppedRowIds.length > 0) {
+    await Q.modpack.mod.updateAll(
+      {
+        liveAt: null,
+        liveInVersion: null,
+        droppedFromManifestAt: now,
+        updatedAt: now,
+      },
+      { id: { $in: plan.droppedRowIds } },
+    );
+  }
+}
 
 export interface ModpackManifestSeedFile {
   projectId: number;
@@ -68,13 +164,6 @@ export interface ModpackSeedResult {
   memberCount: number;
   unresolvedProjectIds: number[];
   duplicateProjectIds: number[];
-}
-
-function manifestLoaderType(loaderId: string): number | null {
-  const prefix = loaderId.split("-")[0]?.toLowerCase() ?? "";
-  return Object.hasOwn(CurseForgeLoader, prefix)
-    ? CurseForgeLoader[prefix as keyof typeof CurseForgeLoader]
-    : null;
 }
 
 /**
@@ -164,8 +253,6 @@ export class ModpackSyncService {
       version: seed.version,
     });
 
-    // Members dropped by an earlier seed keep their rows, so the count of
-    // what this manifest covers is derived from the manifest side
     const rows = await Q.modpack.mod.findAll(
       { modpackId, curseforgeProjectId: { $in: [...modIds] } },
       { select: ["curseforgeProjectId"] },
@@ -195,7 +282,7 @@ export class ModpackSyncService {
       );
     }
     if (!seed.modLoader) return;
-    const loaderType = manifestLoaderType(seed.modLoader);
+    const loaderType = loaderTypeOf(seed.modLoader);
     if (
       loaderType !== null &&
       !workshops.some((w) => w.modLoaderType === loaderType)
@@ -215,11 +302,6 @@ export class ModpackSyncService {
     }
   }
 
-  /**
-   * Sync suggestions with what the manifest ships. rejected is excluded from
-   * the shipped move so a sweep never undoes an explicit rejection; it
-   * surfaces as a shipped_rejected attention item instead.
-   */
   private async moveSuggestions(
     workshopModIds: number[],
     to: Extract<WorkshopModStatus, "next_update" | "in_pack">,
@@ -247,10 +329,6 @@ export class ModpackSyncService {
       groups.set(key, group);
     }
 
-    // Concurrent reconciles read the same rows, so the status-guarded update
-    // picks one winner per move. Announcements and events are therefore
-    // at-most-once: a crash between the claim and the write loses them,
-    // since no later sweep retries
     const moved: WorkshopMod[] = [];
     for (const group of groups.values()) {
       const claimed = await Q.workshop.mod.updateAllAndReturn(
@@ -287,84 +365,8 @@ export class ModpackSyncService {
         : Promise.resolve([]),
     ]);
 
-    const shippedModIds: number[] = [];
-    const droppedModIds: number[] = [];
-    const droppedRequired = new Map<number, boolean>();
-    const goingLive = new Map<boolean, number[]>();
-    const restored = new Map<boolean, number[]>();
-    const removedImportIds: number[] = [];
-    const droppedRowIds: number[] = [];
-    const pushByRequired = (
-      map: Map<boolean, number[]>,
-      required: boolean,
-      id: number,
-    ) => {
-      const ids = map.get(required) ?? [];
-      ids.push(id);
-      map.set(required, ids);
-    };
-
-    for (const row of rows) {
-      if (manifest.modIds.has(row.curseforgeProjectId)) {
-        const required = !manifest.disabledModIds.has(row.curseforgeProjectId);
-        if (row.liveAt === null) {
-          pushByRequired(goingLive, required, row.id);
-        } else if (
-          row.droppedFromManifestAt !== null ||
-          row.required !== required
-        ) {
-          pushByRequired(restored, required, row.id);
-        }
-        if (row.workshopModId) shippedModIds.push(row.workshopModId);
-        continue;
-      }
-
-      // A row only exists because the pack shipped the mod, so falling out of
-      // the manifest is always a drop-out. Imports have no suggestion behind
-      // them to fall back to, so they simply cease to be members
-      if (row.origin === "import") {
-        removedImportIds.push(row.id);
-        continue;
-      }
-      if (row.droppedFromManifestAt === null) droppedRowIds.push(row.id);
-      if (row.workshopModId) {
-        droppedModIds.push(row.workshopModId);
-        droppedRequired.set(row.workshopModId, row.required);
-      }
-    }
-
-    for (const [required, ids] of goingLive) {
-      await Q.modpack.mod.updateAll(
-        {
-          liveAt: now,
-          liveInVersion: manifest.version,
-          droppedFromManifestAt: null,
-          required,
-          updatedAt: now,
-        },
-        { id: { $in: ids } },
-      );
-    }
-    for (const [required, ids] of restored) {
-      await Q.modpack.mod.updateAll(
-        { droppedFromManifestAt: null, required, updatedAt: now },
-        { id: { $in: ids } },
-      );
-    }
-    if (removedImportIds.length > 0) {
-      await Q.modpack.mod.deleteAll({ id: { $in: removedImportIds } });
-    }
-    if (droppedRowIds.length > 0) {
-      await Q.modpack.mod.updateAll(
-        {
-          liveAt: null,
-          liveInVersion: null,
-          droppedFromManifestAt: now,
-          updatedAt: now,
-        },
-        { id: { $in: droppedRowIds } },
-      );
-    }
+    const plan = planMembership(rows, manifest);
+    await writeMembership(plan, manifest.version, now);
 
     const memberProjectIds = new Set(
       rows.map((row) => row.curseforgeProjectId),
@@ -372,40 +374,33 @@ export class ModpackSyncService {
     const newProjectIds = [...manifest.modIds].filter(
       (id) => !memberProjectIds.has(id),
     );
-    if (newProjectIds.length > 0) {
-      shippedModIds.push(
-        ...(await this.importManifestMods(
-          modpack,
-          workshopIds,
-          suggestions,
-          manifest,
-          newProjectIds,
-          now,
-        )),
-      );
-    }
+    const importedModIds =
+      newProjectIds.length > 0
+        ? await this.importManifestMods({
+            modpack,
+            workshopIds,
+            suggestions,
+            manifest,
+            projectIds: newProjectIds,
+            now,
+          })
+        : [];
 
     announceStatusMoves([
       ...(await this.moveSuggestions(
-        shippedModIds,
+        [...plan.shippedModIds, ...importedModIds],
         "in_pack",
         manifest.version,
       )),
       ...(await this.moveSuggestions(
-        droppedModIds,
+        plan.droppedModIds,
         "next_update",
         manifest.version,
-        droppedRequired,
+        plan.droppedRequired,
       )),
     ]);
   }
 
-  /**
-   * Promote CurseForge hints the published pack agrees with to manifest.
-   * Needs a server pack to say anything about sides; a hint the pack
-   * disagrees with is left for the next refresh, and unspecified members
-   * stay unspecified so they keep surfacing for review.
-   */
   private async applyManifestEnvironments(
     manifest: ModpackManifest,
   ): Promise<void> {
@@ -434,19 +429,21 @@ export class ModpackSyncService {
     );
   }
 
-  /**
-   * Create rows for manifest entries the pack does not know yet, classifying
-   * each by where it came from: a suggestion it satisfies, a required
-   * dependency of something else that shipped, or an outright import.
-   */
-  private async importManifestMods(
-    modpack: Modpack,
-    workshopIds: number[],
-    suggestions: WorkshopMod[],
-    manifest: ManifestMembership,
-    projectIds: number[],
-    now: Date,
-  ): Promise<number[]> {
+  private async importManifestMods({
+    modpack,
+    workshopIds,
+    suggestions,
+    manifest,
+    projectIds,
+    now,
+  }: {
+    modpack: Modpack;
+    workshopIds: number[];
+    suggestions: WorkshopMod[];
+    manifest: ManifestMembership;
+    projectIds: number[];
+    now: Date;
+  }): Promise<number[]> {
     const suggestionByProject = new Map<number, WorkshopMod>();
     for (const mod of suggestions) {
       const held = suggestionByProject.get(mod.curseforgeProjectId);

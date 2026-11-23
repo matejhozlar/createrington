@@ -1,21 +1,20 @@
-/**
- * Shared tRPC utilities: error factories, player ID parsing, and pagination helpers.
- */
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { idToObject } from "@/app/utils/helpers";
-import { AppError } from "@/app/middleware/error-handler";
+import { idToObject } from "@/utils/player-identifier";
+import { AppError } from "@/errors";
+import { NotFoundError as DbNotFoundError } from "@/db/utils/errors";
 import type { OrderBy, OrderDirection } from "@/db/queries/query-builder";
 
 type TrpcCode = ConstructorParameters<typeof TRPCError>[0]["code"];
 
-/** Positive int4-bounded ID input, shared by routers that take row IDs. */
 export const id = () => z.number().int().positive().max(2147483647);
 
-/** Sort direction input. */
+export const serverIdInput = z.object({
+  serverId: z.coerce.number().int().positive(),
+});
+
 export const sortDirection = () => z.enum(["asc", "desc"]);
 
-/** Shorthand factories for common TRPCError codes. */
 export const trpcError = {
   badRequest: (message: string) =>
     new TRPCError({ code: "BAD_REQUEST", message }),
@@ -32,7 +31,6 @@ export const trpcError = {
     new TRPCError({ code: "INTERNAL_SERVER_ERROR", message }),
 };
 
-/** Rejects an all-optional patch that carries no fields as BAD_REQUEST. */
 export function assertPatchNotEmpty(patch: Record<string, unknown>): void {
   if (Object.keys(patch).length === 0) {
     throw trpcError.badRequest("Nothing to update");
@@ -49,28 +47,26 @@ const APP_ERROR_TO_TRPC_CODE: Record<number, TrpcCode> = {
   503: "SERVICE_UNAVAILABLE",
 };
 
-/**
- * Re-throws a service-layer error as a TRPCError. AppError subclasses map to
- * the tRPC code matching their HTTP status; any other error propagates
- * unchanged so genuine failures still surface as INTERNAL_SERVER_ERROR rather
- * than being masked as a client error.
- */
-export function rethrowTrpc(err: unknown): never {
-  if (err instanceof AppError) {
-    throw new TRPCError({
-      code: APP_ERROR_TO_TRPC_CODE[err.statusCode] ?? "INTERNAL_SERVER_ERROR",
-      message: err.message,
-      cause: err,
-    });
-  }
-  throw err;
+function domainErrorCode(cause: unknown): TrpcCode | undefined {
+  if (cause instanceof AppError)
+    return APP_ERROR_TO_TRPC_CODE[cause.statusCode];
+  if (cause instanceof DbNotFoundError) return "NOT_FOUND";
+  return undefined;
 }
 
-/**
- * Parses a player ID string into a typed identifier object.
- * @param id - Discord ID, Minecraft UUID, or Minecraft username
- * @returns Typed identifier object for use with player queries
- */
+export function mapDomainError(error: TRPCError): TRPCError | null {
+  if (error.code !== "INTERNAL_SERVER_ERROR") return null;
+  const code = domainErrorCode(error.cause);
+  if (!code) return null;
+  const mapped = new TRPCError({
+    code,
+    message: error.message,
+    cause: error.cause,
+  });
+  mapped.stack = error.stack;
+  return mapped;
+}
+
 export function parsePlayerId(id: string) {
   const identifier = idToObject(id);
   if (!identifier) {
@@ -81,10 +77,8 @@ export function parsePlayerId(id: string) {
   return identifier;
 }
 
-/**
- * Maps an authenticated admin context to the actor fields every audit log
- * entry requires. Spread into `logAction` calls: `{ ...auditActor(ctx), ... }`.
- */
+export const playerId = () => z.string().min(1).transform(parsePlayerId);
+
 export function auditActor(ctx: {
   user: { discordId: string; minecraftUsername: string };
 }) {
@@ -94,11 +88,6 @@ export function auditActor(ctx: {
   };
 }
 
-/**
- * Returns Zod schemas for `page` and `limit` input fields.
- * @param opts.maxLimit - Upper bound for limit (default 100)
- * @param opts.defaultLimit - Default page size (default 20)
- */
 export function paginationInput(opts?: {
   maxLimit?: number;
   defaultLimit?: number;
@@ -114,13 +103,10 @@ export function paginationInput(opts?: {
   };
 }
 
-/**
- * Builds a pagination metadata object from query results.
- * @param page - Current zero-based page index
- * @param limit - Number of items per page
- * @param total - Total number of matching records
- * @returns Object with page, limit, total, and totalPages
- */
+export function pageOffset(input: { page: number; limit: number }): number {
+  return input.page * input.limit;
+}
+
 export function buildPagination(page: number, limit: number, total: number) {
   return {
     page,
@@ -143,12 +129,6 @@ interface PageSource<TEntity, TFilters> {
   count(filters?: TFilters): Promise<number>;
 }
 
-/**
- * Runs the page query and the total count from one filter object, so the
- * rows and the pagination metadata can never disagree on the predicate.
- * `order` takes a single field with a direction, or a list of order terms
- * for a stable multi-column sort.
- */
 export async function paginateQuery<TEntity, TFilters>(
   source: PageSource<TEntity, TFilters>,
   filters: TFilters,
@@ -159,14 +139,13 @@ export async function paginateQuery<TEntity, TFilters>(
     source.findAll(filters, {
       ...order,
       limit: input.limit,
-      offset: input.page * input.limit,
+      offset: pageOffset(input),
     }),
     source.count(filters),
   ]);
   return { rows, pagination: buildPagination(input.page, input.limit, total) };
 }
 
-/** Awaits a nullable single-row lookup and maps a missing row to NOT_FOUND. */
 export async function findOrThrow<T>(
   lookup: Promise<T | null | undefined>,
   message: string,

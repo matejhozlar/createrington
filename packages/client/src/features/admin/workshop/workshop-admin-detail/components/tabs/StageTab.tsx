@@ -1,28 +1,32 @@
+import { WORKSHOP_MOD_REJECT_REASON_LABELS } from "@createrington/shared/workshop";
 import { useMemo } from "react";
 import { Heart, Search } from "lucide-react";
-import { Paginator } from "@/components/paginator";
 import { CellDate, CellText } from "@/components/cell-text";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   AvatarCellSkeleton,
   BadgeCellSkeleton,
-  DataTable,
   type DataTableColumn,
 } from "@/components/data-table";
-import type { ModEnvironment } from "@createrington/shared/db";
+import { TableCard } from "@/components/paged-table";
+import { useClientPagination } from "@/hooks/use-client-pagination";
 import { PlayerLabel } from "@/components/player-label";
 import { FilterBar } from "@/features/admin/components/FilterBar";
-import { EmptyState, ErrorState } from "@/components/query-states";
-import { REJECT_REASON_LABELS } from "@/features/workshop/format";
-import { modReviewActions, type ModReviewHandlers } from "../../actions";
-import { STAGE_CONFIG, type StageColumn, type StageId } from "../../tabs";
-import type { AdminWorkshopMod } from "../../types";
 import {
-  EnvironmentCell,
-  type EnvironmentDisplay,
-} from "@/features/workshop/components/EnvironmentCell";
-import { DependencyCell } from "../DependencyCell";
-import { ModCell, ModCellSkeleton } from "../ModCell";
+  modReviewActions,
+  type ModTableProps,
+} from "@/features/admin/workshop/workshop-admin-detail/actions";
+import {
+  STAGE_CONFIG,
+  type StageColumn,
+  type StageId,
+} from "@/features/admin/workshop/workshop-admin-detail/tabs";
+import type { AdminWorkshopMod } from "@/features/admin/workshop/workshop-admin-detail/types";
+import { EnvironmentCell } from "@/features/workshop/components/EnvironmentCell";
+import { DependencyCell } from "@/features/admin/workshop/workshop-admin-detail/components/DependencyCell";
+import {
+  ModCell,
+  ModCellSkeleton,
+} from "@/features/admin/workshop/workshop-admin-detail/components/ModCell";
 
 const MODS_PER_PAGE = 10;
 
@@ -75,7 +79,7 @@ const OPTIONAL_COLUMNS: Record<
       mod.rejectReason && (
         <>
           <CellText
-            value={REJECT_REASON_LABELS[mod.rejectReason]}
+            value={WORKSHOP_MOD_REJECT_REASON_LABELS[mod.rejectReason]}
             className="text-sm"
           />
           {mod.rejectNote && (
@@ -97,8 +101,6 @@ export function StageTab({
   onRetry,
   search,
   onSearchChange,
-  page: requestedPage,
-  onPageChange,
   busyModId,
   onView,
   envDisplay,
@@ -108,18 +110,7 @@ export function StageTab({
 }: {
   stage: StageId;
   mods: AdminWorkshopMod[];
-  isLoading: boolean;
-  error: string | null;
-  onRetry: () => void;
-  search: string;
-  onSearchChange: (value: string) => void;
-  page: number;
-  onPageChange: (page: number) => void;
-  busyModId: number | null;
-  onView: (workshopModId: number) => void;
-  envDisplay: EnvironmentDisplay;
-  onSetEnvironment: (projectId: number, environment: ModEnvironment) => void;
-} & ModReviewHandlers) {
+} & ModTableProps) {
   const config = STAGE_CONFIG[stage];
   const query = search.trim().toLowerCase();
 
@@ -148,12 +139,13 @@ export function StageTab({
     );
   }, [mods, query]);
 
-  const totalPages = Math.ceil(filtered.length / MODS_PER_PAGE);
-  const page = Math.min(requestedPage, Math.max(0, totalPages - 1));
-  const visible = filtered.slice(
-    page * MODS_PER_PAGE,
-    (page + 1) * MODS_PER_PAGE,
-  );
+  const paged = useClientPagination(filtered, {
+    perPage: MODS_PER_PAGE,
+    resetKey: [query, stage],
+    loading: isLoading,
+    error,
+    retry: onRetry,
+  });
 
   const columns: DataTableColumn<AdminWorkshopMod>[] = [
     {
@@ -201,50 +193,28 @@ export function StageTab({
         activeCount={query ? 1 : 0}
       />
 
-      <Card className="gap-0">
-        <CardHeader className="gap-0 border-b">
-          <CardTitle>
-            {config.title} (
-            {query
-              ? `${filtered.length.toLocaleString()} of ${mods.length.toLocaleString()}`
-              : mods.length.toLocaleString()}
-            )
-          </CardTitle>
-        </CardHeader>
-
-        {error ? (
-          <ErrorState message={error} onRetry={onRetry} />
-        ) : !isLoading && mods.length === 0 ? (
-          <EmptyState icon={config.emptyIcon} message={config.emptyMessage} />
-        ) : !isLoading && filtered.length === 0 ? (
-          <EmptyState icon={Search} message="No mods match your search" />
-        ) : (
-          <CardContent className="px-0">
-            <DataTable
-              columns={columns}
-              rows={visible}
-              loading={isLoading}
-              loadingRows={MODS_PER_PAGE}
-              rowKey={(mod) => mod.id}
-              onRowClick={(mod) => onView(mod.id)}
-              actions={(mod) =>
-                modReviewActions(mod, { onReview, onReject }, envDisplay)
-              }
-              isRowBusy={(mod) => busyModId === mod.id}
-            />
-
-            <Paginator
-              page={page}
-              limit={MODS_PER_PAGE}
-              total={filtered.length}
-              totalPages={totalPages}
-              onPageChange={onPageChange}
-              itemLabel="mod"
-              className="px-4 pt-4"
-            />
-          </CardContent>
-        )}
-      </Card>
+      <TableCard
+        title={config.title}
+        count={
+          query
+            ? `${filtered.length.toLocaleString()} of ${mods.length.toLocaleString()}`
+            : mods.length.toLocaleString()
+        }
+        paged={paged}
+        empty={
+          mods.length === 0
+            ? { icon: config.emptyIcon, message: config.emptyMessage }
+            : { icon: Search, message: "No mods match your search" }
+        }
+        itemLabel="mod"
+        columns={columns}
+        rowKey={(mod) => mod.id}
+        onRowClick={(mod) => onView(mod.id)}
+        actions={(mod) =>
+          modReviewActions(mod, { onReview, onReject }, envDisplay)
+        }
+        isRowBusy={(mod) => busyModId === mod.id}
+      />
     </>
   );
 }

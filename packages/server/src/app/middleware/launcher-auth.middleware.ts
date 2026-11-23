@@ -1,13 +1,13 @@
 import type { NextFunction, Request, Response } from "express";
 import { LauncherAuthErrorCode } from "@createrington/shared/launcher";
-import { UnauthorizedError } from "./error-handler";
+import { UnauthorizedError } from "@/errors";
+import { TokenExpiredError } from "@/services/auth/jwt/jwt.service";
 import {
-  LauncherTokenExpiredError,
   launcherJwtService,
   type LauncherJwtPayload,
 } from "@/services/auth/launcher/launcher-jwt.service";
 import { isLauncherTokenDenied } from "@/services/auth/launcher/launcher-token-denylist";
-import { extractBearerToken } from "@/utils/bearer-token";
+import { extractBearerToken } from "@/app/utils/bearer-token";
 
 function invalidToken(): UnauthorizedError {
   return new UnauthorizedError("Invalid launcher token", {
@@ -36,7 +36,7 @@ export const authenticateLauncher = async (
     payload = launcherJwtService.verify(token);
   } catch (error) {
     next(
-      error instanceof LauncherTokenExpiredError
+      error instanceof TokenExpiredError
         ? new UnauthorizedError("Launcher token expired", {
             code: LauncherAuthErrorCode.TOKEN_EXPIRED,
           })

@@ -10,32 +10,14 @@ import {
   type Client,
   type GuildMember,
   type PartialGuildMember,
+  roleMention,
 } from "discord.js";
 
-/**
- * Guild member remove event handler
- *
- * Handles a member leaving the Discord server:
- * 1. Expires any live waitlist entry and deletes its verification channel
- * 2. Checks if the departed member is registered in the system
- * 3. Records their departure in departed_member table
- * 4. Sends admin notification with option to immediately delete
- * 5. Schedules automatic deletion after 30 days if no action taken
- */
 export const eventName: EventModule<"guildMemberRemove">["eventName"] =
   "guildMemberRemove";
 
-/**
- * Whether this event should only be registered in production
- */
 export const prodOnly = true;
 
-/**
- * Executes when a member leaves the guild
- *
- * @param client - The Discord client instance
- * @param member - The guild member who left
- */
 export async function execute(
   client: Client,
   member: GuildMember | PartialGuildMember,
@@ -59,11 +41,6 @@ export async function execute(
       return;
     }
 
-    // If this departure was triggered by the inactivity cleanup flow,
-    // the warning row is marked removed before the kick fires. Skip the
-    // "member left" notification: the inactivity removal already sent
-    // its own announcement, and the player record is about to be deleted
-    // which would break the Yeet-from-database button.
     const removedWarnings = await Q.player.inactivity.warning.count({
       playerMinecraftUuid: player.minecraftUuid,
       removedAt: { $exists: true },
@@ -105,15 +82,13 @@ export async function execute(
       channelId: Discord.Channels.administration.NOTIFICATIONS,
       embeds: embed.build(),
       components: [actionRow],
-      content: `${Discord.Roles.mention(Discord.Roles.ADMIN)} 👋 Member left`,
+      content: `${roleMention(Discord.Roles.ADMIN)} 👋 Member left`,
     });
 
-    if (message) {
-      await Q.discord.guild.member.leave.update(
-        { id: leftEntry.id },
-        { notificationMessageId: message.messageId },
-      );
-    }
+    await Q.discord.guild.member.leave.update(
+      { id: leftEntry.id },
+      { notificationMessageId: message.id },
+    );
 
     logger.info(
       `Sent departure notification for ${player.minecraftUsername} (auto-delete in 30 days)`,

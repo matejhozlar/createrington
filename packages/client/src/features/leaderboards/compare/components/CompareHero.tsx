@@ -1,3 +1,4 @@
+import { Skeleton } from "@/components/ui/skeleton";
 import { useState, type CSSProperties, type ReactNode } from "react";
 import { Link } from "react-router";
 import {
@@ -13,10 +14,14 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { PopoverAnchor } from "@/components/ui/popover";
 import { Spinner } from "@/components/ui/spinner";
-import { playerPoseUrl } from "@/lib/player-images";
-import { HERO_BACKDROP } from "../../top-roles";
-import { RANK_LABELS, SIDE_COLORS, type ComparedPlayer } from "../headToHead";
-import type { Side } from "../hooks/use-compare-params";
+import { playerPoseUrl } from "@/lib/playerImages";
+import { HERO_BACKDROP } from "@/features/leaderboards/top-roles";
+import {
+  RANK_LABELS,
+  SIDE_COLORS,
+  type ComparedPlayer,
+} from "@/features/leaderboards/compare/headToHead";
+import type { Side } from "@/features/leaderboards/compare/hooks/use-compare-params";
 import { PlayerPicker } from "./PlayerPicker";
 
 export interface StageSide {
@@ -385,8 +390,8 @@ export function CompareHero({
                     aria-hidden
                     className="flex flex-col items-center gap-1.5 md:gap-2"
                   >
-                    <span className="my-1.5 h-8 w-28 animate-pulse rounded-lg bg-white/8 md:w-44" />
-                    <span className="h-5 w-32 animate-pulse rounded-full bg-white/5 md:w-48" />
+                    <Skeleton className="my-1.5 h-8 w-28 rounded-lg bg-white/8 md:w-44" />
+                    <Skeleton className="h-5 w-32 rounded-full bg-white/5 md:w-48" />
                   </div>
                 ) : (
                   <span className="text-sm text-muted-foreground">

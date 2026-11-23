@@ -1,3 +1,4 @@
+import { userMention } from "discord.js";
 import config from "@/config";
 import { Q } from "@/db";
 import type { CurseforgeFileWithProject } from "@/db/queries/curseforge/file";
@@ -12,11 +13,13 @@ import { refreshProjects } from "@/services/curseforge/ingest";
 import { curseforgeFilePageUrl } from "@/services/launcher/content/curseforge-content";
 import { getMinecraftJavaMajorVersion } from "@/services/content-gateway/minecraft";
 import type { Modpack, ModpackRelease } from "@createrington/shared/db";
-import { packFolderForClass, parseModLoader } from "./pack-rules";
+import { parseLoaderId } from "@/services/curseforge/loader";
+import { packFolderForClass } from "./pack-rules";
 import {
   launcherPackFileService,
   NOTICE_MAX_FILES,
 } from "./pack-files.service";
+import { projectLabel } from "@/services/curseforge/project";
 
 export interface SnapshotZip {
   fileName: string;
@@ -183,7 +186,7 @@ export class LauncherPackReleaseService {
       }
 
       const modLoader = manifest.modLoader
-        ? parseModLoader(manifest.modLoader)
+        ? parseLoaderId(manifest.modLoader)
         : null;
       if (!manifest.version || !manifest.minecraftVersion || !modLoader) {
         await this.reportBlocked(
@@ -197,23 +200,10 @@ export class LauncherPackReleaseService {
       const clientEntries = manifest.entries.filter(
         (entry) => entry.sides !== "server",
       );
-      const stored = await launcherPackFileService.ensureResolved(
-        clientEntries.map((entry) => entry.fileId),
-        { recheckStored: true },
-      );
-      const unresolved = clientEntries.filter((entry) => {
-        const row = stored.get(entry.fileId);
-        return !row || packFolderForClass(row.project.classId) === null;
-      });
-      if (unresolved.length > 0) {
-        await this.reportBlocked(
-          modpack,
-          release,
-          `${unresolved.length} client file(s) could not be resolved on CurseForge (file ids ${unresolved
-            .slice(0, NOTICE_MAX_FILES)
-            .map((entry) => entry.fileId)
-            .join(", ")})`,
-        );
+      const { stored, unresolved } =
+        await this.resolveClientFiles(clientEntries);
+      if (unresolved !== null) {
+        await this.reportBlocked(modpack, release, unresolved);
         return;
       }
 
@@ -285,7 +275,7 @@ export class LauncherPackReleaseService {
       const release = await Q.modpack.release.get({ id: releaseId });
       if (release.launcherReadyAt !== null) return { status: "ready" };
 
-      const modLoader = parseModLoader(snapshot.modLoader);
+      const modLoader = parseLoaderId(snapshot.modLoader);
       if (!modLoader) {
         return {
           status: "blocked",
@@ -298,24 +288,16 @@ export class LauncherPackReleaseService {
         };
       }
 
-      const stored = await launcherPackFileService.ensureResolved(
-        snapshot.entries.map((entry) => entry.fileId),
-        { recheckStored: true },
+      const { stored, unresolved } = await this.resolveClientFiles(
+        snapshot.entries,
       );
-      const unresolved = snapshot.entries.filter((entry) => {
-        const row = stored.get(entry.fileId);
-        return !row || packFolderForClass(row.project.classId) === null;
-      });
-      if (unresolved.length > 0) {
+      if (unresolved !== null) {
         return {
           status: "blocked",
           reason: await this.reportBlocked(
             modpack,
             release,
-            `${unresolved.length} client file(s) could not be resolved on CurseForge (file ids ${unresolved
-              .slice(0, NOTICE_MAX_FILES)
-              .map((entry) => entry.fileId)
-              .join(", ")})`,
+            unresolved,
             SNAPSHOT_NEXT_STEP,
           ),
         };
@@ -415,6 +397,31 @@ export class LauncherPackReleaseService {
     return null;
   }
 
+  private async resolveClientFiles(entries: { fileId: number }[]): Promise<{
+    stored: Map<number, CurseforgeFileWithProject>;
+    unresolved: string | null;
+  }> {
+    const stored = await launcherPackFileService.ensureResolved(
+      entries.map((entry) => entry.fileId),
+      { recheckStored: true },
+    );
+    const unresolvedIds = entries
+      .map((entry) => entry.fileId)
+      .filter((fileId) => {
+        const row = stored.get(fileId);
+        return !row || packFolderForClass(row.project.classId) === null;
+      });
+    return {
+      stored,
+      unresolved:
+        unresolvedIds.length > 0
+          ? `${unresolvedIds.length} client file(s) could not be resolved on CurseForge (file ids ${unresolvedIds
+              .slice(0, NOTICE_MAX_FILES)
+              .join(", ")})`
+          : null,
+    };
+  }
+
   private async servesFromCurseforge(modpack: Modpack): Promise<boolean> {
     const pack = await Q.launcher.pack.find({ modpackId: modpack.id });
     return pack?.source === "curseforge";
@@ -431,7 +438,7 @@ export class LauncherPackReleaseService {
     if (this.reportedBlocked.has(release.id)) return reason;
     this.reportedBlocked.add(release.id);
 
-    await this.notifyOwner(
+    const posted = await this.notifyOwner(
       EmbedPresets.plain({
         title: "⛔ Launcher: release not offered",
         description: [
@@ -442,6 +449,7 @@ export class LauncherPackReleaseService {
         color: EmbedColors.Error,
       }),
     );
+    if (!posted) this.reportedBlocked.delete(release.id);
     return reason;
   }
 
@@ -459,7 +467,7 @@ export class LauncherPackReleaseService {
 
     const lines = manual.slice(0, NOTICE_MAX_FILES).map((entry) => {
       const row = stored.get(entry.fileId);
-      const name = nameById.get(entry.projectId) ?? `#${entry.projectId}`;
+      const name = projectLabel(nameById.get(entry.projectId), entry.projectId);
       const pageUrl = row ? curseforgeFilePageUrl(row.project, row.id) : null;
       return [
         `- ${pageUrl ? `[${name}](${pageUrl})` : name}`,
@@ -488,17 +496,19 @@ export class LauncherPackReleaseService {
 
   private async notifyOwner(
     embed: ReturnType<typeof EmbedPresets.plain>,
-  ): Promise<void> {
+  ): Promise<boolean> {
     const ownerId = config.app.auth.owner.discordId;
     try {
       await Discord.Messages.send({
         channelId: Discord.Channels.administration.NOTIFICATIONS,
-        content: `<@${ownerId}>`,
+        content: userMention(ownerId),
         embeds: embed.build(),
         allowedMentions: { users: [ownerId] },
       });
+      return true;
     } catch (error) {
       logger.error("Failed to post the launcher pack notice:", error);
+      return false;
     }
   }
 }

@@ -1,3 +1,4 @@
+import { CustomIds } from "@/discord/custom-ids";
 import {
   ButtonBuilder,
   ButtonStyle,
@@ -58,20 +59,13 @@ function footerSection(
     )
     .setButtonAccessory(
       new ButtonBuilder()
-        .setCustomId(`leaderboard:refresh:${type}`)
+        .setCustomId(CustomIds.leaderboardRefresh.build({ type }))
         .setLabel("Refresh")
         .setEmoji(appEmoji("refresh"))
         .setStyle(ButtonStyle.Secondary),
     );
 }
 
-/**
- * Builds the Components V2 leaderboard message: a title banner, the top-N
- * entries as sections (player head on the right, separators between), and a
- * footer that pairs a last-refreshed timestamp with the refresh button.
- * Returns the top-level components plus the `IS_COMPONENTS_V2` flag for
- * `messageService.send`/`edit`.
- */
 export const LeaderboardComponentPresets = {
   display(
     config: LeaderboardConfig,

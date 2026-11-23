@@ -673,6 +673,41 @@
       "when": 1793569807667,
       "tag": "0095_simple_tony_stark",
       "breakpoints": true
+    },
+    {
+      "idx": 96,
+      "version": "7",
+      "when": 1795299857859,
+      "tag": "0096_adorable_slyde",
+      "breakpoints": true
+    },
+    {
+      "idx": 97,
+      "version": "7",
+      "when": 1795305621306,
+      "tag": "0097_numerous_annihilus",
+      "breakpoints": true
+    },
+    {
+      "idx": 98,
+      "version": "7",
+      "when": 1795309029021,
+      "tag": "0098_lazy_violations",
+      "breakpoints": true
+    },
+    {
+      "idx": 99,
+      "version": "7",
+      "when": 1795364070910,
+      "tag": "0099_fluffy_supernaut",
+      "breakpoints": true
+    },
+    {
+      "idx": 100,
+      "version": "7",
+      "when": 1795452378085,
+      "tag": "0100_great_madrox",
+      "breakpoints": true
     }
   ]
 }

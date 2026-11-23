@@ -1,7 +1,8 @@
 import { playerRepo } from "@/db";
-import { BalanceUtils } from "@/db/repositories/balance/utils";
+import { nullIfNotFound } from "@/db/utils";
+import { BalanceUtils } from "@/db/utils/balance";
 import { EmbedPresets } from "@/discord/embeds";
-import { replyError } from "@/discord/utils/interaction-reply";
+import { replyNotRegistered } from "@/discord/utils/interaction-reply";
 import { CooldownType } from "@/discord/utils/cooldown";
 import { formatPlaytime } from "@createrington/shared/format";
 import { discordTimestamp } from "@/utils/format";
@@ -12,12 +13,12 @@ import {
   ChatInputCommandInteraction,
   SlashCommandBuilder,
 } from "discord.js";
+import type {
+  CommandCooldown,
+  CommandModule,
+} from "@/discord/bots/common/loaders/command-loader";
 
-/**
- * Slash command definition for the profile command
- * Displays a Minecraft-themed player profile card with 3D skin
- */
-export const data = new SlashCommandBuilder()
+const data = new SlashCommandBuilder()
   .setName("profile")
   .setDescription("View a player's profile card")
   .addUserOption((opt) =>
@@ -27,28 +28,13 @@ export const data = new SlashCommandBuilder()
       .setRequired(false),
   );
 
-/**
- * Cooldown configuration for the profile command
- *
- * - duration: 5 seconds
- * - type: "user" - Each user has their own cooldown
- * - message: Custom message shown when the user is on cooldown
- */
-export const cooldown = {
+const cooldown: CommandCooldown = {
   duration: 5,
   type: CooldownType.USER,
   message: "Please wait before viewing profiles again!",
 };
 
-/**
- * Executes the profile command to generate a player profile card
- *
- * Process:
- * 1. Get the target user (defaults to command initiator)
- * 2. Screenshot the profile render page via PuppeteerService
- * 3. Reply with the screenshot embedded in an embed, with text fallback
- */
-export async function execute(
+async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
   const targetUser =
@@ -56,58 +42,58 @@ export async function execute(
 
   await interaction.deferReply();
 
-  try {
-    const details = await playerRepo.getDetailed({ discordId: targetUser.id });
-    const username = details.player.minecraftUsername;
+  const details = await playerRepo
+    .getDetailed({ discordId: targetUser.id })
+    .catch(nullIfNotFound);
+  if (!details) {
+    await replyNotRegistered(interaction, targetUser);
+    return;
+  }
+  const username = details.player.minecraftUsername;
 
-    const screenshotBuffer = await renderScreenshot("profile", {
-      player: targetUser.id,
+  const screenshotBuffer = await renderScreenshot("profile", {
+    player: targetUser.id,
+  });
+
+  if (screenshotBuffer) {
+    const attachment = new AttachmentBuilder(screenshotBuffer, {
+      name: `profile_${username}.png`,
     });
 
-    if (screenshotBuffer) {
-      const attachment = new AttachmentBuilder(screenshotBuffer, {
-        name: `profile_${username}.png`,
-      });
+    const embed = EmbedPresets.info(`${username}'s Profile`).image(
+      `attachment://profile_${username}.png`,
+    );
 
-      const embed = EmbedPresets.info(`${username}'s Profile`).image(
-        `attachment://profile_${username}.png`,
+    await interaction.editReply({
+      embeds: [embed.build()],
+      files: [attachment],
+    });
+  } else {
+    const networth = BalanceUtils.formatMoney(details.balance?.balance ?? 0n);
+
+    const pt = formatPlaytime(details.playtime.totalSeconds);
+    const sessions = details.playtime.totalSessions.toLocaleString();
+    const statusStr = details.player.online ? "🟢 Online" : "🔴 Offline";
+
+    const embed = EmbedPresets.info(`${username}'s Profile`)
+      .thumbnail(playerAvatarUrl(details.player.minecraftUuid))
+      .field("Status", statusStr, true)
+      .field("Networth", networth, true)
+      .field("\u200b", "\u200b")
+      .field("Playtime", pt, true)
+      .field("Sessions", sessions, true)
+      .field(
+        "Member Since",
+        discordTimestamp(details.player.createdAt, "D"),
+        false,
       );
 
-      await interaction.editReply({
-        embeds: [embed.build()],
-        files: [attachment],
-      });
-    } else {
-      // Text fallback if Puppeteer is unavailable
-      const networth = details.balance
-        ? BalanceUtils.fromStorage(details.balance.balance)
-        : 0;
-      const networthStr = networth.toFixed(3).replace(/\.?0+$/, "") || "0";
-
-      const pt = formatPlaytime(details.playtime.totalSeconds);
-      const sessions = details.playtime.totalSessions.toLocaleString();
-      const statusStr = details.player.online ? "🟢 Online" : "🔴 Offline";
-
-      const embed = EmbedPresets.info(`${username}'s Profile`)
-        .thumbnail(playerAvatarUrl(details.player.minecraftUuid))
-        .field("Status", statusStr, true)
-        .field("Networth", `$${networthStr}`, true)
-        .field("\u200b", "\u200b")
-        .field("Playtime", pt, true)
-        .field("Sessions", sessions, true)
-        .field(
-          "Member Since",
-          discordTimestamp(details.player.createdAt, "D"),
-          false,
-        );
-
-      await interaction.editReply({ embeds: [embed.build()] });
-    }
-  } catch {
-    await replyError(
-      interaction,
-      "Profile Error",
-      "Could not fetch player data. They may not be registered.",
-    );
+    await interaction.editReply({ embeds: [embed.build()] });
   }
 }
+
+export default {
+  data,
+  cooldown,
+  execute,
+} satisfies CommandModule;

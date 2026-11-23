@@ -1,12 +1,6 @@
 import { useState } from "react";
-import type { ChatMessage } from "../types";
+import type { ChatMessage } from "@createrington/shared/admin-chat";
 
-/**
- * Derive an unread-message indicator for the chat bubble. Uses the
- * "adjust during render" pattern: whenever the drawer is open we
- * reconcile `seen` with the latest assistant id, so the dot turns off
- * without an effect.
- */
 export function useUnreadTracker(
   messages: ChatMessage[],
   drawerOpen: boolean,

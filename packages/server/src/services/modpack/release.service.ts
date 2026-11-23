@@ -1,5 +1,5 @@
 import { Q } from "@/db";
-import { NotFoundError } from "@/app/middleware/error-handler";
+import { NotFoundError } from "@/errors";
 import type { Modpack, ModpackRelease } from "@createrington/shared/db";
 import type { ReleaseModRow } from "@/db/queries/modpack/release/mod";
 import type { ReleaseAnnouncementRow } from "@/db/queries/modpack/release/announcement";
@@ -15,7 +15,7 @@ import {
   type ModpackReleaseDiff,
 } from "./release-changelog";
 import { isOlderVersion } from "./version";
-import config from "@/config";
+import { siteUrl } from "@/config/site-url";
 
 export interface ModpackReleaseAnnouncementSummary {
   parts: number;
@@ -46,7 +46,7 @@ export class ModpackReleaseService {
       { modpackId },
       { orderBy: "id", orderDirection: "desc" },
     );
-    const rows = await Q.modpack.release.announcement.listForReleases(
+    const rows = await Q.modpack.release.announcement.getForReleases(
       releases.map((release) => release.id),
     );
     const byRelease = new Map<number, ReleaseAnnouncementRow[]>();
@@ -85,7 +85,7 @@ export class ModpackReleaseService {
   /** Frozen membership of a recorded release, joined to cached project summaries. */
   async getReleaseMods(releaseId: number): Promise<ReleaseModRow[]> {
     const release = await Q.modpack.release.get({ id: releaseId });
-    const rows = await Q.modpack.release.mod.listForReleases([release.id]);
+    const rows = await Q.modpack.release.mod.getForReleases([release.id]);
     return rows.map(({ releaseId: _releaseId, ...row }) => row);
   }
 
@@ -94,28 +94,23 @@ export class ModpackReleaseService {
     curseforgeProjectId: number;
     installedVersion?: string;
   }): Promise<string> {
-    const modpack = await this.getPublishedModpack(options.curseforgeProjectId);
-    const [latest] = await Q.modpack.release.findAll(
-      { modpackId: modpack.id },
-      { orderBy: "id", orderDirection: "desc", limit: 1 },
+    const { modpack, latest } = await this.getPublishedLatest(
+      options.curseforgeProjectId,
     );
-    if (!latest) {
-      throw new NotFoundError(`${modpack.name} has no recorded release yet`);
-    }
     const { installedVersion } = options;
-    const [installed] =
+    const installed =
       installedVersion !== undefined && installedVersion !== latest.version
-        ? await Q.modpack.release.findAll(
-            { modpackId: modpack.id, version: installedVersion },
-            { orderBy: "id", orderDirection: "desc", limit: 1 },
-          )
-        : [];
-    const website = config.meta.links.website.replace(/\/+$/, "");
+        ? await Q.modpack.release.findLatest(modpack.id, {
+            version: installedVersion,
+          })
+        : null;
     const sectionOf = async (
       release: ModpackRelease,
     ): Promise<ChangelogMarkdownSection> => ({
       changelog: await getReleaseChangelog(modpack, release),
-      rowImageBaseUrl: `${website}/api/modpacks/${options.curseforgeProjectId}/changelog/rows/${release.curseforgeFileId}`,
+      rowImageBaseUrl: siteUrl(
+        `/api/modpacks/${options.curseforgeProjectId}/changelog/rows/${release.curseforgeFileId}`,
+      ),
     });
     const [latestSection, installedSection] = await Promise.all([
       sectionOf(latest),
@@ -132,14 +127,9 @@ export class ModpackReleaseService {
     curseforgeProjectId: number;
     installedVersion?: string;
   }): Promise<ModpackVersionStatus> {
-    const modpack = await this.getPublishedModpack(options.curseforgeProjectId);
-    const [latest] = await Q.modpack.release.findAll(
-      { modpackId: modpack.id },
-      { orderBy: "id", orderDirection: "desc", limit: 1 },
+    const { modpack, latest } = await this.getPublishedLatest(
+      options.curseforgeProjectId,
     );
-    if (!latest) {
-      throw new NotFoundError(`${modpack.name} has no recorded release yet`);
-    }
     if (!latest.version) {
       throw new NotFoundError(
         `${modpack.name} has no version recorded for its newest release`,
@@ -156,10 +146,9 @@ export class ModpackReleaseService {
       return { latest: latestVersion, installed, outdated: false };
     }
 
-    const [recorded] = await Q.modpack.release.findAll(
-      { modpackId: modpack.id, version: installed },
-      { orderBy: "id", orderDirection: "desc", limit: 1 },
-    );
+    const recorded = await Q.modpack.release.findLatest(modpack.id, {
+      version: installed,
+    });
 
     const outdated = recorded
       ? recorded.id < latest.id
@@ -194,6 +183,17 @@ export class ModpackReleaseService {
     throw new NotFoundError(
       `Project ${options.entryProjectId} did not change in ${modpack.name} file ${options.releaseFileId}`,
     );
+  }
+
+  private async getPublishedLatest(
+    curseforgeProjectId: number,
+  ): Promise<{ modpack: Modpack; latest: ModpackRelease }> {
+    const modpack = await this.getPublishedModpack(curseforgeProjectId);
+    const latest = await Q.modpack.release.findLatest(modpack.id);
+    if (!latest) {
+      throw new NotFoundError(`${modpack.name} has no recorded release yet`);
+    }
+    return { modpack, latest };
   }
 
   private async getPublishedModpack(

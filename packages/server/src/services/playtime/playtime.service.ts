@@ -1,4 +1,5 @@
-import EventEmitter from "node:events";
+import { typedEmitter } from "@/utils/typed-emitter";
+import { NIL_UUID } from "@/utils/player-identifier";
 import type { OpenSessionEntry } from "@/db/queries/player/session";
 import type {
   ActiveSession,
@@ -18,10 +19,6 @@ import {
   MessageSource,
 } from "../discord/message/cache";
 
-// Minecraft's placeholder UUID, emitted by fakeplayers / CommandBlocks.
-// Never belongs in session tracking: rejected at every ingress point below.
-const NIL_UUID = "00000000-0000-0000-0000-000000000000";
-
 const DEFAULT_STALE_AFTER_MS = 15 * 60 * 1000;
 const DEFAULT_WATCHDOG_INTERVAL_MS = 60 * 1000;
 
@@ -30,17 +27,8 @@ export interface PlaytimeServiceEvents {
   sessionProgress: (event: SessionProgressEvent) => void;
   sessionEnd: (event: SessionEndEvent) => void;
   sessionAggregated: (event: SessionEndEvent) => void;
-  error: (error: Error) => void;
   serverOffline: () => void;
   serverOnline: () => void;
-}
-
-interface TypedEventEmitter<T> {
-  on<K extends keyof T>(event: K, listener: T[K]): this;
-  emit<K extends keyof T>(
-    event: K,
-    ...args: T[K] extends (...args: infer A) => unknown ? A : never
-  ): boolean;
 }
 
 /**
@@ -55,8 +43,7 @@ interface TypedEventEmitter<T> {
  * ending them at the last instant the player was seen. Nil-UUID entries
  * (fakeplayers, CommandBlocks) are rejected at every ingress.
  */
-export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitter<PlaytimeServiceEvents> &
-  EventEmitter) {
+export class PlaytimeService extends typedEmitter<PlaytimeServiceEvents>() {
   private config: Required<PlaytimeServiceConfig>;
   private activeSessions: Map<string, ActiveSession> = new Map();
   private isInitialized = false;
@@ -75,7 +62,7 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
   }
 
   /** Restores sessions a previous process left open in the database. Call before initialize(). */
-  public hydrate(sessions: OpenSessionEntry[]): void {
+  hydrate(sessions: OpenSessionEntry[]): void {
     for (const row of sessions) {
       if (row.playerMinecraftUuid === NIL_UUID) continue;
 
@@ -101,7 +88,7 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
   }
 
   /** Starts the stale-session watchdog and marks the service ready. Idempotent. */
-  public initialize(): void {
+  initialize(): void {
     if (this.isInitialized) {
       logger.warn("PlaytimeService already initialized");
       return;
@@ -127,7 +114,7 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
    * instant right away instead of waiting for the watchdog. Errors fall back
    * to ONLINE so a cache lookup failure doesn't mask a live server.
    */
-  public detectServerState(messageCacheService: MessageCacheService): void {
+  detectServerState(messageCacheService: MessageCacheService): void {
     try {
       logger.info(
         `Detecting initial server state for server ${this.config.serverId}...`,
@@ -177,7 +164,7 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
    * session already tracked for the same UUID means its leave was missed:
    * it is closed at its last-seen instant before the new one opens.
    */
-  public handlePlayerJoinFromMod(data: ModPlayerJoinData): void {
+  handlePlayerJoinFromMod(data: ModPlayerJoinData): void {
     if (data.uuid === NIL_UUID) {
       logger.debug(
         `Ignoring join for nil UUID (fakeplayer or placeholder): ${data.username}`,
@@ -239,7 +226,7 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
    * tracked (or its DB id was never set) emits an orphaned event with
    * sessionId 0 so the repository can close and credit the row itself.
    */
-  public handlePlayerLeaveFromMod(data: ModPlayerLeaveData): void {
+  handlePlayerLeaveFromMod(data: ModPlayerLeaveData): void {
     if (data.uuid === NIL_UUID) {
       logger.debug(
         `Ignoring leave for nil UUID (fakeplayer or placeholder): ${data.username}`,
@@ -294,7 +281,7 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
   }
 
   /** Relay reported the server closed: ends every tracked session now and emits serverOffline. */
-  public handleServerShutdown(): void {
+  handleServerShutdown(): void {
     if (this.activeSessions.size === 0) {
       logger.info("Server shutdown detected but no active sessions to end");
     } else {
@@ -312,7 +299,7 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
   }
 
   /** Marks the server ONLINE and emits serverOnline. No session work: mod join events do the rest. */
-  public handleServerStartup(): void {
+  handleServerStartup(): void {
     logger.info(
       `Server ${this.config.serverId} startup detected by message cache`,
     );
@@ -327,7 +314,7 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
    * instant, opens missing ones, and forces ONLINE state. Returns how many
    * sessions it ended and started.
    */
-  public reconcileWithHeartbeat(onlinePlayers: HeartbeatPlayer[]): {
+  reconcileWithHeartbeat(onlinePlayers: HeartbeatPlayer[]): {
     ended: number;
     started: number;
   } {
@@ -539,7 +526,7 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
   }
 
   /** Attaches the DB-generated session id to the in-memory session so later events can reference it. */
-  public setSessionId(uuid: string, sessionId: number): void {
+  setSessionId(uuid: string, sessionId: number): void {
     const session = this.activeSessions.get(uuid);
     if (session) {
       session.sessionId = sessionId;
@@ -550,7 +537,7 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
   }
 
   /** Hands a failed progress slice back so the next heartbeat re-credits it; false once the session ended or moved past it. */
-  public revertProgress(event: SessionProgressEvent): boolean {
+  revertProgress(event: SessionProgressEvent): boolean {
     const session = this.activeSessions.get(event.uuid);
     if (
       !session ||
@@ -567,33 +554,20 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
   }
 
   /** Returns a snapshot of every currently tracked in-memory session. */
-  public getActiveSessions(): ActiveSession[] {
+  getActiveSessions(): ActiveSession[] {
     return Array.from(this.activeSessions.values());
   }
 
-  /** True if the player has a tracked in-memory session on this server. */
-  public isPlayerOnline(uuid: string): boolean {
-    return this.activeSessions.has(uuid);
-  }
-
-  /** Returns the tracked session for the given UUID, or undefined if none. */
-  public getSession(uuid: string): ActiveSession | undefined {
-    return this.activeSessions.get(uuid);
-  }
-
   /** Number of tracked in-memory sessions on this server. */
-  public getOnlineCount(): number {
+  getOnlineCount(): number {
     return this.activeSessions.size;
   }
 
   /** Wall-clock seconds elapsed in the player's current session, or null if no session is tracked. Accepts a UUID or an ActiveSession. */
-  public getSessionDuration(identifier: string | ActiveSession): number | null {
-    let session: ActiveSession | undefined;
-    if (typeof identifier === "string") {
-      session = this.activeSessions.get(identifier);
-    } else {
-      session = this.activeSessions.get(identifier.uuid);
-    }
+  getSessionDuration(identifier: string | ActiveSession): number | null {
+    const session = this.activeSessions.get(
+      typeof identifier === "string" ? identifier : identifier.uuid,
+    );
     if (!session) {
       return null;
     }
@@ -602,7 +576,7 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
   }
 
   /** Stops the watchdog. Sessions are left open in the database on purpose: the next process restores them. */
-  public stop(): void {
+  shutdown(): void {
     logger.info("Stopping PlaytimeService...");
     if (this.watchdog) {
       clearInterval(this.watchdog);
@@ -615,17 +589,17 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
   }
 
   /** Current ServerState (ONLINE, OFFLINE, or UNKNOWN) for this server. */
-  public getServerState(): ServerState {
+  getServerState(): ServerState {
     return this.serverState;
   }
 
   /** True if the server state is ONLINE. */
-  public isOnline(): boolean {
+  isOnline(): boolean {
     return this.serverState === ServerState.ONLINE;
   }
 
   /** Runtime snapshot: init flag, active session count, server state, and resolved config. */
-  public getStatus(): {
+  getStatus(): {
     isInitialized: boolean;
     activeSessions: number;
     serverState: ServerState;

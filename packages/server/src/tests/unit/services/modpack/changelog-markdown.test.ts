@@ -220,9 +220,11 @@ describe("renderChangelogMarkdown", () => {
     );
 
     expect(markdown.length).toBeLessThanOrEqual(CHANGELOG_MARKDOWN_MAX_LENGTH);
-    expect(markdown).not.toContain("[![](");
     expect(rowLines(markdown)).toHaveLength(6 * CHANGELOG_ROWS_PER_GROUP_MAX);
-    expect(markdown).not.toContain("more%#%");
+    expect(
+      rowLines(markdown).filter((line) => line.startsWith("![](")),
+    ).toEqual(rowLines(markdown));
+    expect(rowLines(markdown)[0]).toBe(`![](${ROWS}/500/1001.png)`);
   });
 
   it("lowers the per-group cap evenly once dropping links is not enough", () => {

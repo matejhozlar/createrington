@@ -17,7 +17,12 @@ import { trpc } from "@/lib/trpc";
 import { ActivityChart } from "../charts/ActivityChart";
 import { HeatmapChart } from "../charts/HeatmapChart";
 import { useQuery } from "@tanstack/react-query";
-import { LoadingState } from "@/components/query-states";
+import { Activity, CalendarClock } from "lucide-react";
+import {
+  EmptyState,
+  ErrorState,
+  LoadingState,
+} from "@/components/query-states";
 
 interface AnalyticsTabProps {
   serverId: number;
@@ -56,7 +61,6 @@ export function AnalyticsTab({ serverId }: AnalyticsTabProps) {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Time Range Selector */}
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">Analytics</h3>
         <Select
@@ -76,7 +80,6 @@ export function AnalyticsTab({ serverId }: AnalyticsTabProps) {
         </Select>
       </div>
 
-      {/* Summary Cards */}
       {summary && (
         <div className="grid gap-4 md:grid-cols-3">
           <Card>
@@ -109,7 +112,6 @@ export function AnalyticsTab({ serverId }: AnalyticsTabProps) {
         </div>
       )}
 
-      {/* Activity Chart */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Daily Activity</CardTitle>
@@ -120,17 +122,24 @@ export function AnalyticsTab({ serverId }: AnalyticsTabProps) {
         <CardContent>
           {activityLoading ? (
             <LoadingState text="Loading activity..." />
+          ) : activityQuery.isError ? (
+            <ErrorState
+              message={activityQuery.error.message}
+              onRetry={() => activityQuery.refetch()}
+              compact
+            />
           ) : activity.length === 0 ? (
-            <p className="text-center text-sm text-muted-foreground py-8">
-              No activity data for this period
-            </p>
+            <EmptyState
+              icon={Activity}
+              message="No activity data for this period"
+              className="py-8"
+            />
           ) : (
             <ActivityChart data={activity} />
           )}
         </CardContent>
       </Card>
 
-      {/* Heatmap */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Activity Heatmap</CardTitle>
@@ -141,10 +150,18 @@ export function AnalyticsTab({ serverId }: AnalyticsTabProps) {
         <CardContent>
           {heatmapLoading ? (
             <LoadingState text="Loading heatmap..." />
+          ) : heatmapQuery.isError ? (
+            <ErrorState
+              message={heatmapQuery.error.message}
+              onRetry={() => heatmapQuery.refetch()}
+              compact
+            />
           ) : heatmap.length === 0 ? (
-            <p className="text-center text-sm text-muted-foreground py-8">
-              No heatmap data for this period
-            </p>
+            <EmptyState
+              icon={CalendarClock}
+              message="No heatmap data for this period"
+              className="py-8"
+            />
           ) : (
             <HeatmapChart data={heatmap} />
           )}

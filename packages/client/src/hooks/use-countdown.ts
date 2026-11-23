@@ -18,10 +18,6 @@ function msUntilDisplayChange(ms: number): number {
   return (ms % unit) + 1;
 }
 
-/**
- * Returns a formatted countdown string that re-renders only when the displayed value changes.
- * Returns null if no target date is provided, or "Ended" when elapsed.
- */
 export function useCountdown(targetDate: string | null): string | null {
   const [now, setNow] = useState(Date.now);
   const target = targetDate ? new Date(targetDate).getTime() : null;

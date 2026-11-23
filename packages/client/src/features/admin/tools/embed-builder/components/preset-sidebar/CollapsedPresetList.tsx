@@ -6,23 +6,19 @@ import {
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
+import type { PresetRow } from "@/features/admin/tools/embed-builder/preset-row";
 
 export function CollapsedPresetList({
   activeId,
   onLoad,
 }: {
   activeId: number | undefined;
-  onLoad: (preset: {
-    id: number;
-    name: string;
-    data: unknown;
-    categoryId?: number | null;
-  }) => void;
+  onLoad: (preset: PresetRow) => void;
 }) {
   const recentQuery = useQuery(
     trpc.admin.embeds.presets.list.queryOptions({ limit: 6 }),
   );
-  const recent = recentQuery.data?.presets ?? [];
+  const recent = recentQuery.data?.items ?? [];
   return (
     <div className="flex flex-col gap-1">
       {recent.map((p) => {
@@ -36,7 +32,7 @@ export function CollapsedPresetList({
                 className={cn(
                   "flex size-8 items-center justify-center rounded-md text-[13px] font-semibold uppercase transition-colors",
                   active
-                    ? "border border-[var(--border-strong)] bg-card text-foreground"
+                    ? "border border-border-strong bg-card text-foreground"
                     : "text-muted-foreground hover:bg-accent hover:text-foreground",
                 )}
               >

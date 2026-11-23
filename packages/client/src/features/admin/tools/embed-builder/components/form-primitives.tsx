@@ -6,8 +6,9 @@ import {
   useRef,
   useState,
 } from "react";
-import { Sparkles } from "lucide-react";
+import { Sparkles, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { insertAtCursor } from "@/lib/insertAtCursor";
 import { Input } from "@/components/ui/input";
 import {
   Popover,
@@ -19,11 +20,12 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { trpc } from "@/lib/trpc";
-import { cn } from "@/lib/utils";
+import { cn, numberToHex } from "@/lib/utils";
 import { InsertMenu } from "@/features/admin/components/InsertMenu";
-import { MentionAutocomplete } from "./MentionAutocomplete";
+import { CharCount } from "@/features/admin/components/CharCount";
+import { MentionAutocomplete } from "@/features/admin/components/discord/MentionAutocomplete";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -45,67 +47,36 @@ function useInsertable(
     ref,
     () => ({
       focus: () => inputRef.current?.focus(),
-      insertAtCursor: (text: string) => {
-        const el = inputRef.current;
-        const pos = el?.selectionStart ?? value.length;
-        const next = value.slice(0, pos) + text + value.slice(pos);
-        onChange(next);
-        requestAnimationFrame(() => {
-          if (el) {
-            const after = pos + text.length;
-            el.selectionStart = el.selectionEnd = after;
-            el.focus();
-          }
-        });
-      },
+      insertAtCursor: (text: string) =>
+        insertAtCursor(inputRef.current, value, text, onChange),
     }),
     [inputRef, onChange, value],
   );
 }
 
-interface FieldProps {
+interface LabeledFieldProps {
   label: string;
   hint?: ReactNode;
-  count?: number;
+  value?: string;
   max?: number;
   right?: ReactNode;
-  htmlFor?: string;
   children: ReactNode;
 }
 
-export function Field({
+export function LabeledField({
   label,
   hint,
-  count,
+  value,
   max,
   right,
-  htmlFor,
   children,
-}: FieldProps) {
-  const showCount = count !== undefined && max !== undefined && count > 0;
-  const overMax = showCount && count > max;
-  const warnMax = showCount && !overMax && count > max * 0.9;
+}: LabeledFieldProps) {
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between gap-2">
-        <label
-          htmlFor={htmlFor}
-          className="text-[13px] font-medium text-foreground"
-        >
-          {label}
-        </label>
+        <span className="text-[13px] font-medium text-foreground">{label}</span>
         <div className="flex items-center gap-1.5">
-          {showCount && (
-            <span
-              className={cn(
-                "text-[11px] tabular-nums text-muted-foreground",
-                warnMax && "text-amber-400",
-                overMax && "text-destructive",
-              )}
-            >
-              {count}/{max}
-            </span>
-          )}
+          {max !== undefined && <CharCount value={value} max={max} />}
           {right}
         </div>
       </div>
@@ -133,28 +104,24 @@ interface AIButtonProps {
 
 export function AIButton({ value, onApply, iconOnly }: AIButtonProps) {
   const [open, setOpen] = useState(false);
-  const [pendingAction, setPendingAction] = useState<AIActionId | null>(null);
-  const toast = useToastActions();
-  const assistMutation = useMutation(trpc.admin.ai.assist.mutationOptions());
+  const assistMutation = useMutation(
+    trpc.admin.ai.assist.mutationOptions(
+      useMutationToast({
+        onSuccess: (result) => {
+          onApply(result.text);
+          setOpen(false);
+        },
+      }),
+    ),
+  );
 
-  async function runAction(action: AIActionId) {
+  function runAction(action: AIActionId) {
     if (!value.trim()) return;
-    setPendingAction(action);
-    try {
-      const result = await assistMutation.mutateAsync({
-        action,
-        text: value,
-      });
-      onApply(result.text);
-      setOpen(false);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "AI assist failed");
-    } finally {
-      setPendingAction(null);
-    }
+    assistMutation.mutate({ action, text: value });
   }
 
   const isLoading = assistMutation.isPending;
+  const pendingAction = isLoading ? assistMutation.variables?.action : null;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -255,7 +222,6 @@ export function TextField({
   const elRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
   const handleRef = useRef<InsertableInputHandle | null>(null);
   const v = value ?? "";
-  const len = v.length;
 
   useInsertable(handleRef, elRef, v, onChange);
   useImperativeHandle(inputRef, () => handleRef.current!, []);
@@ -267,10 +233,10 @@ export function TextField({
   const insert = (text: string) => handleRef.current?.insertAtCursor(text);
 
   return (
-    <Field
+    <LabeledField
       label={label}
       hint={hint}
-      count={max ? len : undefined}
+      value={v}
       max={max}
       right={
         (mentions || ai) && (
@@ -317,13 +283,12 @@ export function TextField({
           />
         )}
       </div>
-    </Field>
+    </LabeledField>
   );
 }
 
 function numberToHex6(n: number | undefined): string {
-  if (n === undefined) return "";
-  return n.toString(16).padStart(6, "0").toUpperCase();
+  return n === undefined ? "" : numberToHex(n).slice(1).toUpperCase();
 }
 
 interface ColorPickerProps {
@@ -349,7 +314,7 @@ export function ColorPicker({ value, onChange }: ColorPickerProps) {
   }
 
   return (
-    <Field
+    <LabeledField
       label="Accent color"
       right={
         <Button
@@ -416,7 +381,7 @@ export function ColorPicker({ value, onChange }: ColorPickerProps) {
           />
         </div>
       </div>
-    </Field>
+    </LabeledField>
   );
 }
 
@@ -431,7 +396,7 @@ export function SectionHead({
 }: {
   title: string;
   count?: string;
-  right?: React.ReactNode;
+  right?: ReactNode;
 }) {
   return (
     <div className="flex items-center justify-between gap-2">
@@ -448,68 +413,18 @@ export function SectionHead({
   );
 }
 
-export function EmptyState({
-  title,
-  hint,
-  actions,
-}: {
-  title: string;
-  hint: React.ReactNode;
-  actions?: React.ReactNode;
-}) {
-  return (
-    <div className="space-y-2 rounded-md border border-dashed border-border bg-card/50 p-6 text-center">
-      <div className="text-[14px] font-medium text-foreground">{title}</div>
-      <div className="mx-auto max-w-[280px] text-xs leading-relaxed text-muted-foreground">
-        {hint}
-      </div>
-      {actions && <div className="flex justify-center pt-1">{actions}</div>}
-    </div>
-  );
-}
-
-export function Segmented({
-  value,
-  options,
-  onChange,
-}: {
-  value: string;
-  options: { value: string; label: string }[];
-  onChange: (v: string) => void;
-}) {
-  return (
-    <div className="inline-flex items-center rounded-md border border-border bg-muted/30 p-0.5">
-      {options.map((o) => (
-        <button
-          key={o.value}
-          type="button"
-          onClick={() => onChange(o.value)}
-          className={cn(
-            "rounded-sm px-2.5 py-1 text-[11px] font-medium transition-colors pointer-coarse:px-3 pointer-coarse:py-2 pointer-coarse:text-xs",
-            value === o.value
-              ? "bg-card text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground",
-          )}
-        >
-          {o.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
 export function RowIconButton({
-  title,
+  icon: Icon,
+  label,
   onClick,
   disabled,
   destructive,
-  children,
 }: {
-  title: string;
+  icon: LucideIcon;
+  label: string;
   onClick: () => void;
   disabled?: boolean;
   destructive?: boolean;
-  children: React.ReactNode;
 }) {
   return (
     <Tooltip>
@@ -518,17 +433,18 @@ export function RowIconButton({
           type="button"
           onClick={onClick}
           disabled={disabled}
+          aria-label={label}
           className={cn(
-            "flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors pointer-coarse:size-9",
+            "flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors pointer-coarse:size-9",
             "hover:bg-accent hover:text-foreground",
             destructive && "hover:bg-destructive/10 hover:text-destructive",
             disabled && "pointer-events-none opacity-30",
           )}
         >
-          {children}
+          <Icon className="size-3.5" />
         </button>
       </TooltipTrigger>
-      <TooltipContent side="left">{title}</TooltipContent>
+      <TooltipContent side="left">{label}</TooltipContent>
     </Tooltip>
   );
 }

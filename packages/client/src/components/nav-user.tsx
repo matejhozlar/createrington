@@ -1,5 +1,3 @@
-"use client";
-
 import {
   BadgeCheckIcon,
   ChevronsUpDownIcon,
@@ -10,7 +8,7 @@ import {
   SquarePenIcon,
   useAnimatedHover,
 } from "@createrington/icons";
-import { playerAvatarUrl } from "@/lib/player-images";
+import { playerAvatarUrl } from "@/lib/playerImages";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -70,7 +68,6 @@ function TriggerSummary({
   );
 }
 
-/** Sidebar footer item showing the current user's avatar, name, and an account actions dropdown */
 export function NavUser({ user }: { user: User }) {
   const { isMobile } = useSidebar();
   const { logout, loading } = useAuth();
@@ -90,7 +87,6 @@ export function NavUser({ user }: { user: User }) {
     ? playerAvatarUrl(user.minecraftUuid)
     : undefined;
 
-  // Prefer the Minecraft username for the fallback initial; fall back to Discord username
   const avatarFallbackLetter = (user.minecraftUsername || user.username)
     .trim()
     .charAt(0)

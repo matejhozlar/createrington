@@ -2,11 +2,13 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Clock, Globe, MessageSquareOff } from "lucide-react";
-import { LoadingState } from "@/components/query-states";
+import { ErrorState, LoadingState } from "@/components/query-states";
 import { trpc, type RouterOutput } from "@/lib/trpc";
-import { IssueWorkshopBanModal } from "./modals/IssueWorkshopBanModal";
-import { LiftWorkshopBanModal } from "./modals/LiftWorkshopBanModal";
+import { IssueWorkshopBanModal } from "@/features/admin/players/components/modals/IssueWorkshopBanModal";
+import { LiftWorkshopBanModal } from "@/features/admin/players/components/modals/LiftWorkshopBanModal";
+import { TabSectionHeader } from "@/features/admin/players/components/TabSectionHeader";
 import { useQuery } from "@tanstack/react-query";
+import { formatDate } from "@createrington/shared/format";
 
 type WorkshopBan =
   RouterOutput["admin"]["workshops"]["bans"]["listForUser"][number];
@@ -41,19 +43,20 @@ export function WorkshopBansSection({
 
   return (
     <div className="flex flex-col gap-3 border-t border-border pt-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold">Workshop Suggestions</h3>
-          <p className="text-sm text-muted-foreground">
-            Blocks new mod suggestions only — Minecraft access, Discord
-            membership, upvotes and existing suggestions are untouched.
-          </p>
-        </div>
-        <Button size="sm" variant="outline" onClick={() => setIssueOpen(true)}>
-          <MessageSquareOff className="size-4" />
-          Block Suggestions
-        </Button>
-      </div>
+      <TabSectionHeader
+        title="Workshop Suggestions"
+        description="Blocks new mod suggestions only — Minecraft access, Discord membership, upvotes and existing suggestions are untouched."
+        actions={
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setIssueOpen(true)}
+          >
+            <MessageSquareOff className="size-4" />
+            Block Suggestions
+          </Button>
+        }
+      />
 
       {bans.isLoading ? (
         <LoadingState
@@ -61,9 +64,12 @@ export function WorkshopBansSection({
           className="flex-none px-0 py-4"
         />
       ) : bans.error ? (
-        <p className="py-4 text-sm text-destructive">
-          Could not load suggestion blocks: {bans.error.message}
-        </p>
+        <ErrorState
+          message={`Could not load suggestion blocks: ${bans.error.message}`}
+          onRetry={() => bans.refetch()}
+          compact
+          className="flex-none py-4"
+        />
       ) : active.length === 0 ? (
         <p className="py-4 text-sm text-muted-foreground">
           Not blocked from suggesting.
@@ -93,14 +99,14 @@ export function WorkshopBansSection({
                       <Clock className="size-3" />
                     )}
                     {ban.expiresAt
-                      ? `Until ${new Date(ban.expiresAt).toLocaleDateString()}`
+                      ? `Until ${formatDate(ban.expiresAt)}`
                       : "Permanent"}
                   </Badge>
                 </div>
                 <p className="mt-2 text-sm">{ban.reason}</p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   Blocked by {ban.bannedByUsername} on{" "}
-                  {new Date(ban.bannedAt).toLocaleDateString()}
+                  {formatDate(ban.bannedAt)}
                 </p>
               </div>
               <Button
@@ -135,12 +141,12 @@ export function WorkshopBansSection({
                 <p className="mt-2 text-sm">{ban.reason}</p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   Blocked by {ban.bannedByUsername} on{" "}
-                  {new Date(ban.bannedAt).toLocaleDateString()}
+                  {formatDate(ban.bannedAt)}
                 </p>
                 {ban.unbanned && ban.unbannedAt && (
                   <p className="mt-1 text-xs text-muted-foreground">
                     Lifted by {ban.unbannedByUsername} on{" "}
-                    {new Date(ban.unbannedAt).toLocaleDateString()}
+                    {formatDate(ban.unbannedAt)}
                     {ban.unbanReason && ` - ${ban.unbanReason}`}
                   </p>
                 )}
@@ -157,13 +163,10 @@ export function WorkshopBansSection({
         playerUsername={playerUsername}
       />
 
-      {liftBanId !== null && (
-        <LiftWorkshopBanModal
-          open
-          onClose={() => setLiftBanId(null)}
-          banId={liftBanId}
-        />
-      )}
+      <LiftWorkshopBanModal
+        banId={liftBanId}
+        onClose={() => setLiftBanId(null)}
+      />
     </div>
   );
 }

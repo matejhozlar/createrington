@@ -4,39 +4,29 @@ import {
   CollapsibleContent,
 } from "@/components/ui/collapsible";
 import { Paginator } from "@/components/paginator";
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { TabSectionHeader } from "@/features/admin/players/components/TabSectionHeader";
 import { FileText } from "lucide-react";
 import { trpc } from "@/lib/trpc";
-import { useQuery } from "@tanstack/react-query";
+import { usePagedQuery } from "@/hooks/use-paged-query";
 import {
   EmptyState,
   ErrorState,
   LoadingState,
 } from "@/components/query-states";
+import { formatDateTime } from "@/lib/format";
 
 interface AuditTabProps {
-  playerId: string; // minecraftUuid (route param)
+  playerId: string;
 }
 
 export function AuditTab({ playerId }: AuditTabProps) {
-  const [page, setPage] = useState(0);
-  const [limit] = useState(10);
-
-  const auditQuery = useQuery(
-    trpc.admin.players.audit.list.queryOptions({
-      id: playerId,
-      page,
-      limit,
-    }),
+  const audit = usePagedQuery(
+    { id: playerId },
+    (input) => trpc.admin.players.audit.list.queryOptions(input),
+    10,
   );
-
-  const actions = auditQuery.data?.actions ?? [];
-  const total = auditQuery.data?.pagination.total ?? 0;
-  const totalPages = auditQuery.data?.pagination.totalPages ?? 0;
-  const loading = auditQuery.isLoading;
-  const error = auditQuery.error?.message ?? null;
+  const actions = audit.rows;
 
   const getActionBadgeVariant = (actionType: string) => {
     if (actionType.includes("delete") || actionType.includes("deduct")) {
@@ -60,33 +50,21 @@ export function AuditTab({ playerId }: AuditTabProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold">Admin Action History</h3>
-          <p className="text-sm text-muted-foreground">
-            {total.toLocaleString()} total actions
-          </p>
-        </div>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => auditQuery.refetch()}
-          loading={loading}
-        >
-          <FileText className="size-4" />
-          Refresh
-        </Button>
-      </div>
+      <TabSectionHeader
+        title="Admin Action History"
+        description={`${audit.total.toLocaleString()} total actions`}
+        onRefresh={audit.retry}
+        refreshing={audit.loading}
+      />
 
-      {loading ? (
+      {audit.query.isLoading ? (
         <LoadingState text="Loading audit log..." />
-      ) : error ? (
-        <ErrorState message={error} onRetry={() => auditQuery.refetch()} />
+      ) : audit.error ? (
+        <ErrorState message={audit.error} onRetry={audit.retry} />
       ) : actions.length === 0 ? (
         <EmptyState icon={FileText} message="No audit log entries found" />
       ) : (
         <>
-          {/* Actions list */}
           <div className="space-y-2">
             {actions.map((action) => (
               <div
@@ -159,7 +137,7 @@ export function AuditTab({ playerId }: AuditTabProps) {
 
                     <p className="mt-2 text-xs text-muted-foreground">
                       Performed by {action.adminUsername} on{" "}
-                      {new Date(action.performedAt).toLocaleString()}
+                      {formatDateTime(action.performedAt)}
                     </p>
                   </div>
                 </div>
@@ -168,11 +146,11 @@ export function AuditTab({ playerId }: AuditTabProps) {
           </div>
 
           <Paginator
-            page={page}
-            limit={limit}
-            total={total}
-            totalPages={totalPages}
-            onPageChange={setPage}
+            page={audit.page}
+            limit={audit.limit}
+            total={audit.total}
+            totalPages={audit.totalPages}
+            onPageChange={audit.setPage}
             itemLabel="action"
             className="border-t border-border pt-4"
           />

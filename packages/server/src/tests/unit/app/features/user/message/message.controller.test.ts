@@ -1,9 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-vi.mock("@/app/middleware", () =>
-  vi.importActual("@/app/middleware/error-handler"),
-);
-
 const { sendMock } = vi.hoisted(() => ({ sendMock: vi.fn() }));
 
 vi.mock("@/services", () => ({
@@ -16,7 +12,18 @@ vi.mock("@/services/discord/message/cache", () => ({
 }));
 
 import { MessageController } from "@/app/features/user/message/message.controller";
+import { validate } from "@/app/middleware/validation.middleware";
+import { SendMessageBodySchema } from "@createrington/shared/api";
 import type { Request, Response } from "express";
+import { fakeReq, fakeRes, runHandlers } from "@/tests/helpers/http";
+
+function sendMessage(req: Request, res: Response): Promise<void> {
+  return runHandlers(
+    [validate({ body: SendMessageBodySchema }), MessageController.sendMessage],
+    req,
+    res,
+  );
+}
 
 function makeReq({
   content,
@@ -27,7 +34,7 @@ function makeReq({
   withImage?: boolean;
   minecraftUsername?: string | null;
 } = {}): Request {
-  return {
+  return fakeReq({
     body: { serverId: "1", content },
     file: withImage
       ? {
@@ -38,13 +45,7 @@ function makeReq({
         }
       : undefined,
     user: { minecraftUsername },
-  } as unknown as Request;
-}
-
-function makeRes(): Response {
-  const res = { status: vi.fn(), json: vi.fn() };
-  res.status.mockReturnValue(res);
-  return res as unknown as Response;
+  });
 }
 
 function sentContent(): string | undefined {
@@ -54,45 +55,36 @@ function sentContent(): string | undefined {
 describe("MessageController.sendMessage", () => {
   beforeEach(() => {
     sendMock.mockReset();
-    sendMock.mockResolvedValue({ success: true, messageId: "m1" });
+    sendMock.mockResolvedValue({ id: "m1" });
   });
 
   it("prefixes text messages with the sender's name", async () => {
-    await MessageController.sendMessage(
-      makeReq({ content: " hello " }),
-      makeRes(),
-    );
+    await sendMessage(makeReq({ content: " hello " }), fakeRes());
 
     expect(sentContent()).toBe("**<Steve>**: hello");
   });
 
   it("prefixes image-only messages with the sender's name", async () => {
-    await MessageController.sendMessage(
-      makeReq({ withImage: true }),
-      makeRes(),
-    );
+    await sendMessage(makeReq({ withImage: true }), fakeRes());
 
     expect(sentContent()).toBe("**<Steve>**:");
     expect(sendMock.mock.calls[0][0].files).toHaveLength(1);
   });
 
   it("falls back to Web User when the account has no Minecraft username", async () => {
-    await MessageController.sendMessage(
+    await sendMessage(
       makeReq({ withImage: true, minecraftUsername: null }),
-      makeRes(),
+      fakeRes(),
     );
 
     expect(sentContent()).toBe("**<Web User>**:");
   });
 
   it("answers a failed Discord send with a generic error", async () => {
-    sendMock.mockResolvedValue({
-      success: false,
-      error: "Missing Permissions",
-    });
+    sendMock.mockRejectedValue(new Error("Missing Permissions"));
 
     await expect(
-      MessageController.sendMessage(makeReq({ content: "hi" }), makeRes()),
+      sendMessage(makeReq({ content: "hi" }), fakeRes()),
     ).rejects.toMatchObject({
       statusCode: 400,
       message: "Failed to send message",

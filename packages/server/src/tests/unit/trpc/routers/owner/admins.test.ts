@@ -68,14 +68,14 @@ vi.mock("@/discord/constants", () => ({
   Discord: { Roles: { ADMIN: "admin-role" } },
 }));
 vi.mock("@/utils/rcon", () => ({ minecraftRcon: { sendAll } }));
-vi.mock("@/services/playtime/config", () => ({
-  MINECRAFT_SERVERS: { 1: {} },
+vi.mock("@/services/mc-server/servers", () => ({
+  SERVERS: [{}],
 }));
 
 import { TRPCError } from "@trpc/server";
-import { AuthRole } from "@createrington/shared/auth";
+import { UniqueViolationError } from "@/db/utils";
 import { ownerAdminsRouter } from "@/trpc/routers/owner/admins";
-import type { Context } from "@/trpc/context";
+import { adminContext } from "@/tests/helpers/trpc";
 
 const TARGET_ID = "100000000000000001";
 const TARGET = {
@@ -85,18 +85,13 @@ const TARGET = {
 };
 
 function callerFor(discordId: string) {
-  return ownerAdminsRouter.createCaller({
-    user: {
+  return ownerAdminsRouter.createCaller(
+    adminContext({
       discordId,
       username: "owner",
       minecraftUsername: "Owner",
-      minecraftUuid: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
-      role: AuthRole.ADMIN,
-      isAdmin: true,
-    },
-    service: null,
-    ip: "127.0.0.1",
-  } satisfies Context);
+    }),
+  );
 }
 
 const owner = callerFor(OWNER_ID);
@@ -191,6 +186,21 @@ describe("owner.admins.promote", () => {
       message: "User is already an admin",
     });
     expect(Q.admin.create).not.toHaveBeenCalled();
+  });
+
+  it("refuses a promote that loses the race to a concurrent one", async () => {
+    Q.admin.create.mockRejectedValueOnce(
+      new UniqueViolationError("duplicate key", "admin_pkey"),
+    );
+
+    const error = await rejection(owner.promote({ discordId: TARGET_ID }));
+
+    expect(error).toMatchObject({
+      code: "CONFLICT",
+      message: "User is already an admin",
+    });
+    expect(assignRole).not.toHaveBeenCalled();
+    expect(Q.admin.log.action.logAction).not.toHaveBeenCalled();
   });
 
   it("still promotes when Discord cannot be reached", async () => {

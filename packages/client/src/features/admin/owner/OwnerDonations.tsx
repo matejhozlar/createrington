@@ -1,15 +1,9 @@
 import { useState } from "react";
-import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Paginator } from "@/components/paginator";
+import { AdminPage } from "@/features/admin/components/AdminPage";
+import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
+import { FilterBar } from "@/features/admin/components/FilterBar";
+import { TableCard } from "@/components/paged-table";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
-import { SearchInput } from "@/components/search-input";
 import {
   Select,
   SelectContent,
@@ -20,33 +14,34 @@ import {
 import { CellDate, CellText } from "@/components/cell-text";
 import {
   BadgeCellSkeleton,
-  DataTable,
-  loadingRowCount,
   type DataTableColumn,
 } from "@/components/data-table";
-import { Heart, Users, Euro, Filter, Repeat, CalendarX } from "lucide-react";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { Heart, Users, Euro, Repeat, CalendarX } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { usePagedQuery } from "@/hooks/use-paged-query";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import {
-  EmptyState,
-  ErrorState,
-  LoadingState,
-} from "@/components/query-states";
+import { ErrorState, LoadingState } from "@/components/query-states";
 import { StatCard } from "@/components/stat-card";
+import {
+  DONATION_STATUSES,
+  type DonationStatus,
+} from "@createrington/shared/donation";
 
-type Donation = RouterOutput["owner"]["donations"]["list"]["donations"][number];
-type DonationStatus = "pending" | "completed" | "refunded" | "cancelled";
-type DonationType = "one_time" | "monthly";
+type Donation = RouterOutput["owner"]["donations"]["list"]["items"][number];
+type DonationType = Donation["type"];
 
-const STATUS_TONES: Record<string, BadgeTone> = {
-  completed: "success",
-  pending: "warning",
-  refunded: "info",
-  cancelled: "neutral",
+const STATUS_DISPLAY: Record<
+  DonationStatus,
+  { label: string; tone: BadgeTone }
+> = {
+  completed: { label: "Completed", tone: "success" },
+  pending: { label: "Pending", tone: "warning" },
+  refunded: { label: "Refunded", tone: "info" },
+  cancelled: { label: "Cancelled", tone: "neutral" },
 };
 
-const TYPE_LABELS: Record<string, string> = {
+const TYPE_LABELS: Record<DonationType, string> = {
   one_time: "One-time",
   monthly: "Monthly",
 };
@@ -85,7 +80,7 @@ const DONATION_COLUMNS: DataTableColumn<Donation>[] = [
     skeleton: () => <BadgeCellSkeleton />,
     render: (d) => (
       <Badge variant="outline" className="text-xs">
-        {TYPE_LABELS[d.type] ?? d.type}
+        {TYPE_LABELS[d.type]}
       </Badge>
     ),
   },
@@ -102,11 +97,8 @@ const DONATION_COLUMNS: DataTableColumn<Donation>[] = [
     width: 120,
     skeleton: () => <BadgeCellSkeleton />,
     render: (d) => (
-      <Badge
-        tone={STATUS_TONES[d.status] ?? STATUS_TONES.pending}
-        className="capitalize"
-      >
-        {d.status}
+      <Badge tone={STATUS_DISPLAY[d.status].tone}>
+        {STATUS_DISPLAY[d.status].label}
       </Badge>
     ),
   },
@@ -119,8 +111,6 @@ const DONATION_COLUMNS: DataTableColumn<Donation>[] = [
 ];
 
 export function OwnerDonations() {
-  const [page, setPage] = useState(0);
-  const limit = 20;
   const [discordIdInput, setDiscordIdInput] = useState("");
   const [statusFilter, setStatusFilter] = useState<DonationStatus | "all">(
     "all",
@@ -132,201 +122,139 @@ export function OwnerDonations() {
   const subStatsQuery = useQuery(
     trpc.owner.donations.subscriptionStats.queryOptions(),
   );
-  const listQuery = useQuery(
-    trpc.owner.donations.list.queryOptions(
-      {
-        page,
-        limit,
-        discordId: debouncedDiscordId || undefined,
-        status: statusFilter !== "all" ? statusFilter : undefined,
-        type: typeFilter !== "all" ? typeFilter : undefined,
-      },
-      { placeholderData: keepPreviousData },
-    ),
+  const donations = usePagedQuery(
+    {
+      discordId: debouncedDiscordId || undefined,
+      status: statusFilter !== "all" ? statusFilter : undefined,
+      type: typeFilter !== "all" ? typeFilter : undefined,
+    },
+    (input) => trpc.owner.donations.list.queryOptions(input),
   );
 
   const stats = statsQuery.data;
-  const donations = listQuery.data?.donations ?? [];
-  const pagination = listQuery.data?.pagination;
-  const total = pagination?.total ?? 0;
-  const totalPages = pagination?.totalPages ?? 0;
-  const loading = listQuery.isLoading || listQuery.isPlaceholderData;
-  const loadingRows = loadingRowCount(page, limit, total);
-  const error = listQuery.error?.message ?? null;
 
   return (
-    <div className="flex flex-1 flex-col gap-4">
-      {/* Header */}
-      <AdminPageHeader
-        trail={[
-          { label: "Home", href: "/" },
-          { label: "Owner" },
-          { label: "Donations" },
-        ]}
-      />
-
-      <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
-        {statsQuery.isLoading ? (
-          <LoadingState
-            text="Loading statistics..."
-            className="flex-none py-8"
+    <AdminPage
+      trail={[
+        { label: "Home", href: "/" },
+        { label: "Owner" },
+        { label: "Donations" },
+      ]}
+    >
+      <AdminPageTitle title="Donations" />
+      {statsQuery.isLoading ? (
+        <LoadingState text="Loading statistics..." className="flex-none py-8" />
+      ) : statsQuery.isError ? (
+        <ErrorState
+          message={`Failed to load donation statistics: ${statsQuery.error.message}`}
+          onRetry={() => statsQuery.refetch()}
+          className="flex-none py-8"
+        />
+      ) : stats ? (
+        <div className="grid gap-4 md:grid-cols-3">
+          <StatCard
+            label="Total Raised"
+            value={formatAmount(stats.totalRaisedCents, "EUR")}
+            icon={Euro}
+            tone="primary"
           />
-        ) : stats ? (
-          <div className="grid gap-4 md:grid-cols-3">
-            <StatCard
-              label="Total Raised"
-              value={formatAmount(stats.totalRaisedCents, "EUR")}
-              icon={Euro}
-              tone="primary"
-            />
-            <StatCard
-              label="Unique Donors"
-              value={stats.donorCount}
-              icon={Users}
-              tone="chart-2"
-            />
-            <StatCard
-              label="Total Donations"
-              value={stats.donationCount}
-              icon={Heart}
-              tone="chart-3"
-            />
-          </div>
-        ) : null}
+          <StatCard
+            label="Unique Donors"
+            value={stats.donorCount}
+            icon={Users}
+            tone="chart-2"
+          />
+          <StatCard
+            label="Total Donations"
+            value={stats.donationCount}
+            icon={Heart}
+            tone="chart-3"
+          />
+        </div>
+      ) : null}
 
-        {subStatsQuery.data && (
-          <div className="grid gap-4 md:grid-cols-3">
-            <StatCard
-              label="Monthly Recurring Revenue"
-              value={formatAmount(subStatsQuery.data.mrrCents, "EUR")}
-              icon={Euro}
-              tone="primary"
-            />
-            <StatCard
-              label="Active Subscriptions"
-              value={subStatsQuery.data.activeCount}
-              icon={Repeat}
-              tone="chart-2"
-            />
-            <StatCard
-              label="Cancelling"
-              value={subStatsQuery.data.cancellingCount}
-              icon={CalendarX}
-              tone="chart-3"
-            />
-          </div>
-        )}
+      {subStatsQuery.isError ? (
+        <ErrorState
+          message={`Failed to load subscription statistics: ${subStatsQuery.error.message}`}
+          onRetry={() => subStatsQuery.refetch()}
+          className="flex-none py-8"
+        />
+      ) : subStatsQuery.data ? (
+        <div className="grid gap-4 md:grid-cols-3">
+          <StatCard
+            label="Monthly Recurring Revenue"
+            value={formatAmount(subStatsQuery.data.mrrCents, "EUR")}
+            icon={Euro}
+            tone="primary"
+          />
+          <StatCard
+            label="Active Subscriptions"
+            value={subStatsQuery.data.activeCount}
+            icon={Repeat}
+            tone="chart-2"
+          />
+          <StatCard
+            label="Cancelling"
+            value={subStatsQuery.data.cancellingCount}
+            icon={CalendarX}
+            tone="chart-3"
+          />
+        </div>
+      ) : null}
 
-        {/* Filters */}
-        <Card className="gap-2">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Filter className="size-4 text-muted-foreground" />
-              Filters
-              {(discordIdInput ||
-                statusFilter !== "all" ||
-                typeFilter !== "all") && (
-                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                  {(discordIdInput ? 1 : 0) +
-                    (statusFilter !== "all" ? 1 : 0) +
-                    (typeFilter !== "all" ? 1 : 0)}
-                </Badge>
-              )}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2">
-              <SearchInput
-                className="min-w-48 flex-1"
-                placeholder="Search by Discord ID..."
-                value={discordIdInput}
-                onValueChange={(value) => {
-                  setDiscordIdInput(value);
-                  setPage(0);
-                }}
-              />
+      <FilterBar
+        search={discordIdInput}
+        onSearchChange={setDiscordIdInput}
+        placeholder="Search by Discord ID..."
+        activeCount={
+          (discordIdInput ? 1 : 0) +
+          (statusFilter !== "all" ? 1 : 0) +
+          (typeFilter !== "all" ? 1 : 0)
+        }
+      >
+        <Select
+          value={statusFilter}
+          onValueChange={(v) => setStatusFilter(v as DonationStatus | "all")}
+        >
+          <SelectTrigger className="min-w-[150px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Statuses</SelectItem>
+            {DONATION_STATUSES.map((status) => (
+              <SelectItem key={status} value={status}>
+                {STATUS_DISPLAY[status].label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
-              <Select
-                value={statusFilter}
-                onValueChange={(v) => {
-                  setStatusFilter(v as DonationStatus | "all");
-                  setPage(0);
-                }}
-              >
-                <SelectTrigger className="min-w-[150px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="refunded">Refunded</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
-                </SelectContent>
-              </Select>
+        <Select
+          value={typeFilter}
+          onValueChange={(v) => setTypeFilter(v as DonationType | "all")}
+        >
+          <SelectTrigger className="min-w-[130px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Types</SelectItem>
+            {Object.entries(TYPE_LABELS).map(([type, label]) => (
+              <SelectItem key={type} value={type}>
+                {label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </FilterBar>
 
-              <Select
-                value={typeFilter}
-                onValueChange={(v) => {
-                  setTypeFilter(v as DonationType | "all");
-                  setPage(0);
-                }}
-              >
-                <SelectTrigger className="min-w-[130px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
-                  <SelectItem value="one_time">One-time</SelectItem>
-                  <SelectItem value="monthly">Monthly</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Donations Table */}
-        <Card className="gap-0">
-          <CardHeader className="border-b gap-0">
-            <CardTitle>
-              Donations
-              {pagination?.total != null ? ` (${pagination.total})` : ""}
-            </CardTitle>
-          </CardHeader>
-
-          {error ? (
-            <ErrorState message={error} onRetry={() => listQuery.refetch()} />
-          ) : !loading && donations.length === 0 ? (
-            <EmptyState icon={Heart} message="No donations found" />
-          ) : (
-            <>
-              <CardContent className="px-0">
-                <DataTable
-                  columns={DONATION_COLUMNS}
-                  rows={donations}
-                  loading={loading}
-                  loadingRows={loadingRows}
-                  rowKey={(d) => d.id}
-                />
-              </CardContent>
-
-              {total > 0 && (
-                <CardFooter className="border-t">
-                  <Paginator
-                    page={page}
-                    limit={limit}
-                    total={total}
-                    totalPages={totalPages}
-                    onPageChange={setPage}
-                    itemLabel="donation"
-                    className="w-full"
-                  />
-                </CardFooter>
-              )}
-            </>
-          )}
-        </Card>
-      </div>
-    </div>
+      <TableCard
+        title="Donations"
+        paged={donations}
+        empty={{ icon: Heart, message: "No donations found" }}
+        itemLabel="donation"
+        columns={DONATION_COLUMNS}
+        rowKey={(d) => d.id}
+      />
+    </AdminPage>
   );
 }

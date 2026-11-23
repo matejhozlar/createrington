@@ -1,7 +1,8 @@
 import { z } from "zod";
+import { MC_USERNAME_REGEX } from "@/utils/zod-schemas";
 
 export const VerifyBodySchema = z.object({
-  username: z.string().regex(/^[A-Za-z0-9_]{1,16}$/, "Invalid username"),
+  username: z.string().regex(MC_USERNAME_REGEX, "Invalid username"),
   serverId: z.string().regex(/^[0-9a-f]{40}$/, "Invalid serverId"),
 });
 

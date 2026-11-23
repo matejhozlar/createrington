@@ -1,6 +1,32 @@
-import { Q } from "@/db";
+import { db, Q } from "@/db";
+import { NotFoundError } from "@/errors";
+import type { DatabaseQueries } from "@/generated/db";
+import type { AdminActionType } from "@createrington/shared/admin-action";
 import type { DiscordMessageService } from "../message/message.service";
 import type { DiscordAutoMessageConfig } from "@createrington/shared/db/discord_auto_message_config.types";
+import type { DiscordAutoMessage } from "@createrington/shared/db/discord_auto_message.types";
+
+export interface AutoMessageActor {
+  discordId: string;
+  minecraftUsername: string;
+}
+
+export type AutoMessageConfigFields = Pick<
+  DiscordAutoMessageConfig,
+  "name" | "channelId" | "enabled" | "intervalMinutes" | "rotationMode"
+>;
+
+export interface AutoMessageFollowupInput {
+  content: string;
+  delaySeconds: number;
+  enabled: boolean;
+}
+
+export interface AutoMessageFields {
+  content: string;
+  sortOrder: number;
+  enabled: boolean;
+}
 
 /**
  * Drives scheduled, rotating Discord messages. On `initialize` it loads every
@@ -11,7 +37,9 @@ import type { DiscordAutoMessageConfig } from "@createrington/shared/db/discord_
  * follow-ups are scheduled in-memory with additive delays and are dropped on
  * process restart. Template variables (e.g. `{memberCount}`) are resolved per
  * send. `shutdown` clears all timers; follow-up `setTimeout`s are not tracked
- * and may fire briefly during shutdown.
+ * and may fire briefly during shutdown. Config and message edits go through
+ * this service too, so the running timers follow every config change and
+ * each config change is audited.
  */
 export class AutoMessageService {
   private timers: Map<number, NodeJS.Timeout> = new Map();
@@ -68,6 +96,127 @@ export class AutoMessageService {
   async restartConfig(configId: number): Promise<void> {
     this.stopConfig(configId);
     await this.startConfig(configId);
+  }
+
+  /** Creates a config, starts its timer when enabled, audits it. */
+  async createConfig(
+    fields: AutoMessageConfigFields,
+    actor: AutoMessageActor,
+  ): Promise<DiscordAutoMessageConfig> {
+    const created = await Q.discord.auto.message.config.createAndReturn(fields);
+    if (created.enabled) await this.startConfig(created.id);
+
+    await this.audit(
+      actor,
+      "auto_message_config_create",
+      `Created auto-message config "${created.name}"`,
+    );
+    return created;
+  }
+
+  /** Applies a patch to a config, restarts its timer to pick it up, audits it. */
+  async updateConfig(
+    configId: number,
+    patch: Partial<AutoMessageConfigFields>,
+    actor: AutoMessageActor,
+  ): Promise<void> {
+    const existing = await this.requireConfig(configId);
+
+    await Q.discord.auto.message.config.update({ id: configId }, patch);
+    await this.restartConfig(configId);
+
+    await this.audit(
+      actor,
+      "auto_message_config_update",
+      `Updated auto-message config "${existing.name}"`,
+    );
+  }
+
+  /** Stops a config's timer, deletes it with its messages, audits it. */
+  async deleteConfig(configId: number, actor: AutoMessageActor): Promise<void> {
+    const existing = await this.requireConfig(configId);
+
+    this.stopConfig(configId);
+    await Q.discord.auto.message.config.delete({ id: configId });
+
+    await this.audit(
+      actor,
+      "auto_message_config_delete",
+      `Deleted auto-message config "${existing.name}"`,
+    );
+  }
+
+  /** Adds a message with its follow-ups to a config in one transaction. */
+  async createMessage(
+    configId: number,
+    fields: AutoMessageFields,
+    followups: AutoMessageFollowupInput[],
+  ): Promise<DiscordAutoMessage> {
+    await this.requireConfig(configId);
+
+    return db.inTransaction(async (tx) => {
+      const created = await tx.discord.auto.message.createAndReturn({
+        configId,
+        ...fields,
+      });
+      await this.insertFollowups(tx, created.id, followups);
+      return created;
+    });
+  }
+
+  /** Patches a message; when follow-ups are given they replace the existing ones. */
+  async updateMessage(
+    messageId: number,
+    patch: Partial<AutoMessageFields>,
+    followups?: AutoMessageFollowupInput[],
+  ): Promise<void> {
+    const existing = await Q.discord.auto.message.find({ id: messageId });
+    if (!existing) throw new NotFoundError("Message not found");
+
+    await db.inTransaction(async (tx) => {
+      if (Object.keys(patch).length > 0) {
+        await tx.discord.auto.message.update({ id: messageId }, patch);
+      }
+      if (followups !== undefined) {
+        await tx.discord.auto.message.followup.deleteAll({ messageId });
+        await this.insertFollowups(tx, messageId, followups);
+      }
+    });
+  }
+
+  private async requireConfig(
+    configId: number,
+  ): Promise<DiscordAutoMessageConfig> {
+    const config = await Q.discord.auto.message.config.find({ id: configId });
+    if (!config) throw new NotFoundError("Config not found");
+    return config;
+  }
+
+  private async insertFollowups(
+    tx: DatabaseQueries,
+    messageId: number,
+    followups: AutoMessageFollowupInput[],
+  ): Promise<void> {
+    await tx.discord.auto.message.followup.createMany(
+      followups.map((followup, sortOrder) => ({
+        messageId,
+        ...followup,
+        sortOrder,
+      })),
+    );
+  }
+
+  private async audit(
+    actor: AutoMessageActor,
+    actionType: AdminActionType,
+    description: string,
+  ): Promise<void> {
+    await Q.admin.log.action.logAction({
+      adminDiscordId: actor.discordId,
+      adminUsername: actor.minecraftUsername,
+      actionType,
+      description,
+    });
   }
 
   private startTimer(config: DiscordAutoMessageConfig): void {
@@ -127,26 +276,16 @@ export class AutoMessageService {
       message.content,
     );
 
-    const result = await this.messageService.send({
+    await this.messageService.send({
       channelId: config.channelId,
       content: resolvedContent,
     });
-
-    if (result.success) {
-      logger.debug(
-        `Sent auto-message to channel ${config.channelId} (config ${configId})`,
-      );
-      await this.scheduleFollowups(message.id, config.channelId);
-    } else {
-      logger.warn(
-        `Failed to send auto-message to channel ${config.channelId}: ${result.error}`,
-      );
-    }
+    logger.debug(
+      `Sent auto-message to channel ${config.channelId} (config ${configId})`,
+    );
+    await this.scheduleFollowups(message.id, config.channelId);
   }
 
-  // Each follow-up's delay is additive: follow-up #1 fires at t=delay1,
-  // #2 at t=delay1+delay2, etc. Uses in-memory setTimeout, so a server
-  // restart mid-chain drops pending follow-ups.
   private async scheduleFollowups(
     messageId: number,
     channelId: string,
@@ -186,23 +325,12 @@ export class AutoMessageService {
       followup.content,
     );
 
-    const result = await this.messageService.send({
-      channelId,
-      content: resolvedContent,
-    });
-
-    if (result.success) {
-      logger.debug(
-        `Sent auto-message follow-up ${followupId} to channel ${channelId}`,
-      );
-    } else {
-      logger.warn(
-        `Failed to send auto-message follow-up ${followupId} to channel ${channelId}: ${result.error}`,
-      );
-    }
+    await this.messageService.send({ channelId, content: resolvedContent });
+    logger.debug(
+      `Sent auto-message follow-up ${followupId} to channel ${channelId}`,
+    );
   }
 
-  // Supported variables: {memberCount} (total registered player count).
   private async resolveTemplateVariables(content: string): Promise<string> {
     if (!content.includes("{")) return content;
 

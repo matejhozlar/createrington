@@ -1,4 +1,4 @@
-import config from "@/config";
+import { siteUrl } from "@/config/site-url";
 import { Discord } from "@/discord/constants";
 import { createEmbed, EmbedColors, EmbedPresets } from "@/discord/embeds";
 import { isSendableChannel } from "@/discord/utils/channel-guard";
@@ -11,9 +11,14 @@ import {
   MessageFlags,
   PermissionFlagsBits,
   SlashCommandBuilder,
+  roleMention,
 } from "discord.js";
+import type {
+  CommandModule,
+  CommandPermissions,
+} from "@/discord/bots/common/loaders/command-loader";
 
-export const data = new SlashCommandBuilder()
+const data = new SlashCommandBuilder()
   .setName("donate-panel")
   .setDescription("Create or update the donation panel")
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
@@ -26,96 +31,92 @@ export const data = new SlashCommandBuilder()
       .setRequired(false),
   );
 
-export const permissions = {
+const permissions: CommandPermissions = {
   requireOwner: true,
 };
 
-export async function execute(
+async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
-  try {
-    if (!isSendableChannel(interaction.channel)) {
+  if (!isSendableChannel(interaction.channel)) {
+    await replyError(
+      interaction,
+      "Invalid Channel",
+      "This command can only be used in text channels.",
+    );
+    return;
+  }
+
+  const donateUrl = siteUrl("/donate");
+
+  const embed = createEmbed()
+    .title("❤️ Support Createrington")
+    .description(
+      "If you enjoy playing on Createrington, you can help keep the server running by donating.\n\n" +
+        "**Donating is completely optional** and does not give you any advantages over other players. " +
+        "All donations go directly towards server maintenance and upgrades.\n\n" +
+        `By donating you will get the ${roleMention(Discord.Roles.SUPPORTER)} role.\n` +
+        "Thank you for being part of the community!",
+    )
+    .color(EmbedColors.Info);
+
+  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setLabel("Donate")
+      .setStyle(ButtonStyle.Link)
+      .setURL(donateUrl)
+      .setEmoji("❤️"),
+  );
+
+  const messageId = interaction.options.getString("message_id");
+  const payload = { embeds: [embed.build()], components: [row] };
+
+  if (messageId) {
+    const existing = await interaction.channel.messages
+      .fetch(messageId)
+      .catch(() => null);
+
+    if (!existing) {
       await replyError(
         interaction,
-        "Invalid Channel",
-        "This command can only be used in text channels.",
+        "Message Not Found",
+        `Could not find message with ID \`${messageId}\` in this channel.`,
       );
       return;
     }
 
-    const donateUrl = `${config.meta.links.website}/donate`;
+    await existing.edit(payload);
 
-    const embed = createEmbed()
-      .title("❤️ Support Createrington")
-      .description(
-        "If you enjoy playing on Createrington, you can help keep the server running by donating.\n\n" +
-          "**Donating is completely optional** and does not give you any advantages over other players. " +
-          "All donations go directly towards server maintenance and upgrades.\n\n" +
-          `By donating you will get the ${Discord.Roles.mention(Discord.Roles.SUPPORTER)} role.\n` +
-          "Thank you for being part of the community!",
-      )
-      .color(EmbedColors.Info);
-
-    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder()
-        .setLabel("Donate")
-        .setStyle(ButtonStyle.Link)
-        .setURL(donateUrl)
-        .setEmoji("❤️"),
+    const successEmbed = EmbedPresets.success(
+      "Panel Updated",
+      "Donation panel has been updated.",
     );
+    await interaction.reply({
+      embeds: [successEmbed.build()],
+      flags: MessageFlags.Ephemeral,
+    });
 
-    const messageId = interaction.options.getString("message_id");
-    const payload = { embeds: [embed.build()], components: [row] };
-
-    if (messageId) {
-      const existing = await interaction.channel.messages
-        .fetch(messageId)
-        .catch(() => null);
-
-      if (!existing) {
-        await replyError(
-          interaction,
-          "Message Not Found",
-          `Could not find message with ID \`${messageId}\` in this channel.`,
-        );
-        return;
-      }
-
-      await existing.edit(payload);
-
-      const successEmbed = EmbedPresets.success(
-        "Panel Updated",
-        "Donation panel has been updated.",
-      );
-      await interaction.reply({
-        embeds: [successEmbed.build()],
-        flags: MessageFlags.Ephemeral,
-      });
-
-      logger.info(
-        `${interaction.user.tag} updated donation panel (${messageId})`,
-      );
-    } else {
-      await interaction.channel.send(payload);
-
-      const successEmbed = EmbedPresets.success(
-        "Panel Created",
-        "Donation panel has been created.",
-      );
-      await interaction.reply({
-        embeds: [successEmbed.build()],
-        flags: MessageFlags.Ephemeral,
-      });
-
-      logger.info(`${interaction.user.tag} created donation panel`);
-    }
-  } catch (error) {
-    logger.error("/donate-panel failed:", error);
-
-    await replyError(
-      interaction,
-      "Panel Creation Failed",
-      "Failed to create donation panel. Please try again.",
+    logger.info(
+      `${interaction.user.tag} updated donation panel (${messageId})`,
     );
+  } else {
+    await interaction.channel.send(payload);
+
+    const successEmbed = EmbedPresets.success(
+      "Panel Created",
+      "Donation panel has been created.",
+    );
+    await interaction.reply({
+      embeds: [successEmbed.build()],
+      flags: MessageFlags.Ephemeral,
+    });
+
+    logger.info(`${interaction.user.tag} created donation panel`);
   }
 }
+
+export default {
+  data,
+  permissions,
+  execute,
+} satisfies CommandModule;

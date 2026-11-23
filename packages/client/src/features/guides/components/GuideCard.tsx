@@ -6,7 +6,7 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import type { Guide } from "../data";
+import type { Guide } from "@/features/guides/types";
 
 type GuideCardProps = {
   guide: Guide;

@@ -5,15 +5,14 @@ import { CooldownType } from "@/discord/utils/cooldown";
 import { runRegistration } from "@/discord/bots/main/registration/run-registration";
 import {
   type ChatInputCommandInteraction,
-  type GuildTextBasedChannel,
   SlashCommandBuilder,
 } from "discord.js";
+import type {
+  CommandCooldown,
+  CommandModule,
+} from "@/discord/bots/common/loaders/command-loader";
 
-/**
- * Fallback slash command: primary registration flow is the button + modal in
- * the verification channel. Kept here so power users can still bypass the UI.
- */
-export const data = new SlashCommandBuilder()
+const data = new SlashCommandBuilder()
   .setName("register")
   .setDescription("Register to Createrington")
   .addStringOption((option) =>
@@ -23,30 +22,27 @@ export const data = new SlashCommandBuilder()
       .setRequired(true),
   );
 
-export const cooldown = {
+const cooldown: CommandCooldown = {
   duration: 60,
   type: CooldownType.USER,
   message: "Please wait before trying to register again!",
 };
 
-export async function execute(
+async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
   const mcName = interaction.options.getString("mc_name", true);
-  const member = await interaction.guild!.members.fetch(interaction.user.id);
 
-  if (
-    !member ||
-    typeof member.roles === "string" ||
-    Array.isArray(member.roles)
-  ) {
+  if (!interaction.inCachedGuild()) {
     const { components, flags } = RegistrationComponentPresets.errorWithAdmin(
       "Registration Failed",
-      "Could not verify your roles. Please try again.",
+      "Registration only works inside the server.",
     );
     await interaction.reply({ components, flags });
     return;
   }
+
+  const member = await interaction.guild.members.fetch(interaction.user.id);
 
   if (!member.roles.cache.has(Discord.Roles.UNVERIFIED)) {
     await replyError(
@@ -59,7 +55,7 @@ export async function execute(
 
   await interaction.deferReply();
 
-  const channel = (interaction.channel ?? null) as GuildTextBasedChannel | null;
+  const channel = interaction.channel;
 
   await runRegistration({
     member,
@@ -78,3 +74,9 @@ export async function execute(
     },
   });
 }
+
+export default {
+  data,
+  cooldown,
+  execute,
+} satisfies CommandModule;

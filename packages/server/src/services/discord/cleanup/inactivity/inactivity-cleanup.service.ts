@@ -1,8 +1,7 @@
 import { Q } from "@/db";
 import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
-import { getServiceSync, Services } from "@/services";
-import { DiscordMessageService } from "@/services/discord/message/message.service";
+import type { DiscordMessageService } from "@/services/discord/message/message.service";
 import { removeInactiveWarning } from "./remove-warning";
 import {
   INACTIVITY_CHECK_INTERVAL_MS,
@@ -11,10 +10,6 @@ import {
   INACTIVITY_RETENTION_DAYS,
 } from "./constants";
 
-/**
- * Who triggered a cleanup run. `null` means the scheduled tick or the
- * startup sweep. The admin-notification embed renders it as "Automated".
- */
 export type InactivityTriggerContext = {
   discordId: string;
   username: string | null;
@@ -56,8 +51,6 @@ export class InactivityCleanupService {
   initialize(): void {
     logger.info("Initializing InactivityCleanupService...");
 
-    // Run resolve/remove on startup (safe and idempotent), but skip
-    // sending new warnings to avoid duplicate announcements on frequent deploys.
     this.resolveAndRemoveOnly().catch((error) => {
       logger.error("Initial inactivity resolve/remove failed:", error);
     });
@@ -82,11 +75,6 @@ export class InactivityCleanupService {
     }
   }
 
-  /**
-   * Run the full cleanup cycle: resolve → warn → remove → prune.
-   * Order matters: resolve first so players who just returned aren't
-   * accidentally included in the removal phase.
-   */
   private async runCycle(
     triggeredBy: InactivityTriggerContext = null,
   ): Promise<void> {
@@ -101,10 +89,6 @@ export class InactivityCleanupService {
     }
   }
 
-  /**
-   * Check active warnings and resolve any where the player has logged in
-   * since being warned (lastSeen > warnedAt).
-   */
   private async resolveReturned(): Promise<void> {
     const resolved = await Q.player.inactivity.warning.resolveReturned();
     for (const warning of resolved) {
@@ -119,13 +103,9 @@ export class InactivityCleanupService {
     }
   }
 
-  /**
-   * Find newly inactive players (no active warning yet) and issue warnings.
-   * Sends a single announcement embed mentioning all warned players.
-   */
   private async warnInactive(): Promise<void> {
     const inactivePlayers =
-      await Q.player.inactivity.warning.findInactivePlayers(
+      await Q.player.inactivity.warning.getInactivePlayers(
         INACTIVITY_INACTIVE_DAYS,
       );
 
@@ -152,42 +132,26 @@ export class InactivityCleanupService {
         deadlineDate,
       });
 
-      const mainBot = getServiceSync(Services.DISCORD_MAIN_BOT);
-      const messageService = DiscordMessageService.getInstance(mainBot);
-
-      const result = await messageService.send({
+      const message = await Discord.Messages.send({
         channelId: Discord.Channels.createringtonOfficial.ANNOUNCEMENTS,
         embeds: embed.build(),
       });
 
-      if (result.success && result.messageId) {
-        // Store message ID on all warning records from this batch
-        await Q.player.inactivity.warning.setMessageIdOnPending(
-          result.messageId,
-        );
+      await Q.player.inactivity.warning.setMessageIdOnPending(message.id);
 
-        logger.info(
-          `Sent inactivity warning announcement (messageId: ${result.messageId}) for ${inactivePlayers.length} player(s)`,
-        );
-      } else {
-        logger.warn(
-          `Failed to send inactivity warning announcement: ${result.error ?? "unknown error"}`,
-        );
-      }
+      logger.info(
+        `Sent inactivity warning announcement (messageId: ${message.id}) for ${inactivePlayers.length} player(s)`,
+      );
     } catch (error) {
       logger.error("Failed to send inactivity warning embed:", error);
     }
   }
 
-  /**
-   * Remove players whose grace period has expired without them returning.
-   * Kicks from Discord, removes from whitelist, deletes player record.
-   */
   private async removeExpired(
     triggeredBy: InactivityTriggerContext = null,
   ): Promise<void> {
     const expiredWarnings =
-      await Q.player.inactivity.warning.findExpiredWarnings(
+      await Q.player.inactivity.warning.getExpiredWarnings(
         INACTIVITY_GRACE_DAYS,
       );
 
@@ -204,9 +168,11 @@ export class InactivityCleanupService {
 
     for (const warning of expiredWarnings) {
       try {
-        // Double-check the player hasn't logged in since (defensive)
         if (warning.lastSeen > warning.warnedAt) {
-          await Q.player.inactivity.warning.resolveWarning(warning.id);
+          await Q.player.inactivity.warning.update(
+            { id: warning.id },
+            { resolvedAt: new Date() },
+          );
           logger.info(
             `Skipped removal of ${warning.minecraftUsername}: logged in since warning`,
           );
@@ -228,8 +194,7 @@ export class InactivityCleanupService {
 
       let messageService: DiscordMessageService | null = null;
       try {
-        const mainBot = getServiceSync(Services.DISCORD_MAIN_BOT);
-        messageService = DiscordMessageService.getInstance(mainBot);
+        messageService = Discord.Messages;
       } catch (error) {
         logger.error(
           "Discord message service unavailable, skipping inactivity removal notifications:",
@@ -280,10 +245,6 @@ export class InactivityCleanupService {
     }
   }
 
-  /**
-   * Delete warnings that were resolved or removed longer ago than the
-   * retention window.
-   */
   private async pruneClosed(): Promise<void> {
     const pruned = await Q.player.inactivity.warning.pruneClosed(
       INACTIVITY_RETENTION_DAYS,

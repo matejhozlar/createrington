@@ -4,13 +4,13 @@ import { Input } from "@/components/ui/input";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { FormDialog } from "@/components/form-dialog";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { useToastActions } from "@/hooks/use-toast";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
 import { useMutation } from "@tanstack/react-query";
+import { formatDate } from "@createrington/shared/format";
 
 type WaitlistEntry =
-  RouterOutput["admin"]["waitlists"]["list"]["entries"][number];
+  RouterOutput["admin"]["waitlists"]["list"]["items"][number];
 
 interface DeleteWaitlistModalProps {
   entry: WaitlistEntry | null;
@@ -21,8 +21,6 @@ export function DeleteWaitlistModal({
   entry,
   onClose,
 }: DeleteWaitlistModalProps) {
-  const toast = useToastActions();
-
   const [reason, setReason] = useState("");
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
@@ -47,10 +45,6 @@ export function DeleteWaitlistModal({
   };
 
   const handleDeleteClick = () => {
-    if (!reason.trim()) {
-      toast.error("Reason is required for deletion");
-      return;
-    }
     setShowConfirmDialog(true);
   };
 
@@ -94,13 +88,13 @@ export function DeleteWaitlistModal({
             <div className="flex justify-between">
               <span className="text-muted-foreground">Signed up:</span>
               <span className="font-medium">
-                {entry ? new Date(entry.createdAt).toLocaleDateString() : ""}
+                {entry ? formatDate(entry.createdAt) : ""}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Queued:</span>
               <span className="font-medium">
-                {entry ? new Date(entry.queuedAt).toLocaleDateString() : ""}
+                {entry ? formatDate(entry.queuedAt) : ""}
               </span>
             </div>
           </div>

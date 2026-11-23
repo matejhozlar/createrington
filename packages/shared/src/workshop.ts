@@ -1,7 +1,6 @@
 import { z } from "zod";
 
 // CurseForge file dependency relationTypes
-export const OPTIONAL_DEPENDENCY = 2;
 export const REQUIRED_DEPENDENCY = 3;
 
 export const CURSEFORGE_CLASSES = {
@@ -96,6 +95,14 @@ export const WORKSHOP_MOD_STATUSES = [
 // Not exported: shared/db already exports a generated WorkshopModStatus and
 // the package barrel re-exports both modules
 type WorkshopModStatus = (typeof WORKSHOP_MOD_STATUSES)[number];
+
+export const USER_VISIBLE_MOD_STATUSES: WorkshopModStatus[] = [
+  "pending",
+  "approved",
+  "testing",
+  "next_update",
+  "in_pack",
+];
 
 export const WORKSHOP_MOD_STATUS_LABELS: Record<WorkshopModStatus, string> = {
   pending: "In review",

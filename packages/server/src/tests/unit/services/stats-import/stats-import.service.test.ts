@@ -22,10 +22,13 @@ vi.mock("ssh2-sftp-client", () => ({
   }),
 }));
 vi.mock("@/db", () => ({
+  db: {
+    inTransaction: (work: (tx: unknown) => Promise<unknown>) =>
+      work({ player: { minecraft: { stats: { batchUpsert } } } }),
+  },
   Q: {
     player: {
       findAll: findAllPlayers,
-      minecraft: { stats: { batchUpsert } },
     },
   },
   playtimeRepo: { reconcileTotalsFromStats: reconcile },
@@ -37,16 +40,15 @@ vi.mock("@/services/feature-flag", () => ({
 
 import { StatsImportService } from "@/services/stats-import/stats-import.service";
 import type { PlaytimeManagerService } from "@/services/playtime/playtime-manager.service";
-import type { StatsImportServerConfig } from "@/services/stats-import/config";
 
 const STEVE = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const ALEX = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
 const STRANGER = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
 const SERVER_ID = 1;
 
-const CONFIG: StatsImportServerConfig = {
-  serverId: SERVER_ID,
-  serverName: "Rails 'n Sails",
+const CONFIG = {
+  id: SERVER_ID,
+  name: "Rails 'n Sails",
   sftp: {
     host: "mc.example",
     port: 22,

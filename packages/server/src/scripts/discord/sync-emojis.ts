@@ -1,6 +1,6 @@
 import "@/logger.global";
 import { Client } from "discord.js";
-import { env } from "@/config/env/env.config";
+import config from "@/config";
 import { AppEmojiService } from "@/services/discord/emojis";
 
 const replace = process.argv.includes("--replace");
@@ -16,7 +16,7 @@ async function syncEmojis(): Promise<void> {
 
   try {
     console.log("Logging in main Discord bot...");
-    await client.login(env.DISCORD_MAIN_BOT_TOKEN);
+    await client.login(config.discord.bots.main.token);
     if (!client.isReady()) {
       await new Promise<void>((resolve) => {
         client.once("clientReady", () => resolve());

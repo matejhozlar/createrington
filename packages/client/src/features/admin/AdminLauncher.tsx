@@ -1,7 +1,7 @@
 import { Download } from "lucide-react";
 import { formatDate } from "@createrington/shared/format";
 import type { LauncherChannel } from "@createrington/shared/launcher";
-import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
+import { AdminPage } from "@/features/admin/components/AdminPage";
 import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { ChangeTag } from "@/features/admin/components/ChangeTag";
 import { HeaderActions } from "@/features/admin/components/HeaderActions";
@@ -18,7 +18,11 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { LoadingState } from "@/components/query-states";
+import {
+  EmptyState,
+  ErrorState,
+  LoadingState,
+} from "@/components/query-states";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { useQuery } from "@tanstack/react-query";
 
@@ -69,47 +73,44 @@ export function AdminLauncher() {
   const [latest, ...earlier] = releasesQuery.data?.releases ?? [];
 
   return (
-    <div className="flex flex-1 flex-col gap-4">
-      <AdminPageHeader
-        trail={[
-          { label: "Admin", href: "/admin/dashboard" },
-          { label: "Launcher" },
-        ]}
+    <AdminPage
+      trail={[
+        { label: "Admin", href: "/admin/dashboard" },
+        { label: "Launcher" },
+      ]}
+    >
+      <AdminPageTitle
+        title="Launcher"
+        badges={
+          channel && <Badge variant="outline">{CHANNELS[channel].label}</Badge>
+        }
+        description={channel && CHANNELS[channel].description}
       />
 
-      <div className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-4 px-4 pb-4">
-        <AdminPageTitle
-          title="Launcher"
-          badges={
-            channel && (
-              <Badge variant="outline">{CHANNELS[channel].label}</Badge>
-            )
-          }
-          description={channel && CHANNELS[channel].description}
+      {releasesQuery.isLoading ? (
+        <LoadingState text="Loading launcher versions..." />
+      ) : releasesQuery.isError ? (
+        <ErrorState
+          message={`Failed to load launcher versions: ${releasesQuery.error.message}`}
+          onRetry={() => releasesQuery.refetch()}
         />
-
-        {releasesQuery.isLoading ? (
-          <LoadingState text="Loading launcher versions..." />
-        ) : releasesQuery.isError ? (
-          <p className="py-8 text-center text-destructive">
-            Failed to load launcher versions: {releasesQuery.error.message}
-          </p>
-        ) : !latest ? (
-          <Card>
-            <CardContent>
-              <p className="py-8 text-center text-muted-foreground">
-                No launcher version has been released yet.
-              </p>
-            </CardContent>
-          </Card>
-        ) : (
-          <>
-            <LatestRelease release={latest} />
-            {earlier.length > 0 && <EarlierReleases releases={earlier} />}
-          </>
-        )}
-      </div>
-    </div>
+      ) : !latest ? (
+        <Card>
+          <CardContent>
+            <EmptyState
+              icon={Download}
+              message="No launcher version has been released yet."
+              className="py-8"
+            />
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          <LatestRelease release={latest} />
+          {earlier.length > 0 && <EarlierReleases releases={earlier} />}
+        </>
+      )}
+    </AdminPage>
   );
 }
 

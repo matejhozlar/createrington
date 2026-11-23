@@ -1,3 +1,4 @@
+import { Skeleton } from "@/components/ui/skeleton";
 import { useState } from "react";
 import {
   formatStatCategory,
@@ -7,6 +8,7 @@ import {
 } from "@createrington/shared/minecraft-stats";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
+import { ErrorState } from "@/components/query-states";
 import type { Stat } from "./StatPicker";
 import { useQuery } from "@tanstack/react-query";
 
@@ -41,12 +43,22 @@ export function HeldRecords({
     return (
       <div className="grid gap-1.5 sm:grid-cols-2">
         {Array.from({ length: 4 }, (_, index) => (
-          <div
+          <Skeleton
             key={index}
-            className="h-[3.25rem] animate-pulse rounded-md bg-muted/30"
+            className="h-[3.25rem] rounded-md bg-muted/30"
           />
         ))}
       </div>
+    );
+  }
+
+  if (recordsQuery.isError && !recordsQuery.data) {
+    return (
+      <ErrorState
+        compact
+        message="Couldn't load the records."
+        onRetry={() => void recordsQuery.refetch()}
+      />
     );
   }
 

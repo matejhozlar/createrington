@@ -1,16 +1,12 @@
 import { createEmbed, DiscordEmbedBuilder } from "../../embed-builder";
 import { EmbedColors } from "../../colors";
-import { ActionRowBuilder, ButtonBuilder, User } from "discord.js";
+import { ActionRowBuilder, ButtonBuilder, User, userMention } from "discord.js";
 import { ButtonPresets } from "../buttons";
 import type { Player, WaitlistEntry } from "@/generated/db";
 import type { WaitlistStatus } from "@createrington/shared/db";
 import { discordTimestamp } from "@/utils/format";
 
 export const WaitlistEmbedPresets = {
-  /**
-   * Admin notification for a new waitlist entry (informational only;
-   * promotion happens in the admin panel)
-   */
   queueNotification(data: {
     id: number;
     discordId: string;
@@ -27,7 +23,10 @@ export const WaitlistEmbedPresets = {
         data.status === "promoted" ? EmbedColors.Success : EmbedColors.Info,
       )
       .field("🆔 Entry ID", data.id.toString())
-      .field("💬 Discord", `<@${data.discordId}> (\`${data.discordUsername}\`)`)
+      .field(
+        "💬 Discord",
+        `${userMention(data.discordId)} (\`${data.discordUsername}\`)`,
+      )
       .build();
 
     const linkRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -37,9 +36,6 @@ export const WaitlistEmbedPresets = {
     return { embed, components: [linkRow] };
   },
 
-  /**
-   * Creates a progress embed for admins to see
-   */
   createProgressEmbed(
     entry: WaitlistEntry,
     discordUser?: User | null,
@@ -80,7 +76,7 @@ export const WaitlistEmbedPresets = {
 
     if (discordUser) {
       embed
-        .field("Discord User", `<@${discordUser.id}>`, true)
+        .field("Discord User", userMention(discordUser.id), true)
         .field("Discord ID", `\`${discordUser.id}\``, true)
         .thumbnail(discordUser.displayAvatarURL({ size: 128 }));
     } else {
@@ -102,7 +98,7 @@ export const WaitlistEmbedPresets = {
 
     if (entry.promotedAt) {
       details.push(
-        `Promoted: ${discordTimestamp(entry.promotedAt, "R")}${entry.promotedBy ? ` by <@${entry.promotedBy}>` : " (auto)"}`,
+        `Promoted: ${discordTimestamp(entry.promotedAt, "R")}${entry.promotedBy ? ` by ${userMention(entry.promotedBy)}` : " (auto)"}`,
       );
     }
 

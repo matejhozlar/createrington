@@ -1,6 +1,7 @@
 import path from "path";
 import fs from "fs";
 import express, { type Express } from "express";
+import type { AnyTRPCRouter } from "@trpc/server";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerRoutes } from "./features";
 import {
@@ -20,18 +21,40 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import helmet from "helmet";
 import { registerHealthRoute } from "./health";
+import { allowedOrigins } from "./utils/allowed-origins";
 
-/** Creates and configures the Express application with routes, tRPC, static files, and error handling */
+function mountTrpc(
+  app: Express,
+  path: string,
+  router: AnyTRPCRouter,
+  tag: string,
+): void {
+  app.use(
+    path,
+    createExpressMiddleware({
+      router,
+      createContext,
+      onError({ error, path: procedure }) {
+        if (error.code === "INTERNAL_SERVER_ERROR") {
+          logger.error(`[${tag}] ${procedure}:`, {
+            message: error.message,
+            stack: error.stack,
+            cause: error.cause,
+          });
+        } else {
+          logger.warn(`[${tag}] ${procedure}: ${error.message}`);
+        }
+      },
+    }),
+  );
+}
+
 export function createApp(): Express {
   const app = express();
   if (config.envMode.isProd) {
-    // One hop: the front proxy (Cloudflare -> Caddy/nginx) must replace any
-    // client-supplied X-Forwarded-For before forwarding, otherwise req.ip
-    // and rate-limit keys can be spoofed.
     app.set("trust proxy", 1);
   }
 
-  // Stripe webhook requires raw body for signature verification, mount before express.json()
   app.use("/api/donations/webhook", express.raw({ type: "application/json" }));
 
   app.use(helmet({ contentSecurityPolicy: false }));
@@ -40,9 +63,7 @@ export function createApp(): Express {
   app.use(cookieParser());
   app.use(
     cors({
-      origin: config.envMode.isProd
-        ? [config.meta.links.website, ...config.app.auth.sso.corsOrigins]
-        : config.app.devClientOrigin,
+      origin: allowedOrigins(),
       credentials: true,
     }),
   );
@@ -55,81 +76,19 @@ export function createApp(): Express {
 
   registerRoutes(app);
 
-  // Dedicated mount for the consumer-panel router. External consumer apps
-  // (the admin panel) type their tRPC client against `PanelRouter` from
-  // `@createrington/api-types`, which is a standalone router type: its
-  // procedures resolve relative to its own root. Mounting panelRouter at
-  // its own URL lets consumers use the natural procedure paths
-  // (`presence.onlineByServer` etc) without knowing they're nested under
-  // `consumers.panel.*` inside the main appRouter.
-  //
-  // MUST be registered BEFORE the generic `/trpc` mount: Express matches
-  // handlers in order, so the more specific path has to come first to
-  // avoid being swallowed by the appRouter mount.
-  app.use(
-    "/trpc/consumers/panel",
-    createExpressMiddleware({
-      router: panelRouter,
-      createContext,
-      onError({ error, path }) {
-        if (error.code === "INTERNAL_SERVER_ERROR") {
-          logger.error(`[tRPC consumers.panel] ${path}:`, {
-            message: error.message,
-            stack: error.stack,
-            cause: error.cause,
-          });
-        } else {
-          logger.warn(`[tRPC consumers.panel] ${path}: ${error.message}`);
-        }
-      },
-    }),
-  );
-
-  app.use(
+  mountTrpc(app, "/trpc/consumers/panel", panelRouter, "tRPC consumers.panel");
+  mountTrpc(
+    app,
     "/trpc/consumers/sandbox",
-    createExpressMiddleware({
-      router: sandboxRouter,
-      createContext,
-      onError({ error, path }) {
-        if (error.code === "INTERNAL_SERVER_ERROR") {
-          logger.error(`[tRPC consumers.sandbox] ${path}:`, {
-            message: error.message,
-            stack: error.stack,
-            cause: error.cause,
-          });
-        } else {
-          logger.warn(`[tRPC consumers.sandbox] ${path}: ${error.message}`);
-        }
-      },
-    }),
+    sandboxRouter,
+    "tRPC consumers.sandbox",
   );
+  mountTrpc(app, "/trpc", appRouter, "tRPC");
 
-  // Mount tRPC adapter: logs internal errors at error level, client errors at warn
-  app.use(
-    "/trpc",
-    createExpressMiddleware({
-      router: appRouter,
-      createContext,
-      onError({ error, path }) {
-        if (error.code === "INTERNAL_SERVER_ERROR") {
-          logger.error(`[tRPC] ${path}:`, {
-            message: error.message,
-            stack: error.stack,
-            cause: error.cause,
-          });
-        } else {
-          logger.warn(`[tRPC] ${path}: ${error.message}`);
-        }
-      },
-    }),
-  );
-
-  // Serve client static files in production
   const clientDir = path.join(import.meta.dirname, "../../../public");
   const indexHtml = path.join(clientDir, "index.html");
 
   if (fs.existsSync(indexHtml)) {
-    // Hashed assets are immutable, cache forever
     app.use(
       "/assets",
       express.static(path.join(clientDir, "assets"), {
@@ -138,11 +97,8 @@ export function createApp(): Express {
       }),
     );
 
-    // Everything else (favicon, etc.): short cache
     app.use(express.static(clientDir, { maxAge: "1h" }));
 
-    // SPA catch-all: serve index.html with no-cache so the browser
-    // always fetches the latest version after deployments
     app.get("/{*splat}", (_req, res) => {
       res.setHeader("Cache-Control", "no-cache");
       res.sendFile(indexHtml);

@@ -1,27 +1,14 @@
 import { useCallback, useState } from "react";
-import {
-  EmptyState,
-  ErrorState,
-  LoadingState,
-} from "@/components/query-states";
+import { LoadingState } from "@/components/query-states";
 import { StatCard } from "@/components/stat-card";
-import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Paginator } from "@/components/paginator";
-import { SearchInput } from "@/components/search-input";
-import { Button } from "@/components/ui/button";
+import { AdminPage } from "@/features/admin/components/AdminPage";
+import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
+import { FilterBar } from "@/features/admin/components/FilterBar";
+import { TableCard } from "@/components/paged-table";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
 import { CellDate, CellText } from "@/components/cell-text";
 import {
   BadgeCellSkeleton,
-  DataTable,
-  loadingRowCount,
   TwoLineCellSkeleton,
   type DataTableAction,
   type DataTableColumn,
@@ -33,41 +20,44 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Users, UserPlus, UserCheck, Clock, Trash2 } from "lucide-react";
 import {
-  Filter,
-  Users,
-  UserPlus,
-  UserCheck,
-  Clock,
-  Trash2,
-} from "lucide-react";
-import type { WaitlistStatus } from "@createrington/shared/db";
+  WAITLIST_STATUSES,
+  type WaitlistStatus,
+} from "@createrington/shared/waitlist";
+import { isDiscordId } from "@createrington/shared/discord-id";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { usePagedQuery } from "@/hooks/use-paged-query";
+import { useTableSort } from "@/hooks/use-table-sort";
+import { useQuery } from "@tanstack/react-query";
 import { PromoteWaitlistModal } from "./components/modals/PromoteWaitlistModal";
 import { DeleteWaitlistModal } from "./components/modals/DeleteWaitlistModal";
 import { IntakeSettingsCard } from "./components/IntakeSettingsCard";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 
 type WaitlistEntry =
-  RouterOutput["admin"]["waitlists"]["list"]["entries"][number];
+  RouterOutput["admin"]["waitlists"]["list"]["items"][number];
 
 type SortField = "createdAt" | "queuedAt" | "promotedAt" | "discordUsername";
 type StatusFilter = "all" | WaitlistStatus;
 
-const STATUS_LABELS: Record<WaitlistStatus, string> = {
-  queued: "Queued",
-  promoted: "Promoted",
-  registered: "Registered",
-  expired: "Expired",
+const WAITLIST_STATUS: Record<
+  WaitlistStatus,
+  { label: string; tone: BadgeTone }
+> = {
+  queued: { label: "Queued", tone: "warning" },
+  promoted: { label: "Promoted", tone: "teal" },
+  registered: { label: "Registered", tone: "success" },
+  expired: { label: "Expired", tone: "neutral" },
 };
 
-const STATUS_TONES: Record<WaitlistStatus, BadgeTone> = {
-  queued: "warning",
-  promoted: "teal",
-  registered: "success",
-  expired: "neutral",
-};
+const STATUS_FILTER_OPTIONS: { value: StatusFilter; label: string }[] = [
+  { value: "all", label: "All Statuses" },
+  ...WAITLIST_STATUSES.map((value) => ({
+    value,
+    label: WAITLIST_STATUS[value].label,
+  })),
+];
 
 function hasRequeued(entry: WaitlistEntry) {
   return (
@@ -76,19 +66,16 @@ function hasRequeued(entry: WaitlistEntry) {
 }
 
 export function AdminWaitlists() {
-  const [page, setPage] = useState(0);
-  const [limit] = useState(10);
-
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
 
-  const [orderBy, setOrderBy] = useState<SortField>("queuedAt");
-  const [orderDirection, setOrderDirection] = useState<"asc" | "desc">("desc");
+  const sort = useTableSort<SortField>("queuedAt", {
+    newFieldDirection: "desc",
+  });
 
-  const [promoteModal, setPromoteModal] = useState<{
-    open: boolean;
-    entry: WaitlistEntry | null;
-  }>({ open: false, entry: null });
+  const [promoteTarget, setPromoteTarget] = useState<WaitlistEntry | null>(
+    null,
+  );
   const [deleteTarget, setDeleteTarget] = useState<WaitlistEntry | null>(null);
 
   const debouncedSearch = useDebouncedValue(searchQuery);
@@ -98,50 +85,21 @@ export function AdminWaitlists() {
   const statsLoading = statsQuery.isLoading;
 
   const search = debouncedSearch.trim();
-  const searchIsId = /^\d{15,21}$/.test(search);
+  const searchIsId = isDiscordId(search);
 
-  const entriesQuery = useQuery(
-    trpc.admin.waitlists.list.queryOptions(
-      {
-        page,
-        limit,
-        orderBy,
-        orderDirection,
-        discordUsername: search && !searchIsId ? search : undefined,
-        discordId: searchIsId ? search : undefined,
-        status: statusFilter !== "all" ? statusFilter : undefined,
-      },
-      { placeholderData: keepPreviousData },
-    ),
-  );
-
-  const entries = entriesQuery.data?.entries ?? [];
-  const total = entriesQuery.data?.pagination.total ?? 0;
-  const totalPages = entriesQuery.data?.pagination.totalPages ?? 0;
-  const loading = entriesQuery.isLoading || entriesQuery.isPlaceholderData;
-  const loadingRows = loadingRowCount(page, limit, total);
-  const error = entriesQuery.error?.message ?? null;
-
-  const handleSearch = useCallback((e: React.FormEvent) => {
-    e.preventDefault();
-    setPage(0);
-  }, []);
-
-  const handleSort = useCallback(
-    (field: SortField) => {
-      if (orderBy === field) {
-        setOrderDirection((prev) => (prev === "asc" ? "desc" : "asc"));
-      } else {
-        setOrderBy(field);
-        setOrderDirection("desc");
-      }
-      setPage(0);
+  const entries = usePagedQuery(
+    {
+      ...sort.order,
+      discordUsername: search && !searchIsId ? search : undefined,
+      discordId: searchIsId ? search : undefined,
+      status: statusFilter !== "all" ? statusFilter : undefined,
     },
-    [orderBy],
+    (input) => trpc.admin.waitlists.list.queryOptions(input),
+    10,
   );
 
   const handlePromote = useCallback((entry: WaitlistEntry) => {
-    setPromoteModal({ open: true, entry });
+    setPromoteTarget(entry);
   }, []);
 
   const handleDelete = useCallback((entry: WaitlistEntry) => {
@@ -159,8 +117,7 @@ export function AdminWaitlists() {
       key: "discordUsername",
       header: "Member",
       minWidth: 180,
-      sorted: orderBy === "discordUsername" ? orderDirection : false,
-      onSort: () => handleSort("discordUsername"),
+      ...sort.column("discordUsername"),
       skeleton: () => <TwoLineCellSkeleton />,
       render: (entry) => (
         <>
@@ -179,8 +136,8 @@ export function AdminWaitlists() {
       skeleton: () => <BadgeCellSkeleton />,
       render: (entry) => (
         <div className="flex items-center gap-1.5">
-          <Badge tone={STATUS_TONES[entry.status]}>
-            {STATUS_LABELS[entry.status]}
+          <Badge tone={WAITLIST_STATUS[entry.status].tone}>
+            {WAITLIST_STATUS[entry.status].label}
           </Badge>
           {entry.joinedMinecraft && <Badge tone="success">In-Game</Badge>}
         </div>
@@ -190,8 +147,7 @@ export function AdminWaitlists() {
       key: "queued",
       header: "Queued",
       width: 170,
-      sorted: orderBy === "queuedAt" ? orderDirection : false,
-      onSort: () => handleSort("queuedAt"),
+      ...sort.column("queuedAt"),
       skeleton: () => <TwoLineCellSkeleton />,
       render: (entry) => (
         <>
@@ -240,162 +196,92 @@ export function AdminWaitlists() {
   };
 
   return (
-    <div className="flex flex-1 flex-col gap-4">
-      {/* Header */}
-      <AdminPageHeader
-        trail={[
-          { label: "Admin", href: "/admin/dashboard" },
-          { label: "Waitlist" },
-        ]}
+    <AdminPage
+      trail={[
+        { label: "Admin", href: "/admin/dashboard" },
+        { label: "Waitlist" },
+      ]}
+    >
+      <AdminPageTitle title="Waitlist" />
+      {statsLoading ? (
+        <LoadingState text="Loading statistics..." className="flex-none py-8" />
+      ) : stats ? (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <StatCard
+            label="In Queue"
+            value={stats.queued}
+            icon={Users}
+            tone="primary"
+            footer={`${stats.total} entries total`}
+          />
+          <StatCard
+            label="Promoted"
+            value={stats.promoted}
+            icon={Clock}
+            tone="chart-2"
+            footer="awaiting registration"
+          />
+          <StatCard
+            label="Registered"
+            value={stats.registered}
+            icon={UserCheck}
+            tone="chart-4"
+            footer={`${stats.joinedMinecraft} joined Minecraft`}
+          />
+          <StatCard
+            label="New This Week"
+            value={stats.signups.thisWeek}
+            icon={UserPlus}
+            tone="chart-3"
+            footer={`${stats.signups.today} today`}
+          />
+        </div>
+      ) : null}
+
+      <IntakeSettingsCard />
+
+      <FilterBar
+        search={searchQuery}
+        onSearchChange={setSearchQuery}
+        placeholder="Search by Discord username or ID..."
+        activeCount={(searchQuery ? 1 : 0) + (statusFilter !== "all" ? 1 : 0)}
+      >
+        <Select
+          value={statusFilter}
+          onValueChange={(v) => setStatusFilter(v as StatusFilter)}
+        >
+          <SelectTrigger className="min-w-[150px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {STATUS_FILTER_OPTIONS.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </FilterBar>
+
+      <TableCard
+        title="Waitlist Entries"
+        paged={entries}
+        empty={{ icon: Users, message: "No waitlist entries found" }}
+        itemLabel="entry"
+        columns={columns}
+        rowKey={(entry) => entry.id}
+        actions={entryActions}
       />
 
-      <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
-        {statsLoading ? (
-          <LoadingState
-            text="Loading statistics..."
-            className="flex-none py-8"
-          />
-        ) : stats ? (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <StatCard
-              label="In Queue"
-              value={stats.queued}
-              icon={Users}
-              tone="primary"
-              footer={`${stats.total} entries total`}
-            />
-            <StatCard
-              label="Promoted"
-              value={stats.promoted}
-              icon={Clock}
-              tone="chart-2"
-              footer="awaiting registration"
-            />
-            <StatCard
-              label="Registered"
-              value={stats.registered}
-              icon={UserCheck}
-              tone="chart-4"
-              footer={`${stats.joinedMinecraft} joined Minecraft`}
-            />
-            <StatCard
-              label="New This Week"
-              value={stats.signups.thisWeek}
-              icon={UserPlus}
-              tone="chart-3"
-              footer={`${stats.signups.today} today`}
-            />
-          </div>
-        ) : null}
-
-        {/* Intake Settings */}
-        <IntakeSettingsCard />
-
-        {/* Filters & Search */}
-        <Card className="gap-2">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Filter className="size-4 text-muted-foreground" />
-              Filters
-              {(searchQuery || statusFilter !== "all") && (
-                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                  {(searchQuery ? 1 : 0) + (statusFilter !== "all" ? 1 : 0)}
-                </Badge>
-              )}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSearch} className="flex flex-wrap gap-2">
-              <SearchInput
-                className="min-w-48 flex-1"
-                placeholder="Search by Discord username or ID..."
-                value={searchQuery}
-                onValueChange={setSearchQuery}
-              />
-
-              <Select
-                value={statusFilter}
-                onValueChange={(v) => {
-                  setStatusFilter(v as StatusFilter);
-                  setPage(0);
-                }}
-              >
-                <SelectTrigger className="min-w-[150px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="queued">Queued</SelectItem>
-                  <SelectItem value="promoted">Promoted</SelectItem>
-                  <SelectItem value="registered">Registered</SelectItem>
-                  <SelectItem value="expired">Expired</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Button type="submit" className="min-w-[85px]">
-                Search
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-
-        {/* Waitlist Table */}
-        <Card className="gap-0">
-          <CardHeader className="border-b gap-0">
-            <CardTitle>Waitlist Entries ({total.toLocaleString()})</CardTitle>
-          </CardHeader>
-
-          {error ? (
-            <ErrorState
-              message={error}
-              onRetry={() => entriesQuery.refetch()}
-            />
-          ) : !loading && entries.length === 0 ? (
-            <EmptyState icon={Users} message="No waitlist entries found" />
-          ) : (
-            <>
-              <CardContent className="px-0">
-                <DataTable
-                  columns={columns}
-                  rows={entries}
-                  loading={loading}
-                  loadingRows={loadingRows}
-                  rowKey={(entry) => entry.id}
-                  actions={entryActions}
-                />
-              </CardContent>
-
-              {total > 0 && (
-                <CardFooter className="border-t">
-                  <Paginator
-                    page={page}
-                    limit={limit}
-                    total={total}
-                    totalPages={totalPages}
-                    onPageChange={setPage}
-                    itemLabel="entry"
-                    className="w-full"
-                  />
-                </CardFooter>
-              )}
-            </>
-          )}
-        </Card>
-      </div>
-
-      {/* Modals */}
-      {promoteModal.entry !== null && (
-        <PromoteWaitlistModal
-          open={promoteModal.open}
-          onClose={() => setPromoteModal({ open: false, entry: null })}
-          entry={promoteModal.entry}
-        />
-      )}
+      <PromoteWaitlistModal
+        entry={promoteTarget}
+        onClose={() => setPromoteTarget(null)}
+      />
 
       <DeleteWaitlistModal
         entry={deleteTarget}
         onClose={() => setDeleteTarget(null)}
       />
-    </div>
+    </AdminPage>
   );
 }

@@ -1,9 +1,15 @@
 import { z } from "zod";
 import { router, publicProcedure } from "@/trpc/trpc";
-import { buildPagination, findOrThrow, paginationInput } from "@/trpc/utils";
+import {
+  buildPagination,
+  findOrThrow,
+  paginationInput,
+  pageOffset,
+} from "@/trpc/utils";
 import { createRateLimit } from "@/trpc/middleware/rate-limit";
 import { topRoleHolderService } from "@/services/discord/role/top-role-holder.service";
-import { Q, playtimeRepo } from "@/db";
+import { Q } from "@/db";
+import { getPlayerActivity } from "@/services/playtime/activity";
 import { escapeLike } from "@/db/utils";
 import { mcUsername, mcUuid } from "@/utils/zod-schemas";
 import {
@@ -91,10 +97,10 @@ function boardPage(
         row.minecraftUsername.toLowerCase().includes(needle),
       )
     : snapshot.rows;
-  const offset = input.page * input.limit;
+  const offset = pageOffset(input);
 
   return {
-    rows: matches.slice(offset, offset + input.limit),
+    items: matches.slice(offset, offset + input.limit),
     pagination: buildPagination(input.page, input.limit, matches.length),
     contestedKeys: snapshot.contestedKeys,
     topValue: snapshot.rows[0]?.value ?? 0,
@@ -102,7 +108,6 @@ function boardPage(
   };
 }
 
-/** Public leaderboards router: the top-role hero, the full ranked boards, per-stat rankings, per-player activity and head-to-head comparisons. */
 export const leaderboardsRouter = router({
   hero: publicProcedure
     .use(leaderboardsReadLimit)
@@ -130,7 +135,9 @@ export const leaderboardsRouter = router({
         "Searches individual Minecraft stats (a category such as minecraft:mined plus an item such as minecraft:diamond_ore) by item name, returning only stats at least one player holds, with how many players hold each",
     })
     .input(z.object({ query: z.string().trim().min(1).max(48) }))
-    .query(({ input }) => Q.player.minecraft.stat.key.searchStats(input.query)),
+    .query(({ input }) =>
+      Q.player.minecraft.stat.key.getMatchingStats(input.query),
+    ),
 
   stat: publicProcedure
     .use(leaderboardsReadLimit)
@@ -165,7 +172,7 @@ export const leaderboardsRouter = router({
     })
     .input(z.object({ minecraftUuid: mcUuid }))
     .query(async ({ input }) =>
-      playtimeRepo.getPlayerActivity(
+      getPlayerActivity(
         await findOrThrow(
           Q.player.find({ minecraftUuid: input.minecraftUuid }),
           "Player not found",
@@ -224,11 +231,11 @@ export const leaderboardsRouter = router({
           search: input.search || undefined,
           sort: input.sort,
           limit: input.limit,
-          offset: input.page * input.limit,
+          offset: pageOffset(input),
         },
       );
       return {
-        rows,
+        items: rows,
         pagination: buildPagination(input.page, input.limit, total),
       };
     }),

@@ -1,25 +1,21 @@
-import { db, Q } from "@/db";
+import { db, Q } from "@/db/pool";
 import { DatabaseTable, type DatabaseQueries } from "@/generated/db";
-import type { PlayerBan, BanType } from "@createrington/shared/db";
-import { AdminEdit } from "@/types";
+import type { PlayerBan } from "@createrington/shared/db";
 import { BasePlayerRepository, type PlayerIdentifier } from "../base";
 import type { BanStatistics } from "@/db/queries/player/ban";
 
 /**
- * Player ban lifecycle: issuing temporary or permanent bans, unbanning,
- * querying history and statistics, and sweeping expired temporary bans.
+ * Player ban lifecycle: issuing temporary or permanent bans, unbanning, and
+ * querying a player's history and statistics. The expired-ban sweep lives in
+ * PlayerBanService.
  * Every mutation writes a paired admin_log_action entry inside the same DB
  * transaction. Permanent bans cascade-delete the player row.
  */
 export class PlayerBanRepository extends BasePlayerRepository {
-  constructor() {
-    super();
-  }
-
   /**
    * Issue a temporary ban that expires at the given timestamp. Rejects if the
    * player already has an active ban or if expiresAt is not in the future.
-   * `beforeCommit` runs last inside the transaction; throwing from it rolls the ban back.
+   * Pass options.tx to join an outer transaction, so work after it can still roll the ban back.
    */
   async issueTemporary(
     identifier: PlayerIdentifier,
@@ -31,23 +27,23 @@ export class PlayerBanRepository extends BasePlayerRepository {
     },
     adminDiscordId: string,
     adminUsername: string,
-    beforeCommit?: () => Promise<void>,
+    { tx: outerTx }: { tx?: DatabaseQueries } = {},
   ): Promise<PlayerBan> {
-    const uuid = await this.resolvePlayerUuid(identifier);
-    const player = await Q.player.get({ minecraftUuid: uuid });
+    const uuid = await this.resolvePlayerUuid(identifier, { tx: outerTx });
+    const player = await (outerTx ?? Q).player.get({ minecraftUuid: uuid });
 
     if (data.expiresAt <= new Date()) {
       throw new Error("Ban expiry must be in the future");
     }
 
-    const existingBan = await Q.player.ban.getCurrentBan(uuid);
+    const existingBan = await (outerTx ?? Q).player.ban.findCurrentBan(uuid);
     if (existingBan) {
       throw new Error(
         `Player is already banned (Ban #${existingBan.id}, expires: ${existingBan.expiresAt ? existingBan.expiresAt.toISOString() : "permanent"})`,
       );
     }
 
-    return await db.inTransaction(async (tx) => {
+    return await (outerTx ?? db).inTransaction(async (tx) => {
       const ban = await tx.player.ban.createAndReturn({
         playerMinecraftUuid: uuid,
         banType: "temporary",
@@ -62,7 +58,7 @@ export class PlayerBanRepository extends BasePlayerRepository {
       await tx.admin.log.action.create({
         adminDiscordId,
         adminUsername,
-        actionType: AdminEdit.BAN_PLAYER_TEMPORARY,
+        actionType: "ban_player_temporary",
         targetPlayerUuid: uuid,
         targetPlayerName: player.minecraftUsername,
         tableName: DatabaseTable.PLAYER_BAN.TABLE,
@@ -81,21 +77,18 @@ export class PlayerBanRepository extends BasePlayerRepository {
         `Temporary ban #${ban.id} issued to ${player.minecraftUsername} (${uuid}) by ${adminUsername}, expires: ${data.expiresAt.toISOString()}`,
       );
 
-      await beforeCommit?.();
-
       return ban;
     });
   }
 
   /**
-   * Create a permanent ban record plus its audit row inside an existing
-   * transaction, returning a pre-cascade snapshot of the ban. Does not delete
-   * the player: the caller (PlayerDeletionService) deletes the player in the
+   * Create a permanent ban record plus its audit row, returning a pre-cascade
+   * snapshot of the ban. Does not delete the player: the caller
+   * (PlayerDeletionService) passes options.tx and deletes the player in the
    * same transaction, which cascade-removes this ban row. Rejects if the player
    * already has an active ban.
    */
   async createPermanent(
-    tx: DatabaseQueries,
     player: {
       minecraftUuid: string;
       discordId: string;
@@ -108,84 +101,80 @@ export class PlayerBanRepository extends BasePlayerRepository {
     },
     adminDiscordId: string,
     adminUsername: string,
+    { tx: outerTx }: { tx?: DatabaseQueries } = {},
   ): Promise<PlayerBan> {
-    const existingBan = await tx.player.ban.getCurrentBan(player.minecraftUuid);
-    if (existingBan) {
-      throw new Error(
-        `Player is already banned (Ban #${existingBan.id}). Use unban first if you want to change ban type.`,
+    return await (outerTx ?? db).inTransaction(async (tx) => {
+      const existingBan = await tx.player.ban.findCurrentBan(
+        player.minecraftUuid,
       );
-    }
+      if (existingBan) {
+        throw new Error(
+          `Player is already banned (Ban #${existingBan.id}). Use unban first if you want to change ban type.`,
+        );
+      }
 
-    const ban = await tx.player.ban.createAndReturn({
-      playerMinecraftUuid: player.minecraftUuid,
-      banType: "permanent",
-      reason: data.reason,
-      bannedByDiscordId: adminDiscordId,
-      bannedByUsername: adminUsername,
-      expiresAt: null, // Permanent bans don't expire
-      serverId: data.serverId,
-      metadata: data.metadata || {},
+      const ban = await tx.player.ban.createAndReturn({
+        playerMinecraftUuid: player.minecraftUuid,
+        banType: "permanent",
+        reason: data.reason,
+        bannedByDiscordId: adminDiscordId,
+        bannedByUsername: adminUsername,
+        expiresAt: null,
+        serverId: data.serverId,
+        metadata: data.metadata || {},
+      });
+
+      await tx.admin.log.action.create({
+        adminDiscordId,
+        adminUsername,
+        actionType: "ban_player_permanent",
+        targetPlayerUuid: player.minecraftUuid,
+        targetPlayerName: player.minecraftUsername,
+        tableName: DatabaseTable.PLAYER_BAN.TABLE,
+        fieldName: DatabaseTable.PLAYER_BAN.FIELDS.BAN_TYPE,
+        oldValue: null,
+        newValue: "permanent",
+        reason: data.reason,
+        serverId: data.serverId,
+        metadata: {
+          banId: ban.id,
+          discordId: player.discordId,
+          minecraftUsername: player.minecraftUsername,
+        },
+      });
+
+      logger.warn(
+        `PERMANENT BAN: Player ${player.minecraftUsername} (${player.minecraftUuid}) permanently banned by ${adminUsername}. Reason: ${data.reason}`,
+      );
+
+      return ban;
     });
-
-    await tx.admin.log.action.create({
-      adminDiscordId,
-      adminUsername,
-      actionType: AdminEdit.BAN_PLAYER_PERMANENT,
-      targetPlayerUuid: player.minecraftUuid,
-      targetPlayerName: player.minecraftUsername,
-      tableName: DatabaseTable.PLAYER_BAN.TABLE,
-      fieldName: DatabaseTable.PLAYER_BAN.FIELDS.BAN_TYPE,
-      oldValue: null,
-      newValue: "permanent",
-      reason: data.reason,
-      serverId: data.serverId,
-      metadata: {
-        banId: ban.id,
-        discordId: player.discordId,
-        minecraftUsername: player.minecraftUsername,
-      },
-    });
-
-    logger.warn(
-      `PERMANENT BAN: Player ${player.minecraftUsername} (${player.minecraftUuid}) permanently banned by ${adminUsername}. Reason: ${data.reason}`,
-    );
-
-    return ban;
   }
 
   /**
    * Lift a ban by ID. Works for both ban types, but permanent bans that
    * already cascade-deleted the player cannot be undone; the player record
-   * stays gone. `beforeCommit` runs last inside the transaction; throwing
-   * from it keeps the ban in place.
+   * stays gone. Pass options.tx to join an outer transaction, so work after
+   * it can still keep the ban in place.
    */
   async unban(
     banId: number,
     adminDiscordId: string,
     adminUsername: string,
     reason: string,
-    beforeCommit?: () => Promise<void>,
+    { tx: outerTx }: { tx?: DatabaseQueries } = {},
   ): Promise<PlayerBan> {
-    const ban = await Q.player.ban.get({ id: banId });
+    const ban = await (outerTx ?? Q).player.ban.get({ id: banId });
 
     if (ban.unbanned) {
       throw new Error(`Ban #${banId} has already been lifted`);
     }
 
-    // Try to get player info (will fail if permanent ban already processed)
-    let playerName = "Unknown (Deleted)";
-    try {
-      const player = await Q.player.find({
-        minecraftUuid: ban.playerMinecraftUuid,
-      });
-      if (player) {
-        playerName = player.minecraftUsername;
-      }
-    } catch {
-      // Player was deleted due to permanent ban
-    }
+    const { minecraftUsername: playerName } = await (outerTx ?? Q).player.get({
+      minecraftUuid: ban.playerMinecraftUuid,
+    });
 
-    return await db.inTransaction(async (tx) => {
+    return await (outerTx ?? db).inTransaction(async (tx) => {
       const updatedBan = await tx.player.ban.updateAndReturn(
         { id: banId },
         {
@@ -200,7 +189,7 @@ export class PlayerBanRepository extends BasePlayerRepository {
       await tx.admin.log.action.create({
         adminDiscordId,
         adminUsername,
-        actionType: AdminEdit.UNBAN_PLAYER,
+        actionType: "unban_player",
         targetPlayerUuid: ban.playerMinecraftUuid,
         targetPlayerName: playerName,
         tableName: DatabaseTable.PLAYER_BAN.TABLE,
@@ -220,101 +209,28 @@ export class PlayerBanRepository extends BasePlayerRepository {
         `Ban #${banId} lifted for ${playerName} by ${adminUsername}: ${reason}`,
       );
 
-      await beforeCommit?.();
-
       return updatedBan;
     });
   }
 
-  /** True if the player has an active (not unbanned, not expired) ban. */
-  async isBanned(identifier: PlayerIdentifier): Promise<boolean> {
-    const uuid = await this.resolvePlayerUuid(identifier);
-    return await Q.player.ban.isPlayerBanned(uuid);
-  }
-
   /** The player's currently active ban row, or null. */
-  async getCurrent(identifier: PlayerIdentifier): Promise<PlayerBan | null> {
+  async findCurrent(identifier: PlayerIdentifier): Promise<PlayerBan | null> {
     const uuid = await this.resolvePlayerUuid(identifier);
-    return await Q.player.ban.getCurrentBan(uuid);
+    return await Q.player.ban.findCurrentBan(uuid);
   }
 
-  /** Full ban history for a player; pass includeUnbanned=false to skip lifted bans. */
+  /** Full ban history for a player; pass includeUnbanned: false to skip lifted bans. */
   async getHistory(
     identifier: PlayerIdentifier,
-    includeUnbanned: boolean = true,
+    options: { includeUnbanned?: boolean } = {},
   ): Promise<PlayerBan[]> {
     const uuid = await this.resolvePlayerUuid(identifier);
-    return await Q.player.ban.getBanHistory(uuid, includeUnbanned);
+    return await Q.player.ban.getBanHistory(uuid, options);
   }
 
   /** Aggregate ban statistics for a single player. */
   async getStatistics(identifier: PlayerIdentifier): Promise<BanStatistics> {
     const uuid = await this.resolvePlayerUuid(identifier);
     return await Q.player.ban.getPlayerStatistics(uuid);
-  }
-
-  /** Batched UUID -> active ban count map, for list views. */
-  async getActiveBanCounts(
-    playerUuids: string[],
-  ): Promise<Record<string, number>> {
-    return await Q.player.ban.getActiveBanCounts(playerUuids);
-  }
-
-  /** All bans of a given type; pass activeOnly=false to include lifted/expired. */
-  async getByType(
-    banType: BanType,
-    activeOnly: boolean = true,
-  ): Promise<PlayerBan[]> {
-    return await Q.player.ban.getByType(banType, activeOnly);
-  }
-
-  /** All bans issued by a specific admin. */
-  async getByAdmin(adminDiscordId: string): Promise<PlayerBan[]> {
-    return await Q.player.ban.getByAdmin(adminDiscordId);
-  }
-
-  /** Recently issued bans across all players. */
-  async getRecent(
-    limit: number = 50,
-    activeOnly: boolean = true,
-  ): Promise<PlayerBan[]> {
-    return await Q.player.ban.getRecent(limit, activeOnly);
-  }
-
-  /** Temporary bans whose expiresAt has passed but are still marked active. */
-  async getExpired(): Promise<PlayerBan[]> {
-    return await Q.player.ban.getExpiredBans();
-  }
-
-  /**
-   * Auto-unban every expired temporary ban (designed for periodic cron use).
-   * Per-ban failures are logged and skipped so one bad row never aborts the
-   * sweep. Returns the count successfully cleaned.
-   */
-  async cleanupExpired(systemUsername: string = "System"): Promise<number> {
-    const expiredBans = await this.getExpired();
-
-    if (expiredBans.length === 0) {
-      return 0;
-    }
-
-    let cleanedCount = 0;
-
-    for (const ban of expiredBans) {
-      try {
-        await this.unban(
-          ban.id,
-          "system",
-          systemUsername,
-          "Automatic unban - temporary ban expired",
-        );
-        cleanedCount++;
-      } catch (error) {
-        logger.error(`Failed to cleanup expired ban #${ban.id}:`, error);
-      }
-    }
-
-    logger.info(`Cleaned up ${cleanedCount} expired ban(s)`);
-    return cleanedCount;
   }
 }

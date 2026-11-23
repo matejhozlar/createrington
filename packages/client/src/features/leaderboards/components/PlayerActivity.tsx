@@ -1,3 +1,4 @@
+import { Skeleton } from "@/components/ui/skeleton";
 import { useLayoutEffect, useRef, useState } from "react";
 import { formatPlaytime } from "@createrington/shared/format";
 import { trpc } from "@/lib/trpc";
@@ -11,6 +12,7 @@ import {
   type HeatmapDay,
 } from "@/lib/activityHeatmap";
 import { useQuery } from "@tanstack/react-query";
+import { pluralize } from "@/lib/format";
 
 const NUM_WEEKS = 52;
 const CELL_PITCH = 14;
@@ -53,13 +55,13 @@ function ActivitySkeleton() {
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
         {Array.from({ length: 4 }, (_, index) => (
-          <div
+          <Skeleton
             key={index}
-            className="h-[3.25rem] animate-pulse rounded-md bg-muted/30"
+            className="h-[3.25rem] rounded-md bg-muted/30"
           />
         ))}
       </div>
-      <div className="h-[118px] animate-pulse rounded-md bg-muted/30" />
+      <Skeleton className="h-[118px] rounded-md bg-muted/30" />
     </div>
   );
 }
@@ -99,7 +101,7 @@ export function PlayerActivity({ minecraftUuid }: { minecraftUuid: string }) {
     { label: "Total", value: formatPlaytime(activity.totalSeconds) },
     {
       label: "Streak",
-      value: `${activity.currentStreak} day${activity.currentStreak === 1 ? "" : "s"}`,
+      value: pluralize(activity.currentStreak, "day"),
     },
     { label: "Most active", value: activity.mostActiveDay ?? "N/A" },
     activity.online && activity.currentSessionSeconds !== null

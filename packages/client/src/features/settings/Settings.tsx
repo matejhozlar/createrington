@@ -6,8 +6,9 @@ import { formatRelativeDate } from "@/lib/format";
 import { trpc, queryClient } from "@/lib/trpc";
 import { useAuth } from "@/contexts/auth";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
-import { Sensitive } from "@/components/sensitive";
+import { Sensitive } from "./components/Sensitive";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ErrorState } from "@/components/query-states";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -28,12 +29,6 @@ import {
 } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 
-/**
- * Parses a raw User-Agent string into a human-readable label and device icon
- *
- * @param ua - Raw User-Agent header value, or null if unavailable
- * @returns Object containing a display label (browser + OS) and a matching icon component
- */
 function parseUserAgent(ua: string | null): {
   label: string;
   icon: typeof Monitor;
@@ -51,9 +46,27 @@ function parseUserAgent(ua: string | null): {
   };
 }
 
-/** Displays the linked Minecraft and Discord account details for the current user */
 function AccountSection() {
-  const { data, isLoading } = useQuery(trpc.user.account.me.queryOptions());
+  const { data, isLoading, isError, refetch } = useQuery(
+    trpc.user.account.me.queryOptions(),
+  );
+
+  if (isError && !data) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Account</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ErrorState
+            compact
+            message="Couldn't load your account."
+            onRetry={() => void refetch()}
+          />
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (isLoading || !data) {
     return (
@@ -126,7 +139,6 @@ function AccountSection() {
   );
 }
 
-/** Renders a single labelled metadata field with an icon */
 function InfoItem({
   icon: Icon,
   label,
@@ -153,11 +165,13 @@ function InfoItem({
   );
 }
 
-/** Lists all active JWT sessions with device info and per-session revoke controls */
 function SessionsSection() {
-  const { data: sessions, isLoading } = useQuery(
-    trpc.user.account.sessions.queryOptions(),
-  );
+  const {
+    data: sessions,
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery(trpc.user.account.sessions.queryOptions());
   const revokeMutation = useMutation(
     trpc.user.account.revokeSession.mutationOptions({
       onSuccess: () =>
@@ -203,7 +217,13 @@ function SessionsSection() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        {!sessions || sessions.length === 0 ? (
+        {isError && !sessions ? (
+          <ErrorState
+            compact
+            message="Couldn't load your sessions."
+            onRetry={() => void refetch()}
+          />
+        ) : !sessions || sessions.length === 0 ? (
           <p className="text-sm text-muted-foreground">No active sessions</p>
         ) : (
           sessions.map((session) => {
@@ -250,7 +270,6 @@ function SessionsSection() {
   );
 }
 
-/** Renders a single row in the Danger Zone card with a title, description, and action button */
 function DangerZoneRow({
   title,
   description,
@@ -271,7 +290,6 @@ function DangerZoneRow({
   );
 }
 
-/** Fetches the current user's data export on demand and triggers a JSON file download */
 function ExportDataButton() {
   const toast = useToastActions();
   const { isFetching, refetch } = useQuery(
@@ -309,7 +327,6 @@ function ExportDataButton() {
   );
 }
 
-/** Opens a confirmation dialog requiring the user to type a phrase before permanently deleting their account */
 function DeleteAccountButton() {
   const { logout } = useAuth();
   const [open, setOpen] = useState(false);
@@ -377,7 +394,6 @@ function DeleteAccountButton() {
   );
 }
 
-/** Groups destructive account actions: data export, account deletion, and global session logout */
 function DangerZone() {
   const { logoutAll } = useAuth();
   const [logoutOpen, setLogoutOpen] = useState(false);
@@ -433,7 +449,6 @@ function DangerZone() {
   );
 }
 
-/** Account Settings page: combines account info, active sessions, and danger zone actions */
 export function Settings() {
   return (
     <div className="flex flex-1 flex-col px-5 md:px-8 pt-5 pb-16">

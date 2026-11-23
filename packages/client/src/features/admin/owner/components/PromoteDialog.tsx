@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { ADMIN_REASON_MAX_LENGTH } from "@createrington/shared/admin-reason";
 import { FormDialog } from "@/components/form-dialog";
 import { SearchInput } from "@/components/search-input";
 import { Field, FieldLabel } from "@/components/ui/field";
@@ -7,17 +7,19 @@ import { UserPlus } from "lucide-react";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
 import { trpc, queryClient } from "@/lib/trpc";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Textarea } from "@/components/ui/textarea";
+import { useDialogDraft } from "@/hooks/use-dialog-draft";
+import type {
+  AdminCandidate,
+  PromoteResult,
+} from "@/features/admin/owner/types";
 
 interface PromoteDialogProps {
   open: boolean;
   onClose: () => void;
-  onSuccess: (result: {
-    discordRoleAdded: boolean;
-    minecraftUsername: string | null;
-  }) => void;
+  onSuccess: (result: PromoteResult) => void;
 }
 
 export function PromoteDialog({
@@ -25,14 +27,12 @@ export function PromoteDialog({
   onClose,
   onSuccess,
 }: PromoteDialogProps) {
-  const toast = useToastActions();
-  const [query, setQuery] = useState("");
-  const [reason, setReason] = useState("");
-  const [selected, setSelected] = useState<{
-    discordId: string;
-    minecraftUsername: string;
-    minecraftUuid: string;
-  } | null>(null);
+  const [draft, update] = useDialogDraft<{
+    query: string;
+    reason: string;
+    selected: AdminCandidate | null;
+  }>(open, () => ({ query: "", reason: "", selected: null }));
+  const { query, reason, selected } = draft;
 
   const debouncedQuery = useDebouncedValue(query);
   const searchQuery = useQuery(
@@ -43,37 +43,26 @@ export function PromoteDialog({
   );
 
   const promoteMutation = useMutation(
-    trpc.owner.admins.promote.mutationOptions({
-      onSuccess: () =>
-        void queryClient.invalidateQueries(trpc.owner.admins.pathFilter()),
-    }),
+    trpc.owner.admins.promote.mutationOptions(
+      useMutationToast({
+        onSuccess: (result) => {
+          void queryClient.invalidateQueries(trpc.owner.admins.pathFilter());
+          onSuccess({
+            discordRoleAdded: result.discordRoleAdded,
+            minecraftUsername:
+              result.minecraftUsername ?? selected?.minecraftUsername ?? null,
+          });
+        },
+      }),
+    ),
   );
 
-  const handleClose = () => {
-    setQuery("");
-    setReason("");
-    setSelected(null);
-    onClose();
-  };
-
-  const handlePromote = async () => {
+  const handlePromote = () => {
     if (!selected) return;
-    try {
-      const result = await promoteMutation.mutateAsync({
-        discordId: selected.discordId,
-        reason: reason.trim() || undefined,
-      });
-      onSuccess({
-        discordRoleAdded: result.discordRoleAdded,
-        minecraftUsername:
-          result.minecraftUsername ?? selected.minecraftUsername,
-      });
-      setQuery("");
-      setReason("");
-      setSelected(null);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to promote");
-    }
+    promoteMutation.mutate({
+      discordId: selected.discordId,
+      reason: reason.trim() || undefined,
+    });
   };
 
   const results = searchQuery.data?.players ?? [];
@@ -81,7 +70,7 @@ export function PromoteDialog({
   return (
     <FormDialog
       open={open}
-      onClose={handleClose}
+      onClose={onClose}
       title={
         <span className="flex items-center gap-2">
           <UserPlus className="size-5" />
@@ -90,7 +79,7 @@ export function PromoteDialog({
       }
       description="Writes an entry to the DB admin table and adds the Discord ADMIN role. Minecraft OP is not granted — you do that manually per trust."
       confirmLabel="Promote"
-      onConfirm={() => void handlePromote()}
+      onConfirm={handlePromote}
       disabled={!selected}
       loading={promoteMutation.isPending}
       contentClassName="sm:max-w-lg"
@@ -114,7 +103,11 @@ export function PromoteDialog({
                 </span>
               </div>
             </div>
-            <Button size="sm" variant="ghost" onClick={() => setSelected(null)}>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => update({ selected: null })}
+            >
               Change
             </Button>
           </div>
@@ -122,7 +115,7 @@ export function PromoteDialog({
           <div>
             <SearchInput
               value={query}
-              onValueChange={setQuery}
+              onValueChange={(value: string) => update({ query: value })}
               placeholder="Search by Minecraft username or Discord ID"
               autoFocus
             />
@@ -141,13 +134,7 @@ export function PromoteDialog({
                     <button
                       key={p.discordId}
                       type="button"
-                      onClick={() =>
-                        setSelected({
-                          discordId: p.discordId,
-                          minecraftUsername: p.minecraftUsername,
-                          minecraftUuid: p.minecraftUuid,
-                        })
-                      }
+                      onClick={() => update({ selected: p })}
                       className="flex w-full items-center gap-2 border-b px-3 py-2 text-left last:border-b-0 hover:bg-muted/50"
                     >
                       <MinecraftAvatar
@@ -177,9 +164,9 @@ export function PromoteDialog({
         <Textarea
           id="promote-reason"
           value={reason}
-          onChange={(e) => setReason(e.target.value)}
+          onChange={(e) => update({ reason: e.target.value })}
           placeholder="e.g. Trusted moderator, handles Discord tickets"
-          maxLength={500}
+          maxLength={ADMIN_REASON_MAX_LENGTH}
           rows={3}
         />
       </Field>

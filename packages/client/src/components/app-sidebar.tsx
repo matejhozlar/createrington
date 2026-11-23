@@ -1,4 +1,3 @@
-"use client";
 import * as React from "react";
 import { X } from "lucide-react";
 import {
@@ -17,6 +16,8 @@ import {
   RocketIcon,
   ServerIcon,
   ShieldIcon,
+  SquarePenIcon,
+  StarIcon,
   TrophyIcon,
   UserCogIcon,
   UserPlusIcon,
@@ -24,7 +25,7 @@ import {
   WrenchIcon,
 } from "@createrington/icons";
 
-import { NavMain } from "@/components/nav-main";
+import { NavMain, type NavMainItem } from "@/components/nav-main";
 import { NavDiscordLogin } from "@/components/nav-discord-login";
 import { Logo } from "@/components/logo";
 import {
@@ -36,36 +37,85 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/hooks/use-is-mobile";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth";
 import { ServerStatus } from "./server-status";
 import { usePlayerData } from "@/contexts/player-data";
 import { NavUser } from "./nav-user";
 import { NavAdmin } from "./nav-admin";
-import { NavOwner } from "./nav-owner";
+import { NavSection, type NavSectionItem } from "./nav-section";
 import { trpc } from "@/lib/trpc";
 import { LAUNCHER_ENABLED } from "@/lib/launcher";
 import { useQuery } from "@tanstack/react-query";
+
+type NavFeature = "workshop" | "gallery";
+
+const OWNER_NAV: NavSectionItem[] = [
+  { title: "Admins", url: "/owner/admins", icon: UserCogIcon },
+  { title: "Donations", url: "/owner/donations", icon: HeartIcon },
+  ...(LAUNCHER_ENABLED
+    ? [
+        {
+          title: "Launcher",
+          url: "/owner/launcher-releases",
+          icon: RocketIcon,
+        },
+        {
+          title: "Launcher packs",
+          url: "/owner/launcher-packs",
+          icon: BoxIcon,
+        },
+      ]
+    : []),
+];
+
+const ADMIN_NAV: NavSectionItem[] = [
+  { title: "Dashboard", url: "/admin/dashboard", icon: DashboardIcon },
+  { title: "Players", url: "/admin/players", icon: UsersIcon },
+  { title: "Waitlist", url: "/admin/waitlist", icon: UserPlusIcon },
+  { title: "Servers", url: "/admin/servers", icon: ServerIcon },
+  { title: "Workshop", url: "/admin/tools/workshop", icon: HammerIcon },
+  { title: "Planning", url: "/admin/planning", icon: SquarePenIcon },
+  ...(LAUNCHER_ENABLED
+    ? [{ title: "Launcher", url: "/admin/launcher", icon: DownloadIcon }]
+    : []),
+  { title: "Tools", url: "/admin/tools", icon: WrenchIcon },
+  { title: "Logs", url: "/admin/logs", icon: ClipboardIcon },
+];
+
+const MAIN_NAV: (NavMainItem & { feature?: NavFeature })[] = [
+  { title: "Home", url: "/", icon: HomeIcon },
+  { title: "Dimensions", url: "/structure-packs", icon: BoxIcon },
+  {
+    title: "Workshop",
+    url: "/workshop",
+    icon: HammerIcon,
+    feature: "workshop",
+  },
+  { title: "Chat", url: "/chat", icon: MessageCircleIcon },
+  { title: "Players", url: "/online-players", icon: UsersIcon },
+  { title: "Map", url: "/blue-map", icon: MapPinnedIcon },
+  { title: "Leaderboards", url: "/leaderboards", icon: TrophyIcon },
+  { title: "Gallery", url: "/gallery", icon: ImageIcon, feature: "gallery" },
+  { title: "Apply", url: "/apply-to-join", icon: UserPlusIcon },
+  { title: "Team", url: "/team", icon: ShieldIcon },
+  { title: "Rules", url: "/rules", icon: InfoIcon },
+  { title: "Guides", url: "/guides", icon: BookOpenIcon },
+];
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user } = useAuth();
   const { toggleSidebar } = useSidebar();
   const isMobile = useIsMobile();
 
-  const { stats: playerStats } = usePlayerData();
+  const { players: onlinePlayers } = usePlayerData();
 
-  // Fire for any authenticated user so the owner can recover their own
-  // panel even if they're momentarily not in the admin table (SQL reset,
-  // bootstrap, etc.).
   const accountQuery = useQuery(
     trpc.user.account.me.queryOptions(undefined, {
       enabled: !!user,
     }),
   );
-  // Gate on `user` as well: React Query keeps the previous result in the
-  // cache after the query is disabled on logout, which would otherwise
-  // leave the owner nav visible until the cache is cleared.
   const isOwner = !!user && (accountQuery.data?.isOwner ?? false);
 
   const workshopEnabledQuery = useQuery(
@@ -79,153 +129,17 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   );
   const galleryEnabled = galleryEnabledQuery.data?.enabled ?? false;
 
-  const data = {
-    ownerNav: [
-      {
-        title: "Admins",
-        url: "/owner/admins",
-        icon: UserCogIcon,
-      },
-      {
-        title: "Donations",
-        url: "/owner/donations",
-        icon: HeartIcon,
-      },
-      ...(LAUNCHER_ENABLED
-        ? [
-            {
-              title: "Launcher",
-              url: "/owner/launcher-releases",
-              icon: RocketIcon,
-            },
-            {
-              title: "Launcher packs",
-              url: "/owner/launcher-packs",
-              icon: BoxIcon,
-            },
-          ]
-        : []),
-    ],
-    adminNav: [
-      {
-        title: "Dashboard",
-        url: "/admin/dashboard",
-        icon: DashboardIcon,
-      },
-      {
-        title: "Players",
-        url: "/admin/players",
-        icon: UsersIcon,
-      },
-      {
-        title: "Waitlist",
-        url: "/admin/waitlist",
-        icon: UserPlusIcon,
-      },
-      {
-        title: "Servers",
-        url: "/admin/servers",
-        icon: ServerIcon,
-      },
-      {
-        title: "Workshop",
-        url: "/admin/tools/workshop",
-        icon: HammerIcon,
-      },
-      ...(LAUNCHER_ENABLED
-        ? [
-            {
-              title: "Launcher",
-              url: "/admin/launcher",
-              icon: DownloadIcon,
-            },
-          ]
-        : []),
-      {
-        title: "Tools",
-        url: "/admin/tools",
-        icon: WrenchIcon,
-      },
-      {
-        title: "Logs",
-        url: "/admin/logs",
-        icon: ClipboardIcon,
-      },
-    ],
-    navMain: [
-      {
-        title: "Home",
-        url: "/",
-        icon: HomeIcon,
-      },
-      {
-        title: "Dimensions",
-        url: "/structure-packs",
-        icon: BoxIcon,
-      },
-      ...(workshopEnabled
-        ? [
-            {
-              title: "Workshop",
-              url: "/workshop",
-              icon: HammerIcon,
-            },
-          ]
-        : []),
-      {
-        title: "Chat",
-        url: "/chat",
-        icon: MessageCircleIcon,
-      },
-      {
-        title: "Players",
-        url: "/online-players",
-        icon: UsersIcon,
-        badge: playerStats.total > 0 ? playerStats.total : undefined,
-      },
-      {
-        title: "Map",
-        url: "/blue-map",
-        icon: MapPinnedIcon,
-      },
-      {
-        title: "Leaderboards",
-        url: "/leaderboards",
-        icon: TrophyIcon,
-      },
-      ...(galleryEnabled
-        ? [
-            {
-              title: "Gallery",
-              url: "/gallery",
-              icon: ImageIcon,
-            },
-          ]
-        : []),
-      {
-        title: "Apply",
-        url: "/apply-to-join",
-        icon: UserPlusIcon,
-      },
-      {
-        title: "Team",
-        url: "/team",
-        icon: ShieldIcon,
-      },
-      {
-        title: "Rules",
-        url: "/rules",
-        icon: InfoIcon,
-      },
-      {
-        title: "Guides",
-        url: "/guides",
-        icon: BookOpenIcon,
-      },
-    ],
+  const features: Record<NavFeature, boolean> = {
+    workshop: workshopEnabled,
+    gallery: galleryEnabled,
   };
-
-  const filteredNavMain = data.navMain;
+  const mainNav = MAIN_NAV.filter(
+    ({ feature }) => !feature || features[feature],
+  ).map((item) =>
+    item.url === "/online-players" && onlinePlayers.length > 0
+      ? { ...item, badge: onlinePlayers.length }
+      : item,
+  );
 
   return (
     <Sidebar collapsible="icon" {...props}>
@@ -253,12 +167,20 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
       <SidebarContent>
         <NavMain
-          items={filteredNavMain}
+          items={mainNav}
           prepend={
             isOwner || user?.isAdmin ? (
               <>
-                {isOwner && <NavOwner items={data.ownerNav} />}
-                {user?.isAdmin && <NavAdmin items={data.adminNav} />}
+                {isOwner && (
+                  <NavSection
+                    label="Owner"
+                    tooltip="Owner Panel"
+                    icon={StarIcon}
+                    tone="amber"
+                    items={OWNER_NAV}
+                  />
+                )}
+                {user?.isAdmin && <NavAdmin items={ADMIN_NAV} />}
               </>
             ) : undefined
           }

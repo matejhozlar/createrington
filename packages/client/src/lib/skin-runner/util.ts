@@ -11,6 +11,10 @@ export function rgb([r, g, b]: Rgb): string {
   return `rgb(${r}, ${g}, ${b})`;
 }
 
+export function rgba([r, g, b]: Rgb, alpha: number): string {
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 export function hash(n: number, seed: number): number {
   const x = Math.sin(n * 12.9898 + seed * 78.233) * 43758.5453;
   return x - Math.floor(x);

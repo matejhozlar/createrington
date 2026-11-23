@@ -26,13 +26,13 @@ import {
 import {
   COMPACT_BADGE_CLASS,
   DISABLED_LABEL,
-  formatDate,
   projectKindLabel,
 } from "@/features/workshop/format";
+import { formatDate } from "@createrington/shared/format";
 import { useQuery } from "@tanstack/react-query";
 
 type Release = RouterOutput["admin"]["modpacks"]["listReleases"][number];
-type Diff = RouterOutput["admin"]["modpacks"]["getReleaseDiff"];
+type Diff = RouterOutput["admin"]["modpacks"]["releaseDiff"];
 type DiffEntry = Diff["added"][number];
 
 const CHANGE_GROUPS = [
@@ -147,7 +147,7 @@ function ChangeRow({
 
 function ReleaseDiff({ releaseId }: { releaseId: number }) {
   const diffQuery = useQuery(
-    trpc.admin.modpacks.getReleaseDiff.queryOptions({ releaseId }),
+    trpc.admin.modpacks.releaseDiff.queryOptions({ releaseId }),
   );
 
   if (diffQuery.isLoading) {
@@ -159,9 +159,12 @@ function ReleaseDiff({ releaseId }: { releaseId: number }) {
   }
   if (diffQuery.error) {
     return (
-      <p className="px-4 py-3 text-sm text-destructive">
-        {diffQuery.error.message}
-      </p>
+      <ErrorState
+        message={diffQuery.error.message}
+        onRetry={() => diffQuery.refetch()}
+        compact
+        className="px-4 py-3"
+      />
     );
   }
 

@@ -1,5 +1,6 @@
 import config from "@/config";
 import type { Request, Response } from "express";
+import { baseCookieOptions } from "./cookie-options";
 
 /**
  * Sets and clears the short-lived access token as an httpOnly cookie scoped to the
@@ -8,29 +9,14 @@ import type { Request, Response } from "express";
  * `COOKIE_DOMAIN` is unset; the Bearer-header transport keeps working in parallel.
  */
 class AccessCookieService {
-  private static instance: AccessCookieService;
-
   private readonly cookieName: string;
   private readonly cookieDomain: string | undefined;
   private readonly maxAgeMs: number;
 
-  private constructor() {
+  constructor() {
     this.cookieName = config.app.auth.cookie.accessName;
     this.cookieDomain = config.app.auth.cookie.domain;
-    // Cookie lifetime tracks the refresh token, not the JWT. The cookie is a
-    // transport for the JWT, the server still rejects expired JWTs inside
-    // (which surfaces as a 401 and triggers the client refresh round-trip).
-    // Matching the JWT's 15m expiry would mean the browser deletes the
-    // cookie before the refresh request can carry it, locking SSO consumers
-    // out of /auth/me even though their refresh token is still valid.
     this.maxAgeMs = config.app.auth.refreshToken.expiresInDays * 86_400_000;
-  }
-
-  static getInstance(): AccessCookieService {
-    if (!AccessCookieService.instance) {
-      AccessCookieService.instance = new AccessCookieService();
-    }
-    return AccessCookieService.instance;
   }
 
   /** True when `COOKIE_DOMAIN` is set; the cookie is otherwise pointless. */
@@ -46,17 +32,9 @@ class AccessCookieService {
    */
   setCookie(res: Response, token: string): void {
     if (!this.cookieDomain) return;
-    res.clearCookie(this.cookieName, {
-      httpOnly: true,
-      secure: config.envMode.isProd,
-      sameSite: "lax",
-      path: "/",
-    });
+    res.clearCookie(this.cookieName, baseCookieOptions("/"));
     res.cookie(this.cookieName, token, {
-      httpOnly: true,
-      secure: config.envMode.isProd,
-      sameSite: "lax",
-      path: "/",
+      ...baseCookieOptions("/"),
       maxAge: this.maxAgeMs,
       domain: this.cookieDomain,
     });
@@ -69,17 +47,9 @@ class AccessCookieService {
    */
   clearCookie(res: Response): void {
     if (!this.cookieDomain) return;
+    res.clearCookie(this.cookieName, baseCookieOptions("/"));
     res.clearCookie(this.cookieName, {
-      httpOnly: true,
-      secure: config.envMode.isProd,
-      sameSite: "lax",
-      path: "/",
-    });
-    res.clearCookie(this.cookieName, {
-      httpOnly: true,
-      secure: config.envMode.isProd,
-      sameSite: "lax",
-      path: "/",
+      ...baseCookieOptions("/"),
       domain: this.cookieDomain,
     });
   }
@@ -91,4 +61,4 @@ class AccessCookieService {
   }
 }
 
-export const accessCookieService = AccessCookieService.getInstance();
+export const accessCookieService = new AccessCookieService();

@@ -1,16 +1,7 @@
-import {
-  FlyingAnimation,
-  HitAnimation,
-  RunningAnimation,
-  WalkingAnimation,
-  WaveAnimation,
-  type PlayerAnimation,
-  type PlayerObject,
-} from "skinview3d";
 import astronautSkinUrl from "@/assets/skins/astronaut.png";
 import hulkSkinUrl from "@/assets/skins/hulk.png";
 import type { HoverAnimation } from "../data";
-import { TeamEffect, type EffectContext } from "./core/effect";
+import type { TeamEffect, EffectContext } from "./core/effect";
 import { loadSkinPixels } from "./core/skin-dissolve";
 import { ExplodeEffect } from "./explode";
 import { FlashlightHoverEffect } from "./flashlight";
@@ -19,25 +10,6 @@ import { HulkEffect } from "./hulk";
 import { JetpackEffect } from "./jetpack";
 import { MoonwalkEffect } from "./moonwalk";
 import { NukeEffect } from "./nuke";
-
-class BuiltinEffect extends TeamEffect {
-  private readonly inner: PlayerAnimation;
-
-  constructor(context: EffectContext, inner: PlayerAnimation) {
-    super(context);
-    this.inner = inner;
-  }
-
-  protected animate(player: PlayerObject, delta: number): void {
-    this.inner.update(player, delta);
-  }
-
-  protected onStop(): void {
-    this.finish();
-  }
-
-  dispose(): void {}
-}
 
 export function createEffect(
   type: HoverAnimation,
@@ -58,16 +30,6 @@ export function createEffect(
       return new HeadKickEffect(context);
     case "explode":
       return new ExplodeEffect(context);
-    case "wave":
-      return new BuiltinEffect(context, new WaveAnimation());
-    case "running":
-      return new BuiltinEffect(context, new RunningAnimation());
-    case "flying":
-      return new BuiltinEffect(context, new FlyingAnimation());
-    case "hit":
-      return new BuiltinEffect(context, new HitAnimation());
-    case "walking":
-      return new BuiltinEffect(context, new WalkingAnimation());
   }
 }
 

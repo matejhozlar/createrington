@@ -17,7 +17,12 @@ import {
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { server } from "./server";
-import { banTypeEnum, strikeClassificationEnum } from "./enums";
+import {
+  banTypeEnum,
+  playerBalanceTransactionTypeEnum,
+  rewardTypeEnum,
+  strikeClassificationEnum,
+} from "./enums";
 
 // --- player (core entity, referenced by many tables) ---
 
@@ -88,7 +93,8 @@ export const playerBalanceTransaction = pgTable(
     amount: bigint("amount", { mode: "bigint" }).notNull(),
     balanceBefore: bigint("balance_before", { mode: "bigint" }).notNull(),
     balanceAfter: bigint("balance_after", { mode: "bigint" }).notNull(),
-    transactionType: text("transaction_type").notNull(),
+    transactionType:
+      playerBalanceTransactionTypeEnum("transaction_type").notNull(),
     description: text("description"),
     relatedPlayerUuid: uuid("related_player_uuid").references(
       () => player.minecraftUuid,
@@ -583,7 +589,7 @@ export const rewardClaim = pgTable(
         onUpdate: "cascade",
         onDelete: "cascade",
       }),
-    rewardType: varchar("reward_type", { length: 50 }).notNull(),
+    rewardType: rewardTypeEnum("reward_type").notNull(),
     claimedAt: timestamp("claimed_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

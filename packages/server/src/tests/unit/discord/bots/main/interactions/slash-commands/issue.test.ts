@@ -11,7 +11,6 @@ const messages = vi.hoisted(() => ({ send: vi.fn() }));
 vi.mock("@/discord/constants", () => ({
   Discord: {
     Channels: { administration: { NOTIFICATIONS: "900" } },
-    Users: { mention: (id: string) => `<@${id}>` },
     Messages: messages,
   },
 }));
@@ -48,12 +47,18 @@ vi.mock("@/discord/utils/channel-transcript", () => ({
   })),
 }));
 
-vi.mock("@/services/issue-triage", () => ({
-  IssueTriageError: class extends Error {},
+vi.mock("@/services/claude-automation/session-client", () => ({
+  AutomationStartError: class extends Error {},
+}));
+
+vi.mock("@/services/issue-triage/issue-triage.service", () => ({
   issueTriageService: triage,
 }));
 
-import { execute } from "@/discord/bots/main/interactions/slash-commands/admin/issue";
+import handler from "@/discord/bots/main/interactions/slash-commands/admin/issue";
+import { ChannelUnavailableError } from "@/services/discord/message/errors";
+
+const { execute } = handler;
 
 const FILED = {
   status: "completed",
@@ -92,7 +97,7 @@ describe("/issue", () => {
   });
 
   it("posts the result to admin notifications, pinging only the admin who ran it", async () => {
-    messages.send.mockResolvedValue({ success: true, messageId: "1" });
+    messages.send.mockResolvedValue({ id: "1" });
     const { interaction, editReply } = fakeInteraction();
 
     await execute(interaction);
@@ -114,10 +119,8 @@ describe("/issue", () => {
 
   it("still updates the private reply when the channel post fails", async () => {
     const warn = vi.spyOn(logger, "warn").mockImplementation(() => logger);
-    messages.send.mockResolvedValue({
-      success: false,
-      error: "Channel not found or not sendable",
-    });
+    const unavailable = new ChannelUnavailableError("notifications");
+    messages.send.mockRejectedValue(unavailable);
     const { interaction, editReply } = fakeInteraction();
 
     await execute(interaction);
@@ -130,7 +133,7 @@ describe("/issue", () => {
     await vi.waitFor(() =>
       expect(warn).toHaveBeenCalledWith(
         expect.stringContaining("could not post to admin notifications"),
-        "Channel not found or not sendable",
+        unavailable,
       ),
     );
     warn.mockRestore();
@@ -138,7 +141,7 @@ describe("/issue", () => {
 
   it("still posts to admin notifications when the private reply cannot be edited", async () => {
     const warn = vi.spyOn(logger, "warn").mockImplementation(() => logger);
-    messages.send.mockResolvedValue({ success: true, messageId: "1" });
+    messages.send.mockResolvedValue({ id: "1" });
     const { interaction, editReply } = fakeInteraction();
     const editFailure = new Error("Unknown Webhook");
     editReply
@@ -165,7 +168,7 @@ describe("/issue", () => {
 
   it("posts the still-working notice when the session outlasts the wait", async () => {
     triage.waitForOutcome.mockResolvedValue(null);
-    messages.send.mockResolvedValue({ success: true, messageId: "1" });
+    messages.send.mockResolvedValue({ id: "1" });
     const { interaction } = fakeInteraction();
 
     await execute(interaction);

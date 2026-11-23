@@ -9,13 +9,17 @@ import {
   PermissionFlagsBits,
   SlashCommandBuilder,
 } from "discord.js";
+import type {
+  CommandModule,
+  CommandPermissions,
+} from "@/discord/bots/common/loaders/command-loader";
 
 const ROLE_CHOICES = getTopRoleRules().map((rule) => ({
   name: rule.label,
   value: rule.gameRankId,
 }));
 
-export const data = new SlashCommandBuilder()
+const data = new SlashCommandBuilder()
   .setName("force-update")
   .setDescription("Force an automatic update to run now")
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
@@ -34,7 +38,7 @@ export const data = new SlashCommandBuilder()
       ),
   );
 
-export const permissions = {
+const permissions: CommandPermissions = {
   requireOwner: true,
 };
 
@@ -85,33 +89,29 @@ async function handleRoles(
   );
 }
 
-export async function execute(
+async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const subcommand = interaction.options.getSubcommand();
 
-  try {
-    switch (subcommand) {
-      case "roles":
-        await handleRoles(interaction);
-        break;
-      default:
-        logger.warn(`/force-update got an unhandled subcommand: ${subcommand}`);
-        await replyError(
-          interaction,
-          "Unknown Subcommand",
-          `\`${subcommand}\` is not something /force-update can run.`,
-        );
-    }
-  } catch (error) {
-    logger.error(`/force-update ${subcommand} failed:`, error);
-
-    await replyError(
-      interaction,
-      "Update Failed",
-      error instanceof Error ? error.message : "An unknown error occurred",
-    );
+  switch (subcommand) {
+    case "roles":
+      await handleRoles(interaction);
+      break;
+    default:
+      logger.warn(`/force-update got an unhandled subcommand: ${subcommand}`);
+      await replyError(
+        interaction,
+        "Unknown Subcommand",
+        `\`${subcommand}\` is not something /force-update can run.`,
+      );
   }
 }
+
+export default {
+  data,
+  permissions,
+  execute,
+} satisfies CommandModule;

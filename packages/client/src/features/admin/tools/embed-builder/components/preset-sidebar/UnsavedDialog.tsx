@@ -1,13 +1,4 @@
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 
 export function UnsavedDialog({
   pendingAction,
@@ -17,32 +8,17 @@ export function UnsavedDialog({
   setPendingAction: (next: (() => void) | null) => void;
 }) {
   return (
-    <AlertDialog
+    <ConfirmDialog
       open={!!pendingAction}
       onOpenChange={(open) => {
         if (!open) setPendingAction(null);
       }}
-    >
-      <AlertDialogContent size="sm">
-        <AlertDialogHeader>
-          <AlertDialogTitle>Unsaved changes</AlertDialogTitle>
-          <AlertDialogDescription>
-            You have unsaved changes that will be lost. Continue?
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction
-            variant="destructive"
-            onClick={() => {
-              pendingAction?.();
-              setPendingAction(null);
-            }}
-          >
-            Discard changes
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+      size="sm"
+      variant="destructive"
+      title="Unsaved changes"
+      description="You have unsaved changes that will be lost. Continue?"
+      confirmLabel="Discard changes"
+      onConfirm={() => pendingAction?.()}
+    />
   );
 }

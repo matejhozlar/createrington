@@ -1,5 +1,5 @@
 import { router, adminProcedure } from "@/trpc/trpc";
-import type { DiscordCommandsDocument } from "@/trpc/routers/public/discord-commands";
+import type { DiscordCommandsDocument } from "@createrington/shared/discord-commands";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -15,7 +15,6 @@ const JSON_PATH = path.join(
   "discord-commands.json",
 );
 
-/** Admin Discord commands router: serves auto-generated slash command documentation. */
 export const discordCommandsRouter = router({
   list: adminProcedure
     .meta({

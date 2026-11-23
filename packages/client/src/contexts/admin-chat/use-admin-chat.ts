@@ -1,9 +1,8 @@
 import { useContext } from "react";
 import { AdminChatContext } from "./context";
-import type { AdminChatContextValue } from "./types";
+import type { AdminChatContextType } from "./types";
 
-// Safe defaults for the window before the lazy-loaded provider mounts.
-const NO_PROVIDER_DEFAULT: AdminChatContextValue = {
+const NO_PROVIDER_DEFAULT: AdminChatContextType = {
   enabled: false,
   bubbleVisible: false,
   drawerOpen: false,
@@ -15,6 +14,6 @@ const NO_PROVIDER_DEFAULT: AdminChatContextValue = {
   setBubbleVisible: () => {},
 };
 
-export function useAdminChat(): AdminChatContextValue {
+export function useAdminChat(): AdminChatContextType {
   return useContext(AdminChatContext) ?? NO_PROVIDER_DEFAULT;
 }

@@ -7,11 +7,6 @@ import type { PlayerPromptEntryModeValue } from "@createrington/shared/player-pr
 
 const MAX_MISSED_CLOSE_TOLERANCE_MS = 24 * 60 * 60 * 1000;
 
-/**
- * Outcome of the entry gate: either the responder may open the modal (with
- * the text to prefill and the entry slot they're filling), or they may not
- * and `message` explains why in Discord-ready copy.
- */
 export type PlayerPromptEntryDecision =
   | { allowed: false; message: string }
   | {
@@ -21,12 +16,6 @@ export type PlayerPromptEntryDecision =
       entryNumber: number;
     };
 
-/**
- * Node clamps setTimeout delays larger than the int32 ceiling
- * (~2^31 - 1 ms ≈ 24.86 days) to 1 ms and fires immediately. A prompt
- * scheduled further out than this needs to be woken up in chunks that
- * fit inside the ceiling.
- */
 const MAX_TIMER_MS = 2_000_000_000;
 
 /**
@@ -57,7 +46,7 @@ export class PlayerPromptService {
    * its closure timer. Called once on service bootstrap.
    */
   async initialize(): Promise<void> {
-    const active = await Q.player.prompt.findAllActive();
+    const active = await Q.player.prompt.getActive();
     for (const prompt of active) {
       const msUntil = prompt.endsAt.getTime() - Date.now();
 
@@ -130,31 +119,24 @@ export class PlayerPromptService {
       cooldownSeconds: isMulti ? (opts.cooldownSeconds ?? null) : null,
     });
 
-    const post = await this.postAnnouncement(prompt);
-    if (!post.success || !post.messageId) {
-      // Hard-fail: an active prompt without a Discord message is useless.
-      await Q.player.prompt.delete({ id: prompt.id });
-      throw new Error(
-        `Failed to post prompt to Discord: ${post.error ?? "unknown"}`,
-      );
-    }
+    const post = await this.postAnnouncement(prompt).catch(
+      async (error: unknown) => {
+        await Q.player.prompt.delete({ id: prompt.id });
+        throw new Error("Failed to post prompt to Discord", { cause: error });
+      },
+    );
 
-    // Persist the Discord message id. A transaction across the insert
-    // and update wouldn't help here because the Discord post sits
-    // between them, so we retry the update instead. Transient pool
-    // exhaustion is the realistic failure mode, and losing the
-    // messageId means closePrompt can't edit the announcement later.
     try {
-      await this.persistMessageId(prompt.id, post.messageId);
+      await this.persistMessageId(prompt.id, post.id);
     } catch (error) {
       logger.error(
-        `Posted prompt #${prompt.id} to Discord (message ${post.messageId}) but failed to persist messageId. Close-time message edit will be skipped.`,
+        `Posted prompt #${prompt.id} to Discord (message ${post.id}) but failed to persist messageId. Close-time message edit will be skipped.`,
         error,
       );
     }
 
     this.armClosureTimer(prompt.id, opts.durationMs);
-    return { ...prompt, messageId: post.messageId };
+    return { ...prompt, messageId: post.id };
   }
 
   /**
@@ -227,7 +209,6 @@ export class PlayerPromptService {
     if (!decision.allowed) return decision.message;
 
     const { prompt } = decision;
-    // Resolve the responder's Minecraft account if they've linked Discord.
     const player = await Q.player.find({ discordId: opts.discordId });
     const write = {
       promptId: opts.promptId,
@@ -246,9 +227,6 @@ export class PlayerPromptService {
       maxEntries: prompt.maxEntries,
       cooldownSeconds: prompt.cooldownSeconds,
     });
-    // Null means the cap or the cooldown bit between the gate read and the
-    // insert, which enforces both itself. A concurrent submission loses here
-    // rather than slipping past the snapshot the gate saw.
     if (!entry) return this.explainRefusedEntry(prompt, opts.discordId);
 
     const stats = await Q.player.prompt.response.getEntryStats(
@@ -280,23 +258,21 @@ export class PlayerPromptService {
 
     if (prompt.messageId) {
       const closed = PlayerPromptComponentPresets.closed(prompt, totals);
-      const result = await this.messageService.edit({
-        channelId: prompt.channelId,
-        messageId: prompt.messageId,
-        // Prompts posted before the Components V2 switch still carry content
-        // (the role mention) and an embed. Discord accepts the V2 flag on
-        // edit only when both are empty, so clear them explicitly; the
-        // mention comes back as a text display inside `closed.components`.
-        content: null,
-        embeds: null,
-        components: closed.components,
-        flags: closed.flags,
-      });
-      if (!result.success) {
-        logger.warn(
-          `Closed prompt #${promptId} in DB but failed to edit Discord message: ${result.error}`,
-        );
-      }
+      await this.messageService
+        .edit({
+          channelId: prompt.channelId,
+          messageId: prompt.messageId,
+          content: null,
+          embeds: null,
+          components: closed.components,
+          flags: closed.flags,
+        })
+        .catch((error: unknown) => {
+          logger.warn(
+            `Closed prompt #${promptId} in DB but failed to edit Discord message:`,
+            error,
+          );
+        });
     }
 
     logger.info(
@@ -310,15 +286,14 @@ export class PlayerPromptService {
     if (!prompt) return null;
 
     if (prompt.messageId) {
-      const result = await this.messageService.delete({
-        channelId: prompt.channelId,
-        messageId: prompt.messageId,
-      });
-      if (!result.success) {
-        logger.warn(
-          `Deleting prompt #${promptId} but failed to delete its Discord message: ${result.error}`,
-        );
-      }
+      await this.messageService
+        .delete({ channelId: prompt.channelId, messageId: prompt.messageId })
+        .catch((error: unknown) => {
+          logger.warn(
+            `Deleting prompt #${promptId} but failed to delete its Discord message:`,
+            error,
+          );
+        });
     }
 
     await Q.player.prompt.delete({ id: promptId });
@@ -340,10 +315,6 @@ export class PlayerPromptService {
       channelId: prompt.channelId,
       components: active.components,
       flags: active.flags,
-      // Defense in depth: even though the Zod validator already
-      // restricts rolePingId to digits, this ensures Discord will
-      // refuse to ping anything else (especially @everyone/@here)
-      // if a future code path bypasses the validator.
       allowedMentions: {
         roles: prompt.rolePingId ? [prompt.rolePingId] : [],
         parse: [],
@@ -351,11 +322,6 @@ export class PlayerPromptService {
     });
   }
 
-  /**
-   * One retry on transient DB failure: if the post-Discord update
-   * keeps failing past that, the caller logs and moves on with a
-   * message-id-less row rather than losing the prompt entirely.
-   */
   private async persistMessageId(
     promptId: number,
     messageId: string,
@@ -396,11 +362,6 @@ export class PlayerPromptService {
     return `You're on cooldown. You can add your next entry ${discordTimestamp(readyAt)}.`;
   }
 
-  /**
-   * Which rule refused an append. The insert enforces the cap and the
-   * cooldown itself, so a null result means one of them bit after the gate
-   * read; this re-reads to name the right one.
-   */
   private async explainRefusedEntry(
     prompt: PlayerPrompt,
     discordId: string,
@@ -420,11 +381,6 @@ export class PlayerPromptService {
     return "Couldn't record that entry. Please try again.";
   }
 
-  /**
-   * Remaining entries come from the same row count the gate reads, not from
-   * the entry number, so a gap in numbering can never inflate what the
-   * responder is told is left.
-   */
   private buildEntryConfirmation(
     prompt: PlayerPrompt,
     entryNumber: number,
@@ -456,12 +412,6 @@ export class PlayerPromptService {
     return parts.join(" ");
   }
 
-  /**
-   * Arms a closure timer for `msUntil` ms. If the duration exceeds
-   * `MAX_TIMER_MS`, sets a shorter timer that re-arms itself with the
-   * remainder: guarantees Node never sees an overflowing delay
-   * regardless of prompt length.
-   */
   private armClosureTimer(promptId: number, msUntil: number): void {
     const existing = this.closureTimers.get(promptId);
     if (existing) clearTimeout(existing);

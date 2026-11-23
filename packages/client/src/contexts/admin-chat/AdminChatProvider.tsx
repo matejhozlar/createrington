@@ -5,16 +5,14 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/auth";
-import { api } from "@/services/api/client";
+import { localStore } from "@/lib/storage";
+import { trpc } from "@/lib/trpc";
 import { AdminChatContext } from "./context";
-import type { AdminChatContextValue, OpenDrawerOptions } from "./types";
+import type { AdminChatContextType, OpenDrawerOptions } from "./types";
 
 const BUBBLE_KEY = "admin-chat:bubble-visible";
-// Inlined here (rather than imported from features/admin-chat/api) so this
-// provider stays outside the lazy admin-chat chunk: the rest of admin-chat
-// is still split.
-const ENABLED_ENDPOINT = "api/claude-chat/enabled";
 
 interface PanelState {
   open: boolean;
@@ -23,54 +21,22 @@ interface PanelState {
 
 const PANEL_CLOSED: PanelState = { open: false, expanded: false };
 
-async function fetchEnabled(): Promise<boolean> {
-  try {
-    const data = await api.get<{ enabled?: boolean }>(ENABLED_ENDPOINT);
-    return data.enabled === true;
-  } catch {
-    return false;
-  }
-}
-
-function readInitialBubbleVisible(): boolean {
-  try {
-    return localStorage.getItem(BUBBLE_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
-
 export function AdminChatProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const isAdmin = Boolean(user?.isAdmin);
 
-  const [enabledFromServer, setEnabledFromServer] = useState<boolean>(false);
-  const [bubbleVisible, setBubbleVisibleState] = useState<boolean>(
-    readInitialBubbleVisible,
+  const { data: enabledFromServer } = useQuery(
+    trpc.admin.chat.enabled.queryOptions(undefined, { enabled: isAdmin }),
+  );
+  const [bubbleVisible, setBubbleVisibleState] = useState(
+    () => localStore.get(BUBBLE_KEY) === "1",
   );
   const [panel, setPanel] = useState<PanelState>(PANEL_CLOSED);
 
-  // Server kill-switch: only fetched for admins. Non-admins keep the
-  // initial `false`, so no setState is needed in the early-return branch.
-  useEffect(() => {
-    if (!isAdmin) return;
-    let cancelled = false;
-    void fetchEnabled().then((value) => {
-      if (!cancelled) setEnabledFromServer(value);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [isAdmin]);
-
-  const enabled = isAdmin && enabledFromServer;
+  const enabled = isAdmin && enabledFromServer === true;
 
   useEffect(() => {
-    try {
-      localStorage.setItem(BUBBLE_KEY, bubbleVisible ? "1" : "0");
-    } catch {
-      // Non-fatal: state still works within this tab.
-    }
+    localStore.set(BUBBLE_KEY, bubbleVisible ? "1" : "0");
   }, [bubbleVisible]);
 
   const openDrawer = useCallback((options?: OpenDrawerOptions) => {
@@ -91,8 +57,6 @@ export function AdminChatProvider({ children }: { children: ReactNode }) {
     setPanel((prev) => (prev.open ? { ...prev, expanded } : prev));
   }, []);
 
-  // Ctrl/Cmd+I summons the assistant as the expanded modal, or dismisses
-  // it when it is already open. The launcher bubble is left untouched.
   useEffect(() => {
     if (!enabled) return;
     const handler = (e: KeyboardEvent): void => {
@@ -109,7 +73,7 @@ export function AdminChatProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("keydown", handler);
   }, [enabled]);
 
-  const value = useMemo<AdminChatContextValue>(
+  const value = useMemo<AdminChatContextType>(
     () => ({
       enabled,
       bubbleVisible,

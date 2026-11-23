@@ -1,8 +1,14 @@
 import { db, Q } from "@/db";
-import { BadRequestError, NotFoundError } from "@/app/middleware/error-handler";
+import type { DatabaseQueries } from "@/generated/db";
+import { BadRequestError, NotFoundError } from "@/errors";
 import { UniqueViolationError } from "@/db/utils/errors";
 import type { Workshop, WorkshopMod } from "@createrington/shared/db";
-import { LOADERLESS_CLASSES, searchMods } from "@/services/curseforge/mods";
+import { LOADERLESS_CLASSES } from "@/services/curseforge/loader";
+import { findModpackModIds } from "@/services/modpack/manifest";
+import {
+  searchMods,
+  type CurseForgeSearchResult,
+} from "@/services/curseforge/mods";
 import { assertCanSuggest } from "./bans";
 import { announceRemoval, announceSuggestion } from "./discord";
 import { tryResolveProjectDependencies } from "./dependencies";
@@ -10,27 +16,19 @@ import { recordModEvent } from "./events";
 import {
   addableClasses,
   createMod,
+  findProjectClaims,
   mapConstraintError,
   prepareEntries,
-  type TxQueries,
   type WorkshopModEntry,
 } from "./entries";
 import { workshopModService, type WorkshopModListItem } from "./mods.service";
-import { USER_VISIBLE_MOD_STATUSES, workshopService } from "./workshop.service";
+import { USER_VISIBLE_MOD_STATUSES } from "@createrington/shared/workshop";
+import { workshopService } from "./workshop.service";
 
-export interface WorkshopProjectSearchResult {
-  id: number;
-  name: string;
-  slug: string;
-  url: string;
-  thumbnailUrl?: string;
-  summary: string | null;
-  primaryAuthor: string | null;
-  downloadCount: number;
-  inModpack: boolean;
+export type WorkshopProjectSearchResult = CurseForgeSearchResult & {
   rejected: boolean;
   claimed: boolean;
-}
+};
 
 /**
  * What players do in an open workshop: search CurseForge for a project,
@@ -60,27 +58,23 @@ export class WorkshopSuggestionService {
         "That project type cannot be added to this workshop",
       );
     }
+    const basePackProjectId = workshop.baseModpackProjectId;
     const results = await searchMods(query, 20, {
       gameVersion: workshop.gameVersion,
       modLoaderType: LOADERLESS_CLASSES.has(classId)
         ? null
         : workshop.modLoaderType,
       classId,
-      packProjectId: workshop.baseModpackProjectId ?? null,
+      packModIds: basePackProjectId
+        ? () => findModpackModIds(basePackProjectId)
+        : undefined,
     });
     if (results.length === 0) return [];
 
-    const ids = results.map((r) => r.id);
-    const [claims, packClaims] = await Promise.all([
-      Q.workshop.mod.findAll({
-        workshopId: workshop.id,
-        curseforgeProjectId: { $in: ids },
-      }),
-      Q.modpack.mod.findAll({
-        modpackId: workshop.modpackId,
-        curseforgeProjectId: { $in: ids },
-      }),
-    ]);
+    const { claims, packClaims } = await findProjectClaims(
+      workshop,
+      results.map((r) => r.id),
+    );
     const rejectedIds = new Set(
       claims
         .filter((c) => c.status === "rejected")
@@ -270,7 +264,7 @@ export class WorkshopSuggestionService {
   }
 
   private async assertSuggestionSlot(
-    queries: Pick<TxQueries, "workshop">,
+    queries: Pick<DatabaseQueries, "workshop">,
     workshop: Workshop,
     discordId: string,
   ): Promise<void> {

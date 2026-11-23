@@ -1,19 +1,16 @@
-import { useState } from "react";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
-import { formatMoney } from "@/lib/format";
-import { Paginator } from "@/components/paginator";
+import { formatMoney } from "@createrington/shared/format";
 import { Badge } from "@/components/ui/badge";
 import { CellDate, CellText } from "@/components/cell-text";
 import {
   BadgeCellSkeleton,
-  DataTable,
-  loadingRowCount,
   type DataTableColumn,
 } from "@/components/data-table";
+import { PagedTable } from "@/components/paged-table";
+import { usePagedQuery } from "@/hooks/use-paged-query";
 import { ArrowLeftRight } from "lucide-react";
-import { EmptyState, ErrorState } from "@/components/query-states";
+import { TabSectionHeader } from "@/features/admin/players/components/TabSectionHeader";
 
 interface TransactionsTabProps {
   playerId: string;
@@ -23,25 +20,9 @@ type Transaction =
   RouterOutput["admin"]["players"]["transactions"]["list"]["items"][number];
 
 export function TransactionsTab({ playerId }: TransactionsTabProps) {
-  const [page, setPage] = useState(0);
-  const limit = 20;
-
-  const { data, isLoading, isPlaceholderData, error, refetch } = useQuery(
-    trpc.admin.players.transactions.list.queryOptions(
-      {
-        id: playerId,
-        page,
-        limit,
-      },
-      { placeholderData: keepPreviousData },
-    ),
+  const transactions = usePagedQuery({ id: playerId }, (input) =>
+    trpc.admin.players.transactions.list.queryOptions(input),
   );
-
-  const items = data?.items ?? [];
-  const total = data?.pagination.total ?? 0;
-  const totalPages = data?.pagination.totalPages ?? 0;
-  const loading = isLoading || isPlaceholderData;
-  const loadingRows = loadingRowCount(page, limit, total);
 
   const columns: DataTableColumn<Transaction>[] = [
     {
@@ -108,43 +89,21 @@ export function TransactionsTab({ playerId }: TransactionsTabProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold">Transactions</h3>
-          <p className="text-sm text-muted-foreground">
-            {total.toLocaleString()} total
-          </p>
-        </div>
-      </div>
+      <TabSectionHeader
+        title="Transactions"
+        description={`${transactions.total.toLocaleString()} total`}
+      />
 
-      {error ? (
-        <ErrorState message={error.message} onRetry={() => refetch()} />
-      ) : !loading && items.length === 0 ? (
-        <EmptyState icon={ArrowLeftRight} message="No transactions found" />
-      ) : (
-        <>
-          <DataTable
-            columns={columns}
-            rows={items}
-            loading={loading}
-            loadingRows={loadingRows}
-            rowKey={(tx) => tx.id}
-            rowClassName={(tx) =>
-              tx.amount >= 0 ? "bg-emerald-500/[0.02]" : "bg-destructive/[0.02]"
-            }
-          />
-
-          <Paginator
-            page={page}
-            limit={limit}
-            total={total}
-            totalPages={totalPages}
-            onPageChange={setPage}
-            itemLabel="transaction"
-            className="border-t border-border pt-4"
-          />
-        </>
-      )}
+      <PagedTable
+        paged={transactions}
+        empty={{ icon: ArrowLeftRight, message: "No transactions found" }}
+        itemLabel="transaction"
+        columns={columns}
+        rowKey={(tx) => tx.id}
+        rowClassName={(tx) =>
+          tx.amount >= 0 ? "bg-emerald-500/[0.02]" : "bg-destructive/[0.02]"
+        }
+      />
     </div>
   );
 }

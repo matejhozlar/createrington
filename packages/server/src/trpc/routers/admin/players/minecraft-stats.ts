@@ -1,9 +1,8 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
-import { parsePlayerId, findOrThrow } from "@/trpc/utils";
+import { findOrThrow, playerId } from "@/trpc/utils";
 
-/** Admin minecraft stats router: fetch per-server JSONB stats for a player, and search stats across all players. */
 export const minecraftStatsRouter = router({
   list: adminProcedure
     .meta({
@@ -12,14 +11,12 @@ export const minecraftStatsRouter = router({
     })
     .input(
       z.object({
-        id: z.string().min(1),
+        id: playerId(),
       }),
     )
     .query(async ({ input }) => {
-      const identifier = parsePlayerId(input.id);
-
       const player = await findOrThrow(
-        Q.player.find(identifier),
+        Q.player.find(input.id),
         "Player not found",
       );
 
@@ -39,15 +36,13 @@ export const minecraftStatsRouter = router({
       };
     }),
 
-  /** Search for item keys matching a query string across all categories. */
   searchItems: adminProcedure
     .meta({ description: "Autocomplete search for item keys" })
     .input(z.object({ query: z.string().min(1) }))
     .query(async ({ input }) => {
-      return Q.player.minecraft.stat.key.searchItems(input.query);
+      return Q.player.minecraft.stat.key.getMatchingItems(input.query);
     }),
 
-  /** Compare a single item across multiple categories for all players. */
   compare: adminProcedure
     .meta({
       description:
@@ -61,7 +56,7 @@ export const minecraftStatsRouter = router({
       }),
     )
     .query(async ({ input }) => {
-      return Q.player.minecraft.stat.total.compareItem(
+      return Q.player.minecraft.stat.total.getItemComparison(
         input.item,
         input.categories,
         { limit: input.limit },

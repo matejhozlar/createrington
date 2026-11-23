@@ -1,3 +1,4 @@
+import { ADMIN_REASON_MAX_LENGTH } from "@createrington/shared/admin-reason";
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { db, Q } from "@/db";
@@ -7,15 +8,11 @@ import {
   paginationInput,
   trpcError,
   auditActor,
+  pageOffset,
 } from "@/trpc/utils";
-import { idToObject } from "@/app/utils/helpers";
+import { idToObject } from "@/utils/player-identifier";
 import { mcUuid } from "@/utils/zod-schemas";
 
-/**
- * Admin sub-router for inactivity exemptions. Players on the list are never
- * warned or removed by the inactivity sweep. Not gated to production: the
- * list is plain data and safe to manage on any deployment.
- */
 export const exemptionsRouter = router({
   list: adminProcedure
     .meta({
@@ -29,20 +26,21 @@ export const exemptionsRouter = router({
       }),
     )
     .query(async ({ input }) => {
-      const { exemptions, total } =
-        await Q.player.inactivity.exemption.listWithPlayer({
+      const { rows, total } = await Q.player.inactivity.exemption.getWithPlayer(
+        {
           search: input.search?.trim() || undefined,
           limit: input.limit,
-          offset: input.page * input.limit,
-        });
+          offset: pageOffset(input),
+        },
+      );
 
       return {
-        exemptions,
+        items: rows,
         pagination: buildPagination(input.page, input.limit, total),
       };
     }),
 
-  add: adminProcedure
+  create: adminProcedure
     .meta({
       description:
         "Exempt a player (by Minecraft username, UUID, or Discord ID) from inactivity cleanup; resolves any active warning they have",
@@ -50,7 +48,7 @@ export const exemptionsRouter = router({
     .input(
       z.object({
         player: z.string().trim().min(1, "Player is required"),
-        reason: z.string().trim().max(500).optional(),
+        reason: z.string().trim().max(ADMIN_REASON_MAX_LENGTH).optional(),
       }),
     )
     .mutation(async ({ input, ctx }) => {
@@ -104,13 +102,12 @@ export const exemptionsRouter = router({
       });
 
       return {
-        message: `${player.minecraftUsername} exempted`,
         minecraftUsername: player.minecraftUsername,
         resolvedWarnings,
       };
     }),
 
-  remove: adminProcedure
+  delete: adminProcedure
     .meta({
       description:
         "Remove a player's inactivity exemption so the sweep considers them again",
@@ -141,7 +138,5 @@ export const exemptionsRouter = router({
         targetPlayerUuid: input.minecraftUuid,
         targetPlayerName: player?.minecraftUsername,
       });
-
-      return { message: "Exemption removed" };
     }),
 });

@@ -5,7 +5,7 @@ const sdkRender = vi.hoisted(() => vi.fn(async () => new Uint8Array([1])));
 vi.mock("@/db", () => ({
   Q: {
     player: {
-      get: async () => ({
+      find: async () => ({
         minecraftUuid: "uuid-1",
         minecraftUsername: "Steve",
       }),
@@ -26,23 +26,16 @@ vi.mock("@/discord/embeds", () => {
 
 vi.mock("@/discord/utils/cooldown", () => ({ CooldownType: { USER: "user" } }));
 
-vi.mock("@/services/skin-api", async () => {
-  const quality = await vi.importActual<
-    typeof import("@/services/skin-api/quality")
-  >("@/services/skin-api/quality");
-  return {
-    getSkinApiClient: () => ({ render: sdkRender }),
-    MAX_QUALITY_RENDER: quality.MAX_QUALITY_RENDER,
-  };
-});
+vi.mock("@/services/skin-api/client", () => ({
+  getSkinApiClient: () => ({ render: sdkRender }),
+}));
 
-import {
-  data,
-  execute,
-} from "@/discord/bots/main/interactions/slash-commands/user/skin";
+import handler from "@/discord/bots/main/interactions/slash-commands/user/skin";
 import { MAX_QUALITY_RENDER } from "@/services/skin-api/quality";
 import { SkinApiError } from "createrington-skin-api";
 import type { ChatInputCommandInteraction } from "discord.js";
+
+const { data, execute } = handler;
 
 interface SentEmbed {
   kind: string;
@@ -163,7 +156,7 @@ describe("/skin style option", () => {
     );
   });
 
-  it("resolves the deferred reply with an error embed when the styled render fails", async () => {
+  it("fails with a render error naming the pose when the styled render fails", async () => {
     sdkRender.mockRejectedValue(
       new SkinApiError("Render failed upstream", {
         code: "render_failed",
@@ -172,13 +165,14 @@ describe("/skin style option", () => {
     );
     const { fake, raw, sent } = interactionWith({ pose: "wave", style: "cel" });
 
-    await execute(fake);
+    await expect(execute(fake)).rejects.toMatchObject({
+      title: "Render Error",
+      description:
+        "Could not render the **Wave** pose for Steve. Please try again later.",
+      cause: expect.any(SkinApiError),
+    });
 
     expect(raw.deferReply).toHaveBeenCalledOnce();
-    expect(raw.editReply).toHaveBeenCalledOnce();
-    expect(sent).toEqual([
-      expect.objectContaining({ kind: "error", title: "Render Error" }),
-    ]);
-    expect(sent[0]?.description).not.toContain("upstream");
+    expect(sent).toEqual([]);
   });
 });

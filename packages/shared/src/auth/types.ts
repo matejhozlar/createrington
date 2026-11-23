@@ -14,15 +14,12 @@ export interface JWTPayload {
   minecraftUsername: string;
 }
 
-export interface AuthResponse {
+export interface AuthSession {
   accessToken: string;
-  user: {
-    discordId: string;
-    username: string;
-    avatar?: string;
-    role: AuthRole;
-    isAdmin: boolean;
-    minecraftUuid: string;
-    minecraftUsername: string;
-  };
+  user: JWTPayload;
+}
+
+export interface DiscordAuthUrl {
+  url: string;
+  state: string;
 }

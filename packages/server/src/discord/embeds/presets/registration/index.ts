@@ -2,7 +2,6 @@ import { EmbedColors } from "../../colors";
 import { createEmbed } from "../../embed-builder";
 
 export const RegistrationEmbedPresets = {
-  /** Creates an admin-facing notification embed when a registration fails */
   adminError(
     username: string,
     discordTag: string,

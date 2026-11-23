@@ -1,47 +1,32 @@
 import type { Pool, PoolClient } from "pg";
+import type { CamelCaseKeys } from "@createrington/shared/types";
 import { PlayerSessionBaseQueries } from "@/generated/db/player_session.queries";
+import type { Granularity } from "@/db/utils";
 
-interface ServerSessionRow {
+export interface ServerSessionRow {
   id: number;
   player_minecraft_uuid: string;
   server_id: number;
   session_start: Date;
   session_end: Date | null;
-  seconds_played: string | null;
+  seconds_played: number | null;
   minecraft_username: string;
 }
 
-export type ServerSessionEntry = {
-  id: number;
-  playerMinecraftUuid: string;
-  serverId: number;
-  sessionStart: Date;
-  sessionEnd: Date | null;
-  secondsPlayed: number | null;
-  minecraftUsername: string;
-};
+export type ServerSessionEntry = CamelCaseKeys<ServerSessionRow>;
 
-interface OpenSessionRow {
+export interface OpenSessionRow {
   id: number;
   player_minecraft_uuid: string;
   server_id: number;
   session_start: Date;
   last_seen_at: Date | null;
   last_play_ticks: number | null;
-  active_seconds: string;
+  active_seconds: number;
   minecraft_username: string;
 }
 
-export type OpenSessionEntry = {
-  id: number;
-  playerMinecraftUuid: string;
-  serverId: number;
-  sessionStart: Date;
-  lastSeenAt: Date | null;
-  lastPlayTicks: number | null;
-  activeSeconds: number;
-  minecraftUsername: string;
-};
+export type OpenSessionEntry = CamelCaseKeys<OpenSessionRow>;
 
 export interface SessionObservation {
   lastSeenAt: Date;
@@ -69,10 +54,10 @@ export class PlayerSessionQueries extends PlayerSessionBaseQueries {
    *
    * @param serverId - Server ID to query
    */
-  async findOpenWithUsername(serverId: number): Promise<OpenSessionEntry[]> {
+  async getOpenWithUsername(serverId: number): Promise<OpenSessionEntry[]> {
     const query = `
       SELECT s.id, s.player_minecraft_uuid, s.server_id, s.session_start,
-             s.last_seen_at, s.last_play_ticks, s.active_seconds,
+             s.last_seen_at, s.last_play_ticks, s.active_seconds::float8 AS active_seconds,
              p.minecraft_username
       FROM ${this.table} s
       JOIN player p ON p.minecraft_uuid = s.player_minecraft_uuid
@@ -85,16 +70,7 @@ export class PlayerSessionQueries extends PlayerSessionBaseQueries {
       [serverId],
     );
 
-    return result.rows.map((row) => ({
-      id: row.id,
-      playerMinecraftUuid: row.player_minecraft_uuid,
-      serverId: row.server_id,
-      sessionStart: row.session_start,
-      lastSeenAt: row.last_seen_at,
-      lastPlayTicks: row.last_play_ticks,
-      activeSeconds: Number(row.active_seconds),
-      minecraftUsername: row.minecraft_username,
-    }));
+    return this.mapRowsToEntities(result.rows);
   }
 
   /**
@@ -140,25 +116,16 @@ export class PlayerSessionQueries extends PlayerSessionBaseQueries {
   async getActivePlayerCounts(
     start: Date,
     end: Date,
-    granularity: "day" | "week" | "month" = "day",
+    granularity: Granularity = "day",
   ): Promise<Array<{ period: string; uniquePlayers: number }>> {
-    const query = `
-      SELECT
-        DATE_TRUNC($3, session_start)::text AS period,
-        COUNT(DISTINCT player_minecraft_uuid)::integer AS unique_players
-      FROM ${this.table}
-      WHERE session_start >= $1 AND session_start < $2
-      GROUP BY 1
-      ORDER BY 1`;
-
-    const result = await this.runQuery<{
-      period: string;
-      unique_players: number;
-    }>("get active player counts", query, [start, end, granularity]);
-    return result.rows.map((row) => ({
-      period: row.period,
-      uniquePlayers: row.unique_players,
-    }));
+    return this.aggregateByPeriod<{ unique_players: number }>(
+      "get active player counts",
+      "sessionStart",
+      { unique_players: "COUNT(DISTINCT player_minecraft_uuid)::int" },
+      start,
+      end,
+      granularity,
+    );
   }
 
   /**
@@ -185,7 +152,7 @@ export class PlayerSessionQueries extends PlayerSessionBaseQueries {
     }
 
     const query = `
-      SELECT COALESCE(AVG(seconds_played), 0)::float AS avg_seconds
+      SELECT COALESCE(AVG(seconds_played), 0)::float8 AS avg_seconds
       FROM ${this.table}
       WHERE ${conditions.join(" AND ")}`;
 
@@ -212,44 +179,29 @@ export class PlayerSessionQueries extends PlayerSessionBaseQueries {
     serverId: number,
     limit: number,
     offset: number,
-  ): Promise<{ sessions: ServerSessionEntry[]; total: number }> {
-    const dataQuery = `
-      SELECT s.id, s.player_minecraft_uuid, s.server_id, s.session_start, s.session_end, s.seconds_played,
-             p.minecraft_username
-      FROM ${this.table} s
-      JOIN player p ON p.minecraft_uuid = s.player_minecraft_uuid
-      WHERE s.server_id = $1
-      ORDER BY s.session_start DESC
-      LIMIT $2 OFFSET $3`;
+  ): Promise<{ rows: ServerSessionEntry[]; total: number }> {
+    const [dataResult, countResult] = await Promise.all([
+      this.runQuery<ServerSessionRow>(
+        "get server sessions",
+        `SELECT s.id, s.player_minecraft_uuid, s.server_id, s.session_start, s.session_end,
+                s.seconds_played::float8 AS seconds_played, p.minecraft_username
+         FROM ${this.table} s
+         JOIN player p ON p.minecraft_uuid = s.player_minecraft_uuid
+         WHERE s.server_id = $1
+         ORDER BY s.session_start DESC
+         LIMIT $2 OFFSET $3`,
+        [serverId, limit, offset],
+      ),
+      this.runQuery<{ total: number }>(
+        "count server sessions",
+        `SELECT COUNT(*)::int AS total FROM ${this.table} WHERE server_id = $1`,
+        [serverId],
+      ),
+    ]);
 
-    const countQuery = `
-      SELECT COUNT(*) as total
-      FROM ${this.table}
-      WHERE server_id = $1`;
-
-    try {
-      const [dataResult, countResult] = await Promise.all([
-        this.db.query<ServerSessionRow>(dataQuery, [serverId, limit, offset]),
-        this.db.query<{ total: string }>(countQuery, [serverId]),
-      ]);
-
-      const sessions: ServerSessionEntry[] = dataResult.rows.map((row) => ({
-        id: row.id,
-        playerMinecraftUuid: row.player_minecraft_uuid,
-        serverId: row.server_id,
-        sessionStart: row.session_start,
-        sessionEnd: row.session_end,
-        secondsPlayed: row.seconds_played ? Number(row.seconds_played) : null,
-        minecraftUsername: row.minecraft_username,
-      }));
-
-      return {
-        sessions,
-        total: parseInt(countResult.rows[0].total, 10),
-      };
-    } catch (error) {
-      logger.error("Failed to get server sessions:", error);
-      throw error;
-    }
+    return {
+      rows: this.mapRowsToEntities(dataResult.rows),
+      total: countResult.rows[0].total,
+    };
   }
 }

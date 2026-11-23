@@ -1,8 +1,6 @@
 import { Q, db } from "@/db";
 import { escapeLike } from "@/db/utils";
 import { UniqueViolationError } from "@/db/utils/errors";
-import { getService, Services } from "@/services";
-import { DiscordMessageService } from "@/services/discord/message/message.service";
 import { FeatureFlags, featureFlagService } from "@/services/feature-flag";
 import { Discord } from "@/discord/constants";
 import {
@@ -19,7 +17,8 @@ import {
   httpUrlSchema,
   type ComponentsData,
 } from "@createrington/shared/api/embed";
-import { CURSEFORGE_CLASSES } from "@createrington/shared/workshop";
+import { loaderLabel } from "@/services/curseforge/loader";
+import { curseforgeProjectUrl } from "@/services/curseforge/project";
 import type {
   Modpack,
   ModpackRelease,
@@ -36,21 +35,6 @@ const PRESET_AUTHOR = "system";
 const PRESET_NAME_MAX = 100;
 const PRESET_NAME_SEARCH_PREFIX = 40;
 
-const CLASS_PATHS: Record<number, string> = {
-  [CURSEFORGE_CLASSES.mods]: "mc-mods",
-  [CURSEFORGE_CLASSES.modpacks]: "modpacks",
-  [CURSEFORGE_CLASSES.resourcePacks]: "texture-packs",
-  [CURSEFORGE_CLASSES.shaders]: "shaders",
-  [CURSEFORGE_CLASSES.dataPacks]: "data-packs",
-};
-
-const LOADER_NAMES: Record<string, string> = {
-  forge: "Forge",
-  neoforge: "NeoForge",
-  fabric: "Fabric",
-  quilt: "Quilt",
-};
-
 const MENTION_ROLE_ID = Discord.Roles.UPDATE;
 
 const inFlight = new Set<number>();
@@ -60,7 +44,6 @@ export interface AnnounceReleaseOptions {
   modpack: Modpack;
   releaseId: number;
   loadDiff: () => Promise<ModpackReleaseDiff>;
-  /** Begin a new announcement when the release has none; off, only an unfinished one is resumed */
   start: boolean;
 }
 
@@ -131,8 +114,6 @@ async function run({
     existing.length > 0 ? existing : await createParts(diff.release, parts);
   if (rows === null) return;
 
-  const client = await getService(Services.DISCORD_MAIN_BOT);
-  const messages = DiscordMessageService.getInstance(client);
   let sent = 0;
   for (const row of rows) {
     if (row.messageId !== null) continue;
@@ -150,19 +131,20 @@ async function run({
       break;
     }
     const pings = row.part === 1 && !pingedButUnrecorded.has(row.id);
-    const result = await messages.send({
+    const posted = await Discord.Messages.send({
       channelId: row.channelId,
       components: built.components,
       flags: built.flags,
       allowedMentions: pings ? { roles: [MENTION_ROLE_ID] } : undefined,
-    });
-    const messageId = result.messageId;
-    if (!result.success || !messageId) {
+    }).catch((error: unknown) => {
       logger.warn(
-        `${partLabel} failed to send, the next reconcile retries: ${result.error ?? "unknown error"}`,
+        `${partLabel} failed to send, the next reconcile retries:`,
+        error,
       );
-      break;
-    }
+      return null;
+    });
+    if (!posted) break;
+    const messageId = posted.id;
     try {
       await db.inTransaction(async (tx) => {
         await tx.modpack.release.announcement.updateAll(
@@ -325,13 +307,6 @@ function releaseLabel(release: ModpackRelease): string {
   );
 }
 
-function loaderLabel(loader: string | null): string | null {
-  if (!loader) return null;
-  const [name, ...rest] = loader.split("-");
-  const pretty = LOADER_NAMES[name.toLowerCase()] ?? name;
-  return rest.length > 0 ? `${pretty} ${rest.join("-")}` : pretty;
-}
-
 function httpUrl(value: string | null | undefined): string | null {
   if (!value) return null;
   return httpUrlSchema.safeParse(value).success ? value : null;
@@ -343,14 +318,13 @@ function fileLabel(row: ReleaseModRow): string {
 }
 
 function projectUrl(row: ReleaseModRow): string | null {
-  const cached = httpUrl(row.websiteUrl);
-  if (cached) return cached;
-  const path = CLASS_PATHS[row.classId];
-  return path
-    ? httpUrl(
-        `https://www.curseforge.com/minecraft/${path}/${encodeURIComponent(row.projectSlug)}`,
-      )
-    : null;
+  return httpUrl(
+    curseforgeProjectUrl({
+      websiteUrl: httpUrl(row.websiteUrl),
+      classId: row.classId,
+      slug: row.projectSlug,
+    }),
+  );
 }
 
 function stateLabel(required: boolean): string {
@@ -410,7 +384,7 @@ export async function toChangelogInputs(
         label: releaseLabel(release),
         titleImageUrl: httpUrl(modpack.titleImageUrl),
         minecraftVersion: release.minecraftVersion,
-        modLoader: loaderLabel(release.modLoader),
+        modLoader: release.modLoader ? loaderLabel(release.modLoader) : null,
         modCount: release.modCount,
         publishedAt: release.publishedAt,
         downloadUrl: packUrl

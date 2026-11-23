@@ -11,15 +11,9 @@ vi.mock("@/db", () => ({
   Q: { player: { find: async () => player.row } },
 }));
 
-vi.mock("@/services/skin-api", async () => {
-  const quality = await vi.importActual<
-    typeof import("@/services/skin-api/quality")
-  >("@/services/skin-api/quality");
-  return {
-    getSkinApiClient: () => ({ render: skinApi.render }),
-    POSE_RENDER_STYLE: quality.POSE_RENDER_STYLE,
-  };
-});
+vi.mock("@/services/skin-api/client", () => ({
+  getSkinApiClient: () => ({ render: skinApi.render }),
+}));
 
 vi.mock("@/services/skin-api/urls", () => ({
   playerAvatarUrl: (uuid: string) => `https://app.test/api/skin/${uuid}/avatar`,
@@ -110,7 +104,7 @@ beforeEach(() => {
   Discord._setMessageService({
     send: async (options: SendMessageOptions) => {
       sent.push(options);
-      return { success: true, messageId: "1" };
+      return { id: "1" };
     },
   } as unknown as Parameters<typeof Discord._setMessageService>[0]);
 });

@@ -1,7 +1,7 @@
 import type { MessageCacheService } from "../discord/message/cache";
 import type { PlaytimeManagerService } from "../playtime/playtime-manager.service";
 import { maintenanceService } from "../maintenance";
-import { MINECRAFT_SERVERS } from "../playtime/config";
+import { getServerById, SERVERS } from "../mc-server/servers";
 import type {
   InitialDataPayload,
   PlayerData,
@@ -29,24 +29,12 @@ export class WebSocketDataProvider {
    * Get current status for all servers
    */
   getAllServerStatuses(): ServerStatus[] {
-    const statuses: ServerStatus[] = [];
-
-    for (const [serverId, _config] of Object.entries(MINECRAFT_SERVERS)) {
-      const id = parseInt(serverId);
-      const status = this.getServerStatus(id);
-      statuses.push(status);
-    }
-
-    return statuses;
+    return SERVERS.map((server) => this.getServerStatus(server.id));
   }
 
-  /**
-   * Get current status for a specific server
-   *
-   * @param serverId - Server ID
-   */
+  /** Get current status for a specific server */
   getServerStatus(serverId: number): ServerStatus {
-    const config = MINECRAFT_SERVERS[serverId];
+    const config = getServerById(serverId);
     if (!config) {
       throw new Error(`Server ${serverId} not found`);
     }
@@ -74,7 +62,7 @@ export class WebSocketDataProvider {
         : null,
       playerCount: activeSessions.length,
       maxPlayers: config.maxPlayers,
-      lastUpdate: new Date(),
+      lastUpdate: new Date().toISOString(),
     };
   }
 
@@ -82,22 +70,10 @@ export class WebSocketDataProvider {
    * Get all online players across all servers
    */
   getAllPlayers(): PlayerData[] {
-    const players: PlayerData[] = [];
-
-    for (const [serverId] of Object.entries(MINECRAFT_SERVERS)) {
-      const id = parseInt(serverId);
-      const serverPlayers = this.getServerPlayers(id);
-      players.push(...serverPlayers);
-    }
-
-    return players;
+    return SERVERS.flatMap((server) => this.getServerPlayers(server.id));
   }
 
-  /**
-   * Get online players for a specific server
-   *
-   * @param serverId - Server ID
-   */
+  /** Get online players for a specific server */
   getServerPlayers(serverId: number): PlayerData[] {
     const playtimeService = this.playtimeManagerService.getService(serverId);
 
@@ -111,44 +87,28 @@ export class WebSocketDataProvider {
       uuid: session.uuid,
       username: session.username,
       serverId: session.serverId,
-      sessionStart: session.sessionStart,
+      sessionStart: session.sessionStart.toISOString(),
       sessionDuration: playtimeService.getSessionDuration(session) || 0,
     }));
   }
 
-  /**
-   * Get recent messages for all servers
-   *
-   * @param limit - Maximum messages per server
-   */
+  /** Get recent messages for all servers */
   getAllMessages(limit: number = 50): Record<number, CachedMessage[]> {
     const messages: Record<number, CachedMessage[]> = {};
 
-    for (const [serverId] of Object.entries(MINECRAFT_SERVERS)) {
-      const id = parseInt(serverId);
-      const serverMessages = this.getServerMessages(id, limit);
-      messages[id] = serverMessages;
+    for (const server of SERVERS) {
+      messages[server.id] = this.getServerMessages(server.id, limit);
     }
 
     return messages;
   }
 
-  /**
-   * Get recent messages for a specific server
-   *
-   * @param serverId - Server ID
-   * @param limit - Maximum messages to return
-   */
+  /** Get recent messages for a specific server */
   getServerMessages(serverId: number, limit: number = 50): CachedMessage[] {
     return this.messageCacheService.getRecentMessages(serverId, limit);
   }
 
-  /**
-   * Get complete initial data for all servers
-   *
-   * @param includeMessages - Whether to include message history
-   * @param messageLimit - Maximum messages per server
-   */
+  /** Get complete initial data for all servers */
   getInitialData(
     includeMessages: boolean = true,
     messageLimit: number = 50,
@@ -161,17 +121,11 @@ export class WebSocketDataProvider {
       servers,
       players,
       messages,
-      timestamp: new Date(),
+      timestamp: new Date().toISOString(),
     };
   }
 
-  /**
-   * Get initial data for a specific server
-   *
-   * @param serverId - Server ID
-   * @param includeMessages - Whether to include message history
-   * @param messageLimit - Maximum messages to return
-   */
+  /** Get initial data for a specific server */
   getServerInitialData(
     serverId: number,
     includeMessages: boolean = true,
@@ -188,7 +142,7 @@ export class WebSocketDataProvider {
       status,
       players,
       messages,
-      timestamp: new Date(),
+      timestamp: new Date().toISOString(),
     };
   }
 }

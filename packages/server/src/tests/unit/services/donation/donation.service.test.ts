@@ -1,11 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import type Stripe from "stripe";
+import Stripe from "stripe";
 import type { Client } from "discord.js";
 
-const { donationRepo } = vi.hoisted(() => ({
-  donationRepo: {
-    findBySessionId: vi.fn(),
-    create: vi.fn(),
+const { donation } = vi.hoisted(() => ({
+  donation: {
+    find: vi.fn(),
+    createAndReturn: vi.fn(),
+    update: vi.fn(),
+    findActiveSubscription: vi.fn(),
   },
 }));
 
@@ -16,7 +18,7 @@ vi.mock("@/config", () => ({
   },
 }));
 
-vi.mock("@/db", () => ({ donationRepo }));
+vi.mock("@/db", () => ({ Q: { donation } }));
 
 vi.mock("@/discord/constants/roles", () => ({
   DiscordRolesNamespace: { SUPPORTER: "supporter-role" },
@@ -28,6 +30,7 @@ vi.mock("@/discord/utils/roles/role-manager", () => ({
 
 import { DonationService } from "@/services/donation/donation.service";
 import { UniqueViolationError } from "@/db/utils";
+import { RoleManager } from "@/discord/utils/roles/role-manager";
 
 const SESSION = {
   id: "cs_test_1",
@@ -36,30 +39,63 @@ const SESSION = {
   subscription: null,
 } as unknown as Stripe.Checkout.Session;
 
-function service() {
-  const getGuild = vi.fn().mockReturnValue(undefined);
+function service(guild?: unknown) {
+  const getGuild = vi.fn().mockReturnValue(guild);
   const client = { guilds: { cache: { get: getGuild } } } as unknown as Client;
   return { donations: new DonationService(client), getGuild };
 }
 
+const GUILD = {
+  members: { fetch: vi.fn().mockResolvedValue({ id: "user-1" }) },
+};
+
 describe("DonationService.handleSessionCompleted", () => {
   beforeEach(() => {
-    donationRepo.findBySessionId.mockReset().mockResolvedValue(null);
-    donationRepo.create.mockReset();
+    donation.find.mockReset().mockResolvedValue(null);
+    donation.createAndReturn.mockReset();
+    donation.update.mockReset();
+    vi.mocked(RoleManager.assign).mockReset();
   });
 
-  it("records the donation and grants the supporter role", async () => {
-    donationRepo.create.mockResolvedValue({ amountCents: 500 });
+  it("records the donation and marks the supporter role once it is granted", async () => {
+    donation.createAndReturn.mockResolvedValue({ id: 7, amountCents: 500 });
+    vi.mocked(RoleManager.assign).mockResolvedValue(true);
+    const { donations } = service(GUILD);
+
+    await donations.handleSessionCompleted(SESSION);
+
+    expect(donation.createAndReturn).toHaveBeenCalledWith(
+      expect.not.objectContaining({ supporterRoleGranted: true }),
+    );
+    expect(donation.update).toHaveBeenCalledWith(
+      { id: 7 },
+      { supporterRoleGranted: true },
+    );
+  });
+
+  it("leaves the supporter role unmarked when the grant fails", async () => {
+    donation.createAndReturn.mockResolvedValue({ id: 7, amountCents: 500 });
+    vi.mocked(RoleManager.assign).mockResolvedValue(false);
+    const { donations } = service(GUILD);
+
+    await donations.handleSessionCompleted(SESSION);
+
+    expect(donation.createAndReturn).toHaveBeenCalledOnce();
+    expect(donation.update).not.toHaveBeenCalled();
+  });
+
+  it("leaves the supporter role unmarked when the guild is unavailable", async () => {
+    donation.createAndReturn.mockResolvedValue({ id: 7, amountCents: 500 });
     const { donations, getGuild } = service();
 
     await donations.handleSessionCompleted(SESSION);
 
-    expect(donationRepo.create).toHaveBeenCalledOnce();
     expect(getGuild).toHaveBeenCalledWith("guild-1");
+    expect(donation.update).not.toHaveBeenCalled();
   });
 
   it("treats a concurrent duplicate insert as a replay", async () => {
-    donationRepo.create.mockRejectedValue(
+    donation.createAndReturn.mockRejectedValue(
       new UniqueViolationError(
         "duplicate key",
         "donation_stripe_session_id_unique",
@@ -74,13 +110,60 @@ describe("DonationService.handleSessionCompleted", () => {
   });
 
   it("rethrows any other unique violation", async () => {
-    donationRepo.create.mockRejectedValue(
+    donation.createAndReturn.mockRejectedValue(
       new UniqueViolationError("duplicate key", "some_other_unique"),
     );
     const { donations } = service();
 
     await expect(donations.handleSessionCompleted(SESSION)).rejects.toThrow(
       UniqueViolationError,
+    );
+  });
+});
+
+describe("DonationService.getActiveSubscription", () => {
+  function withRetrieve(retrieve: ReturnType<typeof vi.fn>) {
+    const { donations } = service();
+    (
+      donations as unknown as {
+        stripe: { subscriptions: { retrieve: typeof retrieve } };
+      }
+    ).stripe = { subscriptions: { retrieve } };
+    return donations;
+  }
+
+  beforeEach(() => {
+    donation.findActiveSubscription
+      .mockReset()
+      .mockResolvedValue({ stripeSubscriptionId: "sub_1", amountCents: 500 });
+  });
+
+  it("returns null when Stripe no longer knows the subscription", async () => {
+    const donations = withRetrieve(
+      vi.fn().mockRejectedValue(
+        new Stripe.errors.StripeInvalidRequestError({
+          type: "invalid_request_error",
+          code: "resource_missing",
+          message: "No such subscription",
+        }),
+      ),
+    );
+
+    await expect(donations.getActiveSubscription("user-1")).resolves.toBeNull();
+  });
+
+  it("throws when Stripe cannot be reached", async () => {
+    const donations = withRetrieve(
+      vi.fn().mockRejectedValue(
+        new Stripe.errors.StripeConnectionError({
+          type: "api_error",
+          message: "connect ECONNREFUSED",
+        }),
+      ),
+    );
+
+    await expect(donations.getActiveSubscription("user-1")).rejects.toThrow(
+      "ECONNREFUSED",
     );
   });
 });

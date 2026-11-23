@@ -13,9 +13,6 @@ import {
 } from "@createrington/shared/workshop";
 import type { BadgeTone } from "@/components/ui/badge";
 
-export { WORKSHOP_MOD_REJECT_REASON_LABELS as REJECT_REASON_LABELS } from "@createrington/shared/workshop";
-export { formatDate } from "@createrington/shared/format";
-
 export const LOADER_NAMES: Record<number, string> = {
   1: "Forge",
   4: "Fabric",
@@ -54,6 +51,13 @@ export function projectCategories(categories: unknown): string[] {
   return categories.flatMap((category) =>
     typeof category?.name === "string" ? [category.name as string] : [],
   );
+}
+
+export function categoryOptions(categories: string[]) {
+  return [
+    { value: "all", label: "All categories" },
+    ...categories.map((name) => ({ value: name, label: name })),
+  ];
 }
 
 export function projectKindLabel(classId: number): string | null {
@@ -102,8 +106,6 @@ export const MOD_STATUS_STYLES = Object.fromEntries(
   { label: string; tableLabel: string; tone: BadgeTone }
 >;
 
-// liveInVersion comes from the project's pack row, so it describes this
-// suggestion only once the suggestion itself is the one that shipped
 export function liveTitle(mod: {
   status: WorkshopModStatus;
   liveInVersion?: string | null;

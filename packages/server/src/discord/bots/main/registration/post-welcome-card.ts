@@ -1,3 +1,4 @@
+import { userMention } from "discord.js";
 import type { GuildMember } from "discord.js";
 import config from "@/config";
 import { Q } from "@/db";
@@ -6,10 +7,6 @@ import { generateRegistrationWelcomeCard } from "@/discord/utils/welcome-card";
 
 const welcomeConfig = config.discord.events.onGuildMemberAdd.welcome;
 
-/** Posts the welcome card to the public welcome channel after a successful
- * registration. No-op in local dev (mirrors the prodOnly gate the card had as
- * a guildMemberAdd handler). Never throws: failures are logged so they cannot
- * affect the registration outcome. */
 export async function postRegistrationWelcomeCard(params: {
   member: GuildMember;
   discordId: string;
@@ -42,7 +39,7 @@ export async function postRegistrationWelcomeCard(params: {
     });
 
     await channel.send({
-      content: `<@${params.discordId}>`,
+      content: userMention(params.discordId),
       files: [card],
     });
 

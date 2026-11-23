@@ -1,3 +1,4 @@
+import { userMention } from "discord.js";
 import {
   container,
   section,
@@ -6,8 +7,7 @@ import {
   thumbnail,
 } from "../../component-builder";
 import { formatMoney, formatPlaytime } from "@createrington/shared/format";
-import { formatDaysCount } from "@/utils/format";
-import { Discord } from "@/discord/constants";
+import { formatCount } from "@/utils/format";
 import type {
   ComponentContainer,
   ComponentsData,
@@ -31,7 +31,7 @@ export interface RankUpAnnouncementInput {
 }
 
 function headline(input: RankUpAnnouncementInput): string {
-  const player = Discord.Users.mention(input.discordId);
+  const player = userMention(input.discordId);
 
   if (input.competitive) {
     switch (input.metric.kind) {
@@ -56,22 +56,13 @@ function stat(metric: RankUpMetric): string {
     case "balance":
       return `${formatMoney(metric.amount)} balance`;
     case "membership":
-      return `${formatDaysCount(metric.days)} in the server`;
+      return `${formatCount(metric.days, "day")} in the server`;
     case "records":
       return `${metric.count.toLocaleString("en-US")} first-place ${metric.count === 1 ? "stat" : "stats"}`;
   }
 }
 
-/** Components V2 renderings for the Hall of Fame channel. */
 export const HallOfFameComponentPresets = {
-  /**
-   * The rank-up announcement: the new role as the heading (led by the role's
-   * emoji when it has one), the rank-up line, the running total as subtext,
-   * the player's skin posed beside it, and the role's own color as the
-   * container stripe. A transparent full-width spacer
-   * opens the container so every announcement renders at the same width
-   * regardless of the length of the player's name.
-   */
   rankUp(input: RankUpAnnouncementInput): ComponentsData {
     const lines = [
       `### ${input.roleEmoji ? `${input.roleEmoji} ` : ""}${input.roleLabel}`,

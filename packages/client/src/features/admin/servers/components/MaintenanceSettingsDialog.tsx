@@ -10,11 +10,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SearchInput } from "@/components/search-input";
-import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Spinner } from "@/components/ui/spinner";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
-import { MinecraftText } from "@/components/minecraft-text";
+import { MinecraftText } from "./MinecraftText";
 import { PlayerLabel } from "@/components/player-label";
 import { RefreshCw, RotateCcw, X } from "lucide-react";
 import { trpc, type RouterOutput, queryClient } from "@/lib/trpc";
@@ -22,6 +21,7 @@ import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Textarea } from "@/components/ui/textarea";
+import { Field, FieldLabel } from "@/components/ui/field";
 
 interface MaintenanceSettingsDialogProps {
   serverId: number;
@@ -63,9 +63,9 @@ function TemplateField({
 }: TemplateFieldProps) {
   const isPreset = value === preset;
   return (
-    <div className="space-y-2">
+    <Field>
       <div className="flex items-center justify-between">
-        <Label htmlFor={id}>{label}</Label>
+        <FieldLabel htmlFor={id}>{label}</FieldLabel>
         <Button
           type="button"
           variant="ghost"
@@ -96,12 +96,12 @@ function TemplateField({
         text={previewText(value)}
         className="rounded-md border border-border bg-[#111] px-3 py-2 text-xs text-gray-200"
       />
-    </div>
+    </Field>
   );
 }
 
 type MaintenanceSettings =
-  RouterOutput["admin"]["servers"]["maintenanceSettings"];
+  RouterOutput["admin"]["servers"]["maintenance"]["settings"]["get"];
 
 export function MaintenanceSettingsDialog({
   serverId,
@@ -109,7 +109,7 @@ export function MaintenanceSettingsDialog({
   onOpenChange,
 }: MaintenanceSettingsDialogProps) {
   const settingsQuery = useQuery(
-    trpc.admin.servers.maintenanceSettings.queryOptions(
+    trpc.admin.servers.maintenance.settings.get.queryOptions(
       { serverId },
       { enabled: open },
     ),
@@ -171,11 +171,11 @@ function MaintenanceSettingsForm({
 
   const invalidateSettings = () =>
     queryClient.invalidateQueries(
-      trpc.admin.servers.maintenanceSettings.queryFilter({ serverId }),
+      trpc.admin.servers.maintenance.settings.get.queryFilter({ serverId }),
     );
 
   const saveMutation = useMutation(
-    trpc.admin.servers.updateMaintenanceSettings.mutationOptions(
+    trpc.admin.servers.maintenance.settings.update.mutationOptions(
       useMutationToast({
         success: ({ pushed }) =>
           pushed
@@ -189,7 +189,7 @@ function MaintenanceSettingsForm({
   );
 
   const addMutation = useMutation(
-    trpc.admin.servers.addMaintenanceAllowedPlayer.mutationOptions(
+    trpc.admin.servers.maintenance.allowedPlayers.create.mutationOptions(
       useMutationToast({
         success: ({ username, pushed }) =>
           pushed
@@ -204,7 +204,7 @@ function MaintenanceSettingsForm({
   );
 
   const removeMutation = useMutation(
-    trpc.admin.servers.removeMaintenanceAllowedPlayer.mutationOptions(
+    trpc.admin.servers.maintenance.allowedPlayers.delete.mutationOptions(
       useMutationToast({
         success: ({ username }) => `${username} removed from the allow list`,
         onSuccess: () => {
@@ -215,13 +215,13 @@ function MaintenanceSettingsForm({
   );
 
   const pushMutation = useMutation(
-    trpc.admin.servers.pushMaintenanceSettings.mutationOptions(
+    trpc.admin.servers.maintenance.settings.push.mutationOptions(
       useMutationToast({
         success: ({ added, removed }) =>
           `Settings pushed to the server (+${added.length} / -${removed.length} allowed players)`,
         onSuccess: () => {
           void queryClient.invalidateQueries(
-            trpc.admin.servers.maintenanceStatus.queryFilter({ serverId }),
+            trpc.admin.servers.maintenance.status.queryFilter({ serverId }),
           );
         },
       }),
@@ -229,7 +229,7 @@ function MaintenanceSettingsForm({
   );
 
   const allowedUuids = new Set(settings.allowedPlayers.map((p) => p.uuid));
-  const results = (searchQuery.data?.players ?? []).filter(
+  const results = (searchQuery.data?.items ?? []).filter(
     (p) => !allowedUuids.has(p.minecraftUuid),
   );
 

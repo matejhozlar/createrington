@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { router, ownerProcedure, launcherAvailable } from "@/trpc/trpc";
-import { auditActor, id, rethrowTrpc } from "@/trpc/utils";
+import { auditActor, id } from "@/trpc/utils";
 import { Q } from "@/db";
 import {
   launcherPackAdminService,
@@ -16,11 +16,6 @@ import {
 } from "@createrington/shared/launcher";
 
 const launcherOwnerProcedure = ownerProcedure.use(launcherAvailable);
-
-const ACTION_ADD = "launcher_pack_add";
-const ACTION_ENABLE = "launcher_pack_enable";
-const ACTION_REORDER = "launcher_pack_reorder";
-const ACTION_REMOVE = "launcher_pack_remove";
 
 const slug = z
   .string()
@@ -75,7 +70,7 @@ export const ownerLauncherPacksRouter = router({
       modpacks: await launcherPackAdminService.listCandidates(),
     })),
 
-  add: launcherOwnerProcedure
+  create: launcherOwnerProcedure
     .meta({
       description:
         "Offer a modpack to the launcher under a new slug; a pack served from CurseForge gets its recorded releases prepared right away",
@@ -88,21 +83,17 @@ export const ownerLauncherPacksRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      try {
-        const pack = await launcherPackAdminService.addPack(input);
-        if (pack.source === "curseforge") {
-          void modpackSyncService.tryReconcile(pack.modpackId);
-        }
-        await Q.admin.log.action.logAction({
-          ...auditActor(ctx),
-          actionType: ACTION_ADD,
-          description: `Offered modpack #${pack.modpackId} to the launcher as "${pack.slug}" (${pack.source})`,
-          metadata: { launcherPackId: pack.id, ...input },
-        });
-        return toDto(pack);
-      } catch (error) {
-        rethrowTrpc(error);
+      const pack = await launcherPackAdminService.addPack(input);
+      if (pack.source === "curseforge") {
+        void modpackSyncService.tryReconcile(pack.modpackId);
       }
+      await Q.admin.log.action.logAction({
+        ...auditActor(ctx),
+        actionType: "launcher_pack_add",
+        description: `Offered modpack #${pack.modpackId} to the launcher as "${pack.slug}" (${pack.source})`,
+        metadata: { launcherPackId: pack.id, ...input },
+      });
+      return toDto(pack);
     }),
 
   setEnabled: launcherOwnerProcedure
@@ -112,21 +103,17 @@ export const ownerLauncherPacksRouter = router({
     })
     .input(z.object({ id: id(), enabled: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
-      try {
-        const pack = await launcherPackAdminService.setPackEnabled(
-          input.id,
-          input.enabled,
-        );
-        await Q.admin.log.action.logAction({
-          ...auditActor(ctx),
-          actionType: ACTION_ENABLE,
-          description: `${pack.enabled ? "Enabled" : "Disabled"} the launcher pack "${pack.slug}"`,
-          metadata: { launcherPackId: pack.id, enabled: pack.enabled },
-        });
-        return toDto(pack);
-      } catch (error) {
-        rethrowTrpc(error);
-      }
+      const pack = await launcherPackAdminService.setPackEnabled(
+        input.id,
+        input.enabled,
+      );
+      await Q.admin.log.action.logAction({
+        ...auditActor(ctx),
+        actionType: "launcher_pack_enable",
+        description: `${pack.enabled ? "Enabled" : "Disabled"} the launcher pack "${pack.slug}"`,
+        metadata: { launcherPackId: pack.id, enabled: pack.enabled },
+      });
+      return toDto(pack);
     }),
 
   reorder: launcherOwnerProcedure
@@ -136,38 +123,30 @@ export const ownerLauncherPacksRouter = router({
     })
     .input(z.object({ ids: z.array(id()).min(1) }))
     .mutation(async ({ ctx, input }) => {
-      try {
-        const packs = await launcherPackAdminService.reorderPacks(input.ids);
-        await Q.admin.log.action.logAction({
-          ...auditActor(ctx),
-          actionType: ACTION_REORDER,
-          description: `Reordered the launcher packs: ${packs.map((pack) => pack.slug).join(", ")}`,
-          metadata: { ids: input.ids },
-        });
-        return { packs: packs.map(toDto) };
-      } catch (error) {
-        rethrowTrpc(error);
-      }
+      const packs = await launcherPackAdminService.reorderPacks(input.ids);
+      await Q.admin.log.action.logAction({
+        ...auditActor(ctx),
+        actionType: "launcher_pack_reorder",
+        description: `Reordered the launcher packs: ${packs.map((pack) => pack.slug).join(", ")}`,
+        metadata: { ids: input.ids },
+      });
+      return { packs: packs.map(toDto) };
     }),
 
-  remove: launcherOwnerProcedure
+  delete: launcherOwnerProcedure
     .meta({
       description:
         "Stop offering a pack; launchers that stored its slug lose it",
     })
     .input(z.object({ id: id() }))
     .mutation(async ({ ctx, input }) => {
-      try {
-        const pack = await launcherPackAdminService.removePack(input.id);
-        await Q.admin.log.action.logAction({
-          ...auditActor(ctx),
-          actionType: ACTION_REMOVE,
-          description: `Stopped offering the launcher pack "${pack.slug}" (modpack #${pack.modpackId})`,
-          metadata: { launcherPackId: pack.id, slug: pack.slug },
-        });
-        return toDto(pack);
-      } catch (error) {
-        rethrowTrpc(error);
-      }
+      const pack = await launcherPackAdminService.removePack(input.id);
+      await Q.admin.log.action.logAction({
+        ...auditActor(ctx),
+        actionType: "launcher_pack_remove",
+        description: `Stopped offering the launcher pack "${pack.slug}" (modpack #${pack.modpackId})`,
+        metadata: { launcherPackId: pack.id, slug: pack.slug },
+      });
+      return toDto(pack);
     }),
 });

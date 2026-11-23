@@ -1,22 +1,14 @@
-import { useCallback, useMemo, useState } from "react";
-import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
+import { useState } from "react";
+import { AdminPage } from "@/features/admin/components/AdminPage";
 import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Paginator } from "@/components/paginator";
-import { SearchInput } from "@/components/search-input";
+import { FilterBar } from "@/features/admin/components/FilterBar";
+import { Card, CardContent } from "@/components/ui/card";
+import { TableCard } from "@/components/paged-table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CellText } from "@/components/cell-text";
+import { CellDate, CellText } from "@/components/cell-text";
 import {
   BadgeCellSkeleton,
-  DataTable,
-  loadingRowCount,
   TwoLineCellSkeleton,
   type DataTableColumn,
 } from "@/components/data-table";
@@ -32,40 +24,34 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import {
-  Clock,
-  Filter,
-  RefreshCw,
-  Trash2,
-  UserCheck,
-  UserX,
-} from "lucide-react";
+import { Clock, RefreshCw, Trash2, UserCheck, UserX } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { keepPreviousData, useQuery, useMutation } from "@tanstack/react-query";
+import { usePagedQuery } from "@/hooks/use-paged-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
-import { useToastActions } from "@/hooks/use-toast";
-import { formatFullDate, toIso } from "@/features/admin/format";
-import { formatRelativeDate } from "@/lib/format";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import {
+  DEFAULT_STAT_WINDOWS,
   STAT_CARDS,
   STATUS_TONES,
   STATUS_FILTER_OPTIONS,
   STATUS_LABELS,
+  type WarningStatusFilter,
+} from "./constants";
+import {
   daysUntilDeadline,
   deriveWarningStatus,
   resolveStatText,
-  type WarningStatusFilter,
-} from "./constants";
+} from "./status";
 import { ResolveWarningModal } from "./components/modals/ResolveWarningModal";
 import { RemoveWarningModal } from "./components/modals/RemoveWarningModal";
 import { ExemptionsCard } from "./components/ExemptionsCard";
 import { GhostsCard } from "./components/GhostsCard";
 import { UnlinkedMembersCard } from "./components/UnlinkedMembersCard";
-import { EmptyState, ErrorState } from "@/components/query-states";
 import { StatCard } from "@/components/stat-card";
 
-type Warning = RouterOutput["admin"]["inactivity"]["list"]["warnings"][number];
+type Warning = RouterOutput["admin"]["inactivity"]["list"]["items"][number];
 
 const invalidateAfterRemovalRun = () => {
   void queryClient.invalidateQueries(trpc.admin.inactivity.pathFilter());
@@ -73,11 +59,6 @@ const invalidateAfterRemovalRun = () => {
 };
 
 export function InactivityManagement() {
-  const toast = useToastActions();
-
-  const [page, setPage] = useState(0);
-  const [limit] = useState(20);
-
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<WarningStatusFilter>("all");
 
@@ -90,86 +71,48 @@ export function InactivityManagement() {
     trpc.admin.inactivity.capabilities.queryOptions(),
   );
   const statsQuery = useQuery(trpc.admin.inactivity.stats.queryOptions());
-  const listQuery = useQuery(
-    trpc.admin.inactivity.list.queryOptions(
-      {
-        status: statusFilter,
-        search: debouncedSearch.trim() || undefined,
-        page,
-        limit,
-      },
-      { placeholderData: keepPreviousData },
-    ),
+  const warnings = usePagedQuery(
+    {
+      status: statusFilter,
+      search: debouncedSearch.trim() || undefined,
+    },
+    (input) => trpc.admin.inactivity.list.queryOptions(input),
   );
 
   const triggerCleanup = useMutation(
-    trpc.admin.inactivity.triggerCleanup.mutationOptions({
-      onSuccess: invalidateAfterRemovalRun,
-    }),
+    trpc.admin.inactivity.triggerCleanup.mutationOptions(
+      useMutationToast({
+        success: "Cleanup cycle completed",
+        onSuccess: invalidateAfterRemovalRun,
+      }),
+    ),
   );
   const triggerResolveRemove = useMutation(
-    trpc.admin.inactivity.triggerResolveRemove.mutationOptions({
-      onSuccess: invalidateAfterRemovalRun,
-    }),
+    trpc.admin.inactivity.triggerResolveRemove.mutationOptions(
+      useMutationToast({
+        success: "Overdue warnings processed",
+        onSuccess: invalidateAfterRemovalRun,
+      }),
+    ),
   );
-
-  const warnings = listQuery.data?.warnings ?? [];
-  const total = listQuery.data?.pagination.total ?? 0;
-  const totalPages = listQuery.data?.pagination.totalPages ?? 0;
-  const loading = listQuery.isLoading || listQuery.isPlaceholderData;
-  const loadingRows = loadingRowCount(page, limit, total);
-  const error = listQuery.error?.message ?? null;
 
   const canMutate = capabilitiesQuery.data?.canMutate ?? false;
-  const graceDays = capabilitiesQuery.data?.graceDays ?? 14;
-  const retentionDays = capabilitiesQuery.data?.retentionDays ?? 30;
+  const graceDays =
+    capabilitiesQuery.data?.graceDays ?? DEFAULT_STAT_WINDOWS.graceDays;
+  const retentionDays =
+    capabilitiesQuery.data?.retentionDays ?? DEFAULT_STAT_WINDOWS.retentionDays;
   const statWindows = { graceDays, retentionDays };
 
-  const handleSearchChange = useCallback((value: string) => {
-    setSearchQuery(value);
-    // Reset pagination on every keystroke so the debounced query
-    // below can't land on an out-of-range page when results shrink.
-    setPage(0);
-  }, []);
+  const handleTriggerCleanup = () => triggerCleanup.mutate();
 
-  const handleSearch = useCallback((e: React.FormEvent) => {
-    e.preventDefault();
-    setPage(0);
-  }, []);
+  const handleProcessOverdue = () => triggerResolveRemove.mutate();
 
-  const handleTriggerCleanup = useCallback(async () => {
-    try {
-      await triggerCleanup.mutateAsync();
-      toast.success("Cleanup cycle completed");
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to run cleanup cycle",
-      );
-    }
-  }, [triggerCleanup, toast]);
-
-  const handleProcessOverdue = useCallback(async () => {
-    try {
-      await triggerResolveRemove.mutateAsync();
-      toast.success("Overdue warnings processed");
-    } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Failed to process overdue warnings",
-      );
-    }
-  }, [triggerResolveRemove, toast]);
-
-  const stats = useMemo(
-    () => ({
-      active: statsQuery.data?.active ?? 0,
-      expired: statsQuery.data?.expired ?? 0,
-      resolvedInRetention: statsQuery.data?.resolvedInRetention ?? 0,
-      removedInRetention: statsQuery.data?.removedInRetention ?? 0,
-    }),
-    [statsQuery.data],
-  );
+  const stats = {
+    active: statsQuery.data?.active ?? 0,
+    expired: statsQuery.data?.expired ?? 0,
+    resolvedInRetention: statsQuery.data?.resolvedInRetention ?? 0,
+    removedInRetention: statsQuery.data?.removedInRetention ?? 0,
+  };
 
   const columns: DataTableColumn<Warning>[] = [
     {
@@ -212,15 +155,7 @@ export function InactivityManagement() {
       header: "Warned",
       width: 140,
       cellClassName: "text-sm text-muted-foreground",
-      render: (warning) => {
-        const iso = toIso(warning.warnedAt);
-        return (
-          <CellText
-            value={formatFullDate(iso)}
-            display={formatRelativeDate(iso)}
-          />
-        );
-      },
+      render: (warning) => <CellDate value={warning.warnedAt} relative />,
     },
     {
       key: "deadline",
@@ -251,225 +186,155 @@ export function InactivityManagement() {
       header: "Last Seen",
       width: 140,
       cellClassName: "text-sm text-muted-foreground",
-      render: (warning) => {
-        if (!warning.lastSeen) return null;
-        const iso = toIso(warning.lastSeen);
-        return (
-          <CellText
-            value={formatFullDate(iso)}
-            display={formatRelativeDate(iso)}
-          />
-        );
-      },
+      render: (warning) => <CellDate value={warning.lastSeen} relative />,
     },
   ];
 
   return (
-    <div className="flex flex-1 flex-col gap-4">
-      {/* Header */}
-      <AdminPageHeader
-        trail={[
-          { label: "Admin", href: "/admin/dashboard" },
-          { label: "Tools", href: "/admin/tools" },
-          { label: "Inactivity Management" },
-        ]}
+    <AdminPage
+      trail={[
+        { label: "Admin", href: "/admin/dashboard" },
+        { label: "Tools", href: "/admin/tools" },
+        { label: "Inactivity Management" },
+      ]}
+    >
+      <AdminPageTitle
+        title="Inactivity Management"
+        actions={
+          <>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span>
+                  <Button
+                    className="w-full xs:w-auto"
+                    variant="outline"
+                    onClick={handleProcessOverdue}
+                    disabled={!canMutate}
+                    loading={triggerResolveRemove.isPending}
+                  >
+                    <UserX className="mr-2 size-4" />
+                    Process Overdue
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>
+                {canMutate
+                  ? "Run resolve + remove phases only — no new warning announcements"
+                  : "Only available on the production deployment"}
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span>
+                  <Button
+                    className="w-full xs:w-auto"
+                    variant="outline"
+                    onClick={handleTriggerCleanup}
+                    disabled={!canMutate || triggerCleanup.isPending}
+                  >
+                    <RefreshCw
+                      className={cn(
+                        "mr-2 size-4",
+                        triggerCleanup.isPending && "animate-spin",
+                      )}
+                    />
+                    Run Cleanup Now
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>
+                {canMutate
+                  ? "Run the full cycle: resolve → warn → remove"
+                  : "Only available on the production deployment"}
+              </TooltipContent>
+            </Tooltip>
+          </>
+        }
       />
 
-      <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
-        <AdminPageTitle
-          title="Inactivity Management"
-          actions={
-            <>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span>
-                    <Button
-                      className="w-full xs:w-auto"
-                      variant="outline"
-                      onClick={handleProcessOverdue}
-                      disabled={!canMutate}
-                      loading={triggerResolveRemove.isPending}
-                    >
-                      <UserX className="mr-2 size-4" />
-                      Process Overdue
-                    </Button>
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {canMutate
-                    ? "Run resolve + remove phases only — no new warning announcements"
-                    : "Only available on the production deployment"}
-                </TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span>
-                    <Button
-                      className="w-full xs:w-auto"
-                      variant="outline"
-                      onClick={handleTriggerCleanup}
-                      disabled={!canMutate || triggerCleanup.isPending}
-                    >
-                      <RefreshCw
-                        className={cn(
-                          "mr-2 size-4",
-                          triggerCleanup.isPending && "animate-spin",
-                        )}
-                      />
-                      Run Cleanup Now
-                    </Button>
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {canMutate
-                    ? "Run the full cycle: resolve → warn → remove"
-                    : "Only available on the production deployment"}
-                </TooltipContent>
-              </Tooltip>
-            </>
-          }
-        />
-
-        {!canMutate && (
-          <Card className="border-muted-foreground/30 bg-muted/30 gap-0">
-            <CardContent className="flex items-center gap-3 py-3">
-              <Clock className="size-4 shrink-0 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">
-                This is a non-production environment. You can browse warnings
-                but destructive actions (remove, run cleanup) are disabled.
-              </p>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Stats Cards */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {STAT_CARDS.map(({ key, label, description, icon, tone }) => (
-            <StatCard
-              key={key}
-              label={resolveStatText(label, statWindows)}
-              value={stats[key]}
-              icon={icon}
-              tone={tone}
-              footer={resolveStatText(description, statWindows)}
-            />
-          ))}
-        </div>
-
-        {/* Filters */}
-        <Card className="gap-2">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Filter className="size-4 text-muted-foreground" />
-              Filters
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSearch} className="flex flex-wrap gap-2">
-              <SearchInput
-                className="min-w-48 flex-1"
-                placeholder="Search by username..."
-                value={searchQuery}
-                onValueChange={handleSearchChange}
-              />
-
-              <Select
-                value={statusFilter}
-                onValueChange={(v) => {
-                  setStatusFilter(v as WarningStatusFilter);
-                  setPage(0);
-                }}
-              >
-                <SelectTrigger className="min-w-[190px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {STATUS_FILTER_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Button type="submit" className="min-w-[85px]">
-                Search
-              </Button>
-            </form>
+      {!canMutate && (
+        <Card className="border-muted-foreground/30 bg-muted/30 gap-0">
+          <CardContent className="flex items-center gap-3 py-3">
+            <Clock className="size-4 shrink-0 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">
+              This is a non-production environment. You can browse warnings but
+              destructive actions (remove, run cleanup) are disabled.
+            </p>
           </CardContent>
         </Card>
+      )}
 
-        {/* Warnings Table */}
-        <Card className="gap-0">
-          <CardHeader className="border-b gap-0">
-            <CardTitle>
-              Inactivity Warnings ({total.toLocaleString()})
-            </CardTitle>
-          </CardHeader>
-
-          {error ? (
-            <ErrorState message={error} onRetry={() => listQuery.refetch()} />
-          ) : !loading && warnings.length === 0 ? (
-            <EmptyState icon={Clock} message="No warnings found" />
-          ) : (
-            <>
-              <CardContent className="px-0">
-                <DataTable
-                  columns={columns}
-                  rows={warnings}
-                  loading={loading}
-                  loadingRows={loadingRows}
-                  rowKey={(warning) => warning.id}
-                  actions={(warning) => {
-                    const canAct = !warning.resolvedAt && !warning.removedAt;
-                    return [
-                      {
-                        label: "Resolve",
-                        icon: UserCheck,
-                        disabled: !canAct,
-                        onClick: () => setResolveTarget(warning),
-                      },
-                      {
-                        label: canMutate
-                          ? "Remove now"
-                          : "Only available on the production deployment",
-                        icon: Trash2,
-                        variant: "destructive",
-                        disabled: !canAct || !canMutate,
-                        onClick: () => setRemoveTarget(warning),
-                      },
-                    ];
-                  }}
-                />
-              </CardContent>
-
-              {total > 0 && (
-                <CardFooter className="border-t">
-                  <Paginator
-                    page={page}
-                    limit={limit}
-                    total={total}
-                    totalPages={totalPages}
-                    onPageChange={setPage}
-                    itemLabel="warning"
-                    className="w-full"
-                  />
-                </CardFooter>
-              )}
-            </>
-          )}
-        </Card>
-
-        <ExemptionsCard />
-
-        {/* Ghost members (registered but missing from Discord) */}
-        <GhostsCard canMutate={canMutate} />
-
-        {/* Unlinked members (present on Discord but missing from the database) */}
-        <UnlinkedMembersCard />
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {STAT_CARDS.map(({ key, label, description, icon, tone }) => (
+          <StatCard
+            key={key}
+            label={resolveStatText(label, statWindows)}
+            value={stats[key]}
+            icon={icon}
+            tone={tone}
+            footer={resolveStatText(description, statWindows)}
+          />
+        ))}
       </div>
 
-      {/* Modals */}
+      <FilterBar
+        search={searchQuery}
+        onSearchChange={setSearchQuery}
+        placeholder="Search by username..."
+        activeCount={(searchQuery ? 1 : 0) + (statusFilter !== "all" ? 1 : 0)}
+      >
+        <Select
+          value={statusFilter}
+          onValueChange={(v) => setStatusFilter(v as WarningStatusFilter)}
+        >
+          <SelectTrigger className="min-w-[190px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {STATUS_FILTER_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </FilterBar>
+
+      <TableCard
+        title="Inactivity Warnings"
+        paged={warnings}
+        empty={{ icon: Clock, message: "No warnings found" }}
+        itemLabel="warning"
+        columns={columns}
+        rowKey={(warning) => warning.id}
+        actions={(warning) => {
+          const canAct = !warning.resolvedAt && !warning.removedAt;
+          return [
+            {
+              label: "Resolve",
+              icon: UserCheck,
+              disabled: !canAct,
+              onClick: () => setResolveTarget(warning),
+            },
+            {
+              label: canMutate
+                ? "Remove now"
+                : "Only available on the production deployment",
+              icon: Trash2,
+              variant: "destructive",
+              disabled: !canAct || !canMutate,
+              onClick: () => setRemoveTarget(warning),
+            },
+          ];
+        }}
+      />
+
+      <ExemptionsCard />
+
+      <GhostsCard canMutate={canMutate} />
+
+      <UnlinkedMembersCard />
+
       <ResolveWarningModal
         warning={resolveTarget}
         onClose={() => setResolveTarget(null)}
@@ -479,6 +344,6 @@ export function InactivityManagement() {
         warning={removeTarget}
         onClose={() => setRemoveTarget(null)}
       />
-    </div>
+    </AdminPage>
   );
 }

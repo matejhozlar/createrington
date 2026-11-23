@@ -1,3 +1,4 @@
+import { Badge } from "@/components/ui/badge";
 import {
   useCallback,
   useEffect,
@@ -17,7 +18,7 @@ import {
 import { useWebSocket } from "@/contexts/websocket";
 import { useServerData } from "@/contexts/server-data";
 import { usePlayerData } from "@/contexts/player-data";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/hooks/use-is-mobile";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { LoadingState } from "@/components/query-states";
@@ -25,7 +26,8 @@ import { ChatComposer } from "./chat-composer";
 import { ChatFallback } from "./chat-fallback";
 import { MessageGroupComponent } from "./message-group";
 import { PlayerListPanel } from "./player-list-panel";
-import { useRelativeTick } from "./hooks";
+import { useNow } from "@/hooks/use-now";
+import { useStickToBottom } from "@/hooks/use-stick-to-bottom";
 import { groupHasHighlight, groupMessages } from "./utils";
 
 const MAX_MESSAGES = 200;
@@ -75,37 +77,27 @@ export function ServerChat() {
   const [messages, setMessages] = useState<CachedMessage[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const [showScrollButton, setShowScrollButton] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [highlightedMessages, setHighlightedMessages] = useState<Set<string>>(
     new Set(),
   );
 
-  /** Controls the player-list slide-over panel */
   const [playerListOpen, setPlayerListOpen] = useState(false);
 
-  const isAtBottomRef = useRef(true);
   const lastMessageIdRef = useRef<string | null>(null);
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const {
+    ref: messagesRef,
+    pinnedToBottom,
+    isNearBottom,
+    scrollToBottom,
+    followNewContent,
+  } = useStickToBottom<HTMLDivElement>({
+    onReachBottom: () => setUnreadCount(0),
+  });
 
-  // Single tick instance for the whole chat: re-renders timestamps every 60s
-  // without each MessageRow running its own independent interval
-  const tick = useRelativeTick();
+  const tick = useNow();
 
-  const handleScroll = useCallback(() => {
-    const container = messagesContainerRef.current;
-    if (!container) return;
-    const atBottom =
-      container.scrollHeight - container.scrollTop - container.clientHeight <
-      50;
-    isAtBottomRef.current = atBottom;
-    setShowScrollButton(!atBottom);
-    if (atBottom) setUnreadCount(0);
-  }, []);
-
-  // Sort messages chronologically, then group
   const { groups: messageGroups, sorted } = useMemo(() => {
     const sorted = [...messages].sort((a, b) => {
       return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
@@ -116,17 +108,9 @@ export function ServerChat() {
     };
   }, [messages]);
 
-  const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
-    messagesEndRef.current?.scrollIntoView({ behavior });
-  }, []);
-
   const handleScrollToBottom = useCallback(() => {
     scrollToBottom();
     setUnreadCount(0);
-  }, [scrollToBottom]);
-
-  const handleImageLoad = useCallback(() => {
-    if (isAtBottomRef.current) scrollToBottom();
   }, [scrollToBottom]);
 
   const handleHighlightEnd = useCallback((messageIds: string[]) => {
@@ -137,20 +121,23 @@ export function ServerChat() {
     });
   }, []);
 
-  const upsertMessage = useCallback((msg: CachedMessage) => {
-    setMessages((prev) => {
-      const idx = prev.findIndex((m) => m.messageId === msg.messageId);
-      const isNew = idx < 0;
+  const upsertMessage = useCallback(
+    (msg: CachedMessage) => {
+      setMessages((prev) => {
+        const idx = prev.findIndex((m) => m.messageId === msg.messageId);
+        const isNew = idx < 0;
 
-      if (isNew && !isAtBottomRef.current) {
-        setHighlightedMessages((prev) => new Set(prev).add(msg.messageId));
-      }
+        if (isNew && !isNearBottom()) {
+          setHighlightedMessages((prev) => new Set(prev).add(msg.messageId));
+        }
 
-      return idx >= 0
-        ? prev.map((m, i) => (i === idx ? msg : m))
-        : [...prev, msg].slice(-MAX_MESSAGES);
-    });
-  }, []);
+        return idx >= 0
+          ? prev.map((m, i) => (i === idx ? msg : m))
+          : [...prev, msg].slice(-MAX_MESSAGES);
+      });
+    },
+    [isNearBottom],
+  );
 
   const removeMessage = useCallback((messageId: string) => {
     setMessages((prev) => prev.filter((m) => m.messageId !== messageId));
@@ -181,17 +168,9 @@ export function ServerChat() {
     };
   }, [isConnected, serverId, requestInitialData, subscribe, unsubscribe]);
 
-  // Pin the scroll to the bottom on the first render after loading resolves.
-  // useLayoutEffect runs synchronously after DOM mutations but before the
-  // browser paints, so the user never sees the messages at scrollTop=0 before
-  // a delayed scroll jumps them down. (The previous setTimeout-based approach
-  // caused a visible top→bottom flicker on route entry.)
   useLayoutEffect(() => {
-    if (loading) return;
-    const el = messagesContainerRef.current;
-    if (!el) return;
-    el.scrollTop = el.scrollHeight;
-  }, [loading]);
+    if (!loading) scrollToBottom("auto");
+  }, [loading, scrollToBottom]);
 
   useEffect(() => {
     if (!isConnected || !serverId) return;
@@ -219,7 +198,6 @@ export function ServerChat() {
     return unsub;
   }, [isConnected, serverId, on, upsertMessage, removeMessage]);
 
-  // Track new messages and update unread count
   useEffect(() => {
     const previousId = lastMessageIdRef.current;
     const latestId = sorted[sorted.length - 1]?.messageId ?? null;
@@ -230,12 +208,12 @@ export function ServerChat() {
     if (previousIdx < 0) return;
 
     const newMessageCount = sorted.length - 1 - previousIdx;
-    if (!isAtBottomRef.current) {
+    if (!isNearBottom()) {
       setUnreadCount((prev) => prev + newMessageCount);
     } else {
-      scrollToBottom();
+      followNewContent();
     }
-  }, [sorted, scrollToBottom]);
+  }, [sorted, isNearBottom, followNewContent]);
 
   if (legacyServer) {
     return <Navigate to={`/chat/${legacyServer.serverSlug}`} replace />;
@@ -250,7 +228,6 @@ export function ServerChat() {
 
   return (
     <div className="flex h-[calc(100dvh-var(--mobile-nav-height))] flex-col bg-card/50 select-none">
-      {/* Player-list slide-over: only rendered on desktop (md+) */}
       {!isMobile && serverId && (
         <PlayerListPanel
           open={playerListOpen}
@@ -259,29 +236,24 @@ export function ServerChat() {
         />
       )}
 
-      {/* Header */}
       <div className="flex items-center justify-between border-b border-border bg-sidebar px-6 py-4">
-        {/* Left side: server name + status */}
         <div>
           <h1 className="text-lg font-semibold text-foreground">
             {server.serverName}
           </h1>
           <p className="text-sm text-muted-foreground">
-            {server.online ? (
-              <>
-                <span className="mr-2 inline-block size-2 rounded-full bg-green-500"></span>
-                {server.playerCount} / {server.maxPlayers} online
-              </>
-            ) : (
-              <>
-                <span className="mr-2 inline-block size-2 rounded-full bg-destructive"></span>
-                Offline
-              </>
-            )}
+            <span
+              className={cn(
+                "mr-2 inline-block size-2 rounded-full",
+                server.online ? "bg-green-500" : "bg-destructive",
+              )}
+            />
+            {server.online
+              ? `${server.playerCount} / ${server.maxPlayers} online`
+              : "Offline"}
           </p>
         </div>
 
-        {/* Right side: player-list toggle + WebSocket connection status */}
         <div className="flex items-center gap-2">
           {!isMobile && (
             <Button
@@ -294,15 +266,9 @@ export function ServerChat() {
             </Button>
           )}
 
-          <div
-            className={cn(
-              "flex items-center gap-2 rounded-full px-3 py-1.5 text-sm",
-              loading
-                ? "bg-muted/40 text-muted-foreground"
-                : isConnected
-                  ? "bg-green-500/20 text-green-500"
-                  : "bg-destructive/20 text-destructive",
-            )}
+          <Badge
+            tone={loading ? "neutral" : isConnected ? "success" : "danger"}
+            className="gap-2 px-3 py-1.5 text-sm font-normal"
           >
             <span
               className={cn(
@@ -315,15 +281,13 @@ export function ServerChat() {
               : isConnected
                 ? "Connected"
                 : "Disconnected"}
-          </div>
+          </Badge>
         </div>
       </div>
 
-      {/* Messages */}
       <div className="relative min-h-0 flex-1 overflow-hidden">
         <div
-          ref={messagesContainerRef}
-          onScroll={handleScroll}
+          ref={messagesRef}
           className="h-full overflow-x-hidden overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border hover:[&::-webkit-scrollbar-thumb]:bg-muted-foreground/50"
         >
           {loading ? (
@@ -362,7 +326,7 @@ export function ServerChat() {
                       group={group}
                       prevSource={prevGroup?.source}
                       tick={tick}
-                      onImageLoad={handleImageLoad}
+                      onImageLoad={followNewContent}
                       isOnline={isOnline}
                       hasHighlight={isHighlighted}
                       onHighlightEnd={handleHighlightEnd}
@@ -370,13 +334,11 @@ export function ServerChat() {
                   );
                 });
               })()}
-              <div ref={messagesEndRef} />
             </div>
           )}
         </div>
 
-        {/* Scroll-to-bottom: single consolidated button */}
-        {showScrollButton && (
+        {!pinnedToBottom && (
           <div className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2">
             <button
               type="button"

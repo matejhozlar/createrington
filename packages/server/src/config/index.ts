@@ -1,13 +1,3 @@
-/**
- * Centralized application configuration
- *
- * Aggregates all environment-validated settings, Discord entities,
- * and static configuration into a single frozen config object.
- *
- * NOTE: Discord entity data (roles, channels, categories) is loaded from
- * a generated JSON file. Run `pnpm scrape-discord` to regenerate it.
- */
-
 import { env, envMode } from "./env/env.config";
 import type { LauncherChannel } from "@createrington/shared/launcher";
 import type {
@@ -45,21 +35,12 @@ try {
   };
 }
 
-// Suffix only the dev deployment so prod and dev sharing a parent-domain
-// cookie jar (e.g. both scoped to `.createrington.com`) can't overwrite
-// each other's refresh cookies and trigger the family-detection
-// theft-revoke storm. Prod keeps the legacy unsuffixed name so external
-// SSO consumers that hardcode `crt_access` / `crt_refresh` keep working.
 function deriveCookieName(base: string): string {
   if (!env.COOKIE_DOMAIN) return base;
   return envMode.isDevDeployment ? `${base}_dev` : base;
 }
 
-// Resolved against CWD so relative paths work predictably across the
-// dev server (runs from repo root) and prod (runs from /opt/...).
-// Empty string when validation is skipped (generate scripts, unit tests)
-// since no consumer that needs the path runs in those modes.
-const storagePath = env.STORAGE_PATH ? path.resolve(env.STORAGE_PATH) : "";
+const storagePath = path.resolve(env.STORAGE_PATH);
 
 const ASSETS_BASE_URL = "https://assets.createrington.com";
 const ASSETS_VERSION = 2;
@@ -73,18 +54,11 @@ const config = {
 
   meta: {
     name: "Createrington",
-    version: "1.21.1",
-    author: {
-      name: "saunhardy",
-      email: "matejhozlarzadek8ii@gmail.com",
-      discord: "matejhoz",
-    },
     links: {
       discordInvite: "https://discord.gg/mtF6MDHj4Z",
       website: env.WEBSITE_URL,
       adminPanel: env.ADMIN_PANEL_URL,
       map: env.MAP_URL,
-      assets: env.ASSETS_URL,
       vote: "https://www.createmodservers.com/server/createrington/vote",
     },
   },
@@ -110,27 +84,16 @@ const config = {
       cookie: {
         name: deriveCookieName(env.REFRESH_COOKIE_NAME),
         accessName: deriveCookieName(env.ACCESS_COOKIE_NAME),
-        // Empty string means host-only (single-domain) cookies (the existing
-        // behavior). Set to a parent domain (e.g. ".createrington.com") to
-        // enable cross-subdomain SSO consumers.
         domain: env.COOKIE_DOMAIN || undefined,
       },
       sso: {
-        callbackUrl: env.SSO_CALLBACK_URL ?? "",
-        // Defensive `??` because in VALIDATION_MODE=generation (used by tests
-        // and codegen) env vars bypass zod and arrive as raw process.env values
-        // (undefined when unset).
-        corsOrigins: (env.SSO_CORS_ORIGINS ?? "")
-          .split(",")
+        callbackUrl: env.SSO_CALLBACK_URL,
+        corsOrigins: env.SSO_CORS_ORIGINS.split(",")
           .map((s) => s.trim())
           .filter(Boolean),
-        codeExchangeOrigins: (env.SSO_CODE_EXCHANGE_ORIGINS ?? "")
-          .split(",")
+        codeExchangeOrigins: env.SSO_CODE_EXCHANGE_ORIGINS.split(",")
           .map((s) => s.trim())
           .filter(Boolean),
-      },
-      allowedServerIps: {
-        local: env.LOCAL_SERVER_IP_ADDRESS,
       },
       owner: {
         discordId: env.OWNER_DISCORD_ID,
@@ -155,21 +118,9 @@ const config = {
       max: 20,
       idleTimeoutMillis: 30_000,
       connectionTimeoutMillis: 10_000,
-      // Postgres aborts any single statement that exceeds 30s. Without this,
-      // a runaway query (or a heavy attacker-triggered $ilike scan) can hold
-      // a connection from the pool of 20 indefinitely and wedge the app.
       statement_timeout: 30_000,
-      // Node-pg client-side mirror of statement_timeout, in case the server
-      // doesn't enforce it for some reason.
       query_timeout: 30_000,
-      // Postgres kills any transaction left idle for over 60s, releasing
-      // its row locks. Protects against code paths that BEGIN but forget
-      // to COMMIT/ROLLBACK on an error.
       idle_in_transaction_session_timeout: 60_000,
-    },
-    monitoring: {
-      intervalMs: 60_000,
-      warnUtilizationPercent: 80,
     },
   },
 
@@ -178,9 +129,6 @@ const config = {
       main: {
         id: env.DISCORD_MAIN_BOT_ID,
         token: env.DISCORD_MAIN_BOT_TOKEN,
-        webhook: {
-          id: env.DISCORD_MAIN_BOT_WEBHOOK_ID,
-        },
       },
     },
 
@@ -237,7 +185,6 @@ const config = {
     },
 
     oauth: {
-      // The main bot's application ID doubles as the OAuth client ID.
       clientId: env.DISCORD_MAIN_BOT_ID,
       clientSecret: env.DISCORD_MAIN_BOT_CLIENT_SECRET,
       redirectUri: env.DISCORD_OAUTH_REDIRECT_URI,
@@ -249,8 +196,6 @@ const config = {
       ip: env.RAILS_N_SAILS_SERVER_IP,
       port: env.RAILS_N_SAILS_SERVER_PORT,
       name: "Rails 'n Sails",
-      // Public URL slug (surfaced as serverSlug, e.g. /chat/rails). Keep in
-      // sync with this server's row in the server table (identifier column).
       slug: "rails",
       id: 1,
       rcon: {
@@ -258,8 +203,6 @@ const config = {
         port: env.RAILS_N_SAILS_RCON_PORT,
         password: env.RAILS_N_SAILS_RCON_PASSWORD ?? "",
       },
-      // SFTP is gated behind isSftpAllowed() (services/mc-server/file-ops.ts);
-      // empty defaults are fine because dev never opens the connection.
       sftp: {
         host: env.RAILS_N_SAILS_SFTP_HOST ?? "",
         port: env.RAILS_N_SAILS_SFTP_PORT ?? 22,
@@ -271,7 +214,6 @@ const config = {
     playerLimit: env.PLAYER_LIMIT,
   },
 
-  // null means SFTP is used (production path); a non-null value enables local filesystem ops
   mcServer: {
     localPath: env.MC_SERVER_LOCAL_PATH ?? null,
   },
@@ -287,8 +229,7 @@ const config = {
       ? "staging"
       : "production") satisfies LauncherChannel,
     publishTokenHash: env.LAUNCHER_PUBLISH_TOKEN_HASH ?? "",
-    downloadHosts: (env.LAUNCHER_DOWNLOAD_HOSTS ?? "")
-      .split(",")
+    downloadHosts: env.LAUNCHER_DOWNLOAD_HOSTS.split(",")
       .map((host) => host.trim().toLowerCase())
       .filter((host) => host.length > 0),
     packFiles: {
@@ -315,7 +256,6 @@ const config = {
     url: env.REDIS_URL ?? null,
   },
 
-  // null disables the server-list vote listener (services/votifier)
   votifier:
     env.VOTIFIER_PORT && env.VOTIFIER_TOKEN
       ? {
@@ -325,7 +265,6 @@ const config = {
         }
       : null,
 
-  // null disables every CurseForge and Modrinth feature (services/content-gateway)
   contentGateway:
     env.CONTENT_GATEWAY_URL && env.CONTENT_GATEWAY_TOKEN
       ? { url: env.CONTENT_GATEWAY_URL, token: env.CONTENT_GATEWAY_TOKEN }
@@ -342,6 +281,11 @@ const config = {
     serviceToken: env.SANDBOX_SERVICE_TOKEN ?? null,
   },
 
+  adminChat: {
+    url: env.CLAUDE_API_URL,
+    secret: env.ADMIN_CHAT_SECRET,
+  },
+
   email: {
     apiKey: env.RESEND_API_KEY ?? "",
     fromEmail: env.RESEND_FROM_EMAIL,
@@ -355,27 +299,16 @@ const config = {
   },
 
   gallery: {
-    // Players post screenshots in gallery-submissions; approved ones are
-    // announced in gallery. Both undefined when the guild lacks the channels
-    // under the Createrington Official category
     intakeChannelId:
       discordEntities.channels.createringtonOfficial?.gallerySubmissions,
     announcementChannelId:
       discordEntities.channels.createringtonOfficial?.gallery,
-    // Pending originals are kept out of any public bucket until approval
     originalsDir: path.join(storagePath, "gallery", "originals"),
   },
 
   puppeteer: {
-    // Empty when not configured (dev). Render routes reject requests with an
-    // empty secret (app/features/render/render.routes.ts).
     secret: env.PUPPETEER_SECRET ?? "",
     executablePath: env.PUPPETEER_EXECUTABLE_PATH,
-    // Default points the headless browser at loopback so the render
-    // endpoints can enforce loopback-only access. Dev uses the Vite host
-    // because Vite serves the client and proxies /api/* without XFF;
-    // prod uses Node directly (it serves the SPA via the catch-all in
-    // app/index.ts) so no public hostname or reverse proxy is involved.
     baseUrl:
       env.PUPPETEER_BASE_URL ??
       (envMode.isDev ? env.DEV_CLIENT_ORIGIN : `http://127.0.0.1:${env.PORT}`),

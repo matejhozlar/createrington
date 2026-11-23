@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import portalSprite from "@/assets/parallel-worlds/pw-portal.png";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
+import { loadImage } from "@/lib/image";
 
 const TOTAL_FRAMES = 32;
 const FRAME_DURATION_MS = 85;
@@ -12,19 +14,16 @@ let spritePromise: Promise<HTMLImageElement> | null = null;
 function loadSprite(): Promise<HTMLImageElement> {
   if (cachedSprite) return Promise.resolve(cachedSprite);
   if (spritePromise) return spritePromise;
-  spritePromise = new Promise((resolve, reject) => {
-    const img = new Image();
-    img.decoding = "sync";
-    img.src = SPRITE_SRC;
-    img.onload = () => {
+  spritePromise = loadImage(SPRITE_SRC).then(
+    (img) => {
       cachedSprite = img;
-      resolve(img);
-    };
-    img.onerror = () => {
+      return img;
+    },
+    (error: unknown) => {
       spritePromise = null;
-      reject(new Error("Failed to load portal sprite"));
-    };
-  });
+      throw error;
+    },
+  );
   return spritePromise;
 }
 
@@ -44,11 +43,7 @@ export function PortalTile({ width, height, tileSize = 96 }: PortalTileProps) {
   const rafRef = useRef<number>(0);
   const [ready, setReady] = useState(!!cachedSprite);
   const [visible, setVisible] = useState(false);
-  const [reducedMotion, setReducedMotion] = useState(
-    () =>
-      typeof window !== "undefined" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches,
-  );
+  const reducedMotion = useReducedMotion();
 
   useEffect(() => {
     let cancelled = false;
@@ -62,13 +57,6 @@ export function PortalTile({ width, height, tileSize = 96 }: PortalTileProps) {
     return () => {
       cancelled = true;
     };
-  }, []);
-
-  useEffect(() => {
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const onChange = () => setReducedMotion(mq.matches);
-    mq.addEventListener("change", onChange);
-    return () => mq.removeEventListener("change", onChange);
   }, []);
 
   useEffect(() => {

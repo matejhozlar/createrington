@@ -1,67 +1,15 @@
-import { BadRequestError, respondSuccess } from "@/app/middleware";
+import { roleMention, userMention } from "discord.js";
+import { getValidated } from "@/app/middleware/validation.middleware";
+import { respondSuccess } from "@/app/middleware/api-envelope";
 import { Q } from "@/db";
 import { Discord } from "@/discord/constants";
 import { createEmbed } from "@/discord/embeds";
 import { EmbedColors } from "@/discord/embeds/colors";
-import { MC_UUID_REGEX } from "@/utils/zod-schemas";
 import type { Request, Response } from "express";
-import { z } from "zod";
+import type { TrainCrashBody } from "./trains.schemas";
 
-const uuidSchema = z.string().regex(MC_UUID_REGEX, "Invalid UUID");
-const playerNameSchema = z.string().min(1).max(32);
-
-const trainCrashSchema = z.object({
-  trainId: z.string().min(1).max(100),
-  trainName: z.string().min(1).max(100),
-  speed: z.number().finite().optional(),
-  carriageCount: z.number().int().nonnegative().optional(),
-  position: z
-    .object({
-      x: z.number().finite(),
-      y: z.number().finite(),
-      z: z.number().finite(),
-    })
-    .nullable()
-    .optional(),
-  dimension: z.string().max(100).optional(),
-  timestamp: z.number().int().nonnegative().optional(),
-  owner: uuidSchema.optional(),
-  driverUuid: uuidSchema.optional(),
-  passengers: z
-    .array(
-      z.object({
-        uuid: uuidSchema,
-        name: playerNameSchema.optional(),
-        isDriver: z.boolean(),
-      }),
-    )
-    .max(64)
-    .optional(),
-  backwardsDriver: z
-    .object({ uuid: uuidSchema, name: playerNameSchema.optional() })
-    .optional(),
-});
-
-/**
- * Trains Controller
- *
- * Handles train crash events reported by the Create: Trains Minecraft mod:
- * - Validates the incoming crash payload
- * - Resolves player display names (with Discord mentions where available)
- * - Sends a formatted notification embed to the Rails 'n Sails notifications channel
- */
 export class TrainsController {
-  /**
-   * POST /api/trains/crash
-   *
-   * Receives train crash data from the Minecraft mod and sends
-   * a notification embed to the Rails 'n Sails notifications channel.
-   */
-  static async reportCrash(req: Request, res: Response): Promise<void> {
-    const parsed = trainCrashSchema.safeParse(req.body);
-    if (!parsed.success) {
-      throw new BadRequestError("Invalid train crash payload");
-    }
+  static async reportCrash(_req: Request, res: Response): Promise<void> {
     const {
       trainId,
       trainName,
@@ -74,9 +22,8 @@ export class TrainsController {
       driverUuid,
       passengers,
       backwardsDriver,
-    } = parsed.data;
+    } = getValidated<{ body: TrainCrashBody }>(res).body;
 
-    // Collect all UUIDs and resolve to usernames in a single query
     const allUuids = new Set<string>();
     if (owner) allUuids.add(owner);
     if (driverUuid) allUuids.add(driverUuid);
@@ -90,7 +37,7 @@ export class TrainsController {
       });
       for (const p of players) {
         const display = p.discordId
-          ? `${p.minecraftUsername} (${Discord.Users.mention(p.discordId)})`
+          ? `${p.minecraftUsername} (${userMention(p.discordId)})`
           : p.minecraftUsername;
         displayMap.set(p.minecraftUuid, display);
       }
@@ -150,7 +97,7 @@ export class TrainsController {
 
     await Discord.Messages.send({
       channelId: Discord.Channels.railsNSails.NOTIFICATIONS,
-      content: `||${Discord.Roles.mention(Discord.Roles.RAILSNSAILSNOTIFICATIONS)}||`,
+      content: `||${roleMention(Discord.Roles.RAILSNSAILSNOTIFICATIONS)}||`,
       embeds: embed.build(),
     });
 

@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
-import { loadImage } from "@/lib/skin-runner/skin";
+import { loadImage } from "@/lib/image";
 
 const cache = new Map<string, Promise<HTMLImageElement>>();
 
 export function cachedImage(src: string): Promise<HTMLImageElement> {
   let image = cache.get(src);
   if (!image) {
-    image = loadImage(src);
+    image = loadImage(src, { crossOrigin: "anonymous" });
     image.catch(() => cache.delete(src));
     cache.set(src, image);
   }

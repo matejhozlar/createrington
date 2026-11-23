@@ -1,4 +1,5 @@
 import { Q } from "@/db";
+import { formatCount } from "@/utils/format";
 import { Discord } from "@/discord/constants";
 import type { DiscordMessageService } from "@/services/discord/message/message.service";
 import type { ServerMaintenanceSchedule } from "@createrington/shared/db/server_maintenance_schedule.types";
@@ -263,26 +264,21 @@ export class MaintenanceScheduler {
   ): Promise<void> {
     const label =
       minutesBefore >= 60
-        ? `${Math.floor(minutesBefore / 60)} hour${minutesBefore >= 120 ? "s" : ""}`
-        : `${minutesBefore} minute${minutesBefore !== 1 ? "s" : ""}`;
+        ? formatCount(Math.floor(minutesBefore / 60), "hour")
+        : formatCount(minutesBefore, "minute");
 
     const duration =
       schedule.estimatedMinutes !== null
         ? ` Estimated duration: ${formatEta(schedule.estimatedMinutes)}.`
         : "";
 
-    const result = await this.messageService.send({
+    await this.messageService.send({
       channelId: Discord.Channels.railsNSails.MINECRAFT_CHAT,
       content: `Server maintenance in ${label}.${duration} Players will be kicked when maintenance begins.`,
     });
-
-    if (result.success) {
-      logger.info(
-        `Sent ${minutesBefore}min maintenance warning for schedule #${schedule.id}`,
-      );
-    } else {
-      logger.error(`Failed to send maintenance warning: ${result.error}`);
-    }
+    logger.info(
+      `Sent ${minutesBefore}min maintenance warning for schedule #${schedule.id}`,
+    );
   }
 
   private async activateMaintenance(

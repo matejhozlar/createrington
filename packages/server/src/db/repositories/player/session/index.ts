@@ -1,4 +1,4 @@
-import { Q } from "@/db";
+import { Q } from "@/db/pool";
 import { DatabaseTable } from "@/generated/db";
 import type { PlayerSession } from "@createrington/shared/db";
 import { BasePlayerRepository, type PlayerIdentifier } from "../base";
@@ -9,24 +9,20 @@ import { BasePlayerRepository, type PlayerIdentifier } from "../base";
  * read surface used by admin views and player profiles.
  */
 export class PlayerSessionRepository extends BasePlayerRepository {
-  constructor() {
-    super();
-  }
-
   /** One page of the player's sessions, newest first, with the total count. */
   async getHistoryPage(
     identifier: PlayerIdentifier,
     serverId: number | undefined,
     limit: number,
     offset: number,
-  ): Promise<{ sessions: PlayerSession[]; total: number }> {
+  ): Promise<{ rows: PlayerSession[]; total: number }> {
     const uuid = await this.resolvePlayerUuid(identifier);
     const filters = {
       playerMinecraftUuid: uuid,
       ...(serverId && { serverId }),
     };
 
-    const [sessions, total] = await Promise.all([
+    const [rows, total] = await Promise.all([
       Q.player.session.findAll(filters, {
         limit,
         offset,
@@ -35,19 +31,6 @@ export class PlayerSessionRepository extends BasePlayerRepository {
       }),
       Q.player.session.count(filters),
     ]);
-    return { sessions, total };
-  }
-
-  /** Total session count for a player, optionally scoped to a server. */
-  async count(
-    identifier: PlayerIdentifier,
-    serverId?: number,
-  ): Promise<number> {
-    const uuid = await this.resolvePlayerUuid(identifier);
-
-    return await Q.player.session.count({
-      playerMinecraftUuid: uuid,
-      ...(serverId && { serverId }),
-    });
+    return { rows, total };
   }
 }

@@ -43,14 +43,13 @@ afterAll(async () => {
   await removePlayers();
 });
 
-describe("Q.player.ban.countExpiredBans", () => {
-  it("counts exactly the rows getExpiredBans returns", async () => {
+describe("Q.player.ban.getExpiredBans", () => {
+  it("returns temporary bans past their expiry and skips running ones", async () => {
     const expired = await Q.player.ban.getExpiredBans();
     const ours = expired.filter((ban) =>
       UUIDS.includes(ban.playerMinecraftUuid),
     );
 
     expect(ours.map((ban) => ban.playerMinecraftUuid)).toEqual([EXPIRED]);
-    expect(await Q.player.ban.countExpiredBans()).toBe(expired.length);
   });
 });

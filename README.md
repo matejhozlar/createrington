@@ -4,7 +4,7 @@
 
 <h1>Createrington</h1>
 
-One portal for a modded Minecraft server, its Discord guild, and its players. A single TypeScript monorepo ties the game servers, the Discord bots, and the web app together, so a player registers once and their playtime, balance, roles, and chat follow them everywhere.
+One portal for a modded Minecraft server, its Discord guild, and its players. A single TypeScript monorepo ties the game servers, the Discord bot, and the web app together, so a player registers once and their playtime, balance, roles, and chat follow them everywhere.
 
 ### [**Visit createrington.com**](https://createrington.com)
 
@@ -241,7 +241,7 @@ Slash commands like `/profile`, `/top`, `/activity`, `/compare`, and `/records` 
 <br><sub><b>/top</b></sub>
 </td>
 <td width="33%" align="center">
-<img src="screenshots/render-activty.webp" alt="/activity card" width="100%">
+<img src="screenshots/render-activity.webp" alt="/activity card" width="100%">
 <br><sub><b>/activity</b></sub>
 </td>
 <td width="33%" align="center">
@@ -257,10 +257,10 @@ Slash commands like `/profile`, `/top`, `/activity`, `/compare`, and `/records` 
 
 ```
 Minecraft servers ──┐
-   (NeoForge mods)  │  REST /api/currency, /api/presence, /api/chunks, ...
+   (NeoForge mods)  │  REST /api/currency, /api/parties, /api/presence, ...
                     ▼
 Discord guild ───► packages/server ◄─── packages/client
-  (2 bot users)     Express 5 + tRPC        React 19 + Vite
+   (one bot)        Express 5 + tRPC        React 19 + Vite
                     Socket.io               tRPC + React Query
                          │
                          ▼
@@ -270,30 +270,31 @@ Discord guild ───► packages/server ◄─── packages/client
 
 ### Repository layout
 
-| Path                 | What lives there                                             |
-| -------------------- | ------------------------------------------------------------ |
-| `packages/server`    | Express 5 + tRPC backend, Discord bots, DB layer (port 5001) |
-| `packages/client`    | React 19 + Vite single-page app (port 3000)                  |
-| `packages/shared`    | Zod schemas, socket contracts, generated DB types            |
-| `packages/api-types` | Published tRPC contracts for first-party consumer apps       |
-| `mod-api`            | Java records generated from the mod-facing API specs         |
-| `docker/db`          | PostgreSQL container, migrations, seed data                  |
-| `docker/mc`          | Local NeoForge 1.21.1 server for development                 |
-| `screenshots`        | Product shots used by this README and the OG card renders    |
+| Path                 | What lives there                                            |
+| -------------------- | ----------------------------------------------------------- |
+| `packages/server`    | Express 5 + tRPC backend, Discord bot, DB layer (port 5001) |
+| `packages/client`    | React 19 + Vite single-page app (port 3000)                 |
+| `packages/shared`    | Zod schemas, socket contracts, generated DB types           |
+| `packages/api-types` | Published tRPC contracts for first-party consumer apps      |
+| `mod-api`            | Java records generated from the mod-facing API specs        |
+| `docker/db`          | PostgreSQL container and seed data                          |
+| `docker/mc`          | Local NeoForge 1.21.1 server for development                |
+| `screenshots`        | Product shots used by this README and the OG card renders   |
 
 ### Backend
 
 Express 5 hosts a tRPC v11 API alongside a thin REST layer for webhooks, OAuth,
-uploads, and the Minecraft mods. tRPC procedures come in four auth levels
-(`public`, `user`, `admin`, `owner`), plus a `consumers` namespace that exposes
-per-consumer sub-routers to external first-party apps. Services are wired through
-a custom DI container with declared dependencies and parallel startup. Two
-Discord bot users split the work: a main bot for slash commands, events,
-leaderboards, and user login (Discord OAuth runs on its application), and a web
-bot for admin-panel messaging and background tasks.
+uploads, and the Minecraft mods. tRPC procedures come in four user auth levels
+(`public`, `user`, `admin`, `owner`) plus a service-to-service level for the
+sandbox, and a `consumers` namespace exposes per-consumer sub-routers to external
+first-party apps. Services are wired through a custom DI container with declared
+dependencies and parallel startup. A single Discord bot handles slash commands,
+events, leaderboards, admin-panel messaging, and user login (Discord OAuth runs
+on its application).
 
 Data access goes through Drizzle-backed query classes with automatic
-camelCase/snake_case conversion. Raw SQL stays in the query layer, and all
+camelCase/snake_case conversion. Migrations live in `packages/server/drizzle/`.
+Raw SQL stays in the query layer, and all
 business logic lives in application code, so the database has no functions or
 triggers.
 
@@ -326,11 +327,10 @@ import type { AppRouter } from "@createrington/server/trpc";
 | Cache     | Redis 8 (optional, falls back to process memory)          |
 | Real-time | Socket.io                                                 |
 | Auth      | Discord OAuth, JWT access token + httpOnly refresh cookie |
-| Discord   | Discord.js v14 (two bot instances)                        |
+| Discord   | Discord.js v14                                            |
 | Minecraft | RCON, SFTP, NeoForge 1.21.1 mod API                       |
-| Charts    | lightweight-charts, Recharts                              |
+| Charts    | Recharts                                                  |
 | Payments  | Stripe                                                    |
-| Email     | Resend                                                    |
 | AI        | OpenAI (admin tooling)                                    |
 | Rendering | puppeteer-core, @napi-rs/canvas, skinview3d               |
 | Maps      | BlueMap                                                   |
@@ -340,13 +340,14 @@ import type { AppRouter } from "@createrington/server/trpc";
 
 ## Quick start
 
-Requires Node.js 22+, pnpm, and Docker.
+Requires Node.js 22+, pnpm, Docker, and access to the Createrington project in
+Infisical (`secrets.matejhoz.com`).
 
 ```bash
 git clone https://gitea.matejhoz.com/Createrington/app.git createrington
 cd createrington
 pnpm install
-cp .env.example .env      # then fill in section 1
+pnpm exec infisical login # once per machine
 pnpm db:up                # PostgreSQL on port 5433
 pnpm redis:up             # Redis on port 6380 (optional)
 pnpm db:migrate
@@ -355,8 +356,10 @@ pnpm generate             # DB types + query classes
 pnpm dev                  # server :5001, client :3000, type watcher
 ```
 
-`.env.example` is the authoritative reference for configuration. Filling in
-section 1 is enough to boot locally; sections 2 and 3 cover production-only
+`pnpm dev` starts the server under `infisical run --env=dev`, so its environment
+comes from the Infisical `dev` environment. The server also reads a root `.env`
+for values Infisical does not set. `.env.example` documents every variable:
+section 1 is what a local boot needs, and sections 2 and 3 cover production-only
 values and optional integrations, each of which self-disables when unset.
 
 To exercise the Discord side, snapshot the guild's roles, channels, and

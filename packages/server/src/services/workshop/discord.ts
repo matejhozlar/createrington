@@ -4,11 +4,11 @@ import {
   RESTJSONErrorCodes,
   type AnyThreadChannel,
   type ForumChannel,
+  userMention,
 } from "discord.js";
 import config from "@/config";
 import { getService, Services } from "@/services";
-import { BadRequestError } from "@/app/middleware/error-handler";
-import { Discord } from "@/discord/constants";
+import { BadRequestError } from "@/errors";
 import { Q } from "@/db";
 import type {
   CurseforgeProject,
@@ -18,6 +18,7 @@ import type {
   WorkshopModStatus,
 } from "@createrington/shared/db";
 import {
+  USER_VISIBLE_MOD_STATUSES,
   WORKSHOP_MOD_REJECT_REASON_LABELS,
   WORKSHOP_MOD_STATUS_LABELS,
 } from "@createrington/shared/workshop";
@@ -48,17 +49,6 @@ const REVIEW_MESSAGES: Record<
 const PACK_DROP_OUT_MESSAGE =
   "↩️ **Dropped from the latest pack update.** Back to coming next update while the team looks into it.";
 
-const CLOSE_ON_STATUS: Record<
-  Exclude<WorkshopModStatus, "pending">,
-  boolean
-> = {
-  approved: true,
-  testing: true,
-  next_update: true,
-  in_pack: true,
-  rejected: true,
-};
-
 const REJECT_REASON_TAGS: Record<
   WorkshopModRejectReason,
   { name: string; emoji: string }
@@ -75,14 +65,6 @@ const MANAGED_TAG_NAMES = new Set(
   ),
 );
 
-const LIVE_MOD_STATUSES: WorkshopModStatus[] = [
-  "pending",
-  "approved",
-  "testing",
-  "next_update",
-  "in_pack",
-];
-
 const HEAL_THREAD_CREATE_CAP = 5;
 
 type ThreadLookup =
@@ -95,7 +77,7 @@ function tagNameFor(status: WorkshopModStatus): string | null {
 }
 
 function closesThread(status: WorkshopModStatus): boolean {
-  return status !== "pending" && CLOSE_ON_STATUS[status];
+  return status !== "pending";
 }
 
 function auditReason(modId: number, status: WorkshopModStatus): string {
@@ -110,7 +92,7 @@ async function closeThread(
   try {
     await thread.setArchived(true, reason);
   } catch (error) {
-    logger.warn(`Could not close thread for mod #${modId}: ${error}`);
+    logger.warn(`Could not close thread for mod #${modId}:`, error);
   }
 }
 
@@ -181,7 +163,7 @@ async function ensureStatusTags(
         ]);
         tags = updated.availableTags;
       } catch (error) {
-        logger.warn(`Could not create workshop forum tags: ${error}`);
+        logger.warn(`Could not create workshop forum tags:`, error);
       }
     }
   }
@@ -202,7 +184,7 @@ async function fetchThread(threadId: string): Promise<ThreadLookup> {
     ) {
       return { state: "gone" };
     }
-    logger.warn(`Could not fetch workshop thread ${threadId}: ${error}`);
+    logger.warn(`Could not fetch workshop thread ${threadId}:`, error);
     return { state: "unavailable" };
   }
 }
@@ -214,7 +196,7 @@ async function removeThread(threadId: string): Promise<boolean> {
     await lookup.thread.delete();
     return true;
   } catch (error) {
-    logger.warn(`Could not delete thread ${threadId}, archiving: ${error}`);
+    logger.warn(`Could not delete thread ${threadId}, archiving:`, error);
     await lookup.thread.setArchived(true).catch(() => {});
     return false;
   }
@@ -250,7 +232,7 @@ export async function announceSuggestion(
     const note = mod.note ? `: ${mod.note}` : "";
     const lines = [
       `**${mod.project.name}**${author}`,
-      `Suggested by ${Discord.Users.mention(mod.submittedBy)}${note}`,
+      `Suggested by ${userMention(mod.submittedBy)}${note}`,
     ];
     if (mod.project.websiteUrl) lines.push(mod.project.websiteUrl);
 
@@ -267,7 +249,7 @@ export async function announceSuggestion(
       { discordThreadId: thread.id },
       {
         id: mod.id,
-        status: { $in: LIVE_MOD_STATUSES },
+        status: { $in: USER_VISIBLE_MOD_STATUSES },
         discordThreadId: null,
       },
     );
@@ -281,7 +263,8 @@ export async function announceSuggestion(
     }
   } catch (error) {
     logger.warn(
-      `Failed to create suggestion thread for mod #${mod.id}: ${error}`,
+      `Failed to create suggestion thread for mod #${mod.id}:`,
+      error,
     );
   }
 }
@@ -342,7 +325,7 @@ export async function announceReview(
         : (options.message ?? REVIEW_MESSAGES[status]);
     await thread.send({ content, allowedMentions: { parse: [] } });
   } catch (error) {
-    logger.warn(`Failed to post review outcome for mod #${mod.id}: ${error}`);
+    logger.warn(`Failed to post review outcome for mod #${mod.id}:`, error);
     return;
   }
   if (closesThread(status)) await closeThread(thread, mod.id, reason);
@@ -363,7 +346,8 @@ export async function announceRemoval(mod: WorkshopMod): Promise<void> {
     await removeThread(mod.discordThreadId);
   } catch (error) {
     logger.warn(
-      `Failed to remove suggestion thread for mod #${mod.id}: ${error}`,
+      `Failed to remove suggestion thread for mod #${mod.id}:`,
+      error,
     );
   }
 }
@@ -397,13 +381,14 @@ export async function healThreads(
         );
       }
     } catch (error) {
-      logger.warn(`Workshop thread heal failed for mod #${mod.id}: ${error}`);
+      logger.warn(`Workshop thread heal failed for mod #${mod.id}:`, error);
     }
   }
 
   if (workshop.status !== "open" || !workshop.discordForumChannelId) return;
   const missing = rows.filter(
-    (mod) => !mod.discordThreadId && LIVE_MOD_STATUSES.includes(mod.status),
+    (mod) =>
+      !mod.discordThreadId && USER_VISIBLE_MOD_STATUSES.includes(mod.status),
   );
   if (missing.length === 0) return;
 
@@ -419,7 +404,8 @@ export async function healThreads(
     }
   } catch (error) {
     logger.warn(
-      `Workshop thread recreation failed for workshop #${workshop.id}: ${error}`,
+      `Workshop thread recreation failed for workshop #${workshop.id}:`,
+      error,
     );
   }
   if (missing.length > batch.length) {

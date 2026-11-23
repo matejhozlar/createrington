@@ -1,34 +1,20 @@
 import config from "@/config";
-import fs from "node:fs";
 import path from "node:path";
 import type { Client, ClientEvents } from "discord.js";
 import { pathToFileURL } from "node:url";
+import { collectModuleFiles } from "./module-files";
 
 const isDev = config.envMode.isDev;
+const extension = isDev ? ".ts" : ".js";
 
-/**
- * Discord event module structure
- */
 export interface EventModule<
   K extends keyof ClientEvents = keyof ClientEvents,
 > {
-  /** The Discord event name */
   eventName: K;
-  /** Whether the event should fire only once */
-  once?: boolean;
-  /** Whether this event should only be registered in production */
   prodOnly?: boolean;
-  /** The event handler function */
   execute: (client: Client, ...args: ClientEvents[K]) => Promise<void> | void;
 }
 
-/**
- * Type guard to check if a module is a valid EventModule
- *
- * @param module - The imported module to validate
- * @returns True if the module has the required eventName and execute exports
- * @private
- */
 function isEventModule(module: unknown): module is EventModule {
   return (
     typeof module === "object" &&
@@ -40,41 +26,23 @@ function isEventModule(module: unknown): module is EventModule {
   );
 }
 
-/**
- * Loads Discord event handlers from a directory
- *
- * Recursively scans the events directory and registers all event handlers.
- * Supports both one-time (once) and recurring (on) event listeners.
- *
- * @param client - The Discord client instance
- * @param eventsPath - Absolute path to the events directory
- * @returns Promise resolving to the number of loaded events
- */
 export async function loadEventHandlers(
   client: Client,
   eventsPath: string,
 ): Promise<number> {
-  if (!fs.existsSync(eventsPath)) {
-    logger.warn(`Events directory not found: ${eventsPath}`);
-    return 0;
+  const eventFiles = collectModuleFiles(eventsPath, extension);
+
+  if (eventFiles.length === 0) {
+    logger.warn(`No event modules found in ${eventsPath}`);
   }
 
-  const eventFiles = getAllEventFiles(eventsPath);
   let loadedCount = 0;
 
   for (const filePath of eventFiles) {
     try {
-      const eventModule = (await import(
-        pathToFileURL(filePath).href
-      )) as Record<string, unknown>;
+      const event = (await import(pathToFileURL(filePath).href)) as unknown;
 
-      const event: EventModule | undefined = isEventModule(eventModule.default)
-        ? eventModule.default
-        : isEventModule(eventModule)
-          ? eventModule
-          : undefined;
-
-      if (!event) {
+      if (!isEventModule(event)) {
         logger.warn(
           `Skipped ${filePath}: not a valid EventModule (missing eventName or execute)`,
         );
@@ -88,25 +56,19 @@ export async function loadEventHandlers(
         continue;
       }
 
-      const label = event.once
-        ? `${event.eventName} (once) event`
-        : `${event.eventName} event`;
       const listener = (...args: ClientEvents[keyof ClientEvents]) => {
         Promise.resolve()
           .then(() => event.execute(client, ...args))
           .catch((error: unknown) => {
-            logger.error(`Error in ${label}:`, error);
+            logger.error(`Error in ${event.eventName} event:`, error);
           });
       };
 
-      if (event.once) client.once(event.eventName, listener);
-      else client.on(event.eventName, listener);
+      client.on(event.eventName, listener);
 
       loadedCount++;
       logger.debug(
-        `Registered ${event.once ? "once" : "on"} event: ${
-          event.eventName
-        } (${path.basename(filePath)})`,
+        `Registered event: ${event.eventName} (${path.basename(filePath)})`,
       );
     } catch (error) {
       logger.error(`Failed to load event ${filePath}:`, error);
@@ -115,37 +77,4 @@ export async function loadEventHandlers(
 
   logger.info(`Loaded ${loadedCount} Discord event(s) from ${eventsPath}`);
   return loadedCount;
-}
-
-/**
- * Recursively scans a directory and collects all valid event files
- *
- * This function walks through the directory tree starting from the given path,
- * collecting all TypeScript (.ts) or JavaScript (.js) files depending on the
- * environment mode. It ignores non-file items and only returns actual event files.
- *
- * @param dir - The absolute path to the directory to scan
- * @returns An array of absolute file paths to all discovered event files
- */
-function getAllEventFiles(dir: string): string[] {
-  const files: string[] = [];
-  const items = fs.readdirSync(dir, { withFileTypes: true });
-
-  for (const item of items) {
-    const fullPath = path.join(dir, item.name);
-
-    if (item.isDirectory()) {
-      files.push(...getAllEventFiles(fullPath));
-    } else if (item.isFile()) {
-      const isValid = isDev
-        ? item.name.endsWith(".ts")
-        : item.name.endsWith(".js");
-
-      if (isValid) {
-        files.push(fullPath);
-      }
-    }
-  }
-
-  return files;
 }

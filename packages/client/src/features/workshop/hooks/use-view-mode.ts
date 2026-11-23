@@ -1,23 +1,16 @@
 import { useState } from "react";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/hooks/use-is-mobile";
+import { localStore } from "@/lib/storage";
 import type { ViewMode } from "../components/ViewToggle";
 
 export function useViewMode(storageKey: string) {
   const isMobile = useIsMobile();
-  const [view, setView] = useState<ViewMode>(() => {
-    try {
-      return localStorage.getItem(storageKey) === "grid" ? "grid" : "list";
-    } catch {
-      return "list";
-    }
-  });
+  const [view, setView] = useState<ViewMode>(() =>
+    localStore.get(storageKey) === "grid" ? "grid" : "list",
+  );
 
   const changeView = (next: ViewMode) => {
-    try {
-      localStorage.setItem(storageKey, next);
-    } catch {
-      /* storage-blocked contexts keep in-memory switching */
-    }
+    localStore.set(storageKey, next);
     setView(next);
   };
 

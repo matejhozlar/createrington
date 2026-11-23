@@ -12,7 +12,6 @@ import type {
   ServerInitialDataPayload,
   ServerStatusUpdatePayload,
   SubscriptionConfirmation,
-  SubscriptionRequest,
   WebSocketServiceConfig,
   WebSocketStats,
 } from "./types";
@@ -20,7 +19,7 @@ import { SocketEvent, SubscriptionType } from "./types";
 import type { MessageCacheService } from "../discord/message/cache";
 import type { PlaytimeManagerService } from "../playtime/playtime-manager.service";
 import { RoomManager } from "./room-manager";
-import { isValidServerId } from "../playtime/config";
+import { isValidServerId } from "../mc-server/servers";
 import { WebSocketDataProvider } from "./data-provider";
 import {
   parseInitialDataRequest,
@@ -50,9 +49,6 @@ type Socket = SocketIOSocket<
 const MAX_CONNECTIONS_PER_IP = 20;
 const EVENTS_PER_SOCKET_PER_MIN = 60;
 
-// Mirrors the HTTP gate in server-ip.middleware: nginx terminates on
-// loopback and sets X-Real-IP to the real client. Without this the per-IP
-// cap would see every proxied socket as 127.0.0.1 and cap the server at 20.
 function getSocketClientIp(socket: Socket): string {
   const raw = socket.handshake.address ?? "";
   const peer = raw.startsWith("::ffff:") ? raw.slice(7) : raw;
@@ -71,28 +67,32 @@ function getSocketClientIp(socket: Socket): string {
  * initial state snapshots on demand, and bridges domain events from
  * `MessageCacheService` and each `PlaytimeService` into room broadcasts. The handshake
  * applies a per-IP connection cap (with nginx X-Real-IP awareness) and accepts an
- * optional Bearer token; authenticated sockets auto-join a private per-user room used
- * for owner-only events (order fills, price alerts), while invalid
- * tokens degrade to anonymous rather than reject. Per-socket event budgets prevent
- * one tab from starving others on the same client. Construction wires the HTTP server
- * and connection handlers; `initialize()` must be called with both dependency
- * services before event-driven broadcasting will fire.
+ * optional Bearer token; authenticated sockets auto-join a private per-user room
+ * reserved for owner-only events, while invalid tokens degrade to anonymous rather
+ * than reject. Per-socket event budgets prevent one tab from starving others on the
+ * same client. Construction wires the HTTP server and connection handlers;
+ * event-driven broadcasting starts with `initialize()`.
  */
 export class WebSocketService {
   private io: SocketServer;
-  private dataProvider!: WebSocketDataProvider;
+  private dataProvider: WebSocketDataProvider;
   private isInitialized = false;
   private startTime: Date;
 
-  private clientSockets: Map<string, Set<string>> = new Map(); // socketId -> Set<rooms>
   private connectionsByIp: Map<string, number> = new Map();
   private eventBuckets: Map<string, { count: number; windowStart: number }> =
     new Map();
 
   constructor(
     httpServer: HttpServer,
+    private readonly messageCacheService: MessageCacheService,
+    private readonly playtimeManagerService: PlaytimeManagerService,
     private config: WebSocketServiceConfig = {},
   ) {
+    this.dataProvider = new WebSocketDataProvider(
+      messageCacheService,
+      playtimeManagerService,
+    );
     this.io = new SocketIOServer(httpServer, {
       cors: config.cors || {
         origin: false,
@@ -117,9 +117,6 @@ export class WebSocketService {
         return next(new Error("Too many connections"));
       }
 
-      // Optional auth: unauthenticated sockets are allowed (public data),
-      // but when the client passes a Bearer-style token via handshake.auth,
-      // verify it so the connection handler can join the per-user room.
       const token =
         typeof socket.handshake.auth?.token === "string"
           ? socket.handshake.auth.token
@@ -127,18 +124,13 @@ export class WebSocketService {
       if (token) {
         try {
           socket.data.user = jwtService.verify(token);
-        } catch {
-          // Invalid/expired token: treat as unauthenticated, don't reject.
-        }
+        } catch {}
       }
 
       next();
     });
   }
 
-  // Returns true if the socket is within its per-minute event budget.
-  // Per-socket (not per-IP) so one noisy socket can't starve other tabs from
-  // the same client.
   private allowSocketEvent(socketId: string): boolean {
     const now = Date.now();
     const bucket = this.eventBuckets.get(socketId);
@@ -150,22 +142,17 @@ export class WebSocketService {
     return bucket.count <= EVENTS_PER_SOCKET_PER_MIN;
   }
 
-  /** Wires data providers and bridges events from the message cache and every per-server playtime service. */
-  initialize(
-    messageCacheService: MessageCacheService,
-    playtimeManagerService: PlaytimeManagerService,
-  ): void {
+  /** Bridges events from the message cache and every per-server playtime service into room broadcasts. */
+  initialize(): void {
     if (this.isInitialized) {
       logger.warn("WebSocketService already initialized");
       return;
     }
 
-    this.dataProvider = new WebSocketDataProvider(
-      messageCacheService,
-      playtimeManagerService,
+    this.connectToServices(
+      this.messageCacheService,
+      this.playtimeManagerService,
     );
-
-    this.connectToServices(messageCacheService, playtimeManagerService);
 
     this.isInitialized = true;
     logger.info("WebSocketService initialized");
@@ -177,22 +164,26 @@ export class WebSocketService {
       this.connectionsByIp.set(ip, (this.connectionsByIp.get(ip) ?? 0) + 1);
       logger.info(`Client connected: ${socket.id}`);
 
-      this.clientSockets.set(socket.id, new Set());
-
       const { user } = socket.data;
       if (user?.minecraftUuid) {
         void socket.join(RoomManager.getUserRoom(user.minecraftUuid));
       }
 
-      socket.on(SocketEvent.SUBSCRIBE, (request: unknown, callback: unknown) =>
-        this.onSubscribe(socket, request, callback),
-      );
-
-      socket.on(
-        SocketEvent.UNSUBSCRIBE,
-        (request: unknown, callback: unknown) =>
-          this.onUnsubscribe(socket, request, callback),
-      );
+      for (const [event, action] of [
+        [SocketEvent.SUBSCRIBE, "join"],
+        [SocketEvent.UNSUBSCRIBE, "leave"],
+      ] as const) {
+        socket.on(event, (request: unknown, callback: unknown) => {
+          this.changeSubscription(socket, request, callback, action).catch(
+            (error) => {
+              logger.error(
+                `Unhandled ${event} failure for ${socket.id}:`,
+                error,
+              );
+            },
+          );
+        });
+      }
 
       socket.on(
         SocketEvent.REQUEST_INITIAL_DATA,
@@ -202,7 +193,6 @@ export class WebSocketService {
 
       socket.on(SocketEvent.DISCONNECT, () => {
         logger.info(`Client disconnected: ${socket.id}`);
-        this.clientSockets.delete(socket.id);
         this.eventBuckets.delete(socket.id);
         const remaining = (this.connectionsByIp.get(ip) ?? 1) - 1;
         if (remaining <= 0) {
@@ -220,61 +210,63 @@ export class WebSocketService {
     logger.debug("Socket.IO connection handlers registered");
   }
 
-  private onSubscribe(
+  private async changeSubscription(
     socket: Socket,
     rawRequest: unknown,
     rawCallback: unknown,
-  ): void {
+    action: "join" | "leave",
+  ): Promise<void> {
     const { payload, ack } = splitFrame<SubscriptionConfirmation>(
       rawRequest,
       rawCallback,
     );
+    const event = action === "join" ? "subscribe" : "unsubscribe";
     if (!this.allowSocketEvent(socket.id)) {
-      logger.warn(`[ws] rate-limited ${socket.id} on subscribe`);
+      logger.warn(`[ws] rate-limited ${socket.id} on ${event}`);
       ack?.(rejectedSubscription(payload, "Rate limited"));
       return;
     }
     const request = parseSubscriptionRequest(payload);
     if (!request) {
-      logger.warn(`[ws] invalid subscribe payload from ${socket.id}`);
+      logger.warn(`[ws] invalid ${event} payload from ${socket.id}`);
       ack?.(rejectedSubscription(payload, "Invalid subscription request"));
       return;
     }
-    if (request.serverId !== undefined && !isValidServerId(request.serverId)) {
+    if (
+      action === "join" &&
+      request.serverId !== undefined &&
+      !isValidServerId(request.serverId)
+    ) {
       logger.warn(
         `[ws] subscribe to unknown server ${request.serverId} from ${socket.id}`,
       );
       ack?.(rejectedSubscription(payload, "Unknown server"));
       return;
     }
-    this.handleSubscribe(socket, request, ack).catch((error) => {
-      logger.error(`Unhandled subscribe failure for ${socket.id}:`, error);
-    });
-  }
 
-  private onUnsubscribe(
-    socket: Socket,
-    rawRequest: unknown,
-    rawCallback: unknown,
-  ): void {
-    const { payload, ack } = splitFrame<SubscriptionConfirmation>(
-      rawRequest,
-      rawCallback,
-    );
-    if (!this.allowSocketEvent(socket.id)) {
-      logger.warn(`[ws] rate-limited ${socket.id} on unsubscribe`);
-      ack?.(rejectedSubscription(payload, "Rate limited"));
-      return;
+    const { type, serverId } = request;
+    try {
+      const rooms = RoomManager.getRoomsForSubscription(type, serverId);
+      for (const room of rooms) {
+        await (action === "join" ? socket.join(room) : socket.leave(room));
+      }
+      logger.debug(
+        `Client ${socket.id} ${event}d ${type}${serverId ? ` (server: ${serverId})` : ""} - rooms: ${rooms.join(", ")}`,
+      );
+      ack?.({ type, serverId, room: rooms[0], success: true });
+    } catch (error) {
+      logger.error(
+        `Failed to ${event} client ${socket.id} for ${type}:`,
+        error,
+      );
+      ack?.({
+        type,
+        serverId,
+        room: "",
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
     }
-    const request = parseSubscriptionRequest(payload);
-    if (!request) {
-      logger.warn(`[ws] invalid unsubscribe payload from ${socket.id}`);
-      ack?.(rejectedSubscription(payload, "Invalid subscription request"));
-      return;
-    }
-    this.handleUnsubscribe(socket, request, ack).catch((error) => {
-      logger.error(`Unhandled unsubscribe failure for ${socket.id}:`, error);
-    });
   }
 
   private onInitialDataRequest(
@@ -303,120 +295,6 @@ export class WebSocketService {
       return;
     }
     this.handleInitialDataRequest(socket, request, ack);
-  }
-
-  private async handleSubscribe(
-    socket: Socket,
-    request: SubscriptionRequest,
-    callback?: (response: SubscriptionConfirmation) => void,
-  ): Promise<void> {
-    try {
-      if (
-        request.type !== SubscriptionType.ALL &&
-        request.serverId === undefined &&
-        request.type !== SubscriptionType.SERVER_STATUS &&
-        request.type !== SubscriptionType.PLAYERS &&
-        request.type !== SubscriptionType.MESSAGES
-      ) {
-        throw new Error(`Server ID required for ${request.type} subscription`);
-      }
-
-      const rooms = RoomManager.getRoomsForSubscription(
-        request.type,
-        request.serverId,
-      );
-
-      for (const room of rooms) {
-        await socket.join(room);
-        this.clientSockets.get(socket.id)?.add(room);
-      }
-
-      const primaryRoom = rooms[0];
-
-      logger.debug(
-        `Client ${socket.id} subscribed to ${request.type}${request.serverId ? ` (server: ${request.serverId})` : ""} - rooms: ${rooms.join(", ")}`,
-      );
-
-      const confirmation: SubscriptionConfirmation = {
-        type: request.type,
-        serverId: request.serverId,
-        room: primaryRoom,
-        success: true,
-      };
-
-      if (callback) {
-        callback(confirmation);
-      }
-    } catch (error) {
-      logger.error(
-        `Failed to subscribe client ${socket.id} to ${request.type}:`,
-        error,
-      );
-
-      const confirmation: SubscriptionConfirmation = {
-        type: request.type,
-        serverId: request.serverId,
-        room: "",
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
-      };
-
-      if (callback) {
-        callback(confirmation);
-      }
-    }
-  }
-
-  private async handleUnsubscribe(
-    socket: Socket,
-    request: SubscriptionRequest,
-    callback?: (response: SubscriptionConfirmation) => void,
-  ): Promise<void> {
-    try {
-      const rooms = RoomManager.getRoomsForSubscription(
-        request.type,
-        request.serverId,
-      );
-
-      for (const room of rooms) {
-        await socket.leave(room);
-        this.clientSockets.get(socket.id)?.delete(room);
-      }
-
-      const primaryRoom = rooms[0];
-
-      logger.debug(
-        `Client ${socket.id} unsubscribed from ${request.type}${request.serverId ? ` (server: ${request.serverId})` : ""}`,
-      );
-
-      const confirmation: SubscriptionConfirmation = {
-        type: request.type,
-        serverId: request.serverId,
-        room: primaryRoom,
-        success: true,
-      };
-
-      if (callback) {
-        callback(confirmation);
-      }
-    } catch (error) {
-      logger.error(
-        `Failed to unsubscribe client ${socket.id} from ${request.type}:`,
-        error,
-      );
-
-      const confirmation: SubscriptionConfirmation = {
-        type: request.type,
-        serverId: request.serverId,
-        room: "",
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
-      };
-
-      if (callback) {
-        callback(confirmation);
-      }
-    }
   }
 
   private handleInitialDataRequest(
@@ -491,15 +369,32 @@ export class WebSocketService {
       playtimeService,
     ] of playtimeManagerService.getAllServices()) {
       playtimeService.on("sessionStart", (event: SessionStartEvent) => {
-        this.broadcastPlayerJoin(serverId, event);
+        this.broadcastPlayerChange(serverId, "join", event, 0);
       });
 
       playtimeService.on("sessionEnd", (event: SessionEndEvent) => {
-        this.broadcastPlayerLeave(serverId, event);
+        this.broadcastPlayerChange(
+          serverId,
+          "leave",
+          event,
+          event.secondsPlayed,
+        );
       });
     }
 
     logger.debug("Connected to external services");
+  }
+
+  private emitToServerRooms(
+    type: Exclude<SubscriptionType, SubscriptionType.ALL>,
+    serverId: number,
+    event: SocketEvent,
+    payload: unknown,
+  ): void {
+    this.io
+      .to(RoomManager.getRoomForSubscription(type, serverId))
+      .emit(event, payload);
+    this.io.to(RoomManager.getRoomForSubscription(type)).emit(event, payload);
   }
 
   private broadcastServerStatusUpdate(serverId: number, online: boolean): void {
@@ -515,16 +410,15 @@ export class WebSocketService {
         scheduledMaintenance: status.scheduledMaintenance,
         playerCount: status.playerCount,
         maxPlayers: status.maxPlayers,
-        timestamp: new Date(),
+        timestamp: new Date().toISOString(),
       };
 
-      this.io
-        .to(RoomManager.getServerStatusRoom(serverId))
-        .emit(SocketEvent.UPDATE_SERVER_STATUS, payload);
-
-      this.io
-        .to(RoomManager.getServerStatusRoom())
-        .emit(SocketEvent.UPDATE_SERVER_STATUS, payload);
+      this.emitToServerRooms(
+        SubscriptionType.SERVER_STATUS,
+        serverId,
+        SocketEvent.UPDATE_SERVER_STATUS,
+        payload,
+      );
 
       logger.debug(
         `Broadcast server status update: server ${serverId} ${online ? "online" : "offline"}`,
@@ -534,62 +428,34 @@ export class WebSocketService {
     }
   }
 
-  private broadcastPlayerJoin(
+  private broadcastPlayerChange(
     serverId: number,
+    type: "join" | "leave",
     event: SessionStartEvent,
+    sessionDuration: number,
   ): void {
     const payload: PlayersUpdatePayload = {
       serverId,
-      type: "join",
+      type,
       player: {
         uuid: event.uuid,
         username: event.username,
         serverId: event.serverId,
-        sessionStart: event.sessionStart,
-        sessionDuration: 0,
+        sessionStart: event.sessionStart.toISOString(),
+        sessionDuration,
       },
-      timestamp: new Date(),
+      timestamp: new Date().toISOString(),
     };
 
-    this.io
-      .to(RoomManager.getPlayersRoom(serverId))
-      .emit(SocketEvent.UPDATE_PLAYERS, payload);
-
-    this.io
-      .to(RoomManager.getPlayersRoom())
-      .emit(SocketEvent.UPDATE_PLAYERS, payload);
-
-    logger.debug(
-      `Broadcast player join: ${event.username} on server ${serverId}`,
+    this.emitToServerRooms(
+      SubscriptionType.PLAYERS,
+      serverId,
+      SocketEvent.UPDATE_PLAYERS,
+      payload,
     );
 
-    this.broadcastServerStatusUpdate(serverId, true);
-  }
-
-  private broadcastPlayerLeave(serverId: number, event: SessionEndEvent): void {
-    const payload: PlayersUpdatePayload = {
-      serverId,
-      type: "leave",
-      player: {
-        uuid: event.uuid,
-        username: event.username,
-        serverId: event.serverId,
-        sessionStart: event.sessionStart,
-        sessionDuration: event.secondsPlayed,
-      },
-      timestamp: new Date(),
-    };
-
-    this.io
-      .to(RoomManager.getPlayersRoom(serverId))
-      .emit(SocketEvent.UPDATE_PLAYERS, payload);
-
-    this.io
-      .to(RoomManager.getPlayersRoom())
-      .emit(SocketEvent.UPDATE_PLAYERS, payload);
-
     logger.debug(
-      `Broadcast player leave: ${event.username} from server ${serverId}`,
+      `Broadcast player ${type}: ${event.username} on server ${serverId}`,
     );
 
     this.broadcastServerStatusUpdate(serverId, true);
@@ -606,16 +472,15 @@ export class WebSocketService {
       type,
       message,
       messageId,
-      timestamp: new Date(),
+      timestamp: new Date().toISOString(),
     };
 
-    this.io
-      .to(RoomManager.getMessagesRoom(serverId))
-      .emit(SocketEvent.UPDATE_MESSAGE, payload);
-
-    this.io
-      .to(RoomManager.getMessagesRoom())
-      .emit(SocketEvent.UPDATE_MESSAGE, payload);
+    this.emitToServerRooms(
+      SubscriptionType.MESSAGES,
+      serverId,
+      SocketEvent.UPDATE_MESSAGE,
+      payload,
+    );
 
     logger.debug(
       `Broadcast message ${type}: ${messageId || message?.messageId} on server ${serverId}`,
@@ -634,7 +499,6 @@ export class WebSocketService {
 
     const socketRooms = this.io.sockets.adapter.rooms;
     for (const [roomName, socketIds] of socketRooms.entries()) {
-      // Skip individual socket rooms (created by Socket.IO automatically)
       if (socketIds.size === 1 && socketIds.has(roomName)) {
         continue;
       }
@@ -659,53 +523,23 @@ export class WebSocketService {
     };
   }
 
-  /** Closes the Socket.IO server and clears tracked client, IP, and event-bucket state. */
-  async close(): Promise<void> {
+  /** Closes the Socket.IO server and clears tracked IP and event-bucket state. */
+  async shutdown(): Promise<void> {
     if (!this.isInitialized) {
       return;
     }
 
     await this.io.close();
-    this.clientSockets.clear();
     this.connectionsByIp.clear();
     this.eventBuckets.clear();
     this.isInitialized = false;
 
-    logger.info("WebSocketService closed");
+    logger.info("WebSocketService shut down");
   }
 
   /** Re-broadcasts the current status for a server; use after external state (e.g. maintenance) changes. */
   triggerServerStatusUpdate(serverId: number): void {
     const status = this.dataProvider.getServerStatus(serverId);
     this.broadcastServerStatusUpdate(serverId, status.online);
-  }
-
-  /** Emits the complete current player list for a server; use for recovery instead of join/leave deltas. */
-  broadcastPlayerSync(serverId: number): void {
-    const players = this.dataProvider.getServerPlayers(serverId);
-
-    const payload: PlayersUpdatePayload = {
-      serverId,
-      type: "sync",
-      players,
-      timestamp: new Date(),
-    };
-
-    this.io
-      .to(RoomManager.getPlayersRoom(serverId))
-      .emit(SocketEvent.UPDATE_PLAYERS, payload);
-
-    this.io
-      .to(RoomManager.getPlayersRoom())
-      .emit(SocketEvent.UPDATE_PLAYERS, payload);
-
-    logger.info(
-      `Broadcast player sync for server ${serverId}: ${players.length} players`,
-    );
-  }
-
-  /** Emits an arbitrary event and payload to every client in a named room. */
-  broadcastToRoom(room: string, event: string, payload: unknown): void {
-    this.io.to(room).emit(event, payload);
   }
 }

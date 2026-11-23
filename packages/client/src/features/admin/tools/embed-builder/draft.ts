@@ -1,63 +1,59 @@
+import { z } from "zod";
 import {
   PENDING_EMBED_KEY,
   PENDING_COMPONENTS_KEY,
 } from "@/features/admin-chat/actions";
-import type {
-  ComponentNode,
-  EmbedBot,
-  EmbedData,
-  PresetKind,
+import {
+  embedBotSchema,
+  presetKindSchema,
 } from "@createrington/shared/api/embed";
-import type { ActivePreset } from "./embed-data";
+import { localStore, sessionStore } from "@/lib/storage";
+import type { BuilderState } from "./builder-state";
+import { parseComponents, parseEmbed } from "./payload";
 
 const DRAFT_KEY = "embed-builder-draft";
 
-interface DraftState {
-  kind: PresetKind;
-  data: EmbedData;
-  components: ComponentNode[];
-  presetName: string;
-  bot: EmbedBot;
-  channelId: string;
-  activePreset: ActivePreset | null;
-  selectedCategoryId: number | null;
+const storedDraftSchema = z.object({
+  kind: presetKindSchema.catch("embed"),
+  data: z.record(z.string(), z.unknown()),
+  components: z.unknown(),
+  presetName: z.string().catch(""),
+  bot: embedBotSchema.catch("main"),
+  channelId: z.string().catch(""),
+  activePreset: z
+    .object({
+      id: z.number(),
+      name: z.string(),
+      categoryId: z.number().nullable(),
+    })
+    .nullable()
+    .catch(null),
+  selectedCategoryId: z.number().nullable().catch(null),
+  savedSnapshot: z.string().catch(""),
+});
+
+export function loadDraft(): BuilderState | null {
+  const stored = storedDraftSchema.safeParse(localStore.getJson(DRAFT_KEY));
+  if (!stored.success) return null;
+  const { data, components, ...rest } = stored.data;
+  return {
+    ...rest,
+    embed: parseEmbed(data),
+    components: parseComponents(components) ?? [],
+  };
 }
 
-export function loadDraft(): DraftState | null {
-  try {
-    const raw = localStorage.getItem(DRAFT_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as DraftState;
-    if (!parsed || typeof parsed !== "object" || !parsed.data) return null;
-    return parsed;
-  } catch {
-    return null;
-  }
-}
-
-export function saveDraft(state: DraftState): void {
-  try {
-    localStorage.setItem(DRAFT_KEY, JSON.stringify(state));
-  } catch {
-    return;
-  }
+export function saveDraft({ embed, ...rest }: BuilderState): void {
+  localStore.setJson(DRAFT_KEY, { ...rest, data: embed });
 }
 
 export function clearDraft(): void {
-  try {
-    localStorage.removeItem(DRAFT_KEY);
-  } catch {
-    return;
-  }
+  localStore.remove(DRAFT_KEY);
 }
 
 export function hasPendingAssistantInsert(): boolean {
-  try {
-    return (
-      sessionStorage.getItem(PENDING_EMBED_KEY) !== null ||
-      sessionStorage.getItem(PENDING_COMPONENTS_KEY) !== null
-    );
-  } catch {
-    return false;
-  }
+  return (
+    sessionStore.get(PENDING_EMBED_KEY) !== null ||
+    sessionStore.get(PENDING_COMPONENTS_KEY) !== null
+  );
 }

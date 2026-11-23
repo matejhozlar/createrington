@@ -3,6 +3,7 @@ import { Trophy } from "lucide-react";
 import { CellText } from "@/components/cell-text";
 import { DataTable, type DataTableColumn } from "@/components/data-table";
 import { PlayerLabel } from "@/components/player-label";
+import { EmptyState, ErrorState } from "@/components/query-states";
 import {
   Card,
   CardContent,
@@ -14,6 +15,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatRelativeDateSafe } from "@/features/admin/format";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { useQuery } from "@tanstack/react-query";
+import { formatDateTime } from "@/lib/format";
 
 type Window = "all" | "30d";
 type TopVoter = RouterOutput["admin"]["votes"]["topVoters"][number];
@@ -64,7 +66,7 @@ const COLUMNS: DataTableColumn<TopVoter>[] = [
     width: 130,
     render: (voter) => (
       <CellText
-        value={new Date(voter.lastVotedAt).toLocaleString()}
+        value={formatDateTime(voter.lastVotedAt)}
         display={formatRelativeDateSafe(voter.lastVotedAt)}
         className="text-sm text-muted-foreground"
       />
@@ -107,13 +109,13 @@ export function TopVotersCard() {
       </CardHeader>
       <CardContent className="px-0">
         {query.isError ? (
-          <p className="py-8 text-center text-destructive">
-            Failed to load the top voters: {query.error.message}
-          </p>
+          <ErrorState
+            message={`Failed to load the top voters: ${query.error.message}`}
+            onRetry={() => query.refetch()}
+            compact
+          />
         ) : !query.isLoading && voters.length === 0 ? (
-          <p className="px-6 py-8 text-center text-muted-foreground">
-            {COPY.empty}
-          </p>
+          <EmptyState icon={Trophy} message={COPY.empty} className="py-8" />
         ) : (
           <DataTable
             columns={COLUMNS}

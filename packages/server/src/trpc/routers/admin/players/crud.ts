@@ -1,31 +1,30 @@
 import { z } from "zod";
 import { ADMIN_REASON_MAX_LENGTH } from "@createrington/shared/admin-reason";
 import { router, adminProcedure } from "@/trpc/trpc";
-import { playerService } from "@/services/player";
 import { playerDeletionService } from "@/services/player/deletion";
-import { Q } from "@/db";
+import { Q, playerBanRepo, playerRepo, playerStrikeRepo } from "@/db";
 import { ilikeContains } from "@/db/utils";
-import { BalanceUtils } from "@/db/repositories/balance/utils";
+import { BalanceUtils } from "@/db/utils/balance";
 import {
-  parsePlayerId,
   paginationInput,
   paginateQuery,
   sortDirection,
   buildPagination,
   trpcError,
+  playerId,
+  pageOffset,
 } from "@/trpc/utils";
-import { discordId } from "@/utils/zod-schemas";
+import { discordId, mcUsername } from "@/utils/zod-schemas";
 import type { Player, PlayerFilters } from "@createrington/shared/db";
 import { violationFilterInput, violationRequirement } from "./violation-filter";
 
-/** Admin players CRUD router: stats, list, get, update, and delete players. */
 export const playersRouter = router({
   stats: adminProcedure
     .meta({
       description: "Get overall player statistics for the admin dashboard.",
     })
     .query(async () => {
-      return await playerService.core.getStats();
+      return await playerRepo.getStats();
     }),
 
   list: adminProcedure
@@ -61,16 +60,16 @@ export const playersRouter = router({
       const violation = violationRequirement(input);
       if (violation === "none") {
         return {
-          players: [],
+          items: [],
           pagination: buildPagination(input.page, input.limit, 0),
         };
       }
 
       const { rows: players, pagination } = violation
         ? await Q.player
-            .listWithViolations(filters, violation, {
+            .getWithViolations(filters, violation, {
               limit: input.limit,
-              offset: input.page * input.limit,
+              offset: pageOffset(input),
               orderBy: input.orderBy,
               orderDirection: input.orderDirection,
             })
@@ -93,10 +92,10 @@ export const playersRouter = router({
 
         const [strikeCounts, banCounts] = await Promise.all([
           input.includeStrikeCounts
-            ? playerService.strikes.getActiveStrikeCounts(playerUuids)
+            ? Q.player.strike.getActiveStrikeCounts(playerUuids)
             : Promise.resolve({} as Record<string, number>),
           input.includeBanCounts
-            ? playerService.bans.getActiveBanCounts(playerUuids)
+            ? Q.player.ban.getActiveBanCounts(playerUuids)
             : Promise.resolve({} as Record<string, number>),
         ]);
 
@@ -111,7 +110,7 @@ export const playersRouter = router({
         }));
       }
 
-      return { players: enrichedPlayers, pagination };
+      return { items: enrichedPlayers, pagination };
     }),
 
   get: adminProcedure
@@ -119,10 +118,16 @@ export const playersRouter = router({
       description:
         "Get comprehensive player details including balance, playtime, tickets, waitlist, strikes, and bans",
     })
-    .input(z.object({ id: z.string().min(1) }))
+    .input(z.object({ id: playerId() }))
     .query(async ({ input }) => {
-      const identifier = parsePlayerId(input.id);
-      const playerData = await playerService.getComprehensive(identifier);
+      const [playerData, strikes, banHistory, currentBan] = await Promise.all([
+        playerRepo.getDetailed(input.id),
+        playerStrikeRepo.getHistory(input.id),
+        playerBanRepo.getHistory(input.id),
+        playerBanRepo.findCurrent(input.id),
+      ]);
+      const activeStrikes = strikes.filter((s) => !s.removed);
+      const activeBans = banHistory.filter((b) => !b.unbanned);
 
       return {
         player: playerData.player,
@@ -146,8 +151,19 @@ export const playersRouter = router({
         },
         tickets: playerData.tickets,
         waitlist: playerData.waitlist,
-        strikes: playerData.strikes,
-        bans: playerData.bans,
+        strikes: {
+          all: strikes,
+          active: activeStrikes,
+          activeCount: activeStrikes.length,
+          totalCount: strikes.length,
+        },
+        bans: {
+          current: currentBan,
+          history: banHistory,
+          active: activeBans,
+          activeCount: activeBans.length,
+          totalCount: banHistory.length,
+        },
       };
     }),
 
@@ -157,11 +173,8 @@ export const playersRouter = router({
     })
     .input(
       z.object({
-        id: z.string().min(1),
-        minecraftUsername: z
-          .string()
-          .regex(/^[a-zA-Z0-9_]{3,16}$/, "Invalid Minecraft username")
-          .optional(),
+        id: playerId(),
+        minecraftUsername: mcUsername.optional(),
         discordId: discordId.optional(),
         reason: z
           .string()
@@ -170,8 +183,6 @@ export const playersRouter = router({
       }),
     )
     .mutation(async ({ input, ctx }) => {
-      const identifier = parsePlayerId(input.id);
-
       if (!input.minecraftUsername && !input.discordId) {
         throw trpcError.badRequest("At least one field to update is required");
       }
@@ -181,8 +192,8 @@ export const playersRouter = router({
         updates.minecraftUsername = input.minecraftUsername;
       if (input.discordId) updates.discordId = input.discordId;
 
-      const updatedPlayer = await playerService.core.adminUpdate(
-        identifier,
+      const updatedPlayer = await playerRepo.adminUpdate(
+        input.id,
         updates,
         ctx.user.discordId,
         ctx.user.minecraftUsername,
@@ -198,7 +209,7 @@ export const playersRouter = router({
     })
     .input(
       z.object({
-        id: z.string().min(1),
+        id: playerId(),
         reason: z
           .string()
           .min(1, "Reason is required")
@@ -206,9 +217,7 @@ export const playersRouter = router({
       }),
     )
     .mutation(async ({ input, ctx }) => {
-      const identifier = parsePlayerId(input.id);
-
-      await playerDeletionService.delete(identifier, {
+      await playerDeletionService.delete(input.id, {
         actor: {
           type: "admin",
           discordId: ctx.user.discordId,
@@ -216,7 +225,5 @@ export const playersRouter = router({
         },
         reason: input.reason,
       });
-
-      return { message: "Player deleted successfully" };
     }),
 });

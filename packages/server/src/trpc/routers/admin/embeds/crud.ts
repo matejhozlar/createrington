@@ -1,8 +1,11 @@
+import { Discord } from "@/discord/constants";
 import { z } from "zod";
+import { guildChannelsProcedure } from "../guild-channels";
 import { adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
-import { getServiceSync, isServiceReady, Services } from "@/services";
-import { trpcError, auditActor } from "@/trpc/utils";
+import { getServiceIfReady, Services } from "@/services";
+import { trpcError, auditActor, id } from "@/trpc/utils";
+import { isMessageGone } from "@/services/discord/message/errors";
 import config from "@/config";
 import {
   embedBotSchema,
@@ -10,7 +13,6 @@ import {
 } from "@createrington/shared/api/embed";
 import {
   embedSendLimit,
-  getMessageService,
   buildMessage,
   payloadToStorage,
   toSendOptions,
@@ -20,37 +22,7 @@ import {
 const colors = config.discord.embeds.colors;
 
 export const embedCrudProcedures = {
-  channels: adminProcedure
-    .meta({ description: "Get all text channels grouped by category" })
-    .query(() => {
-      const channels = config.discord.guild.channels;
-      const categories = config.discord.guild.categories;
-      const grouped: Array<{
-        category: string;
-        categoryId: string;
-        channels: Array<{ name: string; id: string }>;
-      }> = [];
-
-      for (const [categoryKey, channelMap] of Object.entries(channels)) {
-        const categoryId =
-          (categories as unknown as Record<string, string>)[categoryKey] ?? "";
-        const channelList: Array<{ name: string; id: string }> = [];
-
-        for (const [channelName, channelId] of Object.entries(
-          channelMap as Record<string, string>,
-        )) {
-          channelList.push({ name: channelName, id: channelId });
-        }
-
-        grouped.push({
-          category: categoryKey,
-          categoryId,
-          channels: channelList,
-        });
-      }
-
-      return grouped;
-    }),
+  channels: guildChannelsProcedure,
 
   roles: adminProcedure
     .meta({ description: "Get all Discord roles" })
@@ -63,11 +35,7 @@ export const embedCrudProcedures = {
 
   emojis: adminProcedure
     .meta({ description: "Get the main bot's application emojis" })
-    .query(() =>
-      isServiceReady(Services.APP_EMOJI_SERVICE)
-        ? getServiceSync(Services.APP_EMOJI_SERVICE).list()
-        : [],
-    ),
+    .query(() => getServiceIfReady(Services.APP_EMOJI_SERVICE)?.list() ?? []),
 
   colors: adminProcedure
     .meta({ description: "Get all available embed colors" })
@@ -86,7 +54,7 @@ export const embedCrudProcedures = {
       z
         .object({
           channelId: z.string().min(1),
-          presetId: z.number().int().positive().optional(),
+          presetId: id().optional(),
           bot: embedBotSchema.default("main"),
         })
         .and(messagePayloadSchema),
@@ -99,19 +67,13 @@ export const embedCrudProcedures = {
         throw trpcError.badRequest(built.error);
       }
 
-      const messageService = getMessageService(input.bot);
+      const sent = await Discord.Messages.send(toSendOptions(built, channelId));
 
-      const result = await messageService.send(toSendOptions(built, channelId));
-
-      if (!result.success) {
-        throw trpcError.internal(result.error ?? "Failed to send message");
-      }
-
-      if (input.presetId && result.messageId) {
+      if (input.presetId) {
         await Q.discord.embed.preset.message.create({
           presetId: input.presetId,
           channelId: input.channelId,
-          messageId: result.messageId,
+          messageId: sent.id,
         });
       }
 
@@ -127,11 +89,11 @@ export const embedCrudProcedures = {
           channelId,
           kind: input.kind,
           presetId: input.presetId,
-          messageId: result.messageId,
+          messageId: sent.id,
         },
       });
 
-      return { messageId: result.messageId };
+      return { messageId: sent.id };
     }),
 
   edit: adminProcedure
@@ -141,7 +103,7 @@ export const embedCrudProcedures = {
         .object({
           channelId: z.string().min(1),
           messageId: z.string().min(1),
-          presetId: z.number().int().positive().optional(),
+          presetId: id().optional(),
           bot: embedBotSchema.default("main"),
         })
         .and(messagePayloadSchema),
@@ -154,15 +116,9 @@ export const embedCrudProcedures = {
         throw trpcError.badRequest(built.error);
       }
 
-      const messageService = getMessageService(input.bot);
-
-      const result = await messageService.edit(
+      const edited = await Discord.Messages.edit(
         toEditOptions(built, channelId, messageId),
       );
-
-      if (!result.success) {
-        throw trpcError.internal(result.error ?? "Failed to edit message");
-      }
 
       if (input.presetId) {
         await Q.discord.embed.preset.update(
@@ -183,7 +139,7 @@ export const embedCrudProcedures = {
         },
       });
 
-      return { messageId: result.messageId };
+      return { messageId: edited.id };
     }),
 
   fetchMessage: adminProcedure
@@ -196,19 +152,16 @@ export const embedCrudProcedures = {
       }),
     )
     .query(async ({ input }) => {
-      const messageService = getMessageService(input.bot);
-
-      const result = await messageService.fetchMessage({
+      const message = await Discord.Messages.fetchMessage({
         channelId: input.channelId,
         messageId: input.messageId,
+      }).catch((error: unknown) => {
+        if (isMessageGone(error)) throw trpcError.notFound(error.message);
+        throw error;
       });
 
-      if (!result.success) {
-        throw trpcError.notFound(result.error);
-      }
-
-      const embed = result.message.embeds[0];
-      const content = result.message.content || undefined;
+      const embed = message.embeds[0];
+      const content = message.content || undefined;
 
       if (!embed && !content) {
         throw trpcError.notFound("Message has no content or embeds");

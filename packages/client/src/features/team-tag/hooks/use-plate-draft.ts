@@ -4,6 +4,7 @@ import {
   isPlateTag,
   type PlateDesign,
 } from "@createrington/shared/team-tag";
+import { localStore } from "@/lib/storage";
 import { PLATE_PRESETS } from "../presets";
 
 export type PlateDraft = {
@@ -42,30 +43,27 @@ const isColor = (value: unknown): value is number =>
   value <= 0xffffff;
 
 function readStoredDraft(): PlateDraft {
-  try {
-    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null");
-    if (!stored || typeof stored !== "object") return DEFAULT_DRAFT;
-    const colors = ["plate", "letters", "plateFade", "letterFade"] as const;
-    const flags = ["plateFadeOn", "letterFadeOn"] as const;
-    if (
-      typeof stored.tag !== "string" ||
-      colors.some((key) => !isColor(stored[key])) ||
-      flags.some((key) => typeof stored[key] !== "boolean")
-    ) {
-      return DEFAULT_DRAFT;
-    }
-    return {
-      tag: sanitizeTag(stored.tag),
-      plate: stored.plate,
-      letters: stored.letters,
-      plateFade: stored.plateFade,
-      letterFade: stored.letterFade,
-      plateFadeOn: stored.plateFadeOn,
-      letterFadeOn: stored.letterFadeOn,
-    };
-  } catch {
+  const stored = localStore.getJson(STORAGE_KEY) as Partial<PlateDraft> | null;
+  if (!stored || typeof stored !== "object") return DEFAULT_DRAFT;
+  const colors = ["plate", "letters", "plateFade", "letterFade"] as const;
+  const flags = ["plateFadeOn", "letterFadeOn"] as const;
+  if (
+    typeof stored.tag !== "string" ||
+    colors.some((key) => !isColor(stored[key])) ||
+    flags.some((key) => typeof stored[key] !== "boolean")
+  ) {
     return DEFAULT_DRAFT;
   }
+  const draft = stored as PlateDraft;
+  return {
+    tag: sanitizeTag(draft.tag),
+    plate: draft.plate,
+    letters: draft.letters,
+    plateFade: draft.plateFade,
+    letterFade: draft.letterFade,
+    plateFadeOn: draft.plateFadeOn,
+    letterFadeOn: draft.letterFadeOn,
+  };
 }
 
 export function draftDesign(draft: PlateDraft): PlateDesign {
@@ -87,11 +85,7 @@ export function usePlateDraft() {
   const [draft, setDraft] = useState<PlateDraft>(readStoredDraft);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
-    } catch {
-      return;
-    }
+    localStore.setJson(STORAGE_KEY, draft);
   }, [draft]);
 
   const update = useCallback(

@@ -1,13 +1,11 @@
 import { EmbedPresets } from "@/discord/embeds";
-import { MessageFlags, type RepliableInteraction } from "discord.js";
+import {
+  escapeMarkdown,
+  MessageFlags,
+  type RepliableInteraction,
+  type User,
+} from "discord.js";
 
-/**
- * Sends a standard error embed in response to an interaction, choosing the
- * delivery method that matches the interaction's current state: an edit of a
- * deferred placeholder, a follow-up after an existing reply, or a fresh reply.
- * `ephemeral` (default true) applies to fresh replies and follow-ups; a
- * deferred reply keeps the ephemeral flag chosen when it was deferred.
- */
 export async function replyError(
   interaction: RepliableInteraction,
   title: string,
@@ -34,4 +32,17 @@ export async function replyError(
     embeds,
     flags: ephemeral ? MessageFlags.Ephemeral : undefined,
   });
+}
+
+export async function replyNotRegistered(
+  interaction: RepliableInteraction,
+  user: User,
+  options?: { ephemeral?: boolean },
+): Promise<void> {
+  await replyError(
+    interaction,
+    "Not Registered",
+    `${escapeMarkdown(user.displayName)} is not registered.`,
+    options,
+  );
 }

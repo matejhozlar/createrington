@@ -1,8 +1,7 @@
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field, FieldLabel, FieldDescription } from "@/components/ui/field";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ChoiceField } from "@/components/choice-field";
 import { FormDialog } from "@/components/form-dialog";
 import {
   Select,
@@ -12,11 +11,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
 import { useMutation } from "@tanstack/react-query";
+import { useDialogDraft } from "@/hooks/use-dialog-draft";
 
 type Config = RouterOutput["admin"]["autoMessages"]["configs"]["list"][number];
 type ChannelGroup = RouterOutput["admin"]["autoMessages"]["channels"][number];
+type RotationMode = Config["rotationMode"];
+
+const ROTATION_MODE_OPTIONS: { value: RotationMode; label: string }[] = [
+  { value: "sequential", label: "Sequential" },
+  { value: "random", label: "Random" },
+];
 
 interface UpsertConfigDialogProps {
   open: boolean;
@@ -34,65 +41,64 @@ export function UpsertConfigDialog({
   const toast = useToastActions();
   const isEdit = !!config;
 
+  const handleSaved = () => {
+    void queryClient.invalidateQueries(
+      trpc.admin.autoMessages.configs.pathFilter(),
+    );
+    onClose();
+  };
+
   const createMutation = useMutation(
-    trpc.admin.autoMessages.configs.create.mutationOptions({
-      onSuccess: () =>
-        void queryClient.invalidateQueries(
-          trpc.admin.autoMessages.configs.pathFilter(),
-        ),
-    }),
+    trpc.admin.autoMessages.configs.create.mutationOptions(
+      useMutationToast({ success: "Config created", onSuccess: handleSaved }),
+    ),
   );
   const updateMutation = useMutation(
-    trpc.admin.autoMessages.configs.update.mutationOptions({
-      onSuccess: () =>
-        void queryClient.invalidateQueries(
-          trpc.admin.autoMessages.configs.pathFilter(),
-        ),
-    }),
+    trpc.admin.autoMessages.configs.update.mutationOptions(
+      useMutationToast({ success: "Config updated", onSuccess: handleSaved }),
+    ),
   );
 
-  const [name, setName] = useState(config?.name ?? "");
-  const [channelId, setChannelId] = useState(config?.channelId ?? "");
-  const [intervalMinutes, setIntervalMinutes] = useState(
-    config?.intervalMinutes ?? 60,
-  );
-  const [rotationMode, setRotationMode] = useState<"sequential" | "random">(
-    config?.rotationMode ?? "sequential",
-  );
-  const [enabled, setEnabled] = useState(config?.enabled ?? false);
+  const [draft, update] = useDialogDraft<{
+    name: string;
+    channelId: string;
+    intervalMinutes: number;
+    rotationMode: RotationMode;
+    enabled: boolean;
+  }>(open, () => ({
+    name: config?.name ?? "",
+    channelId: config?.channelId ?? "",
+    intervalMinutes: config?.intervalMinutes ?? 60,
+    rotationMode: config?.rotationMode ?? "sequential",
+    enabled: config?.enabled ?? false,
+  }));
+  const { name, channelId, intervalMinutes, rotationMode, enabled } = draft;
 
   const isPending = createMutation.isPending || updateMutation.isPending;
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (!name.trim() || !channelId) {
       toast.error("Name and channel are required");
       return;
     }
 
-    try {
-      if (isEdit) {
-        await updateMutation.mutateAsync({
-          id: config.id,
-          name: name.trim(),
-          channelId,
-          intervalMinutes,
-          rotationMode,
-          enabled,
-        });
-        toast.success("Config updated");
-      } else {
-        await createMutation.mutateAsync({
-          name: name.trim(),
-          channelId,
-          intervalMinutes,
-          rotationMode,
-          enabled,
-        });
-        toast.success("Config created");
-      }
-      onClose();
-    } catch {
-      toast.error(`Failed to ${isEdit ? "update" : "create"} config`);
+    if (isEdit) {
+      updateMutation.mutate({
+        id: config.id,
+        name: name.trim(),
+        channelId,
+        intervalMinutes,
+        rotationMode,
+        enabled,
+      });
+    } else {
+      createMutation.mutate({
+        name: name.trim(),
+        channelId,
+        intervalMinutes,
+        rotationMode,
+        enabled,
+      });
     }
   };
 
@@ -105,7 +111,7 @@ export function UpsertConfigDialog({
       open={open}
       onClose={onClose}
       title={isEdit ? "Edit Config" : "New Auto-Message Config"}
-      onConfirm={() => void handleSubmit()}
+      onConfirm={handleSubmit}
       confirmLabel={isEdit ? "Save" : "Create"}
       loading={isPending}
       contentClassName="sm:max-w-lg"
@@ -116,16 +122,19 @@ export function UpsertConfigDialog({
         <Input
           id="config-name"
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={(e) => update({ name: e.target.value })}
           placeholder="e.g. Rails 'n Sails Tips"
           maxLength={100}
         />
       </Field>
 
       <Field>
-        <FieldLabel>Channel</FieldLabel>
-        <Select value={channelId} onValueChange={setChannelId}>
-          <SelectTrigger className="w-full">
+        <FieldLabel htmlFor="auto-message-channel">Channel</FieldLabel>
+        <Select
+          value={channelId}
+          onValueChange={(value: string) => update({ channelId: value })}
+        >
+          <SelectTrigger id="auto-message-channel" className="w-full">
             <SelectValue placeholder="Select a channel">
               {channelLabel
                 ? `#${channelLabel.name} (${channelLabel.category})`
@@ -157,7 +166,7 @@ export function UpsertConfigDialog({
           min={1}
           max={10080}
           value={intervalMinutes}
-          onChange={(e) => setIntervalMinutes(Number(e.target.value))}
+          onChange={(e) => update({ intervalMinutes: Number(e.target.value) })}
         />
         <FieldDescription>
           How often a message is sent (1 min – 7 days)
@@ -166,24 +175,11 @@ export function UpsertConfigDialog({
 
       <Field>
         <FieldLabel>Rotation Mode</FieldLabel>
-        <div className="flex gap-2">
-          <Button
-            type="button"
-            size="sm"
-            variant={rotationMode === "sequential" ? "default" : "outline"}
-            onClick={() => setRotationMode("sequential")}
-          >
-            Sequential
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant={rotationMode === "random" ? "default" : "outline"}
-            onClick={() => setRotationMode("random")}
-          >
-            Random
-          </Button>
-        </div>
+        <ChoiceField
+          value={rotationMode}
+          options={ROTATION_MODE_OPTIONS}
+          onChange={(value: RotationMode) => update({ rotationMode: value })}
+        />
         <FieldDescription>
           Sequential cycles in order, random picks any message
         </FieldDescription>
@@ -192,7 +188,7 @@ export function UpsertConfigDialog({
       <label className="flex cursor-pointer items-center gap-2">
         <Checkbox
           checked={enabled}
-          onCheckedChange={(checked) => setEnabled(checked === true)}
+          onCheckedChange={(checked) => update({ enabled: checked === true })}
         />
         <span className="text-sm font-medium">Enabled</span>
       </label>

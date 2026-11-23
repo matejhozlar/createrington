@@ -1,18 +1,17 @@
 import type { Pool, PoolClient } from "pg";
 import type { WorkshopBan, WorkshopBanRow } from "@createrington/shared/db";
+import type { CamelCaseKeys } from "@createrington/shared/types";
 import { WorkshopBanBaseQueries } from "@/generated/db/workshop_ban.queries";
 
-export interface WorkshopBanWithScope extends WorkshopBan {
-  workshopName: string | null;
+export interface WorkshopBanWithScopeRow extends WorkshopBanRow {
+  workshop_name: string | null;
 }
 
-/**
- * Custom queries for workshop_ban table
- *
- * Extends the auto-generated base class with custom methods.
- * This file is scaffolded once and never overwritten - add your custom
- * query methods here while inheriting all generated CRUD operations.
- */
+export type WorkshopBanWithScope = CamelCaseKeys<WorkshopBanWithScopeRow>;
+
+const ACTIVE_BAN_WHERE =
+  "unbanned = false AND (expires_at IS NULL OR expires_at > NOW())";
+
 export class WorkshopBanQueries extends WorkshopBanBaseQueries {
   constructor(db: Pool | PoolClient) {
     super(db);
@@ -35,11 +34,7 @@ export class WorkshopBanQueries extends WorkshopBanBaseQueries {
     const query = `
       SELECT * FROM ${this.table}
       WHERE discord_id = $1
-        AND unbanned = false
-        AND (
-          expires_at IS NULL OR
-          expires_at > NOW()
-        )
+        AND ${ACTIVE_BAN_WHERE}
         AND (
           workshop_id IS NULL OR
           workshop_id = $2
@@ -70,11 +65,7 @@ export class WorkshopBanQueries extends WorkshopBanBaseQueries {
       SELECT * FROM ${this.table}
       WHERE discord_id = $1
         AND workshop_id IS NOT DISTINCT FROM $2
-        AND unbanned = false
-        AND (
-          expires_at IS NULL OR
-          expires_at > NOW()
-        )
+        AND ${ACTIVE_BAN_WHERE}
       ORDER BY banned_at DESC
       LIMIT 1`;
 
@@ -93,31 +84,22 @@ export class WorkshopBanQueries extends WorkshopBanBaseQueries {
    * @param includeInactive - Include lifted and elapsed bans
    * @returns Promise resolving to the user's workshop bans
    */
-  async listForUser(
+  async getForUser(
     discordId: string,
     includeInactive: boolean,
   ): Promise<WorkshopBanWithScope[]> {
-    const activeOnly = `
-      AND b.unbanned = false
-      AND (
-        b.expires_at IS NULL OR
-        b.expires_at > NOW()
-      )`;
-
     const query = `
       SELECT b.*, w.name AS workshop_name
       FROM ${this.table} b
       LEFT JOIN workshop w ON w.id = b.workshop_id
-      WHERE b.discord_id = $1${includeInactive ? "" : activeOnly}
+      WHERE b.discord_id = $1${includeInactive ? "" : ` AND ${ACTIVE_BAN_WHERE}`}
       ORDER BY b.banned_at DESC`;
 
-    const result = await this.runQuery<
-      WorkshopBanRow & { workshop_name: string | null }
-    >("list workshop bans for user", query, [discordId]);
-
-    return result.rows.map((row) => ({
-      ...this.mapRowToEntity(row),
-      workshopName: row.workshop_name,
-    }));
+    const result = await this.runQuery<WorkshopBanWithScopeRow>(
+      "list workshop bans for user",
+      query,
+      [discordId],
+    );
+    return this.mapRowsToEntities(result.rows);
   }
 }

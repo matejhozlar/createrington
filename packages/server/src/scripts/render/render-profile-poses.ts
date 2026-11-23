@@ -22,7 +22,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import puppeteer from "puppeteer-core";
 import { KNOWN_POSES } from "createrington-skin-api";
 import config from "@/config";
-import { setSameOriginHeaders } from "@/services/puppeteer";
+import { setSameOriginHeaders } from "@/services/puppeteer/same-origin-headers";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, "..", "..", "..", "..", "..");

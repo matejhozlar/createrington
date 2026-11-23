@@ -6,18 +6,12 @@ import {
 } from "discord.js";
 import { EmbedPresets } from "@/discord/embeds";
 import { cooldownManager } from "@/discord/utils/cooldown/cooldown-manager";
+import type {
+  CommandModule,
+  CommandPermissions,
+} from "@/discord/bots/common/loaders/command-loader";
 
-/**
- * Slash command definition for the cooldown management command
- *
- * Allows administrators to manage command cooldowns with three subcommands:
- * - reset: Reset all cooldowns for a specific user
- * - reset-command: Reset all cooldowns for a specific command
- * - stats: View statistics about active cooldowns
- *
- * Requires Administrator permissions to use
- */
-export const data = new SlashCommandBuilder()
+const data = new SlashCommandBuilder()
   .setName("cooldown")
   .setDescription("Manage command cooldowns")
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
@@ -47,37 +41,11 @@ export const data = new SlashCommandBuilder()
     sub.setName("stats").setDescription("View cooldown statistics"),
   );
 
-/**
- * Permission configuration for the leaderboard command
- * Requires administrator privileges to execute
- */
-export const permissions = {
+const permissions: CommandPermissions = {
   requireAdmin: true,
 };
 
-/**
- * Executes the cooldown management command
- *
- * Handles three subcommands:
- * 1. reset - Resets all cooldowns for a specific user and displays the count
- * 2. reset-command - Resets all cooldowns for a specific command
- * 3. stats - Displays statistics about active cooldowns including:
- *    - Total number of active cooldowns
- *    - Number of commands with cooldowns
- *    - Breakdown by command name
- *
- * @param interaction - The chat input command interaction
- * @returns Promise that resolves when the command execution is complete
- *
- * @example
- * // User runs: /cooldown reset @user
- * // Bot responds: "Reset 3 cooldown(s) for username#1234"
- *
- * @example
- * // User runs: /cooldown stats
- * // Bot displays embed with cooldown statistics
- */
-export async function execute(
+async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
   const subcommand = interaction.options.getSubcommand();
@@ -133,3 +101,9 @@ export async function execute(
     }
   }
 }
+
+export default {
+  data,
+  permissions,
+  execute,
+} satisfies CommandModule;

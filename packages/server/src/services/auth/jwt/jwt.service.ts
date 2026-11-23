@@ -3,12 +3,15 @@ import type { AuthenticatedUser } from "@/services/discord/oauth/oauth.service";
 import jwt, { type SignOptions } from "jsonwebtoken";
 import { AuthRole, type JWTPayload } from "@createrington/shared/auth";
 
-/**
- * Audience claim for web session tokens. Mod-signed tokens carry
- * `createrington.mod` instead, so a mod token can never satisfy a web
- * auth check even though both use the same HS256 secret.
- */
 export const JWT_AUDIENCE_WEB = "createrington.web";
+
+/** Thrown when a web or launcher access token is past its expiry. */
+export class TokenExpiredError extends Error {
+  constructor() {
+    super("Token expired");
+    this.name = "TokenExpiredError";
+  }
+}
 
 /** Thrown when a token verifies cryptographically but the payload shape is wrong. */
 export class InvalidJwtPayloadError extends Error {
@@ -26,12 +29,10 @@ export class InvalidJwtPayloadError extends Error {
  * `JWT_ACCESS_SECRET` is missing.
  */
 export class JWTService {
-  private static instance: JWTService;
-
   private readonly secret: string;
   private readonly expiresIn: string;
 
-  private constructor() {
+  constructor() {
     this.secret = config.app.auth.accessToken.secret;
     this.expiresIn = config.app.auth.accessToken.expiresIn;
 
@@ -40,34 +41,9 @@ export class JWTService {
     }
   }
 
-  public static getInstance(): JWTService {
-    if (!JWTService.instance) {
-      JWTService.instance = new JWTService();
-    }
-    return JWTService.instance;
-  }
-
   /** Signs a new access token for an authenticated user. */
   generate(user: AuthenticatedUser): string {
-    const payload: JWTPayload = {
-      discordId: user.discordId,
-      username: user.username,
-      role: user.role,
-      isAdmin: user.isAdmin,
-      minecraftUuid: user.minecraftUuid,
-      minecraftUsername: user.minecraftUsername,
-    };
-
-    if (user.avatar) {
-      payload.avatar = user.avatar;
-    }
-
-    const token = jwt.sign(payload, this.secret, {
-      algorithm: "HS256",
-      audience: JWT_AUDIENCE_WEB,
-      expiresIn: this.expiresIn as SignOptions["expiresIn"],
-    });
-
+    const token = this.generateFromPayload(user);
     logger.debug(
       `Generated access token for ${user.minecraftUsername} (${user.username})`,
     );
@@ -98,7 +74,7 @@ export class JWTService {
 
   /**
    * Verifies signature, audience, and payload shape, returning the decoded payload.
-   * Throws `Error("Token expired")`, `Error("Invalid token")`, or
+   * Throws `TokenExpiredError`, `Error("Invalid token")`, or
    * `InvalidJwtPayloadError` depending on the failure (the shape check exists because
    * `jwt.verify` only validates signature/exp, not payload structure).
    */
@@ -111,7 +87,7 @@ export class JWTService {
       return assertWebJwtPayload(decoded);
     } catch (error) {
       if (error instanceof jwt.TokenExpiredError) {
-        throw new Error("Token expired");
+        throw new TokenExpiredError();
       }
       if (error instanceof jwt.JsonWebTokenError) {
         throw new Error("Invalid token");
@@ -124,7 +100,7 @@ export class JWTService {
   }
 }
 
-export const jwtService = JWTService.getInstance();
+export const jwtService = new JWTService();
 
 const AUTH_ROLES = Object.values(AuthRole) as string[];
 

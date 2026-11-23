@@ -1,4 +1,3 @@
-import EventEmitter from "node:events";
 import type { Server } from "node:http";
 import type { Pool } from "pg";
 import type { Client } from "discord.js";
@@ -20,26 +19,26 @@ import type { PlayerDeletionService } from "./player/deletion";
 import type { PartyPurgeService } from "./party";
 import type { StatsImportService } from "./stats-import";
 import type { FaqService } from "./discord/faq";
-import type { PuppeteerService } from "./puppeteer";
-import type { AiService } from "./ai";
+import type { PuppeteerService } from "./puppeteer/puppeteer.service";
+import type { AiService } from "./ai/ai.service";
 import type { AutoMessageService } from "./discord/auto-message";
 import type { DonationService } from "./donation/donation.service";
-import type { StructurePackRotationService } from "./structure-pack/rotation";
+import type { StructurePackRotationService } from "./structure-pack/rotation/rotation.service";
 import type { WaitlistCleanupService } from "./waitlist/waitlist-cleanup.service";
 import type { PlayerPromptService } from "./player-prompt";
 import type { WorkshopProjectRefreshService } from "./workshop/refresh.service";
 import type { LauncherPackFileRefreshService } from "./launcher/pack/file-refresh.service";
 import type { DiscordStickyMessageService } from "./discord/sticky-message";
-import type { GalleryService } from "./gallery";
+import type { GalleryService } from "./gallery/gallery.service";
 import type { AppEmojiService } from "./discord/emojis";
 import type { RedisService } from "./redis";
 import type { MaintenanceService } from "./maintenance/maintenance.service";
 import type { VotifierService } from "./votifier/votifier.service";
 import type { VoteRewardService } from "./votifier/vote-reward.service";
+import type { SessionService } from "./auth/session/session.service";
+import type { LauncherSessionService } from "./auth/launcher/launcher-session.service";
+import type { MinecraftRconManager } from "@/utils/rcon/manager";
 
-/**
- * Service lifecycle states
- */
 export enum ServiceState {
   UNINITIALIZED = "uninitialized",
   INITIALIZING = "initializing",
@@ -48,71 +47,90 @@ export enum ServiceState {
 }
 
 /**
- * Service definition with dependencies
+ * What the container expects of a registered service: an optional
+ * `initialize()` the factory awaits before returning and an optional
+ * `shutdown()` the container calls at teardown, neither taking arguments
  */
-interface ServiceDefinition<T = unknown> {
+export interface Lifecycle {
+  initialize?(): void | Promise<void>;
+  shutdown?(): void | Promise<void>;
+}
+
+type LifecycleMap<TMap> = {
+  [K in keyof TMap]: Pick<Lifecycle, Extract<keyof TMap[K], keyof Lifecycle>>;
+};
+
+type Teardown<T> = (instance: T) => void | Promise<void>;
+
+interface RegisterOptions<T> {
+  shutdown?: Teardown<T>;
+}
+
+const SHUTDOWN_TIMEOUT_MS = 10_000;
+
+type ServiceName<TMap> = keyof TMap & string;
+
+type ResolvedDependencies<
+  TMap,
+  TDependencies extends readonly ServiceName<TMap>[],
+> = {
+  [I in keyof TDependencies]: TDependencies[I] extends keyof TMap
+    ? TMap[TDependencies[I]]
+    : never;
+};
+
+interface ServiceDefinition {
   name: string;
-  factory: (container: ServiceContainer) => T | Promise<T>;
-  dependencies?: string[];
-  lazy?: boolean;
+  factory: (...dependencies: unknown[]) => unknown;
+  dependencies: readonly string[];
+  teardown?: Teardown<unknown>;
   state: ServiceState;
-  instance?: T;
+  instance?: unknown;
   error?: Error;
-}
-
-/**
- * Container events
- */
-interface ContainerEvents {
-  serviceReady: (serviceName: string) => void;
-  serviceFailed: (serviceName: string, error: Error) => void;
-  allReady: () => void;
-}
-
-interface TypedEventEmitter<T> {
-  on<K extends keyof T>(event: K, listener: T[K]): this;
-  emit<K extends keyof T>(
-    event: K,
-    ...args: T[K] extends (...args: infer A) => unknown ? A : never
-  ): boolean;
 }
 
 /**
  * Centralized service container with dependency injection
  *
- * - Manages the full lifecycle of all application services (register, init, shutdown)
- * - Resolves dependencies in parallel where possible
- * - Detects circular dependencies at init time
- * - Supports lazy services that initialize only on first access
- * - Emits events for service readiness and cross-service wiring
+ * A service is registered under a key of the type maps together with the
+ * services it needs. The container initializes those first (in parallel),
+ * hands their instances to the factory in the same order, and type-checks
+ * the factory's result against the key, so the declared graph is the graph
+ * the factories actually use. A required service may only depend on other
+ * required services. An optional one is registered only when its feature is
+ * configured and is read back with `getOptional`, which returns null instead
+ * of throwing when it was never registered. Dependency cycles are rejected
+ * at init time. Every registered type satisfies `Lifecycle`; a handle the app
+ * does not own (pg Pool, http.Server, Discord client) passes its teardown at
+ * registration instead.
  *
  * NOTE: The singleton `container` instance exported from this module is the
  * authoritative registry: all services must be registered through it before
  * `initializeAll()` is called during server startup
  */
-export class ServiceContainer extends (EventEmitter as new () => TypedEventEmitter<ContainerEvents> &
-  EventEmitter) {
+export class ServiceContainer<
+  TRequired extends LifecycleMap<TRequired>,
+  TOptional extends LifecycleMap<TOptional> = Record<never, never>,
+> {
   private services: Map<string, ServiceDefinition> = new Map();
   private initializationPromises: Map<string, Promise<unknown>> = new Map();
 
   /**
-   * Registers a service with its factory function and optional dependencies
+   * Registers a service with the services its factory receives, in order
    *
-   * The factory receives the container so it can resolve its own dependencies
-   * at init time. Duplicate registrations throw immediately to catch wiring
-   * mistakes early.
-   *
-   * @param name - Unique service key (use the `Services` constants)
-   * @param factory - Factory that creates or initialises the service instance
-   * @param options - Optional dependency names and lazy flag
+   * Duplicate registrations throw immediately to catch wiring mistakes early.
+   * `options.shutdown` replaces the instance's own `shutdown()` at teardown.
    */
-  register<T>(
-    name: string,
-    factory: (container: ServiceContainer) => T | Promise<T>,
-    options: {
-      dependencies?: string[];
-      lazy?: boolean;
-    } = {},
+  register<
+    K extends ServiceName<TRequired & TOptional>,
+    const D extends readonly ServiceName<TRequired>[],
+  >(
+    name: K,
+    dependencies: D,
+    factory: (
+      ...dependencies: ResolvedDependencies<TRequired, D>
+    ) => (TRequired & TOptional)[K] | Promise<(TRequired & TOptional)[K]>,
+    options: RegisterOptions<(TRequired & TOptional)[K]> = {},
   ): void {
     if (this.services.has(name)) {
       throw new Error(`Service ${name} is already registered`);
@@ -120,9 +138,9 @@ export class ServiceContainer extends (EventEmitter as new () => TypedEventEmitt
 
     this.services.set(name, {
       name,
-      factory,
-      dependencies: options.dependencies || [],
-      lazy: options.lazy || false,
+      factory: factory as (...dependencies: unknown[]) => unknown,
+      dependencies,
+      teardown: options.shutdown as Teardown<unknown> | undefined,
       state: ServiceState.UNINITIALIZED,
     });
 
@@ -130,28 +148,60 @@ export class ServiceContainer extends (EventEmitter as new () => TypedEventEmitt
   }
 
   /**
-   * Returns a fully-initialised service instance, initialising it on first access
+   * Returns a fully-initialised required service, initialising it on first access
    *
-   * If the service is already ready its cached instance is returned immediately.
-   * If it is currently initialising the existing promise is awaited to avoid
-   * duplicate factory invocations. A previously-failed service re-throws its
-   * original error.
-   *
-   * @param name - Service key to retrieve
-   * @returns Promise resolving to the typed service instance
-   * @example
-   * const bot = await container.get(Services.DISCORD_MAIN_BOT);
+   * Concurrent callers share one factory run, and a previously-failed service
+   * re-throws its original error.
    */
-  async get<K extends ServiceKey>(name: K): Promise<ServiceTypeMap[K]>;
-  async get<T>(name: string): Promise<T>;
-  async get(name: string): Promise<unknown> {
+  async get<K extends ServiceName<TRequired>>(name: K): Promise<TRequired[K]> {
+    return (await this.resolve(name)) as TRequired[K];
+  }
+
+  /** Same as `get` for an optional service, or null when it was never registered. */
+  async getOptional<K extends ServiceName<TOptional>>(
+    name: K,
+  ): Promise<TOptional[K] | null> {
+    if (!this.services.has(name)) return null;
+    return (await this.resolve(name)) as TOptional[K];
+  }
+
+  /**
+   * Returns a fully-initialised required service synchronously
+   *
+   * Throws if the service has not yet been initialised. Use this only in
+   * contexts where you are certain the service is already ready (e.g. inside
+   * a request handler after startup has completed).
+   */
+  getSync<K extends ServiceName<TRequired>>(name: K): TRequired[K] {
+    const service = this.services.get(name);
+    if (!service) {
+      throw new Error(`Service ${name} is not registered`);
+    }
+    if (service.state !== ServiceState.READY) {
+      throw new Error(
+        `Service ${name} is not ready (state: ${service.state}). Use async get() instead.`,
+      );
+    }
+    return service.instance as TRequired[K];
+  }
+
+  /** Returns the instance of a ready service, or null; never throws and never starts initialisation. */
+  getIfReady<K extends ServiceName<TRequired & TOptional>>(
+    name: K,
+  ): (TRequired & TOptional)[K] | null {
+    const service = this.services.get(name);
+    if (service?.state !== ServiceState.READY) return null;
+    return service.instance as (TRequired & TOptional)[K];
+  }
+
+  private async resolve(name: string): Promise<unknown> {
     const service = this.services.get(name);
 
     if (!service) {
       throw new Error(`Service ${name} is not registered`);
     }
 
-    if (service.state === ServiceState.READY && service.instance) {
+    if (service.state === ServiceState.READY) {
       return service.instance;
     }
 
@@ -166,25 +216,11 @@ export class ServiceContainer extends (EventEmitter as new () => TypedEventEmitt
       throw service.error;
     }
 
-    return this.initializeService(name);
+    return this.initializeService(service);
   }
 
-  /**
-   * Initialises a service and all of its declared dependencies
-   *
-   * Dependencies are awaited in parallel before the service's own factory runs.
-   * The resulting promise is stored while in-flight so concurrent callers share
-   * the same initialisation work rather than invoking the factory twice.
-   *
-   * @param name - Name of the service to initialise
-   * @returns Promise resolving to the initialised service instance
-   * @private
-   */
-  private async initializeService<T>(name: string): Promise<T> {
-    const service = this.services.get(name);
-    if (!service) {
-      throw new Error(`Service ${name} not found`);
-    }
+  private initializeService(service: ServiceDefinition): Promise<unknown> {
+    const { name } = service;
 
     this.checkCircularDependency(name, new Set());
 
@@ -192,29 +228,29 @@ export class ServiceContainer extends (EventEmitter as new () => TypedEventEmitt
 
     const initPromise = (async () => {
       try {
-        if (service.dependencies && service.dependencies.length > 0) {
+        if (service.dependencies.length > 0) {
           logger.debug(
             `Initializing dependencies for ${name}: ${service.dependencies.join(", ")}`,
           );
-          await Promise.all(service.dependencies.map((dep) => this.get(dep)));
         }
+        const dependencies = await Promise.all(
+          service.dependencies.map((dep) => this.resolve(dep)),
+        );
 
         logger.info(`Initializing service: ${name}`);
-        const instance = await service.factory(this);
+        const instance = await service.factory(...dependencies);
 
         service.instance = instance;
         service.state = ServiceState.READY;
 
-        this.emit("serviceReady", name);
         logger.info(`✓ Service ready: ${name}`);
 
-        return instance as T;
+        return instance;
       } catch (error) {
         service.state = ServiceState.FAILED;
         service.error =
           error instanceof Error ? error : new Error(String(error));
 
-        this.emit("serviceFailed", name, service.error);
         logger.error(`✗ Service failed: ${name}`, error);
 
         throw service.error;
@@ -228,55 +264,36 @@ export class ServiceContainer extends (EventEmitter as new () => TypedEventEmitt
   }
 
   /**
-   * Initialises all non-lazy registered services in parallel
+   * Initialises every registered service in parallel
    *
    * Uses `Promise.allSettled` so a failure in one service does not block the
-   * rest. All failures are logged and the `allReady` event is still emitted
-   * afterward so downstream listeners can proceed.
-   *
-   * @returns Promise that resolves once every non-lazy service has settled
+   * rest. All failures are logged.
    */
   async initializeAll(): Promise<void> {
-    const nonLazyServices = Array.from(this.services.values())
-      .filter((s) => !s.lazy)
-      .map((s) => s.name);
+    const names = Array.from(this.services.keys());
 
-    logger.info(`Initializing ${nonLazyServices.length} core services...`);
+    logger.info(`Initializing ${names.length} core services...`);
 
-    const result = await Promise.allSettled(
-      nonLazyServices.map((name) => this.get(name)),
+    const results = await Promise.allSettled(
+      names.map((name) => this.resolve(name)),
     );
 
-    const failed = result.filter((r) => r.status === "rejected");
-    const succeeded = result.filter((r) => r.status === "fulfilled");
+    const failed = results.filter((r) => r.status === "rejected");
 
     logger.info(
-      `Services initialized: ${succeeded.length}/${nonLazyServices.length} succeeded`,
+      `Services initialized: ${names.length - failed.length}/${names.length} succeeded`,
     );
 
     if (failed.length > 0) {
       logger.error(`${failed.length} service(s) failed to initialize`);
-      failed.forEach((result, index) => {
+      results.forEach((result, index) => {
         if (result.status === "rejected") {
-          logger.error(`   - ${nonLazyServices[index]}: ${result.reason}`);
+          logger.error(`   - ${names[index]}: ${result.reason}`);
         }
       });
     }
-
-    this.emit("allReady");
   }
 
-  /**
-   * Throws if the given service is part of a circular dependency chain
-   *
-   * Performs a depth-first walk of the dependency graph, tracking the current
-   * path so the cycle can be reported in the error message.
-   *
-   * @param serviceName - Root service to check from
-   * @param visited - Set of names already on the current DFS path
-   * @param path - Ordered list of names on the current DFS path (for error messages)
-   * @private
-   */
   private checkCircularDependency(
     serviceName: string,
     visited: Set<string>,
@@ -289,7 +306,7 @@ export class ServiceContainer extends (EventEmitter as new () => TypedEventEmitt
     }
 
     const service = this.services.get(serviceName);
-    if (!service || !service.dependencies) return;
+    if (!service) return;
 
     visited.add(serviceName);
     path.push(serviceName);
@@ -299,53 +316,17 @@ export class ServiceContainer extends (EventEmitter as new () => TypedEventEmitt
     }
   }
 
-  /**
-   * Returns a fully-initialised service instance synchronously
-   *
-   * Throws if the service has not yet been initialised. Use this only in
-   * contexts where you are certain the service is already ready (e.g. inside
-   * a request handler after startup has completed).
-   *
-   * @param name - Service key to retrieve
-   * @returns The typed service instance
-   * @example
-   * const ws = container.getSync(Services.WEBSOCKET_SERVICE);
-   */
-  getSync<K extends ServiceKey>(name: K): ServiceTypeMap[K];
-  getSync<T>(name: string): T;
-  getSync(name: string): unknown {
-    const service = this.services.get(name);
-    if (!service) {
-      throw new Error(`Service ${name} is not registered`);
-    }
-    if (service.state !== ServiceState.READY || !service.instance) {
-      throw new Error(
-        `Service ${name} is not ready (state: ${service.state}). Use async get() instead.`,
-      );
-    }
-    return service.instance;
-  }
-
   /** Total number of registered services */
   get size(): number {
     return this.services.size;
   }
 
-  /**
-   * Returns the current lifecycle state of a service
-   *
-   * @param name - Service key to inspect
-   * @returns The service's `ServiceState`, or `undefined` if not registered
-   */
+  /** Returns the current lifecycle state of a service */
   getState(name: string): ServiceState | undefined {
     return this.services.get(name)?.state;
   }
 
-  /**
-   * Returns a snapshot of every registered service's lifecycle state
-   *
-   * @returns Plain object mapping service name to its `ServiceState`
-   */
+  /** Returns a snapshot of every registered service's lifecycle state */
   getAllStates(): Record<string, ServiceState> {
     const states: Record<string, ServiceState> = {};
     for (const [name, service] of this.services) {
@@ -355,37 +336,42 @@ export class ServiceContainer extends (EventEmitter as new () => TypedEventEmitt
   }
 
   /**
-   * Shuts down all services in reverse registration order
+   * Shuts down all ready services in reverse registration order
    *
-   * Calls `shutdown()` on every service instance that implements it, tolerating
-   * individual failures so that all services get a chance to clean up. Clears
-   * both the service registry and any pending initialisation promises.
-   *
-   * @returns Promise that resolves once all shutdown hooks have settled
+   * Runs each service's registered teardown, or its own `shutdown()`, giving
+   * each one at most 10 seconds and moving on past a failure or a timeout so
+   * every service gets a chance to clean up. Clears the registry afterwards.
    */
   async shutdown(): Promise<void> {
     logger.info("Shutting down services...");
 
-    const isShutdownable = (
-      instance: unknown,
-    ): instance is { shutdown: () => Promise<void> | void } =>
-      typeof instance === "object" &&
-      instance !== null &&
-      "shutdown" in instance &&
-      typeof (instance as Record<string, unknown>).shutdown === "function";
-
-    const shutdownableServices = Array.from(this.services.values())
-      .filter((s) => isShutdownable(s.instance))
+    const ready = Array.from(this.services.values())
+      .filter((s) => s.state === ServiceState.READY)
       .reverse();
 
-    for (const service of shutdownableServices) {
+    for (const service of ready) {
+      const teardown = this.teardownOf(service);
+      if (!teardown) continue;
+
+      logger.debug(`Shutting down: ${service.name}`);
+      let timer: NodeJS.Timeout | undefined;
       try {
-        logger.debug(`Shutting down: ${service.name}`);
-        if (isShutdownable(service.instance)) {
-          await service.instance.shutdown();
-        }
+        await Promise.race([
+          teardown(),
+          new Promise<never>((_, reject) => {
+            timer = setTimeout(
+              () =>
+                reject(
+                  new Error(`timed out after ${SHUTDOWN_TIMEOUT_MS / 1000}s`),
+                ),
+              SHUTDOWN_TIMEOUT_MS,
+            );
+          }),
+        ]);
       } catch (error) {
         logger.error(`Failed to shutdown ${service.name}:`, error);
+      } finally {
+        clearTimeout(timer);
       }
     }
 
@@ -394,13 +380,18 @@ export class ServiceContainer extends (EventEmitter as new () => TypedEventEmitt
 
     logger.info("All services shutdown");
   }
+
+  private teardownOf(
+    service: ServiceDefinition,
+  ): (() => void | Promise<void>) | null {
+    const { instance, teardown } = service;
+    if (teardown) return () => teardown(instance);
+    const own = (instance as Lifecycle | null | undefined)?.shutdown;
+    if (typeof own === "function") return () => own.call(instance);
+    return null;
+  }
 }
 
-export const container = new ServiceContainer();
-
-/**
- * Type-safe service keys
- */
 export const Services = {
   DATABASE: "database",
   HTTP_SERVER: "http.Server",
@@ -436,26 +427,26 @@ export const Services = {
   GALLERY_SERVICE: "gallery.service",
   APP_EMOJI_SERVICE: "discord.appEmojiService",
   REDIS: "infra.redisService",
+  RCON_MANAGER: "minecraft.rconManager",
+  SESSION_SERVICE: "auth.sessionService",
+  LAUNCHER_SESSION_SERVICE: "auth.launcherSessionService",
   MAINTENANCE_SERVICE: "server.maintenanceService",
   VOTIFIER_SERVICE: "server.votifierService",
   VOTE_REWARD_SERVICE: "server.voteRewardService",
 } as const;
 
-export type ServiceKey = (typeof Services)[keyof typeof Services];
-
-/**
- * Maps each service key to its concrete type for type-safe access
- */
-export interface ServiceTypeMap {
+export interface RequiredServiceTypeMap {
   [Services.DATABASE]: Pool;
   [Services.HTTP_SERVER]: Server;
+  [Services.RCON_MANAGER]: MinecraftRconManager;
+  [Services.SESSION_SERVICE]: SessionService;
+  [Services.LAUNCHER_SESSION_SERVICE]: LauncherSessionService;
   [Services.DISCORD_MAIN_BOT]: Client;
   [Services.MESSAGE_SERVICE]: DiscordMessageService;
   [Services.MESSAGE_CACHE]: MessageCacheService;
   [Services.TICKET_SERVICE]: TicketService;
   [Services.LEADERBOARD_SERVICE]: LeaderboardService;
   [Services.MEMBER_CLEANUP_SERVICE]: MemberCleanupService;
-  [Services.INACTIVITY_CLEANUP_SERVICE]: InactivityCleanupService;
   [Services.GHOST_MEMBER_SERVICE]: GhostMemberService;
   [Services.UNLINKED_MEMBER_SERVICE]: UnlinkedMemberService;
   [Services.SERVER_STATS_SERVICE]: ServerStatsService;
@@ -465,23 +456,37 @@ export interface ServiceTypeMap {
   [Services.WEBSOCKET_SERVICE]: WebSocketService;
   [Services.PLAYER_BAN_SERVICE]: PlayerBanService;
   [Services.PLAYER_DELETION_SERVICE]: PlayerDeletionService;
-  [Services.PARTY_PURGE_SERVICE]: PartyPurgeService;
-  [Services.STATS_IMPORT_SERVICE]: StatsImportService;
   [Services.FAQ_SERVICE]: FaqService;
   [Services.PUPPETEER_SERVICE]: PuppeteerService;
-  [Services.AI_SERVICE]: AiService;
   [Services.AUTO_MESSAGE_SERVICE]: AutoMessageService;
-  [Services.DONATION_SERVICE]: DonationService;
   [Services.STRUCTURE_PACK_ROTATION]: StructurePackRotationService;
-  [Services.WAITLIST_CLEANUP_SERVICE]: WaitlistCleanupService;
   [Services.PLAYER_PROMPT_SERVICE]: PlayerPromptService;
   [Services.WORKSHOP_PROJECT_REFRESH]: WorkshopProjectRefreshService;
-  [Services.LAUNCHER_PACK_FILE_REFRESH]: LauncherPackFileRefreshService;
   [Services.STICKY_MESSAGE_SERVICE]: DiscordStickyMessageService;
   [Services.GALLERY_SERVICE]: GalleryService;
   [Services.APP_EMOJI_SERVICE]: AppEmojiService;
-  [Services.REDIS]: RedisService;
   [Services.MAINTENANCE_SERVICE]: MaintenanceService;
+}
+
+export interface OptionalServiceTypeMap {
+  [Services.INACTIVITY_CLEANUP_SERVICE]: InactivityCleanupService;
+  [Services.PARTY_PURGE_SERVICE]: PartyPurgeService;
+  [Services.STATS_IMPORT_SERVICE]: StatsImportService;
+  [Services.AI_SERVICE]: AiService;
+  [Services.DONATION_SERVICE]: DonationService;
+  [Services.WAITLIST_CLEANUP_SERVICE]: WaitlistCleanupService;
+  [Services.LAUNCHER_PACK_FILE_REFRESH]: LauncherPackFileRefreshService;
+  [Services.REDIS]: RedisService;
   [Services.VOTIFIER_SERVICE]: VotifierService;
   [Services.VOTE_REWARD_SERVICE]: VoteRewardService;
 }
+
+export type ServiceTypeMap = RequiredServiceTypeMap & OptionalServiceTypeMap;
+export type RequiredServiceKey = keyof RequiredServiceTypeMap;
+export type OptionalServiceKey = keyof OptionalServiceTypeMap;
+export type ServiceKey = RequiredServiceKey | OptionalServiceKey;
+
+export const container = new ServiceContainer<
+  RequiredServiceTypeMap,
+  OptionalServiceTypeMap
+>();

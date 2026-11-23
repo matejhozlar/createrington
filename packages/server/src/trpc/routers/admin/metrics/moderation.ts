@@ -1,65 +1,64 @@
 import { router, adminProcedure } from "@/trpc/trpc";
-import { metricsService } from "@/services/metrics";
+import { Q } from "@/db";
 import { z } from "zod";
 import { dateRangeWithGranularity } from "./schemas";
 
-/** Admin moderation metrics: bans, strikes, tickets, moderator leaderboard */
 export const moderationMetricsRouter = router({
-  getBansByPeriod: adminProcedure
+  bansByPeriod: adminProcedure
     .meta({ description: "Get ban counts grouped by time period" })
     .input(dateRangeWithGranularity)
     .query(async ({ input }) => {
-      return await metricsService.moderation.getBansByPeriod(
+      return await Q.player.ban.getCountsByPeriod(
         input.start,
         input.end,
         input.granularity,
       );
     }),
 
-  getStrikesByPeriod: adminProcedure
+  strikesByPeriod: adminProcedure
     .meta({
       description:
         "Get strike counts grouped by time period with classification breakdown",
     })
     .input(dateRangeWithGranularity)
     .query(async ({ input }) => {
-      return await metricsService.moderation.getStrikesByPeriod(
+      return await Q.player.strike.getCountsByPeriod(
         input.start,
         input.end,
         input.granularity,
       );
     }),
 
-  getStrikeSeverityDistribution: adminProcedure
+  strikeSeverityDistribution: adminProcedure
     .meta({ description: "Get severity distribution for active strikes" })
     .query(async () => {
-      return await metricsService.moderation.getStrikeSeverityDistribution();
+      return await Q.player.strike.getSeverityDistribution();
     }),
 
-  getTicketOverview: adminProcedure
+  ticketOverview: adminProcedure
     .meta({
       description:
         "Get ticket overview: total, open, closed, average resolution time",
     })
     .query(async () => {
-      return await metricsService.moderation.getTicketOverview();
+      return await Q.ticket.getOverview();
     }),
 
-  getTicketVolume: adminProcedure
+  ticketVolume: adminProcedure
     .meta({ description: "Get ticket volume grouped by time period" })
     .input(dateRangeWithGranularity)
     .query(async ({ input }) => {
-      return await metricsService.moderation.getTicketVolume(
+      return await Q.ticket.getVolumeByPeriod(
         input.start,
         input.end,
         input.granularity,
       );
     }),
 
-  getTopModerators: adminProcedure
+  topModerators: adminProcedure
     .meta({ description: "Get top moderators ranked by ban count" })
     .input(z.object({ limit: z.number().int().min(1).max(100).default(10) }))
     .query(async ({ input }) => {
-      return await metricsService.moderation.getTopModerators(input.limit);
+      return await Q.player.ban.getModeratorActivity(input.limit);
     }),
 });

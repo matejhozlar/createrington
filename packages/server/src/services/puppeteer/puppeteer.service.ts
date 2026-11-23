@@ -4,41 +4,18 @@ import { Semaphore } from "@/utils/semaphore";
 import { setSameOriginHeaders } from "./same-origin-headers";
 
 export interface ScreenshotOptions {
-  /** URL to navigate to */
   url: string;
-  /**
-   * Extra HTTP headers attached only to requests for the origin of `url`. Cross-origin
-   * subresources and redirect hops that leave the origin are sent without them.
-   */
   extraHeaders?: Record<string, string>;
-  /** CSS selector to wait for before capturing (optional, defaults to full page) */
   waitForSelector?: string;
-  /**
-   * CSS selector the page renders when it cannot produce its content. If it appears
-   * before `waitForSelector`, the screenshot rejects at once instead of waiting out
-   * the timeout. Ignored without `waitForSelector`.
-   */
   abortSelector?: string;
-  /** CSS selector of the element to screenshot (optional, defaults to full page) */
   elementSelector?: string;
-  /**
-   * Wait for `document.fonts.ready` and all `<img>` elements to finish loading
-   * before capturing. Defaults to true.
-   */
   waitForAssets?: boolean;
-  /** Extra delay in ms after selector is found, to let animations/charts settle */
   settleDelay?: number;
-  /** Navigation timeout in ms (default: 30000) */
   timeout?: number;
-  /** Viewport width (default: 1280) */
   viewportWidth?: number;
-  /** Viewport height (default: 720) */
   viewportHeight?: number;
-  /** Image format (default: "png") */
   format?: "png" | "jpeg" | "webp";
-  /** JPEG/WebP quality 0-100 (ignored for png) */
   quality?: number;
-  /** Capture with a transparent background where the page paints none (png/webp only) */
   omitBackground?: boolean;
 }
 
@@ -76,13 +53,6 @@ export class PuppeteerService {
   private launching: Promise<Browser> | null = null;
   private readonly pages = new Semaphore(MAX_CONCURRENT_PAGES);
 
-  /** No-op aside from logging; the browser launches lazily on the first `screenshot()` or `withPage()` call. */
-  initialize(): void {
-    logger.info(
-      "PuppeteerService initialized (browser will launch on first use)",
-    );
-  }
-
   /** Closes the browser process if one is running; safe to call when no browser was launched. */
   async shutdown(): Promise<void> {
     if (this.browser) {
@@ -99,7 +69,7 @@ export class PuppeteerService {
    * Queues behind other pages once `MAX_CONCURRENT_PAGES` are open.
    */
   async screenshot(options: ScreenshotOptions): Promise<ScreenshotResult> {
-    return this.pages.run(() => this.capture(options));
+    return this.withPage((page) => this.capture(page, options));
   }
 
   /** Runs `fn` against a fresh page; the page is closed whether the callback resolves or throws. Shares the page cap with `screenshot()`. */
@@ -118,7 +88,10 @@ export class PuppeteerService {
     });
   }
 
-  private async capture(options: ScreenshotOptions): Promise<ScreenshotResult> {
+  private async capture(
+    page: Page,
+    options: ScreenshotOptions,
+  ): Promise<ScreenshotResult> {
     const {
       url,
       extraHeaders,
@@ -135,94 +108,83 @@ export class PuppeteerService {
       omitBackground = false,
     } = options;
 
-    const browser = await this.getBrowser();
-    let page: Page | null = null;
+    await page.setViewport({ width: viewportWidth, height: viewportHeight });
 
-    try {
-      page = await browser.newPage();
-      await page.setViewport({ width: viewportWidth, height: viewportHeight });
+    if (extraHeaders) {
+      await setSameOriginHeaders(page, url, extraHeaders);
+    }
 
-      if (extraHeaders) {
-        await setSameOriginHeaders(page, url, extraHeaders);
-      }
+    await page.goto(url, {
+      waitUntil: "domcontentloaded",
+      timeout,
+    });
 
-      await page.goto(url, {
-        waitUntil: "domcontentloaded",
-        timeout,
-      });
+    if (waitForSelector) {
+      const awaited = abortSelector
+        ? `${waitForSelector}, ${abortSelector}`
+        : waitForSelector;
+      const matched = await page.waitForSelector(awaited, { timeout });
+      const aborted =
+        abortSelector !== undefined &&
+        (await matched?.evaluate(
+          (element, selector) => element.matches(selector),
+          abortSelector,
+        ));
 
-      if (waitForSelector) {
-        const awaited = abortSelector
-          ? `${waitForSelector}, ${abortSelector}`
-          : waitForSelector;
-        const matched = await page.waitForSelector(awaited, { timeout });
-        const aborted =
-          abortSelector !== undefined &&
-          (await matched?.evaluate(
-            (element, selector) => element.matches(selector),
-            abortSelector,
-          ));
-
-        if (aborted) {
-          throw new Error(`Page rendered its abort selector: ${abortSelector}`);
-        }
-      }
-
-      if (waitForAssets) {
-        const assetWait = page.evaluate(async () => {
-          await document.fonts.ready;
-          await Promise.all(
-            Array.from(document.images).map((img) =>
-              img.complete
-                ? Promise.resolve()
-                : new Promise<void>((resolve) => {
-                    img.addEventListener("load", () => resolve(), {
-                      once: true,
-                    });
-                    img.addEventListener("error", () => resolve(), {
-                      once: true,
-                    });
-                  }),
-            ),
-          );
-        });
-        const ceiling = new Promise<void>((resolve) =>
-          setTimeout(resolve, 10_000),
-        );
-        await Promise.race([assetWait, ceiling]);
-      }
-
-      if (settleDelay > 0) {
-        await new Promise((resolve) => setTimeout(resolve, settleDelay));
-      }
-
-      const screenshotOpts: Parameters<Page["screenshot"]>[0] = {
-        type: format,
-        omitBackground,
-        ...(format !== "png" && quality != null ? { quality } : {}),
-      };
-
-      let buffer: Buffer;
-
-      if (elementSelector) {
-        const element = await page.$(elementSelector);
-        if (!element) {
-          throw new Error(`Element not found for selector: ${elementSelector}`);
-        }
-        buffer = (await element.screenshot(screenshotOpts)) as Buffer;
-      } else {
-        buffer = (await page.screenshot({
-          ...screenshotOpts,
-          fullPage: true,
-        })) as Buffer;
-      }
-
-      return { buffer, format };
-    } finally {
-      if (page) {
-        await page.close().catch(() => {});
+      if (aborted) {
+        throw new Error(`Page rendered its abort selector: ${abortSelector}`);
       }
     }
+
+    if (waitForAssets) {
+      const assetWait = page.evaluate(async () => {
+        await document.fonts.ready;
+        await Promise.all(
+          Array.from(document.images).map((img) =>
+            img.complete
+              ? Promise.resolve()
+              : new Promise<void>((resolve) => {
+                  img.addEventListener("load", () => resolve(), {
+                    once: true,
+                  });
+                  img.addEventListener("error", () => resolve(), {
+                    once: true,
+                  });
+                }),
+          ),
+        );
+      });
+      const ceiling = new Promise<void>((resolve) =>
+        setTimeout(resolve, 10_000),
+      );
+      await Promise.race([assetWait, ceiling]);
+    }
+
+    if (settleDelay > 0) {
+      await new Promise((resolve) => setTimeout(resolve, settleDelay));
+    }
+
+    const screenshotOpts: Parameters<Page["screenshot"]>[0] = {
+      type: format,
+      omitBackground,
+      ...(format !== "png" && quality != null ? { quality } : {}),
+    };
+
+    let buffer: Buffer;
+
+    if (elementSelector) {
+      const element = await page.$(elementSelector);
+      if (!element) {
+        throw new Error(`Element not found for selector: ${elementSelector}`);
+      }
+      buffer = Buffer.from(await element.screenshot(screenshotOpts));
+    } else {
+      buffer = Buffer.from(
+        await page.screenshot({ ...screenshotOpts, fullPage: true }),
+      );
+    }
+
+    return { buffer, format };
   }
 
   private async getBrowser(): Promise<Browser> {
@@ -230,7 +192,6 @@ export class PuppeteerService {
       return this.browser;
     }
 
-    // Avoid launching multiple browsers concurrently
     if (this.launching) {
       return this.launching;
     }

@@ -3,57 +3,13 @@ import { getService, Services } from "@/services";
 import { isValidLeaderboardType } from "@/services/discord/leaderboard/config";
 import type { LeaderboardType } from "@/services/discord/leaderboard/types";
 import { type ButtonInteraction, MessageFlags } from "discord.js";
+import type { ButtonModule } from "@/discord/bots/common/loaders/component-loader";
+import { CustomIds } from "@/discord/custom-ids";
 
-/**
- * Handles leaderboard-related buttons
- * Pattern: leaderboard:*
- */
-export const pattern = "leaderboard:*";
+async function execute(interaction: ButtonInteraction): Promise<void> {
+  const type = CustomIds.leaderboardRefresh.parse(interaction.customId)?.type;
 
-/**
- * Whether these buttons should be handled in production only
- */
-export const prodOnly = false;
-
-/**
- * Parses the leaderboard button customId (format: leaderboard:action:type)
- *
- * @param customId - The button's customId string
- * @returns Parsed action and leaderboard type, or null if invalid
- * @private
- */
-function parseCustomId(customId: string): {
-  action: string;
-  type: LeaderboardType;
-} | null {
-  const [, action, type] = customId.split(":");
-
-  if (!action || !type || !isValidLeaderboardType(type)) {
-    return null;
-  }
-
-  return { action, type };
-}
-
-/**
- * Main execution handler for leaderboard button interactions
- *
- * Routes button clicks to the appropriate handler based on the action.
- * Currently supports:
- * - refresh: Manually refresh leaderboard data
- *
- * @param interaction - The button interaction to handle
- * Button interaction flow:
- * 1. User clicks "Refresh" button on leaderboard
- * 2. Custom ID is parsed (e.g., "leaderboard:refresh:playtime")
- * 3. Routed to handleRefresh()
- * 4. Cooldown check performed
- * 5. Leaderboard data refreshed if allowed
- */
-export async function execute(interaction: ButtonInteraction): Promise<void> {
-  const parsed = parseCustomId(interaction.customId);
-
-  if (!parsed) {
+  if (!type || !isValidLeaderboardType(type)) {
     await interaction.reply({
       content: "Invalid button format",
       flags: MessageFlags.Ephemeral,
@@ -61,37 +17,9 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
     return;
   }
 
-  const { action, type } = parsed;
-
-  if (action === "refresh") {
-    await handleRefresh(interaction, type);
-  } else {
-    await interaction.reply({
-      content: "Unknown action",
-      flags: MessageFlags.Ephemeral,
-    });
-  }
+  await handleRefresh(interaction, type);
 }
 
-/**
- * Handles manual leaderboard refresh requests from users
- *
- * Workflow:
- * 1. Checks if refresh is allowed (1-hour cooldown)
- * 2. If on cooldown, shows remaining time
- * 3. If allowed, defers update and refreshes data
- * 4. Updates the leaderboard message with fresh data
- * 5. Updates lastManualRefresh timestamp for cooldown tracking
- *
- * @param interaction - The button interaction
- * @param type - The leaderboard type to refresh
- *
- * @remarks
- * - Manual refreshes have a 1-hour cooldown per leaderboard type
- * - Automatic scheduled refreshes do not trigger this cooldown
- * - Uses deferUpdate() to keep the original message intact
- * - Errors are shown as ephemeral follow-up messages
- */
 async function handleRefresh(
   interaction: ButtonInteraction,
   type: LeaderboardType,
@@ -113,21 +41,16 @@ async function handleRefresh(
 
   await interaction.deferUpdate();
 
-  try {
-    const result = await leaderboardService.refresh(type, true);
+  const result = await leaderboardService.refresh(type, true);
 
-    if (!result.success) {
-      throw new Error(result.error || "Unknown error");
-    }
-
-    logger.info(`${interaction.user.tag} refreshed ${type} leaderboard`);
-  } catch (error) {
-    logger.error("Failed to refresh leaderboard:", error);
-
-    await replyError(
-      interaction,
-      "Refresh Failed",
-      "Failed to refresh the leaderboard. Please try again later.",
-    );
+  if (!result.success) {
+    throw new Error(result.error || "Unknown error");
   }
+
+  logger.info(`${interaction.user.tag} refreshed ${type} leaderboard`);
 }
+
+export default {
+  customId: CustomIds.leaderboardRefresh,
+  execute,
+} satisfies ButtonModule;

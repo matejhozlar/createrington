@@ -19,6 +19,7 @@ import {
 } from "@/features/workshop/components/EnvironmentCell";
 import type { AttentionItem } from "../../types";
 import { useMutation } from "@tanstack/react-query";
+import { pluralize } from "@/lib/format";
 
 type DependencyGap = Extract<
   AttentionItem["type"],
@@ -210,8 +211,7 @@ export function IssuesTab({
 
             {!isLoading && (
               <p className="px-4 pt-4 text-xs text-muted-foreground">
-                Showing {unresolvedCount}{" "}
-                {unresolvedCount === 1 ? "issue" : "issues"}
+                Showing {pluralize(unresolvedCount, "issue")}
               </p>
             )}
           </CardContent>

@@ -7,10 +7,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
 import { camelCaseToTitle } from "@/lib/format";
 import { trpc } from "@/lib/trpc";
 import { useQuery } from "@tanstack/react-query";
+import { Field, FieldLabel } from "@/components/ui/field";
 
 interface ChannelSelectorProps {
   value: string;
@@ -22,10 +22,10 @@ export function ChannelSelector({ value, onChange }: ChannelSelectorProps) {
   const groups = channelsQuery.data ?? [];
 
   return (
-    <div className="space-y-2">
-      <Label>Target Channel</Label>
+    <Field>
+      <FieldLabel htmlFor="embed-channel">Target Channel</FieldLabel>
       <Select value={value} onValueChange={onChange}>
-        <SelectTrigger className="w-full">
+        <SelectTrigger id="embed-channel" className="w-full">
           <SelectValue placeholder="Select a channel..." />
         </SelectTrigger>
         <SelectContent>
@@ -41,6 +41,6 @@ export function ChannelSelector({ value, onChange }: ChannelSelectorProps) {
           ))}
         </SelectContent>
       </Select>
-    </div>
+    </Field>
   );
 }

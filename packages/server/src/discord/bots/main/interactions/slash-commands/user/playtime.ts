@@ -1,7 +1,8 @@
-import { player } from "@/db";
+import { Q } from "@/db";
+import { pluralize } from "@/utils/format";
 import type { PlayerPlaytimeBreakdown } from "@/db/queries/player/playtime/summary";
 import { EmbedPresets } from "@/discord/embeds";
-import { replyError } from "@/discord/utils/interaction-reply";
+import { replyNotRegistered } from "@/discord/utils/interaction-reply";
 import { CooldownType } from "@/discord/utils/cooldown";
 import { formatPlaytime } from "@createrington/shared/format";
 import {
@@ -9,12 +10,12 @@ import {
   MessageFlags,
   SlashCommandBuilder,
 } from "discord.js";
+import type {
+  CommandCooldown,
+  CommandModule,
+} from "@/discord/bots/common/loaders/command-loader";
 
-/**
- * Slash command definition for the playtime command
- * Displays the users playtime
- */
-export const data = new SlashCommandBuilder()
+const data = new SlashCommandBuilder()
   .setName("playtime")
   .setDescription("Check playtime of a user")
   .addUserOption((opt) =>
@@ -24,79 +25,59 @@ export const data = new SlashCommandBuilder()
       .setRequired(false),
   );
 
-/**
- * Cooldown configuration for the playtime command
- *
- * - duration: 5 seconds
- * - type: "user" - Each user has their own cooldown
- * - message: Custom message shown when the user is on cooldown
- */
-export const cooldown = {
+const cooldown: CommandCooldown = {
   duration: 5,
   type: CooldownType.USER,
   message: "Please wait before checking playtime again!",
 };
 
-/**
- * Executes the playtime command to display the users playtime
- *
- * Process:
- * 1. Get the target user (from option or command initiator)
- * 2. Fetch playtime data from the database
- * 3. Reply with the playtime information
- *
- * @param interaction - The chat input command interaction
- */
-export async function execute(interaction: ChatInputCommandInteraction) {
+async function execute(interaction: ChatInputCommandInteraction) {
   const userOption = interaction.options.getUser("user", false);
   const targetUser = userOption || interaction.user;
 
-  try {
-    const playerEntry = await player.get({ discordId: targetUser.id });
-    const breakdown: PlayerPlaytimeBreakdown =
-      await player.playtime.summary.getBreakdown(playerEntry.minecraftUuid);
-
-    const topServers = breakdown.servers.slice(0, 5);
-    const serverList = topServers
-      .map(
-        (server) =>
-          `**${server.serverName}**: ${formatPlaytime(server.totalSeconds)}`,
-      )
-      .join("\n");
-
-    const moreServers =
-      breakdown.servers.length > 5
-        ? `\n*+${breakdown.servers.length - 5} more server${breakdown.servers.length - 5 !== 1 ? "s" : ""}*`
-        : "";
-
-    const description = [
-      `**Total Playtime**: ${formatPlaytime(breakdown.totals.totalSeconds)}`,
-      `**Total Sessions**: ${breakdown.totals.totalSessions.toLocaleString()}`,
-      `**Servers Played**: ${breakdown.totals.serverCount}`,
-      "",
-      "**Breakdown by Server:**",
-      serverList + moreServers,
-    ].join("\n");
-
-    const embed = EmbedPresets.info(
-      `${playerEntry.minecraftUsername}'s Playtime`,
-      description,
-    );
-
-    await interaction.reply({
-      embeds: [embed.build()],
-      flags: MessageFlags.Ephemeral,
-    });
-  } catch (error) {
-    logger.error(
-      `Failed to fetch playtime for ${targetUser.displayName}:`,
-      error,
-    );
-
-    await replyError(
-      interaction,
-      "Playtime Error",
-      `Failed to fetch playtime for ${targetUser.displayName}. They may not have any recorded playtime yet.`,
-    );
+  const playerEntry = await Q.player.find({ discordId: targetUser.id });
+  if (!playerEntry) {
+    await replyNotRegistered(interaction, targetUser);
+    return;
   }
+  const breakdown: PlayerPlaytimeBreakdown =
+    await Q.player.playtime.summary.getBreakdown(playerEntry.minecraftUuid);
+
+  const topServers = breakdown.servers.slice(0, 5);
+  const serverList = topServers
+    .map(
+      (server) =>
+        `**${server.serverName}**: ${formatPlaytime(server.totalSeconds)}`,
+    )
+    .join("\n");
+
+  const moreServers =
+    breakdown.servers.length > 5
+      ? `\n*+${breakdown.servers.length - 5} more ${pluralize(breakdown.servers.length - 5, "server")}*`
+      : "";
+
+  const description = [
+    `**Total Playtime**: ${formatPlaytime(breakdown.totals.totalSeconds)}`,
+    `**Total Sessions**: ${breakdown.totals.totalSessions.toLocaleString()}`,
+    `**Servers Played**: ${breakdown.totals.serverCount}`,
+    "",
+    "**Breakdown by Server:**",
+    serverList + moreServers,
+  ].join("\n");
+
+  const embed = EmbedPresets.info(
+    `${playerEntry.minecraftUsername}'s Playtime`,
+    description,
+  );
+
+  await interaction.reply({
+    embeds: [embed.build()],
+    flags: MessageFlags.Ephemeral,
+  });
 }
+
+export default {
+  data,
+  cooldown,
+  execute,
+} satisfies CommandModule;

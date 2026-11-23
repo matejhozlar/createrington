@@ -19,9 +19,10 @@ import {
   type CurseForgeFileDetail,
 } from "@/services/curseforge/files";
 import { resolveFileDownloads } from "@/services/curseforge/downloads";
+import type { CurseForgeFile } from "@/services/curseforge/client";
+import { curseforgeFile } from "./curseforge-file";
 import {
   getModpackFile,
-  type ModpackFile,
   type ModpackManifest,
   type ModpackManifestSides,
 } from "@/services/curseforge/modpack";
@@ -232,24 +233,29 @@ export function ingestFromCurseForge(
   );
 }
 
-export function packZip(fileId: number, overrides: Partial<ModpackFile> = {}) {
-  vi.mocked(getModpackFile).mockResolvedValue({
-    id: fileId,
-    projectId: PACK_PROJECT_ID,
-    displayName: "Vitest Pack 1.0.0",
-    fileName: `vitest-pack-${fileId}.zip`,
-    fileDate: "2026-10-01T10:00:00.000Z",
-    downloadUrl: `https://edge.forgecdn.net/files/${fileId}/vitest-pack.zip`,
-    fileLength: 4_500_000,
-    sha1: sha1Of(fileId),
-    fileStatus: 4,
-    isAvailable: true,
-    serverPackFileId: null,
-    alternateFileId: null,
-    parentProjectFileId: null,
-    isServerPack: false,
-    ...overrides,
-  });
+export function packZip(
+  fileId: number,
+  overrides: Partial<CurseForgeFile> = {},
+) {
+  vi.mocked(getModpackFile).mockResolvedValue(
+    curseforgeFile({
+      id: fileId,
+      projectId: PACK_PROJECT_ID,
+      displayName: "Vitest Pack 1.0.0",
+      fileName: `vitest-pack-${fileId}.zip`,
+      fileDate: "2026-10-01T10:00:00.000Z",
+      downloadUrl: `https://edge.forgecdn.net/files/${fileId}/vitest-pack.zip`,
+      fileLength: 4_500_000,
+      sha1: sha1Of(fileId),
+      fileStatus: 4,
+      isAvailable: true,
+      serverPackFileId: null,
+      alternateFileId: null,
+      parentProjectFileId: null,
+      isServerPack: false,
+      ...overrides,
+    }),
+  );
 }
 
 export async function seedRelease(
@@ -420,7 +426,7 @@ export function useLauncherPackTestHooks(): void {
     resolveThroughGateway();
     vi.mocked(findSandboxFileUrls).mockResolvedValue(new Map());
     vi.mocked(getMinecraftJavaMajorVersion).mockResolvedValue(21);
-    sendMock.mockResolvedValue({ success: true });
+    sendMock.mockResolvedValue({ id: "message-1" });
     vi.spyOn(Discord, "Messages", "get").mockReturnValue({
       send: sendMock,
     } as unknown as typeof Discord.Messages);

@@ -1,51 +1,46 @@
-import { useState } from "react";
 import { ADMIN_REASON_MAX_LENGTH } from "@createrington/shared/admin-reason";
 import { Field, FieldLabel } from "@/components/ui/field";
-import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
+import { useDialogDraft } from "@/hooks/use-dialog-draft";
 import { trpc, queryClient } from "@/lib/trpc";
 import { FormDialog } from "@/components/form-dialog";
 import { useMutation } from "@tanstack/react-query";
 import { Textarea } from "@/components/ui/textarea";
 
 interface RemoveStrikeModalProps {
-  open: boolean;
+  strikeId: number | null;
   onClose: () => void;
-  playerId: string; // minecraftUuid
-  strikeId: number;
+  playerId: string;
 }
 
 export function RemoveStrikeModal({
-  open,
+  strikeId,
   onClose,
   playerId,
-  strikeId,
 }: RemoveStrikeModalProps) {
-  const toast = useToastActions();
+  const open = strikeId !== null;
+  const [{ reason }, update] = useDialogDraft(open, () => ({ reason: "" }));
+
   const removeStrike = useMutation(
-    trpc.admin.players.strikes.remove.mutationOptions({
-      onSuccess: () =>
-        void queryClient.invalidateQueries(trpc.admin.players.pathFilter()),
-    }),
+    trpc.admin.players.strikes.delete.mutationOptions(
+      useMutationToast({
+        success: "Strike removed",
+        onSuccess: () => {
+          void queryClient.invalidateQueries(trpc.admin.players.pathFilter());
+          onClose();
+        },
+      }),
+    ),
   );
 
-  const [reason, setReason] = useState("");
+  const handleSubmit = () => {
+    if (strikeId === null || !reason.trim()) return;
 
-  const handleSubmit = async () => {
-    if (!reason.trim()) return;
-
-    try {
-      await removeStrike.mutateAsync({
-        id: playerId,
-        strikeId,
-        reason: reason.trim(),
-      });
-
-      toast.success("Strike removed");
-      setReason("");
-      onClose();
-    } catch {
-      toast.error("Failed to remove strike");
-    }
+    removeStrike.mutate({
+      id: playerId,
+      strikeId,
+      reason: reason.trim(),
+    });
   };
 
   return (
@@ -64,7 +59,7 @@ export function RemoveStrikeModal({
           id="remove-strike-reason"
           placeholder="Explain why this strike is being removed..."
           value={reason}
-          onChange={(e) => setReason(e.target.value)}
+          onChange={(e) => update({ reason: e.target.value })}
           maxLength={ADMIN_REASON_MAX_LENGTH}
           rows={4}
         />

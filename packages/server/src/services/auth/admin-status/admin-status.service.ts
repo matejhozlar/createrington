@@ -5,7 +5,7 @@ const MAX_ENTRIES = 512;
 
 interface CacheEntry {
   isAdmin: boolean;
-  expires: number;
+  expiresAt: number;
 }
 
 /**
@@ -14,29 +14,19 @@ interface CacheEntry {
  * every call. Singleton; cache lives for the process lifetime.
  */
 class AdminStatusService {
-  private static instance: AdminStatusService;
   private cache = new Map<string, CacheEntry>();
-
-  private constructor() {}
-
-  static getInstance(): AdminStatusService {
-    if (!AdminStatusService.instance) {
-      AdminStatusService.instance = new AdminStatusService();
-    }
-    return AdminStatusService.instance;
-  }
 
   /** Returns whether the user is an admin, serving cached results for up to 30s. */
   async isAdmin(discordId: string): Promise<boolean> {
     const now = Date.now();
     const cached = this.cache.get(discordId);
-    if (cached && cached.expires > now) {
+    if (cached && cached.expiresAt > now) {
       return cached.isAdmin;
     }
 
     const isAdmin = await Q.admin.exists({ discordId });
     if (this.cache.size >= MAX_ENTRIES) this.pruneExpired(now);
-    this.cache.set(discordId, { isAdmin, expires: now + TTL_MS });
+    this.cache.set(discordId, { isAdmin, expiresAt: now + TTL_MS });
     return isAdmin;
   }
 
@@ -47,9 +37,9 @@ class AdminStatusService {
 
   private pruneExpired(now: number): void {
     for (const [key, entry] of this.cache) {
-      if (entry.expires <= now) this.cache.delete(key);
+      if (entry.expiresAt <= now) this.cache.delete(key);
     }
   }
 }
 
-export const adminStatusService = AdminStatusService.getInstance();
+export const adminStatusService = new AdminStatusService();

@@ -1,12 +1,20 @@
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Badge, type BadgeTone } from "@/components/ui/badge";
 import { Ban, Clock } from "lucide-react";
 import type { RouterOutput } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
-import { WorkshopBansSection } from "../WorkshopBansSection";
+import { WorkshopBansSection } from "@/features/admin/players/components/WorkshopBansSection";
+import { TabSectionHeader } from "@/features/admin/players/components/TabSectionHeader";
 import { EmptyState } from "@/components/query-states";
+import { formatDate } from "@createrington/shared/format";
+import type { BanType } from "@createrington/shared/db";
 
 type PlayerDetailed = RouterOutput["admin"]["players"]["players"]["get"];
+
+const BAN_TYPE_BADGES: Record<BanType, { label: string; tone: BadgeTone }> = {
+  permanent: { label: "Permanent", tone: "danger" },
+  temporary: { label: "Temporary", tone: "orange" },
+};
 
 interface BansTabProps {
   player: PlayerDetailed;
@@ -26,7 +34,7 @@ export function BansTab({ player, onIssueBan, onUnban }: BansTabProps) {
 
     if (date < now) return "Expired";
 
-    return date.toLocaleDateString();
+    return formatDate(date);
   };
 
   const isExpired = (expiresAt: string | null) => {
@@ -36,15 +44,16 @@ export function BansTab({ player, onIssueBan, onUnban }: BansTabProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">Bans</h3>
-        <Button size="sm" onClick={onIssueBan}>
-          <Ban className="size-4" />
-          Issue Ban
-        </Button>
-      </div>
+      <TabSectionHeader
+        title="Bans"
+        actions={
+          <Button size="sm" onClick={onIssueBan}>
+            <Ban className="size-4" />
+            Issue Ban
+          </Button>
+        }
+      />
 
-      {/* Current Active Ban Warning */}
       {currentBan && !isExpired(currentBan.expiresAt) && (
         <div className="rounded-lg border border-destructive bg-destructive/10 p-4">
           <div className="flex items-start justify-between">
@@ -81,16 +90,13 @@ export function BansTab({ player, onIssueBan, onUnban }: BansTabProps) {
                 key={ban.id}
                 className={cn(
                   "flex items-start justify-between rounded-lg border border-border p-4",
-                  expired && "border-yellow-500/50 bg-yellow-500/5",
+                  expired && "border-tone-warning/50 bg-tone-warning/5",
                 )}
               >
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
-                    <Badge
-                      variant="destructive"
-                      tone={ban.banType === "temporary" ? "orange" : undefined}
-                    >
-                      {ban.banType === "permanent" ? "Permanent" : "Temporary"}
+                    <Badge tone={BAN_TYPE_BADGES[ban.banType].tone}>
+                      {BAN_TYPE_BADGES[ban.banType].label}
                     </Badge>
                     {ban.banType === "temporary" && (
                       <Badge variant="outline" className="gap-1">
@@ -100,19 +106,12 @@ export function BansTab({ player, onIssueBan, onUnban }: BansTabProps) {
                           : `Expires ${formatExpiry(ban.expiresAt)}`}
                       </Badge>
                     )}
-                    {expired && (
-                      <Badge
-                        variant="outline"
-                        className="border-yellow-500 text-yellow-500"
-                      >
-                        Needs Cleanup
-                      </Badge>
-                    )}
+                    {expired && <Badge tone="warning">Needs Cleanup</Badge>}
                   </div>
                   <p className="mt-2 text-sm">{ban.reason}</p>
                   <p className="mt-1 text-xs text-muted-foreground">
                     Issued by {ban.bannedByUsername} on{" "}
-                    {new Date(ban.bannedAt).toLocaleDateString()}
+                    {formatDate(ban.bannedAt)}
                   </p>
                   {ban.serverId && (
                     <p className="mt-1 text-xs text-muted-foreground">
@@ -146,7 +145,7 @@ export function BansTab({ player, onIssueBan, onUnban }: BansTabProps) {
               >
                 <div className="flex items-center gap-2">
                   <Badge variant="outline">
-                    {ban.banType === "permanent" ? "Permanent" : "Temporary"}
+                    {BAN_TYPE_BADGES[ban.banType].label}
                   </Badge>
                   {ban.banType === "temporary" && (
                     <Badge variant="outline">
@@ -157,12 +156,11 @@ export function BansTab({ player, onIssueBan, onUnban }: BansTabProps) {
                 </div>
                 <p className="mt-2 text-sm">{ban.reason}</p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Issued by {ban.bannedByUsername} on{" "}
-                  {new Date(ban.bannedAt).toLocaleDateString()}
+                  Issued by {ban.bannedByUsername} on {formatDate(ban.bannedAt)}
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   Lifted by {ban.unbannedByUsername} on{" "}
-                  {new Date(ban.unbannedAt!).toLocaleDateString()}
+                  {formatDate(ban.unbannedAt)}
                   {ban.unbanReason && ` - ${ban.unbanReason}`}
                 </p>
               </div>

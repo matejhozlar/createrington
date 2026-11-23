@@ -20,6 +20,10 @@ const T0 = new Date("2026-09-14T10:00:00Z");
 const seconds = (n: number) => n * 1000;
 const ticks = (playedSeconds: number) => playedSeconds * 20;
 
+function sessionOf(service: PlaytimeService, uuid: string) {
+  return service.getActiveSessions().find((session) => session.uuid === uuid);
+}
+
 function makeService(overrides: { staleAfterMs?: number } = {}) {
   const service = new PlaytimeService({
     serverId: SERVER_ID,
@@ -82,7 +86,7 @@ describe("PlaytimeService join / heartbeat / leave", () => {
       { uuid: STEVE, username: "steve", playTimeTicks: ticks(1050) },
     ]);
     expect(progress[1].credit.seconds).toBe(0);
-    expect(service.getSession(STEVE)?.lastSeenAt).toEqual(
+    expect(sessionOf(service, STEVE)?.lastSeenAt).toEqual(
       new Date(T0.getTime() + seconds(120)),
     );
 
@@ -99,7 +103,7 @@ describe("PlaytimeService join / heartbeat / leave", () => {
       secondsPlayed: 70,
       credit: { seconds: 20, playTimeTicks: ticks(1070) },
     });
-    expect(service.isPlayerOnline(STEVE)).toBe(false);
+    expect(sessionOf(service, STEVE)).toBeUndefined();
   });
 
   it("falls back to wall-clock when the mod never reports ticks", () => {
@@ -134,8 +138,8 @@ describe("PlaytimeService join / heartbeat / leave", () => {
       { uuid: STEVE, username: "steve", playTimeTicks: ticks(60) },
     ]);
     expect(progress).toHaveLength(0);
-    expect(service.getSession(STEVE)?.lastSeenAt).toEqual(firstHeartbeat);
-    expect(service.getSession(STEVE)?.lastPlayTicks).toBe(0);
+    expect(sessionOf(service, STEVE)?.lastSeenAt).toEqual(firstHeartbeat);
+    expect(sessionOf(service, STEVE)?.lastPlayTicks).toBe(0);
 
     service.setSessionId(STEVE, 7);
     vi.setSystemTime(new Date(T0.getTime() + seconds(120)));
@@ -298,8 +302,8 @@ describe("PlaytimeService join / heartbeat / leave", () => {
 
     expect(ends[0]).toMatchObject({ sessionId: 1, sessionEnd: T0 });
     expect(starts).toHaveLength(2);
-    expect(service.getSession(STEVE)?.sessionId).toBeUndefined();
-    expect(service.getSession(STEVE)?.lastPlayTicks).toBe(ticks(200));
+    expect(sessionOf(service, STEVE)?.sessionId).toBeUndefined();
+    expect(sessionOf(service, STEVE)?.lastPlayTicks).toBe(ticks(200));
   });
 });
 
@@ -334,7 +338,7 @@ describe("PlaytimeService restart persistence", () => {
     service.initialize();
 
     expect(service.getOnlineCount()).toBe(2);
-    expect(service.getSession(ALEX)?.lastSeenAt).toEqual(sessionStart);
+    expect(sessionOf(service, ALEX)?.lastSeenAt).toEqual(sessionStart);
 
     service.reconcileWithHeartbeat([
       { uuid: STEVE, username: "steve", playTimeTicks: ticks(5400) },
@@ -352,15 +356,15 @@ describe("PlaytimeService restart persistence", () => {
       seconds: 3600,
       playTimeTicks: ticks(10),
     });
-    expect(service.getSession(STEVE)?.activeSeconds).toBe(2800);
+    expect(sessionOf(service, STEVE)?.activeSeconds).toBe(2800);
   });
 
-  it("leaves sessions open on stop", () => {
+  it("leaves sessions open on shutdown", () => {
     const { service, ends } = makeService();
     service.initialize();
     service.handlePlayerJoinFromMod({ uuid: STEVE, username: "steve" });
 
-    service.stop();
+    service.shutdown();
 
     expect(ends).toHaveLength(0);
     expect(service.getOnlineCount()).toBe(1);
@@ -450,5 +454,25 @@ describe("PlaytimeService relay shutdown", () => {
       secondsPlayed: 30,
     });
     expect(service.getServerState()).toBe(ServerState.OFFLINE);
+  });
+});
+
+describe("PlaytimeService session duration", () => {
+  it("measures a session handed over as an object from the tracked session, not the snapshot", () => {
+    const { service } = makeService();
+    service.initialize();
+
+    service.handlePlayerJoinFromMod({ uuid: STEVE, username: "steve" });
+    const firstSession = sessionOf(service, STEVE)!;
+
+    vi.setSystemTime(new Date(T0.getTime() + seconds(90)));
+    expect(service.getSessionDuration(firstSession)).toBe(90);
+
+    service.handlePlayerLeaveFromMod({ uuid: STEVE, username: "steve" });
+    expect(service.getSessionDuration(firstSession)).toBeNull();
+
+    service.handlePlayerJoinFromMod({ uuid: STEVE, username: "steve" });
+    vi.setSystemTime(new Date(T0.getTime() + seconds(120)));
+    expect(service.getSessionDuration(firstSession)).toBe(30);
   });
 });

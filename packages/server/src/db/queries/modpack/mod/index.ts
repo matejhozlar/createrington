@@ -12,13 +12,6 @@ export interface ModpackModCounts {
   liveCount: number;
 }
 
-/**
- * Custom queries for modpack_mod table
- *
- * Extends the auto-generated base class with custom methods.
- * This file is scaffolded once and never overwritten - add your custom
- * query methods here while inheriting all generated CRUD operations.
- */
 export class ModpackModQueries extends ModpackModBaseQueries {
   constructor(db: Pool | PoolClient) {
     super(db);
@@ -38,9 +31,9 @@ export class ModpackModQueries extends ModpackModBaseQueries {
       live_count: number;
     }>("count modpack members by modpack", query);
     return new Map(
-      result.rows.map((row) => [
-        row.modpack_id,
-        { modCount: row.mod_count, liveCount: row.live_count },
+      result.rows.map(({ modpack_id, ...counts }) => [
+        modpack_id,
+        this.mapRowToEntity(counts),
       ]),
     );
   }
@@ -62,11 +55,7 @@ export class ModpackModQueries extends ModpackModBaseQueries {
       name: string;
       thumbnail_url: string | null;
     }>("sample modpack members with projects", query, [modpackId, limit]);
-    return result.rows.map((row) => ({
-      id: row.id,
-      name: row.name,
-      thumbnailUrl: row.thumbnail_url,
-    }));
+    return this.mapRowsToEntities(result.rows);
   }
 
   // Points members at the files a manifest ships, in one statement. Rows whose

@@ -1,19 +1,21 @@
 import type { RefObject } from "react";
-import {
-  forwardRef,
-  useEffect,
-  useImperativeHandle,
-  useMemo,
-  useRef,
-} from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { ArrowRight, Clock, Package, Rocket, TrendingUp } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useCountdown } from "@/hooks/use-countdown";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { FloatingDust } from "../FloatingDust";
+import { FloatingDust } from "@/features/structure-packs/components/FloatingDust";
+import type { PoolEntry } from "@/features/structure-packs/types";
+import {
+  sortByWeight,
+  sumBoosts,
+  sumWeights,
+  weightShare,
+} from "@/features/structure-packs/pool";
 import { PortalFrame } from "./PortalFrame";
+import { AMBIENT_PORTAL_FILTER } from "./portal-styles";
 import { useQuery } from "@tanstack/react-query";
 
 const HERO_IMAGE = "/assets/hero/dark-warehouse.webp";
@@ -39,9 +41,12 @@ export const PacksHero = forwardRef<PacksHeroHandle, PacksHeroProps>(
     const mobileAmbientRef = useRef<HTMLDivElement | null>(null);
     const idleGlow = !portalHidden;
 
-    const { data: pool, isLoading: poolLoading } = useQuery(
-      trpc.public.structurePacks.pool.queryOptions(),
-    );
+    const {
+      data: pool,
+      isLoading: poolLoading,
+      isError: poolError,
+    } = useQuery(trpc.public.structurePacks.pool.queryOptions());
+    const poolFailed = poolError && !pool;
 
     const { data: rotationInfo } = useQuery(
       trpc.public.structurePacks.rotationInfo.queryOptions(),
@@ -50,9 +55,6 @@ export const PacksHero = forwardRef<PacksHeroHandle, PacksHeroProps>(
     const countdown =
       useCountdown(rotationInfo?.nextRotationAt ?? null) ??
       (rotationInfo?.enabled === false ? "Paused" : null);
-
-    const totalBoosts =
-      pool?.reduce((sum, entry) => sum + entry.boostUnits, 0) ?? 0;
 
     const scrollTo = (ref: RefObject<HTMLElement | null>) => {
       ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -155,8 +157,9 @@ export const PacksHero = forwardRef<PacksHeroHandle, PacksHeroProps>(
         >
           <div
             ref={mobileAmbientRef}
-            className="opacity-70 [filter:blur(13px)_saturate(0.8)_brightness(0.75)]"
+            className="opacity-70"
             style={{
+              filter: AMBIENT_PORTAL_FILTER,
               maskImage:
                 "radial-gradient(ellipse 95% 90% at center, black 70%, transparent 100%)",
               WebkitMaskImage:
@@ -190,8 +193,9 @@ export const PacksHero = forwardRef<PacksHeroHandle, PacksHeroProps>(
             <HeroCopy
               countdown={countdown}
               poolCount={pool?.length ?? 0}
-              totalBoosts={totalBoosts}
+              totalBoosts={sumBoosts(pool)}
               poolLoading={poolLoading}
+              poolFailed={poolFailed}
               onPrimary={enterPortal}
               onSecondary={() => scrollTo(activePackRef)}
             />
@@ -216,7 +220,11 @@ export const PacksHero = forwardRef<PacksHeroHandle, PacksHeroProps>(
               />
             </div>
             <div className="w-full max-w-[360px]">
-              <LeadingPeek pool={pool} isLoading={poolLoading} />
+              <LeadingPeek
+                pool={pool}
+                isLoading={poolLoading}
+                isError={poolFailed}
+              />
             </div>
           </div>
         </div>
@@ -239,6 +247,7 @@ interface HeroCopyProps {
   poolCount: number;
   totalBoosts: number;
   poolLoading: boolean;
+  poolFailed: boolean;
   onPrimary: () => void;
   onSecondary: () => void;
 }
@@ -248,6 +257,7 @@ function HeroCopy({
   poolCount,
   totalBoosts,
   poolLoading,
+  poolFailed,
   onPrimary,
   onSecondary,
 }: HeroCopyProps) {
@@ -278,12 +288,14 @@ function HeroCopy({
         <Stat
           icon={Package}
           label="Dimensions in pool"
-          value={poolLoading ? null : `${poolCount} themed`}
+          value={poolLoading ? null : poolFailed ? "–" : `${poolCount} themed`}
         />
         <Stat
           icon={Rocket}
           label="Boosts spent"
-          value={poolLoading ? null : `${totalBoosts} this cycle`}
+          value={
+            poolLoading ? null : poolFailed ? "–" : `${totalBoosts} this cycle`
+          }
           mono
         />
       </div>
@@ -346,32 +358,16 @@ function Stat({ icon: Icon, label, value, mono }: StatProps) {
   );
 }
 
-interface PoolEntry {
-  pack: { id: number; name: string };
-  weight: number;
-  boostUnits: number;
-}
-
 interface LeadingPeekProps {
   pool: PoolEntry[] | undefined;
   isLoading: boolean;
+  isError: boolean;
 }
 
-function LeadingPeek({ pool, isLoading }: LeadingPeekProps) {
-  const totalWeight = pool?.reduce((sum, entry) => sum + entry.weight, 0) ?? 0;
-
-  const sorted = useMemo(() => {
-    if (!pool) return [];
-    return [...pool]
-      .sort((a, b) => b.weight - a.weight)
-      .slice(0, LEADING_PEEK_LIMIT);
-  }, [pool]);
-
+function LeadingPeek({ pool, isLoading, isError }: LeadingPeekProps) {
+  const totalWeight = sumWeights(pool);
+  const sorted = sortByWeight(pool).slice(0, LEADING_PEEK_LIMIT);
   const leader = sorted[0];
-  const leaderPct =
-    leader && totalWeight > 0
-      ? Math.round((leader.weight / totalWeight) * 100)
-      : 0;
 
   return (
     <div className="rounded-xl border border-primary/30 bg-gradient-to-br from-primary/[0.06] to-transparent p-4 backdrop-blur-sm">
@@ -384,7 +380,11 @@ function LeadingPeek({ pool, isLoading }: LeadingPeekProps) {
         <TrendingUp className="size-3.5 text-primary" />
       </div>
 
-      {isLoading || !leader ? (
+      {isError ? (
+        <p className="text-sm text-muted-foreground">
+          Couldn't load the vote right now.
+        </p>
+      ) : isLoading || !leader ? (
         <>
           <div className="mb-3 flex items-baseline justify-between gap-3">
             <Skeleton className="h-7 w-32" />
@@ -401,15 +401,12 @@ function LeadingPeek({ pool, isLoading }: LeadingPeekProps) {
           <div className="mb-3 flex items-baseline justify-between gap-3">
             <div className="text-2xl font-bold">{leader.pack.name}</div>
             <div className="font-mono text-2xl font-bold tabular-nums text-primary">
-              {leaderPct}%
+              {weightShare(leader.weight, totalWeight)}%
             </div>
           </div>
           <div className="space-y-1.5">
             {sorted.map((entry, idx) => {
-              const pct =
-                totalWeight > 0
-                  ? Math.round((entry.weight / totalWeight) * 100)
-                  : 0;
+              const pct = weightShare(entry.weight, totalWeight);
               const leading = idx === 0;
               return (
                 <div

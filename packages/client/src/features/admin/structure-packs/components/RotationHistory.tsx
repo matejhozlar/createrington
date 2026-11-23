@@ -1,39 +1,25 @@
-import { useState } from "react";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { Card } from "@/components/ui/card";
+import { useQuery } from "@tanstack/react-query";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { History, CheckCircle2, XCircle } from "lucide-react";
-import { Paginator } from "@/components/paginator";
+import { PagedTable } from "@/components/paged-table";
+import { usePagedQuery } from "@/hooks/use-paged-query";
 import { Badge } from "@/components/ui/badge";
 import { CellDate, CellText } from "@/components/cell-text";
 import {
   BadgeCellSkeleton,
-  DataTable,
-  loadingRowCount,
   type DataTableColumn,
 } from "@/components/data-table";
 
 type Rotation =
-  RouterOutput["admin"]["structurePacks"]["rotationHistory"]["data"][number];
+  RouterOutput["admin"]["structurePacks"]["rotation"]["history"]["items"][number];
 
-/** Paginated table of past structure pack rotation events with success/failure status */
 export function RotationHistory() {
-  const [page, setPage] = useState(0);
-  const limit = 10;
-
-  const historyQuery = useQuery(
-    trpc.admin.structurePacks.rotationHistory.queryOptions(
-      {
-        page,
-        limit,
-      },
-      { placeholderData: keepPreviousData },
-    ),
+  const history = usePagedQuery(
+    {},
+    (input) => trpc.admin.structurePacks.rotation.history.queryOptions(input),
+    10,
   );
-  const data = historyQuery.data;
-  const total = data?.pagination.total ?? 0;
-  const totalPages = data?.pagination.totalPages ?? 0;
-  const loading = historyQuery.isLoading || historyQuery.isPlaceholderData;
-  const loadingRows = loadingRowCount(page, limit, total);
 
   const packsQuery = useQuery(trpc.admin.structurePacks.list.queryOptions());
   const packMap = new Map((packsQuery.data ?? []).map((p) => [p.id, p.name]));
@@ -95,7 +81,7 @@ export function RotationHistory() {
   ];
 
   return (
-    <div className="rounded-lg border border-border bg-card p-6">
+    <Card className="gap-0 p-6">
       <div className="mb-4">
         <h2 className="flex items-center gap-2 font-semibold">
           <History className="size-4" />
@@ -103,31 +89,18 @@ export function RotationHistory() {
         </h2>
         <p className="text-sm text-muted-foreground">Past rotation events</p>
       </div>
-      {!loading && (!data || data.data.length === 0) ? (
-        <p className="py-4 text-center text-sm text-muted-foreground">
-          No rotations yet
-        </p>
-      ) : (
-        <>
-          <DataTable
-            columns={columns}
-            rows={data?.data ?? []}
-            loading={loading}
-            loadingRows={loadingRows}
-            rowKey={(rotation) => rotation.id}
-          />
-
-          <Paginator
-            page={page}
-            limit={limit}
-            total={total}
-            totalPages={totalPages}
-            onPageChange={setPage}
-            itemLabel="rotation"
-            className="mt-4"
-          />
-        </>
-      )}
-    </div>
+      <PagedTable
+        paged={history}
+        empty={{
+          icon: History,
+          message: "No rotations yet",
+          className: "py-4",
+        }}
+        itemLabel="rotation"
+        compact
+        columns={columns}
+        rowKey={(rotation) => rotation.id}
+      />
+    </Card>
   );
 }

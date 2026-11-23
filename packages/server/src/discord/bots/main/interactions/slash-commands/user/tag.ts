@@ -1,4 +1,5 @@
 import config from "@/config";
+import { formatCount } from "@/utils/format";
 import { Q } from "@/db";
 import { EmbedPresets } from "@/discord/embeds";
 import { ButtonPresets } from "@/discord/embeds/presets/buttons";
@@ -21,6 +22,10 @@ import {
   escapeMarkdown,
   type User,
 } from "discord.js";
+import type {
+  CommandCooldown,
+  CommandModule,
+} from "@/discord/bots/common/loaders/command-loader";
 
 type TagCard = {
   code: string;
@@ -34,7 +39,7 @@ type TagLookup =
 
 const ATTACHMENT_NAME = "team-tag.png";
 
-export const data = new SlashCommandBuilder()
+const data = new SlashCommandBuilder()
   .setName("tag")
   .setDescription("Render a team tag")
   .addSubcommand((sub) =>
@@ -72,13 +77,13 @@ export const data = new SlashCommandBuilder()
       ),
   );
 
-export const cooldown = {
+const cooldown: CommandCooldown = {
   duration: 5,
   type: CooldownType.USER,
   message: "Please wait before rendering team tags again!",
 };
 
-export async function autocomplete(
+async function autocomplete(
   interaction: AutocompleteInteraction,
 ): Promise<void> {
   const focused = interaction.options.getFocused(true);
@@ -87,7 +92,7 @@ export async function autocomplete(
     return;
   }
 
-  const results = await Q.server.party.searchTagged(
+  const results = await Q.server.party.getTaggedMatches(
     config.servers.rails.id,
     focused.value ?? "",
     25,
@@ -155,7 +160,7 @@ async function lookupTeam(input: string): Promise<TagLookup> {
     card: {
       code: party.tagCode,
       title: party.name,
-      description: `${members} member${members === 1 ? "" : "s"}`,
+      description: formatCount(members, "member"),
       color: party.color,
     },
   };
@@ -173,7 +178,7 @@ async function lookupPlayer(user: User): Promise<TagLookup> {
 
   const username = player.minecraftUsername;
   const name = escapeMarkdown(username);
-  const party = await Q.server.party.getForMember(
+  const party = await Q.server.party.findForMember(
     config.servers.rails.id,
     player.minecraftUuid,
   );
@@ -218,50 +223,46 @@ function lookup(interaction: ChatInputCommandInteraction): Promise<TagLookup> {
   }
 }
 
-export async function execute(
+async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
-  try {
-    const result = await lookup(interaction);
-    if (!result.ok) {
-      await replyError(interaction, result.title, result.message);
-      return;
-    }
+  const result = await lookup(interaction);
+  if (!result.ok) {
+    await replyError(interaction, result.title, result.message);
+    return;
+  }
 
-    const { code, title, description, color } = result.card;
-    await interaction.deferReply();
+  const { code, title, description, color } = result.card;
+  await interaction.deferReply();
 
-    const screenshotBuffer = await renderScreenshot("tag", { design: code });
-    const embed = EmbedPresets.plain({ title, description, color }).field(
-      "Design code",
-      `\`${code}\``,
-    );
-    const links = new ActionRowBuilder<ButtonBuilder>().addComponents(
-      ButtonPresets.links.teamTag(code),
-    );
+  const screenshotBuffer = await renderScreenshot("tag", { design: code });
+  const embed = EmbedPresets.plain({ title, description, color }).field(
+    "Design code",
+    `\`${code}\``,
+  );
+  const links = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    ButtonPresets.links.teamTag(code),
+  );
 
-    if (!screenshotBuffer) {
-      await interaction.editReply({
-        embeds: [embed.build()],
-        components: [links],
-      });
-      return;
-    }
-
-    embed.image(`attachment://${ATTACHMENT_NAME}`);
+  if (!screenshotBuffer) {
     await interaction.editReply({
       embeds: [embed.build()],
-      files: [
-        new AttachmentBuilder(screenshotBuffer, { name: ATTACHMENT_NAME }),
-      ],
       components: [links],
     });
-  } catch (error) {
-    logger.error("/tag failed:", error);
-    await replyError(
-      interaction,
-      "Team Tag Error",
-      "Could not render the team tag.",
-    );
+    return;
   }
+
+  embed.image(`attachment://${ATTACHMENT_NAME}`);
+  await interaction.editReply({
+    embeds: [embed.build()],
+    files: [new AttachmentBuilder(screenshotBuffer, { name: ATTACHMENT_NAME })],
+    components: [links],
+  });
 }
+
+export default {
+  data,
+  cooldown,
+  autocomplete,
+  execute,
+} satisfies CommandModule;

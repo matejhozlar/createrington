@@ -1,14 +1,9 @@
 import { z } from "zod";
+import { guildChannelsProcedure } from "../guild-channels";
 import { router, adminProcedure } from "@/trpc/trpc";
-import { Q, db } from "@/db";
-import {
-  findOrThrow,
-  auditActor,
-  assertPatchNotEmpty,
-  trpcError,
-} from "@/trpc/utils";
+import { Q } from "@/db";
+import { findOrThrow, assertPatchNotEmpty, trpcError, id } from "@/trpc/utils";
 import { getServiceSync, Services } from "@/services";
-import config from "@/config";
 
 const MAX_FOLLOWUPS_PER_MESSAGE = 5;
 
@@ -18,54 +13,8 @@ const followupInputSchema = z.object({
   enabled: z.boolean().default(true),
 });
 
-/** Helper to log auto-message admin actions */
-async function logAutoMessageAction(
-  ctx: { user: { discordId: string; minecraftUsername: string } },
-  actionType: string,
-  description: string,
-  metadata?: Record<string, unknown>,
-) {
-  await Q.admin.log.action.logAction({
-    ...auditActor(ctx),
-    actionType,
-    description,
-    metadata,
-  });
-}
-
-/** Admin auto-messages router: channel listing, config CRUD, and message management (add/update/delete/reorder). */
 export const autoMessagesRouter = router({
-  channels: adminProcedure
-    .meta({ description: "Get all text channels grouped by category" })
-    .query(() => {
-      const channels = config.discord.guild.channels;
-      const categories = config.discord.guild.categories;
-      const grouped: Array<{
-        category: string;
-        categoryId: string;
-        channels: Array<{ name: string; id: string }>;
-      }> = [];
-
-      for (const [categoryKey, channelMap] of Object.entries(channels)) {
-        const categoryId =
-          (categories as unknown as Record<string, string>)[categoryKey] ?? "";
-        const channelList: Array<{ name: string; id: string }> = [];
-
-        for (const [channelName, channelId] of Object.entries(
-          channelMap as Record<string, string>,
-        )) {
-          channelList.push({ name: channelName, id: channelId });
-        }
-
-        grouped.push({
-          category: categoryKey,
-          categoryId,
-          channels: channelList,
-        });
-      }
-
-      return grouped;
-    }),
+  channels: guildChannelsProcedure,
 
   configs: router({
     list: adminProcedure
@@ -87,7 +36,7 @@ export const autoMessagesRouter = router({
 
     get: adminProcedure
       .meta({ description: "Get a single auto-message config with messages" })
-      .input(z.object({ id: z.number().int().positive() }))
+      .input(z.object({ id: id() }))
       .query(async ({ input }) => {
         const config = await findOrThrow(
           Q.discord.auto.message.config.find({ id: input.id }),
@@ -133,34 +82,18 @@ export const autoMessagesRouter = router({
           rotationMode: z.enum(["sequential", "random"]).default("sequential"),
         }),
       )
-      .mutation(async ({ input, ctx }) => {
-        const created = await Q.discord.auto.message.config.createAndReturn({
-          name: input.name,
-          channelId: input.channelId,
-          enabled: input.enabled,
-          intervalMinutes: input.intervalMinutes,
-          rotationMode: input.rotationMode,
-        });
-
-        if (input.enabled) {
-          const service = getServiceSync(Services.AUTO_MESSAGE_SERVICE);
-          await service.startConfig(created.id);
-        }
-
-        await logAutoMessageAction(
-          ctx,
-          "auto_message_config_create",
-          `Created auto-message config "${input.name}"`,
-        );
-
-        return created;
-      }),
+      .mutation(async ({ input, ctx }) =>
+        getServiceSync(Services.AUTO_MESSAGE_SERVICE).createConfig(
+          input,
+          ctx.user,
+        ),
+      ),
 
     update: adminProcedure
       .meta({ description: "Update an auto-message config" })
       .input(
         z.object({
-          id: z.number().int().positive(),
+          id: id(),
           name: z.string().min(1).max(100).optional(),
           channelId: z.string().min(1).optional(),
           enabled: z.boolean().optional(),
@@ -169,48 +102,23 @@ export const autoMessagesRouter = router({
         }),
       )
       .mutation(async ({ input, ctx }) => {
-        const existing = await findOrThrow(
-          Q.discord.auto.message.config.find({ id: input.id }),
-          "Config not found",
+        const { id, ...patch } = input;
+        assertPatchNotEmpty(patch);
+        await getServiceSync(Services.AUTO_MESSAGE_SERVICE).updateConfig(
+          id,
+          patch,
+          ctx.user,
         );
-
-        const { id, ...updates } = input;
-        assertPatchNotEmpty(updates);
-        await Q.discord.auto.message.config.update({ id }, updates);
-
-        const service = getServiceSync(Services.AUTO_MESSAGE_SERVICE);
-        await service.restartConfig(id);
-
-        await logAutoMessageAction(
-          ctx,
-          "auto_message_config_update",
-          `Updated auto-message config "${existing.name}"`,
-        );
-
-        return { message: "Config updated" };
       }),
 
     delete: adminProcedure
       .meta({ description: "Delete an auto-message config" })
-      .input(z.object({ id: z.number().int().positive() }))
+      .input(z.object({ id: id() }))
       .mutation(async ({ input, ctx }) => {
-        const existing = await findOrThrow(
-          Q.discord.auto.message.config.find({ id: input.id }),
-          "Config not found",
+        await getServiceSync(Services.AUTO_MESSAGE_SERVICE).deleteConfig(
+          input.id,
+          ctx.user,
         );
-
-        const service = getServiceSync(Services.AUTO_MESSAGE_SERVICE);
-        service.stopConfig(input.id);
-
-        await Q.discord.auto.message.config.delete({ id: input.id });
-
-        await logAutoMessageAction(
-          ctx,
-          "auto_message_config_delete",
-          `Deleted auto-message config "${existing.name}"`,
-        );
-
-        return { message: "Config deleted" };
       }),
   }),
 
@@ -219,7 +127,7 @@ export const autoMessagesRouter = router({
       .meta({ description: "Add a message to a config" })
       .input(
         z.object({
-          configId: z.number().int().positive(),
+          configId: id(),
           content: z.string().min(1).max(2000),
           sortOrder: z.number().int().default(0),
           enabled: z.boolean().default(true),
@@ -229,40 +137,20 @@ export const autoMessagesRouter = router({
             .default([]),
         }),
       )
-      .mutation(async ({ input }) => {
-        await findOrThrow(
-          Q.discord.auto.message.config.find({ id: input.configId }),
-          "Config not found",
+      .mutation(({ input }) => {
+        const { configId, followups, ...fields } = input;
+        return getServiceSync(Services.AUTO_MESSAGE_SERVICE).createMessage(
+          configId,
+          fields,
+          followups,
         );
-
-        return await db.inTransaction(async (tx) => {
-          const created = await tx.discord.auto.message.createAndReturn({
-            configId: input.configId,
-            content: input.content,
-            sortOrder: input.sortOrder,
-            enabled: input.enabled,
-          });
-
-          for (let i = 0; i < input.followups.length; i++) {
-            const f = input.followups[i];
-            await tx.discord.auto.message.followup.create({
-              messageId: created.id,
-              content: f.content,
-              delaySeconds: f.delaySeconds,
-              enabled: f.enabled,
-              sortOrder: i,
-            });
-          }
-
-          return created;
-        });
       }),
 
     update: adminProcedure
       .meta({ description: "Update a message" })
       .input(
         z.object({
-          id: z.number().int().positive(),
+          id: id(),
           content: z.string().min(1).max(2000).optional(),
           sortOrder: z.number().int().optional(),
           enabled: z.boolean().optional(),
@@ -273,42 +161,17 @@ export const autoMessagesRouter = router({
         }),
       )
       .mutation(async ({ input }) => {
-        await findOrThrow(
-          Q.discord.auto.message.find({ id: input.id }),
-          "Message not found",
+        const { id, followups, ...patch } = input;
+        await getServiceSync(Services.AUTO_MESSAGE_SERVICE).updateMessage(
+          id,
+          patch,
+          followups,
         );
-
-        const { id, followups, ...updates } = input;
-
-        await db.inTransaction(async (tx) => {
-          if (Object.keys(updates).length > 0) {
-            await tx.discord.auto.message.update({ id }, updates);
-          }
-
-          if (followups !== undefined) {
-            await tx.discord.auto.message.followup.deleteAll({
-              messageId: id,
-            });
-
-            for (let i = 0; i < followups.length; i++) {
-              const f = followups[i];
-              await tx.discord.auto.message.followup.create({
-                messageId: id,
-                content: f.content,
-                delaySeconds: f.delaySeconds,
-                enabled: f.enabled,
-                sortOrder: i,
-              });
-            }
-          }
-        });
-
-        return { message: "Message updated" };
       }),
 
     delete: adminProcedure
       .meta({ description: "Delete a message" })
-      .input(z.object({ id: z.number().int().positive() }))
+      .input(z.object({ id: id() }))
       .mutation(async ({ input }) => {
         await findOrThrow(
           Q.discord.auto.message.find({ id: input.id }),
@@ -316,8 +179,6 @@ export const autoMessagesRouter = router({
         );
 
         await Q.discord.auto.message.delete({ id: input.id });
-
-        return { message: "Message deleted" };
       }),
 
     reorder: adminProcedure
@@ -326,7 +187,7 @@ export const autoMessagesRouter = router({
         z.object({
           items: z.array(
             z.object({
-              id: z.number().int().positive(),
+              id: id(),
               sortOrder: z.number().int(),
             }),
           ),
@@ -337,8 +198,6 @@ export const autoMessagesRouter = router({
         if (reordered < new Set(input.items.map((item) => item.id)).size) {
           throw trpcError.notFound("Message not found");
         }
-
-        return { message: "Messages reordered" };
       }),
   }),
 });

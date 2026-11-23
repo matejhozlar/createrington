@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { Suspense } from "react";
 import { useLocation, useNavigate, type NavigateFunction } from "react-router";
 import {
   AlertTriangle,
@@ -8,15 +8,17 @@ import {
   Keyboard,
   type LucideIcon,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
+import { StatusPage, STATUS_CARD_CLASS } from "@/components/status-page";
 import { Kbd } from "@/components/ui/kbd";
 import { useAuth } from "@/contexts/auth";
-import { DEFAULT_PLAYER } from "@/lib/skin-runner/player-hint";
+import { DEFAULT_PLAYER } from "@/lib/playerHint";
+import { lazyNamed } from "@/lib/lazy";
 import { cn } from "@/lib/utils";
 
-const SkinRunner = lazy(() =>
-  import("@/components/skin-runner").then((m) => ({ default: m.SkinRunner })),
+const SkinRunner = lazyNamed(
+  () => import("@/components/skin-runner"),
+  "SkinRunner",
 );
 
 type Action = {
@@ -41,9 +43,6 @@ const ACTIONS: Action[] = [
   },
 ];
 
-const CARD_CLASS =
-  "border-border bg-card/60 backdrop-blur supports-[backdrop-filter]:bg-card/50";
-
 const KEY_CONTROLS = [
   { keys: ["↑", "W", "Space"], action: "Jump" },
   { keys: ["↓", "S", "Shift"], action: "Slide" },
@@ -64,9 +63,18 @@ export function NotFound() {
     : DEFAULT_PLAYER;
 
   return (
-    <div className="min-h-[calc(100vh-3.5rem)] md:min-h-screen flex items-center justify-center p-4 sm:p-6 bg-background select-none">
-      <div className="w-full max-w-3xl space-y-4">
-        <Card className={cn(CARD_CLASS, "gap-0 overflow-hidden py-0")}>
+    <StatusPage
+      icon={AlertTriangle}
+      title="Page not found"
+      badge="404"
+      description="The page you’re looking for doesn’t exist (or moved). Jump a few cacti while you’re here."
+      detail={pathname}
+      actions={ACTIONS.map(({ go, ...action }) => ({
+        ...action,
+        onClick: () => go(navigate),
+      }))}
+      hero={
+        <Card className={cn(STATUS_CARD_CLASS, "gap-0 overflow-hidden py-0")}>
           <div className="relative h-52 sm:h-64 md:h-72">
             <Suspense
               fallback={<div className="size-full bg-sidebar-accent/40" />}
@@ -107,69 +115,7 @@ export function NotFound() {
             </ul>
           </div>
         </Card>
-
-        <Card className={CARD_CLASS}>
-          <CardHeader className="space-y-3">
-            <div className="flex items-center gap-2">
-              <div className="flex size-10 items-center justify-center rounded-lg bg-sidebar-accent">
-                <AlertTriangle className="size-5 text-muted-foreground" />
-              </div>
-
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="text-lg font-semibold text-foreground">
-                    Page not found
-                  </h1>
-                  <Badge variant="outline" className="text-muted-foreground">
-                    404
-                  </Badge>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  The page you’re looking for doesn’t exist (or moved). Jump a
-                  few cacti while you’re here.
-                </p>
-              </div>
-            </div>
-
-            <div
-              className={cn(
-                "rounded-lg border border-border bg-sidebar-accent/40 px-3 py-2",
-                "text-sm text-muted-foreground font-mono",
-              )}
-            >
-              {pathname}
-            </div>
-          </CardHeader>
-
-          <CardContent>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {ACTIONS.map(({ icon: Icon, label, description, go }) => (
-                <button
-                  key={label}
-                  type="button"
-                  onClick={() => go(navigate)}
-                  className={cn(
-                    "group flex items-center gap-3 rounded-lg border border-border bg-background/40 p-3 text-left",
-                    "transition-colors hover:bg-sidebar-accent/30 cursor-pointer",
-                  )}
-                >
-                  <div className="flex size-9 items-center justify-center rounded-md bg-sidebar-accent">
-                    <Icon className="size-4 text-muted-foreground transition-colors group-hover:text-foreground" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-foreground">
-                      {label}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {description}
-                    </p>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+      }
+    />
   );
 }

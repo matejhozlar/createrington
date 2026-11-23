@@ -5,7 +5,7 @@ const db = vi.hoisted(() => ({
   findParties: vi.fn(),
   countMembers: vi.fn(async () => 3),
   findPlayer: vi.fn(),
-  getForMember: vi.fn(),
+  findForMember: vi.fn(),
 }));
 
 vi.mock("@/config", () => ({
@@ -19,7 +19,7 @@ vi.mock("@/db", () => ({
       party: {
         find: db.findParty,
         findAll: db.findParties,
-        getForMember: db.getForMember,
+        findForMember: db.findForMember,
         member: { count: db.countMembers },
       },
     },
@@ -66,8 +66,10 @@ vi.mock("@/discord/utils/render-screenshot", () => ({
   renderScreenshot: async () => null,
 }));
 
-import { execute } from "@/discord/bots/main/interactions/slash-commands/user/tag";
+import handler from "@/discord/bots/main/interactions/slash-commands/user/tag";
 import type { ChatInputCommandInteraction } from "discord.js";
+
+const { execute } = handler;
 
 interface SentEmbed {
   kind: string;

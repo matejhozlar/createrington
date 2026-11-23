@@ -1,4 +1,5 @@
-import { db, Q } from "@/db";
+import { db, Q } from "@/db/pool";
+import type { BalanceTransactionType } from "@createrington/shared/balance";
 import { NotFoundError } from "@/db/utils";
 import { DatabaseTable, type DatabaseQueries } from "@/generated/db";
 import type {
@@ -6,43 +7,37 @@ import type {
   PlayerBalance,
   PlayerBalanceTransaction,
 } from "@/generated/db";
-import { BalanceUtils } from "./utils";
-
-export type PlayerIdentifier =
-  | { minecraftUuid: string }
-  | { minecraftUsername: string }
-  | { discordId: string }
-  | Player
-  | string;
+import { BasePlayerRepository, type PlayerIdentifier } from "../player/base";
+import { BalanceUtils } from "@/db/utils/balance";
 
 export interface BalanceMutationOptions {
-  /** Free-form context stored on the ledger row. */
   metadata?: Record<string, unknown>;
-  /** Client-generated request key, persisted on the ledger row for reconciliation. */
   idempotencyKey?: string;
-  /** Join an existing outer transaction instead of starting a new one. */
   tx?: DatabaseQueries;
 }
 
 type LockedOptions = Omit<BalanceMutationOptions, "tx">;
 
-export enum BalanceTransactionType {
-  TRANSFER_SEND = "transfer_send",
-  TRANSFER_RECEIVE = "transfer_receive",
-  DEPOSIT = "deposit",
-  WITHDRAW = "withdraw",
-  ADMIN_GRANT = "admin_grant",
-  ADMIN_DEDUCT = "admin_deduct",
-  ADMIN_SET = "admin_set",
-  PURCHASE = "purchase",
-  SALE = "sale",
-  REWARD = "reward",
-  REFUND = "refund",
-  GALLERY_REWARD = "gallery_reward",
-  CRYPTO_BUY = "crypto_buy",
-  CRYPTO_SELL = "crypto_sell",
-  OTHER = "other",
-}
+const ADMIN_BALANCE_ACTIONS = {
+  grant: {
+    mutation: "addLocked",
+    transactionType: "admin_grant",
+    actionType: "balance_grant",
+    logsAmount: true,
+  },
+  deduct: {
+    mutation: "deductLocked",
+    transactionType: "admin_deduct",
+    actionType: "balance_deduct",
+    logsAmount: true,
+  },
+  set: {
+    mutation: "setLocked",
+    transactionType: "admin_set",
+    actionType: "balance_set",
+    logsAmount: false,
+  },
+} as const;
 
 /**
  * Manages player currency balances and their full audit trail. Reads,
@@ -52,55 +47,41 @@ export enum BalanceTransactionType {
  * bigint with 3 implicit decimal places (1500n represents $1.500); use
  * BalanceUtils for all conversions.
  */
-export class BalanceRepository {
-  constructor() {}
-
+export class BalanceRepository extends BasePlayerRepository {
   private async lockBalance(
     tx: DatabaseQueries,
     minecraftUuid: string,
   ): Promise<bigint> {
-    const balance = await tx.player.balance.getForUpdate(minecraftUuid);
+    const balance = await tx.player.balance.findForUpdate(minecraftUuid);
     if (balance === null) {
       throw new NotFoundError("player_balance", { minecraftUuid });
     }
     return balance;
   }
 
-  private async resolvePlayerUuid(
-    identifier: PlayerIdentifier,
-    tx?: DatabaseQueries,
-  ): Promise<string> {
-    if (typeof identifier === "string") return identifier;
-    if ("minecraftUuid" in identifier && identifier.minecraftUuid) {
-      return identifier.minecraftUuid;
-    }
-    const player = await (tx ?? db).player.get(identifier);
-    return player.minecraftUuid;
-  }
-
   private async resolvePlayer(identifier: PlayerIdentifier): Promise<Player> {
     if (typeof identifier === "string") {
-      return db.player.get({ minecraftUuid: identifier });
+      return Q.player.get({ minecraftUuid: identifier });
     }
     if ("minecraftUuid" in identifier && identifier.minecraftUuid) {
-      return db.player.get({ minecraftUuid: identifier.minecraftUuid });
+      return Q.player.get({ minecraftUuid: identifier.minecraftUuid });
     }
-    return db.player.get(identifier);
+    return Q.player.get(identifier);
   }
 
   private async logTransaction(
+    tx: DatabaseQueries,
     data: {
       playerMinecraftUuid: string;
       amount: bigint;
       balanceBefore: bigint;
       balanceAfter: bigint;
-      transactionType: string;
+      transactionType: BalanceTransactionType;
       description?: string;
       relatedPlayerUuid?: string;
       metadata?: Record<string, unknown>;
       idempotencyKey?: string;
     },
-    tx: DatabaseQueries,
   ): Promise<void> {
     await tx.player.balance.transaction.create({
       playerMinecraftUuid: data.playerMinecraftUuid,
@@ -119,27 +100,13 @@ export class BalanceRepository {
     );
   }
 
-  /** Get the full balance entity (raw bigint balance plus metadata). */
-  async get(identifier: PlayerIdentifier): Promise<PlayerBalance> {
-    const uuid = await this.resolvePlayerUuid(identifier);
-    return await db.player.balance.get({ minecraftUuid: uuid });
-  }
-
   /** Get the balance as a decimal number (e.g. 1.5). */
   async getAmount(identifier: PlayerIdentifier): Promise<number> {
     const uuid = await this.resolvePlayerUuid(identifier);
-    const balanceBigInt = await db.player.balance.select.balance({
+    const balanceBigInt = await Q.player.balance.select.balance({
       minecraftUuid: uuid,
     });
     return BalanceUtils.fromStorage(balanceBigInt);
-  }
-
-  /** Get the raw storage bigint (e.g. 1500n for $1.500), not user-facing. */
-  async getRaw(identifier: PlayerIdentifier): Promise<bigint> {
-    const uuid = await this.resolvePlayerUuid(identifier);
-    return await db.player.balance.select.balance({
-      minecraftUuid: uuid,
-    });
   }
 
   /** Returns true if the player's balance is at least the given decimal amount. */
@@ -148,18 +115,11 @@ export class BalanceRepository {
     amount: number,
   ): Promise<boolean> {
     const uuid = await this.resolvePlayerUuid(identifier);
-    const balance = await db.player.balance.select.balance({
+    const balance = await Q.player.balance.select.balance({
       minecraftUuid: uuid,
     });
     const required = BalanceUtils.toStorage(amount);
     return balance >= required;
-  }
-
-  /** Top N players by balance, sorted balance DESC. */
-  async getTop(
-    limit: number = 10,
-  ): Promise<Array<{ name: string; balance: number }>> {
-    return Q.player.balance.getTop(limit);
   }
 
   /**
@@ -180,17 +140,14 @@ export class BalanceRepository {
       });
 
       if (initialBalance > 0) {
-        await this.logTransaction(
-          {
-            playerMinecraftUuid,
-            amount: balanceBigInt,
-            balanceBefore: 0n,
-            balanceAfter: balanceBigInt,
-            transactionType: BalanceTransactionType.ADMIN_GRANT,
-            description: "Initial balance",
-          },
-          tx,
-        );
+        await this.logTransaction(tx, {
+          playerMinecraftUuid,
+          amount: balanceBigInt,
+          balanceBefore: 0n,
+          balanceAfter: balanceBigInt,
+          transactionType: "admin_grant",
+          description: "Initial balance",
+        });
       }
 
       logger.info(
@@ -227,19 +184,16 @@ export class BalanceRepository {
       { balance: newBalance },
     );
 
-    await this.logTransaction(
-      {
-        playerMinecraftUuid: uuid,
-        amount: amountBigInt,
-        balanceBefore: balance,
-        balanceAfter: newBalance,
-        transactionType: type,
-        description: reason,
-        metadata: options.metadata,
-        idempotencyKey: options.idempotencyKey,
-      },
-      tx,
-    );
+    await this.logTransaction(tx, {
+      playerMinecraftUuid: uuid,
+      amount: amountBigInt,
+      balanceBefore: balance,
+      balanceAfter: newBalance,
+      transactionType: type,
+      description: reason,
+      metadata: options.metadata,
+      idempotencyKey: options.idempotencyKey,
+    });
 
     return { before: balance, after: newBalance };
   }
@@ -272,19 +226,16 @@ export class BalanceRepository {
       { balance: newBalance },
     );
 
-    await this.logTransaction(
-      {
-        playerMinecraftUuid: uuid,
-        amount: -amountBigInt,
-        balanceBefore: balance,
-        balanceAfter: newBalance,
-        transactionType: type,
-        description: reason,
-        metadata: options.metadata,
-        idempotencyKey: options.idempotencyKey,
-      },
-      tx,
-    );
+    await this.logTransaction(tx, {
+      playerMinecraftUuid: uuid,
+      amount: -amountBigInt,
+      balanceBefore: balance,
+      balanceAfter: newBalance,
+      transactionType: type,
+      description: reason,
+      metadata: options.metadata,
+      idempotencyKey: options.idempotencyKey,
+    });
 
     return { before: balance, after: newBalance };
   }
@@ -310,18 +261,15 @@ export class BalanceRepository {
       { balance: amountBigInt },
     );
 
-    await this.logTransaction(
-      {
-        playerMinecraftUuid: uuid,
-        amount: difference,
-        balanceBefore: balance,
-        balanceAfter: amountBigInt,
-        transactionType: type,
-        description: reason,
-        metadata: options.metadata,
-      },
-      tx,
-    );
+    await this.logTransaction(tx, {
+      playerMinecraftUuid: uuid,
+      amount: difference,
+      balanceBefore: balance,
+      balanceAfter: amountBigInt,
+      transactionType: type,
+      description: reason,
+      metadata: options.metadata,
+    });
 
     return { before: balance, after: amountBigInt };
   }
@@ -339,7 +287,7 @@ export class BalanceRepository {
     type: BalanceTransactionType,
     options: BalanceMutationOptions = {},
   ): Promise<number> {
-    const uuid = await this.resolvePlayerUuid(identifier, options.tx);
+    const uuid = await this.resolvePlayerUuid(identifier, { tx: options.tx });
 
     return await (options.tx ?? db).inTransaction(async (tx) => {
       const { after } = await this.addLocked(tx, uuid, amount, reason, type, {
@@ -364,7 +312,7 @@ export class BalanceRepository {
     type: BalanceTransactionType,
     options: BalanceMutationOptions = {},
   ): Promise<number> {
-    const uuid = await this.resolvePlayerUuid(identifier, options.tx);
+    const uuid = await this.resolvePlayerUuid(identifier, { tx: options.tx });
 
     return await (options.tx ?? db).inTransaction(async (tx) => {
       const { after } = await this.deductLocked(
@@ -375,28 +323,6 @@ export class BalanceRepository {
         type,
         { metadata: options.metadata, idempotencyKey: options.idempotencyKey },
       );
-      return BalanceUtils.fromStorage(after);
-    });
-  }
-
-  /**
-   * Set a player's balance to an absolute amount. The transaction log records
-   * the signed delta from the previous balance, not the new absolute value.
-   * Pass options.tx to join an existing outer transaction.
-   */
-  async set(
-    identifier: PlayerIdentifier,
-    amount: number,
-    reason: string,
-    type: BalanceTransactionType,
-    options: Omit<BalanceMutationOptions, "idempotencyKey"> = {},
-  ): Promise<number> {
-    const uuid = await this.resolvePlayerUuid(identifier, options.tx);
-
-    return await (options.tx ?? db).inTransaction(async (tx) => {
-      const { after } = await this.setLocked(tx, uuid, amount, reason, type, {
-        metadata: options.metadata,
-      });
       return BalanceUtils.fromStorage(after);
     });
   }
@@ -466,31 +392,25 @@ export class BalanceRepository {
         { balance: newRecipientBalance },
       );
 
-      await this.logTransaction(
-        {
-          playerMinecraftUuid: senderUuid,
-          amount: -amountBigInt,
-          balanceBefore: senderBalance,
-          balanceAfter: newSenderBalance,
-          transactionType: BalanceTransactionType.TRANSFER_SEND,
-          description: description || `Transfer to ${recipientUuid}`,
-          relatedPlayerUuid: recipientUuid,
-        },
-        tx,
-      );
+      await this.logTransaction(tx, {
+        playerMinecraftUuid: senderUuid,
+        amount: -amountBigInt,
+        balanceBefore: senderBalance,
+        balanceAfter: newSenderBalance,
+        transactionType: "transfer_send",
+        description: description || `Transfer to ${recipientUuid}`,
+        relatedPlayerUuid: recipientUuid,
+      });
 
-      await this.logTransaction(
-        {
-          playerMinecraftUuid: recipientUuid,
-          amount: amountBigInt,
-          balanceBefore: recipientBalance,
-          balanceAfter: newRecipientBalance,
-          transactionType: BalanceTransactionType.TRANSFER_RECEIVE,
-          description: description || `Transfer from ${senderUuid}`,
-          relatedPlayerUuid: senderUuid,
-        },
-        tx,
-      );
+      await this.logTransaction(tx, {
+        playerMinecraftUuid: recipientUuid,
+        amount: amountBigInt,
+        balanceBefore: recipientBalance,
+        balanceAfter: newRecipientBalance,
+        transactionType: "transfer_receive",
+        description: description || `Transfer from ${senderUuid}`,
+        relatedPlayerUuid: senderUuid,
+      });
 
       return {
         senderBalance: BalanceUtils.fromStorage(newSenderBalance),
@@ -499,31 +419,43 @@ export class BalanceRepository {
     });
   }
 
-  private async logAdminAction(
-    input: {
-      actionType: "balance_grant" | "balance_deduct" | "balance_set";
-      player: Player;
-      adminDiscordId: string;
-      adminUsername: string;
-      reason: string;
-      before: bigint;
-      after: bigint;
-      metadata?: Record<string, unknown>;
-    },
-    tx: DatabaseQueries,
-  ): Promise<void> {
-    await tx.admin.log.action.logAction({
-      adminDiscordId: input.adminDiscordId,
-      adminUsername: input.adminUsername,
-      actionType: input.actionType,
-      targetPlayerUuid: input.player.minecraftUuid,
-      targetPlayerName: input.player.minecraftUsername,
-      tableName: "player_balance",
-      fieldName: "balance",
-      oldValue: BalanceUtils.format(input.before),
-      newValue: BalanceUtils.format(input.after),
-      reason: input.reason,
-      metadata: input.metadata,
+  private async adminMutate(
+    action: keyof typeof ADMIN_BALANCE_ACTIONS,
+    identifier: PlayerIdentifier,
+    amount: number,
+    adminDiscordId: string,
+    adminUsername: string,
+    reason: string,
+  ): Promise<number> {
+    const { mutation, transactionType, actionType, logsAmount } =
+      ADMIN_BALANCE_ACTIONS[action];
+    const player = await this.resolvePlayer(identifier);
+
+    return await db.inTransaction(async (tx) => {
+      const { before, after } = await this[mutation](
+        tx,
+        player.minecraftUuid,
+        amount,
+        reason,
+        transactionType,
+        { metadata: { adminDiscordId, adminUsername } },
+      );
+      await tx.admin.log.action.logAction({
+        adminDiscordId,
+        adminUsername,
+        actionType,
+        targetPlayerUuid: player.minecraftUuid,
+        targetPlayerName: player.minecraftUsername,
+        tableName: "player_balance",
+        fieldName: "balance",
+        oldValue: BalanceUtils.format(before),
+        newValue: BalanceUtils.format(after),
+        reason,
+        metadata: logsAmount
+          ? { amount: BalanceUtils.format(BalanceUtils.toStorage(amount)) }
+          : undefined,
+      });
+      return BalanceUtils.fromStorage(after);
     });
   }
 
@@ -539,34 +471,14 @@ export class BalanceRepository {
     adminUsername: string,
     reason: string,
   ): Promise<number> {
-    const player = await this.resolvePlayer(identifier);
-
-    return await db.inTransaction(async (tx) => {
-      const { before, after } = await this.addLocked(
-        tx,
-        player.minecraftUuid,
-        amount,
-        reason,
-        BalanceTransactionType.ADMIN_GRANT,
-        { metadata: { adminDiscordId, adminUsername } },
-      );
-      await this.logAdminAction(
-        {
-          actionType: "balance_grant",
-          player,
-          adminDiscordId,
-          adminUsername,
-          reason,
-          before,
-          after,
-          metadata: {
-            amount: BalanceUtils.format(BalanceUtils.toStorage(amount)),
-          },
-        },
-        tx,
-      );
-      return BalanceUtils.fromStorage(after);
-    });
+    return this.adminMutate(
+      "grant",
+      identifier,
+      amount,
+      adminDiscordId,
+      adminUsername,
+      reason,
+    );
   }
 
   /**
@@ -581,34 +493,14 @@ export class BalanceRepository {
     adminUsername: string,
     reason: string,
   ): Promise<number> {
-    const player = await this.resolvePlayer(identifier);
-
-    return await db.inTransaction(async (tx) => {
-      const { before, after } = await this.deductLocked(
-        tx,
-        player.minecraftUuid,
-        amount,
-        reason,
-        BalanceTransactionType.ADMIN_DEDUCT,
-        { metadata: { adminDiscordId, adminUsername } },
-      );
-      await this.logAdminAction(
-        {
-          actionType: "balance_deduct",
-          player,
-          adminDiscordId,
-          adminUsername,
-          reason,
-          before,
-          after,
-          metadata: {
-            amount: BalanceUtils.format(BalanceUtils.toStorage(amount)),
-          },
-        },
-        tx,
-      );
-      return BalanceUtils.fromStorage(after);
-    });
+    return this.adminMutate(
+      "deduct",
+      identifier,
+      amount,
+      adminDiscordId,
+      adminUsername,
+      reason,
+    );
   }
 
   /**
@@ -623,31 +515,14 @@ export class BalanceRepository {
     adminUsername: string,
     reason: string,
   ): Promise<number> {
-    const player = await this.resolvePlayer(identifier);
-
-    return await db.inTransaction(async (tx) => {
-      const { before, after } = await this.setLocked(
-        tx,
-        player.minecraftUuid,
-        amount,
-        reason,
-        BalanceTransactionType.ADMIN_SET,
-        { metadata: { adminDiscordId, adminUsername } },
-      );
-      await this.logAdminAction(
-        {
-          actionType: "balance_set",
-          player,
-          adminDiscordId,
-          adminUsername,
-          reason,
-          before,
-          after,
-        },
-        tx,
-      );
-      return BalanceUtils.fromStorage(after);
-    });
+    return this.adminMutate(
+      "set",
+      identifier,
+      amount,
+      adminDiscordId,
+      adminUsername,
+      reason,
+    );
   }
 
   /** Raw transaction history for a player, ordered most recent first. */
@@ -658,13 +533,11 @@ export class BalanceRepository {
   ): Promise<PlayerBalanceTransaction[]> {
     const uuid = await this.resolvePlayerUuid(identifier);
 
-    return await db.player.balance.transaction.findAll(
+    return await Q.player.balance.transaction.findAll(
       { playerMinecraftUuid: uuid },
       {
         limit,
         offset,
-        // Order by the serial id, not created_at: it is the insertion order and
-        // is unique, so rows written in the same tick still sort deterministically.
         orderBy: DatabaseTable.PLAYER_BALANCE_TRANSACTION.CAMEL_FIELDS.ID,
         orderDirection: "desc",
       },
@@ -682,7 +555,7 @@ export class BalanceRepository {
       amount: string;
       balanceBefore: string;
       balanceAfter: string;
-      transactionType: string;
+      transactionType: BalanceTransactionType;
       description: string | null;
       createdAt: Date;
       metadata: Record<string, unknown>;

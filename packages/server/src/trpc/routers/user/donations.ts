@@ -1,14 +1,24 @@
 import { z } from "zod";
 import { router, userProcedure } from "@/trpc/trpc";
 import { trpcError } from "@/trpc/utils";
-import { donationRepo } from "@/db";
-import { getService, Services } from "@/services";
-import config from "@/config";
+import { Q } from "@/db";
+import { getOptionalService, Services } from "@/services";
+import type { DonationService } from "@/services/donation/donation.service";
+import { siteUrl } from "@/config/site-url";
 
 const MIN_AMOUNT_CENTS = 100;
 const MAX_AMOUNT_CENTS = 100_000;
 
-/** User donations router: create Stripe checkout session and view donation history. */
+async function requireDonationService(): Promise<DonationService> {
+  const service = await getOptionalService(Services.DONATION_SERVICE);
+  if (!service) {
+    throw trpcError.preconditionFailed(
+      "Donations are not available at this time",
+    );
+  }
+  return service;
+}
+
 export const userDonationsRouter = router({
   createCheckout: userProcedure
     .meta({
@@ -32,20 +42,14 @@ export const userDonationsRouter = router({
       }),
     )
     .mutation(async ({ input, ctx }) => {
-      if (!config.stripe.enabled) {
-        throw trpcError.preconditionFailed(
-          "Donations are not available at this time",
-        );
-      }
-      const donationService = await getService(Services.DONATION_SERVICE);
-      const baseUrl = config.meta.links.website;
+      const donationService = await requireDonationService();
 
       const { sessionId, url } = await donationService.createCheckoutSession({
         discordId: ctx.user.discordId,
         type: input.type,
         amountCents: input.amountCents,
-        successUrl: `${baseUrl}/donate/success?session_id={CHECKOUT_SESSION_ID}`,
-        cancelUrl: `${baseUrl}/donate/cancel`,
+        successUrl: `${siteUrl("/donate/success")}?session_id={CHECKOUT_SESSION_ID}`,
+        cancelUrl: siteUrl("/donate/cancel"),
       });
 
       return { sessionId, url };
@@ -57,9 +61,12 @@ export const userDonationsRouter = router({
         "Get the user's active monthly subscription details, or null if none",
     })
     .query(async ({ ctx }) => {
-      if (!config.stripe.enabled) return null;
-      const donationService = await getService(Services.DONATION_SERVICE);
-      return donationService.getActiveSubscription(ctx.user.discordId);
+      const donationService = await getOptionalService(
+        Services.DONATION_SERVICE,
+      );
+      return donationService
+        ? donationService.getActiveSubscription(ctx.user.discordId)
+        : null;
     }),
 
   cancelSubscription: userProcedure
@@ -68,12 +75,7 @@ export const userDonationsRouter = router({
         "Cancel the user's monthly subscription at the end of the current billing period",
     })
     .mutation(async ({ ctx }) => {
-      if (!config.stripe.enabled) {
-        throw trpcError.preconditionFailed(
-          "Donations are not available at this time",
-        );
-      }
-      const donationService = await getService(Services.DONATION_SERVICE);
+      const donationService = await requireDonationService();
       const result = await donationService.cancelSubscription(
         ctx.user.discordId,
       );
@@ -91,12 +93,7 @@ export const userDonationsRouter = router({
         "Reactivate a cancelled subscription before the billing period ends",
     })
     .mutation(async ({ ctx }) => {
-      if (!config.stripe.enabled) {
-        throw trpcError.preconditionFailed(
-          "Donations are not available at this time",
-        );
-      }
-      const donationService = await getService(Services.DONATION_SERVICE);
+      const donationService = await requireDonationService();
       const success = await donationService.reactivateSubscription(
         ctx.user.discordId,
       );
@@ -106,8 +103,6 @@ export const userDonationsRouter = router({
           "No cancelled subscription found to reactivate",
         );
       }
-
-      return { success: true };
     }),
 
   history: userProcedure
@@ -116,7 +111,10 @@ export const userDonationsRouter = router({
         "Get the authenticated user's donation history, most recent first",
     })
     .query(async ({ ctx }) => {
-      const donations = await donationRepo.findByDiscordId(ctx.user.discordId);
+      const donations = await Q.donation.findAll(
+        { playerDiscordId: ctx.user.discordId },
+        { orderBy: "createdAt", orderDirection: "desc" },
+      );
 
       return donations.map((d) => ({
         id: d.id,

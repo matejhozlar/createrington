@@ -6,7 +6,8 @@ import type { RankUpMetric } from "@/discord/components/presets/hall-of-fame";
 import { Discord } from "@/discord/constants";
 import { appEmoji } from "@/discord/emojis";
 import { squarePoseThumbnail } from "@/discord/utils/pose-thumbnail";
-import { getSkinApiClient, POSE_RENDER_STYLE } from "@/services/skin-api";
+import { getSkinApiClient } from "@/services/skin-api/client";
+import { POSE_RENDER_STYLE } from "@/services/skin-api/quality";
 import { playerAvatarUrl } from "@/services/skin-api/urls";
 import { getNotificationConfig } from "./config";
 import { RoleConditionType, type RoleAssignmentNotification } from "./types";
@@ -103,21 +104,16 @@ export class RoleNotificationService {
         }),
       );
 
-      const result = await Discord.Messages.send({
+      await Discord.Messages.send({
         channelId,
         components: message.components,
         flags: message.flags,
         files: figure.files,
         allowedMentions: { users: [notification.discordId] },
       });
-
-      if (result.success) {
-        logger.info(
-          `Sent role notification for ${notification.username} -> ${notification.role.label}`,
-        );
-      } else {
-        logger.error(`Failed to send role notification: ${result.error}`);
-      }
+      logger.info(
+        `Sent role notification for ${notification.username} -> ${notification.role.label}`,
+      );
     } catch (error) {
       logger.error("Failed to send role notification:", error);
     }

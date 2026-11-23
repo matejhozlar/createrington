@@ -1,12 +1,16 @@
-import { Q, waitlistRepo } from "@/db";
+import { userMention } from "discord.js";
+import { Q } from "@/db";
+import { updateProgressEmbed } from "./progress-embed";
+import { waitlistCapacityService } from "./capacity.service";
 import { Discord } from "@/discord/constants";
 import { RegistrationComponentPresets } from "@/discord/components/presets/registration";
 import { createVerificationChannel } from "@/discord/bots/main/registration/verification-channel";
-import { BadRequestError } from "@/app/middleware/error-handler";
+import { BadRequestError } from "@/errors";
 import type { WaitlistEntry } from "@createrington/shared/db";
 import type { GuildMember } from "discord.js";
 import { getGuild, lookupChannel, lookupMember } from "./discord-lookup";
-import { expireEntry } from "./entries";
+import { expireEntry, PROMOTION_TTL_DAYS } from "./entries";
+import { formatCount } from "@/utils/format";
 import { withSlotLock } from "./slot-lock";
 
 const PROMOTION_BATCH = 100;
@@ -83,7 +87,10 @@ export class WaitlistPromotionService {
     options: { enforceCapacity: boolean },
   ): Promise<{ reserved: boolean; notified: boolean }> {
     const reserved = await withSlotLock(async () => {
-      if (options.enforceCapacity && (await waitlistRepo.getFreeSlots()) <= 0) {
+      if (
+        options.enforceCapacity &&
+        (await waitlistCapacityService.getFreeSlots()) <= 0
+      ) {
         return false;
       }
       await Q.waitlist.entry.update(
@@ -105,7 +112,7 @@ export class WaitlistPromotionService {
       );
     }
 
-    await waitlistRepo.updateProgressEmbed(entry.id);
+    await updateProgressEmbed(entry.id);
 
     logger.info(
       `Promoted waitlist entry #${entry.id} (${entry.discordUsername})${promotedBy ? ` by admin ${promotedBy}` : " automatically"}${notified ? "" : " (member not notified)"}`,
@@ -122,7 +129,7 @@ export class WaitlistPromotionService {
     try {
       await Discord.Messages.send({
         channelId: Discord.Channels.administration.NOTIFICATIONS,
-        content: `⚠️ Waitlist entry #${entry.id} (<@${entry.discordId}>) was promoted but could not be pinged in their verification channel. They hold a reserved slot for 7 days; reach out to them or delete the entry from the admin panel to free it.`,
+        content: `⚠️ Waitlist entry #${entry.id} (${userMention(entry.discordId)}) was promoted but could not be pinged in their verification channel. They hold a reserved slot for ${formatCount(PROMOTION_TTL_DAYS, "day")}; reach out to them or delete the entry from the admin panel to free it.`,
       });
     } catch (error) {
       logger.error(
@@ -200,7 +207,7 @@ export class WaitlistPromotionService {
     }
 
     await channel.send({
-      content: `🎉 <@${entry.discordId}> A spot opened up for you! Click **Register** above to claim it.`,
+      content: `🎉 ${userMention(entry.discordId)} A spot opened up for you! Click **Register** above to claim it.`,
     });
 
     return true;
@@ -241,7 +248,7 @@ export class WaitlistPromotionService {
       return 0;
     }
 
-    if ((await waitlistRepo.getFreeSlots()) <= 0) return 0;
+    if ((await waitlistCapacityService.getFreeSlots()) <= 0) return 0;
 
     const queued = await Q.waitlist.entry.findAll(
       { status: "queued" },

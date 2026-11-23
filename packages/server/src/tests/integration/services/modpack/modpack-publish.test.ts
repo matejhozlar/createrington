@@ -9,104 +9,48 @@ import {
   vi,
 } from "vitest";
 
-vi.mock("@/services/workshop/discord", () => ({
-  discordThreadUrl: vi.fn(
-    (threadId: string) => `https://discord.com/channels/0/${threadId}`,
-  ),
-  listForumChannels: vi.fn(async () => []),
-  assertForumChannel: vi.fn(async () => undefined),
-  announceSuggestion: vi.fn(async () => undefined),
-  announceReview: vi.fn(async () => undefined),
-  announcePackDropOut: vi.fn(async () => undefined),
-  announcePulledDependencies: vi.fn(async () => undefined),
-  announceRemoval: vi.fn(async () => undefined),
-  healThreads: vi.fn(async () => undefined),
-}));
-
-vi.mock("@/services/curseforge/mods", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("@/services/curseforge/mods")>();
-  return {
-    ...actual,
-    getMod: vi.fn(async () => {
-      throw new Error("getMod must not be called in this suite");
-    }),
-    getMods: vi.fn(async () => []),
-    searchMods: vi.fn(async () => []),
-  };
-});
-vi.mock("@/services/curseforge/files", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("@/services/curseforge/files")>();
-  return {
-    ...actual,
-    getFilesDependencies: vi.fn(async () => []),
-    getFilesDetails: vi.fn(async () => []),
-  };
-});
-vi.mock("@/services/curseforge/modpack", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("@/services/curseforge/modpack")>();
-  return { ...actual, getModpackFile: vi.fn(async () => null) };
-});
-vi.mock("@/services/curseforge/modpack-manifest", async (importOriginal) => {
-  const actual =
-    await importOriginal<
-      typeof import("@/services/curseforge/modpack-manifest")
-    >();
-  return {
-    ...actual,
-    getModpackManifest: vi.fn(async () => ({
-      fileId: 1,
-      serverPackFileId: null,
-      displayName: null,
-      version: null,
-      minecraftVersion: null,
-      modLoader: null,
-      publishedAt: null,
-      entries: [],
-      modIds: new Set<number>(),
-      disabledModIds: new Set<number>(),
-    })),
-    getModpackModIds: vi.fn(async () => new Set<number>()),
-  };
-});
-
-vi.mock("@/services/curseforge/ingest", () => ({
-  ingestProject: vi.fn(),
-  ingestProjects: vi.fn(),
-  refreshProjects: vi.fn(async () => 0),
-}));
-
-vi.mock("@/services/modpack/changelog", () => ({
-  announceReleaseChangelog: vi.fn(async () => undefined),
-}));
-
-vi.mock("@/services/launcher/pack/pack-release.service", () => ({
-  launcherPackReleaseService: {
-    prepareRelease: vi.fn(async () => undefined),
-    prepareSnapshot: vi.fn(async () => undefined),
-    checkReleases: vi.fn(async () => undefined),
-  },
-}));
-
-vi.mock("@/services/launcher/pack/sandbox-files", async (importOriginal) => ({
-  ...(await importOriginal<
-    typeof import("@/services/launcher/pack/sandbox-files")
-  >()),
-  findSandboxFileUrls: vi.fn(async () => new Map()),
-  findSandboxSnapshotUrl: vi.fn(async () => null),
-}));
+vi.mock("@/services/workshop/discord", async () =>
+  (
+    await import("@/tests/helpers/mocks/workshop-discord")
+  ).workshopDiscordMock(),
+);
+vi.mock("@/services/curseforge/mods", async () =>
+  (await import("@/tests/helpers/mocks/curseforge")).curseforgeMocks.mods(),
+);
+vi.mock("@/services/curseforge/files", async () =>
+  (await import("@/tests/helpers/mocks/curseforge")).curseforgeMocks.files(),
+);
+vi.mock("@/services/curseforge/modpack", async () =>
+  (await import("@/tests/helpers/mocks/curseforge")).curseforgeMocks.modpack(),
+);
+vi.mock("@/services/modpack/manifest", async () =>
+  (
+    await import("@/tests/helpers/mocks/curseforge")
+  ).curseforgeMocks.modpackManifest(),
+);
+vi.mock("@/services/curseforge/ingest", async () =>
+  (await import("@/tests/helpers/mocks/curseforge")).curseforgeMocks.ingest(),
+);
+vi.mock("@/services/modpack/changelog", async () =>
+  (await import("@/tests/helpers/mocks/modpack")).modpackChangelogMock(),
+);
+vi.mock("@/services/launcher/pack/pack-release.service", async () =>
+  (
+    await import("@/tests/helpers/mocks/launcher-pack")
+  ).launcherPackMocks.releaseService(),
+);
+vi.mock("@/services/launcher/pack/sandbox-files", async () =>
+  (
+    await import("@/tests/helpers/mocks/launcher-pack")
+  ).launcherPackMocks.sandboxFiles(),
+);
 
 import pool, { Q } from "@/db";
-import { BadRequestError, NotFoundError } from "@/app/middleware/error-handler";
+import { BadRequestError, NotFoundError } from "@/errors";
 import { modpackPublishService } from "@/services/modpack/publish.service";
 import { modpackReleaseService } from "@/services/modpack/release.service";
-import {
-  getModpackFile,
-  type ModpackFile,
-} from "@/services/curseforge/modpack";
-import { getModpackManifest } from "@/services/curseforge/modpack-manifest";
+import { getModpackFile } from "@/services/curseforge/modpack";
+import { getModpackManifest } from "@/services/modpack/manifest";
 import { launcherPackReleaseService } from "@/services/launcher/pack/pack-release.service";
 import { findSandboxSnapshotUrl } from "@/services/launcher/pack/sandbox-files";
 import {
@@ -122,6 +66,7 @@ import {
   seedLauncherPack,
 } from "@/tests/helpers/launcher-pack";
 import { manifest, sidedManifest, fileIdFor } from "@/tests/helpers/modpack";
+import { curseforgeFile } from "@/tests/helpers/curseforge-file";
 
 const USER_A = "999900000000000002";
 
@@ -141,26 +86,6 @@ afterAll(async () => {
   await pool.end();
 });
 
-function cfFile(
-  overrides: Partial<ModpackFile> & { id: number; projectId: number },
-): ModpackFile {
-  return {
-    displayName: null,
-    fileName: null,
-    fileDate: null,
-    downloadUrl: null,
-    fileLength: null,
-    sha1: null,
-    fileStatus: null,
-    isAvailable: true,
-    serverPackFileId: null,
-    alternateFileId: null,
-    parentProjectFileId: null,
-    isServerPack: false,
-    ...overrides,
-  };
-}
-
 describe("ModpackPublishService.recordPublish", () => {
   const CLIENT = 8_710_127;
   const SERVER = 8_710_134;
@@ -168,9 +93,13 @@ describe("ModpackPublishService.recordPublish", () => {
   function serveReportedPair(projectId: number) {
     vi.mocked(getModpackFile).mockImplementation(async (_project, fileId) =>
       fileId === CLIENT
-        ? cfFile({ id: CLIENT, projectId })
+        ? curseforgeFile({ id: CLIENT, projectId })
         : fileId === SERVER
-          ? cfFile({ id: SERVER, projectId, parentProjectFileId: CLIENT })
+          ? curseforgeFile({
+              id: SERVER,
+              projectId,
+              parentProjectFileId: CLIENT,
+            })
           : null,
     );
   }
@@ -311,7 +240,7 @@ describe("ModpackPublishService.recordPublish", () => {
     const projectId = ctx.nextProjectId++;
     const modpack = await seedModpack(ctx, { curseforgeProjectId: projectId });
     vi.mocked(getModpackFile).mockImplementation(async (_project, fileId) =>
-      cfFile({
+      curseforgeFile({
         id: fileId,
         projectId,
         parentProjectFileId: fileId === SERVER ? CLIENT - 1 : null,
@@ -334,7 +263,7 @@ describe("ModpackPublishService.recordPublish", () => {
     const projectId = ctx.nextProjectId++;
     await seedModpack(ctx, { curseforgeProjectId: projectId });
     vi.mocked(getModpackFile).mockImplementation(async (_project, fileId) =>
-      fileId === CLIENT ? cfFile({ id: CLIENT, projectId }) : null,
+      fileId === CLIENT ? curseforgeFile({ id: CLIENT, projectId }) : null,
     );
 
     await expect(

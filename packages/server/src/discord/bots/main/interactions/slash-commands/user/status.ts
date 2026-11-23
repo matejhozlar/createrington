@@ -1,94 +1,63 @@
 import { EmbedPresets } from "@/discord/embeds";
-import { replyError } from "@/discord/utils/interaction-reply";
+import { formatCount } from "@/utils/format";
 import { CooldownType } from "@/discord/utils/cooldown";
 import { getService, Services } from "@/services";
-import { getAllServerIds, getServerById } from "@/services/playtime/config";
+import { SERVERS } from "@/services/mc-server/servers";
 import { ServerState } from "@/services/playtime/types";
 import { ChatInputCommandInteraction, SlashCommandBuilder } from "discord.js";
+import type {
+  CommandCooldown,
+  CommandModule,
+} from "@/discord/bots/common/loaders/command-loader";
 
-/**
- * Slash command definition for the status command
- * Displays game server status and online player counts
- */
-export const data = new SlashCommandBuilder()
+const data = new SlashCommandBuilder()
   .setName("status")
   .setDescription("Show game server status and online player counts");
 
-/**
- * Cooldown configuration for the status command
- *
- * - duration: 10 seconds
- * - type: "user" - Each user has their own cooldown
- * - message: Custom message shown when the user is on cooldown
- */
-export const cooldown = {
+const cooldown: CommandCooldown = {
   duration: 10,
   type: CooldownType.USER,
   message: "Please wait before checking status again!",
 };
 
-/**
- * Executes the status command to display game server status
- *
- * Process:
- * 1. Fetch all configured servers from the playtime manager
- * 2. For each server, get online/offline state and player count
- * 3. Reply with an embed listing all servers and total online players
- *
- * @param interaction - The chat input command interaction
- */
-export async function execute(
+async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
-  try {
-    const playtimeManager = await getService(Services.PLAYTIME_MANAGER_SERVICE);
+  const playtimeManager = await getService(Services.PLAYTIME_MANAGER_SERVICE);
 
-    const serverIds = getAllServerIds();
-    let totalOnline = 0;
-    const serverLines: string[] = [];
+  let totalOnline = 0;
+  const serverLines: string[] = [];
 
-    for (const serverId of serverIds) {
-      const serverConfig = getServerById(serverId);
-      const playtimeService = playtimeManager.getService(serverId);
+  for (const serverConfig of SERVERS) {
+    const playtimeService = playtimeManager.getService(serverConfig.id);
 
-      if (!serverConfig || !playtimeService) continue;
+    if (!playtimeService) continue;
 
-      const state = playtimeService.getServerState();
-      const onlineCount = playtimeService.getOnlineCount();
-      totalOnline += onlineCount;
+    const state = playtimeService.getServerState();
+    const onlineCount = playtimeService.getOnlineCount();
+    totalOnline += onlineCount;
 
-      const statusIcon = state === ServerState.ONLINE ? "🟢" : "🔴";
-      const playerText =
-        state === ServerState.ONLINE
-          ? `${onlineCount}/${serverConfig.maxPlayers} players`
-          : "Offline";
+    const statusIcon = state === ServerState.ONLINE ? "🟢" : "🔴";
+    const playerText =
+      state === ServerState.ONLINE
+        ? `${onlineCount}/${serverConfig.maxPlayers} players`
+        : "Offline";
 
-      serverLines.push(
-        `${statusIcon} **${serverConfig.name}** - ${playerText}`,
-      );
-    }
-
-    const description =
-      serverLines.length > 0
-        ? serverLines.join("\n")
-        : "No servers configured.";
-
-    const embed = EmbedPresets.info("Server Status", description)
-      .field(
-        "Total Online",
-        `${totalOnline} player${totalOnline !== 1 ? "s" : ""}`,
-      )
-      .timestamp();
-
-    await interaction.reply({ embeds: [embed.build()] });
-  } catch (error) {
-    logger.error("/status failed:", error);
-
-    await replyError(
-      interaction,
-      "Status Error",
-      "Failed to fetch server status. Please try again.",
-      { ephemeral: false },
-    );
+    serverLines.push(`${statusIcon} **${serverConfig.name}** - ${playerText}`);
   }
+
+  const description =
+    serverLines.length > 0 ? serverLines.join("\n") : "No servers configured.";
+
+  const embed = EmbedPresets.info("Server Status", description)
+    .field("Total Online", formatCount(totalOnline, "player"))
+    .timestamp();
+
+  await interaction.reply({ embeds: [embed.build()] });
 }
+
+export default {
+  data,
+  cooldown,
+  execute,
+} satisfies CommandModule;

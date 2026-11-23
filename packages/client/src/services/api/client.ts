@@ -1,4 +1,4 @@
-import ky, { type KyInstance, type Options } from "ky";
+import ky, { type HTTPError, type KyInstance, type Options } from "ky";
 import {
   getAccessToken,
   retryAfterRefresh,
@@ -6,29 +6,17 @@ import {
 
 interface ApiErrorResponse {
   message?: string;
-  code?: string;
-  [key: string]: unknown;
+  error?: { code?: string };
 }
 
-/**
- * Base API client configuration
- *
- * Features:
- * - Automatic JSON parsing
- * - Request/response interceptors
- * - Authentication header injection (in-memory token)
- * - Automatic 401 → silent refresh → retry
- * - Request timeout (30s default)
- * - Retry on network failures (3 attempts)
- */
+export type ApiError = HTTPError & { code?: string };
+
 class ApiClient {
   private client: KyInstance;
 
   constructor() {
-    const apiUrl = this.getApiUrl();
-
     this.client = ky.create({
-      prefixUrl: apiUrl,
+      prefixUrl: "/",
       timeout: 30000,
       credentials: "include",
       retry: {
@@ -63,10 +51,8 @@ class ApiClient {
               try {
                 const errorBody = await response.json<ApiErrorResponse>();
                 error.message = errorBody.message || error.message;
-                (error as Error & { code?: string }).code = errorBody.code;
-              } catch {
-                // Body is not JSON, use default message
-              }
+                (error as ApiError).code = errorBody.error?.code;
+              } catch {}
             }
 
             if (import.meta.env.DEV) {
@@ -96,33 +82,6 @@ class ApiClient {
     });
   }
 
-  private getApiUrl(): string {
-    const envApiUrl = import.meta.env.VITE_API_URL;
-
-    if (import.meta.env.DEV) {
-      console.log(
-        "[API Client] Development mode: Using Vite proxy for /api routes",
-      );
-      return envApiUrl || "/";
-    }
-
-    if (!envApiUrl) {
-      if (import.meta.env.DEV) {
-        console.warn(
-          "[API Client] Production mode but VITE_API_URL not set. API calls may fail.",
-        );
-      }
-    }
-
-    if (import.meta.env.DEV) {
-      console.log(
-        `[API Client] Production mode: API URL = ${envApiUrl || "not set"}`,
-      );
-    }
-
-    return envApiUrl || "";
-  }
-
   async get<T>(
     endpoint: string,
     params?: Record<string, string | number | boolean>,
@@ -147,72 +106,6 @@ class ApiClient {
       .json<T>();
   }
 
-  async put<T>(
-    endpoint: string,
-    data?: Record<string, unknown>,
-    options?: Options,
-  ): Promise<T> {
-    return this.client
-      .put(endpoint, {
-        json: data,
-        ...options,
-      })
-      .json<T>();
-  }
-
-  async patch<T>(
-    endpoint: string,
-    data?: Record<string, unknown>,
-    options?: Options,
-  ): Promise<T> {
-    return this.client
-      .patch(endpoint, {
-        json: data,
-        ...options,
-      })
-      .json<T>();
-  }
-
-  async delete<T>(
-    endpoint: string,
-    data?: Record<string, unknown>,
-    options?: Options,
-  ): Promise<T> {
-    return this.client
-      .delete(endpoint, {
-        json: data,
-        ...options,
-      })
-      .json<T>();
-  }
-
-  async upload<T>(
-    endpoint: string,
-    file: File | File[],
-    additionalData?: Record<string, string | number | boolean>,
-  ): Promise<T> {
-    const formData = new FormData();
-
-    if (Array.isArray(file)) {
-      file.forEach((f) => formData.append("files", f));
-    } else {
-      formData.append("file", file);
-    }
-
-    if (additionalData) {
-      Object.entries(additionalData).forEach(([key, value]) => {
-        formData.append(key, String(value));
-      });
-    }
-
-    return this.client
-      .post(endpoint, {
-        body: formData,
-      })
-      .json<T>();
-  }
-
-  /** Get raw response: useful for downloads or blobs. */
   async getRaw(
     endpoint: string,
     params?: Record<string, string | number | boolean>,
@@ -246,7 +139,6 @@ class ApiClient {
     );
   }
 
-  /** Get the underlying Ky instance for advanced usage. */
   getClient(): KyInstance {
     return this.client;
   }

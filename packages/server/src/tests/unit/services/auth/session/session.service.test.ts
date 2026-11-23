@@ -3,15 +3,15 @@ import crypto from "node:crypto";
 
 type SessionRow = {
   id: number;
-  discord_id: string;
-  discord_username: string | null;
-  discord_avatar: string | null;
-  token_hash: string;
-  family_id: string;
-  ip_address: string | null;
-  user_agent: string | null;
-  revoked_at: Date | null;
-  expires_at: Date;
+  discordId: string;
+  discordUsername: string | null;
+  discordAvatar: string | null;
+  tokenHash: string;
+  familyId: string;
+  ipAddress: string | null;
+  userAgent: string | null;
+  revokedAt: Date | null;
+  expiresAt: Date;
 };
 
 let rows: SessionRow[];
@@ -38,66 +38,71 @@ vi.mock("@/config", () => ({
 vi.mock("@/db", () => {
   const auth = {
     session: {
-      findByTokenHash: async (tokenHash: string) => {
+      find: async ({ tokenHash }: { tokenHash: string }) => {
         if (failNextFind) {
           failNextFind = false;
           throw new Error("db down");
         }
-        const row = rows.find((r) => r.token_hash === tokenHash);
+        const row = rows.find((r) => r.tokenHash === tokenHash);
         return row ? { ...row } : null;
       },
       revokeById: async (id: number) => {
         const row = rows.find((r) => r.id === id);
         if (row && claimedElsewhere) {
           claimedElsewhere = false;
-          row.revoked_at = new Date();
+          row.revokedAt = new Date();
         }
-        if (!row || row.revoked_at) return false;
-        row.revoked_at = new Date();
+        if (!row || row.revokedAt) return false;
+        row.revokedAt = new Date();
         return true;
       },
-      revokeByFamily: async (familyId: string) => {
+      updateAll: async (
+        updates: { revokedAt: Date },
+        filters: Partial<
+          Record<"familyId" | "tokenHash" | "discordId", string>
+        >,
+      ) => {
+        let count = 0;
         for (const row of rows) {
-          if (row.family_id === familyId && !row.revoked_at) {
-            row.revoked_at = new Date();
-          }
+          if (row.revokedAt) continue;
+          if (filters.familyId && row.familyId !== filters.familyId) continue;
+          if (filters.tokenHash && row.tokenHash !== filters.tokenHash)
+            continue;
+          if (filters.discordId && row.discordId !== filters.discordId)
+            continue;
+          row.revokedAt = updates.revokedAt;
+          count++;
         }
+        return count;
       },
-      revokeByTokenHash: async (tokenHash: string) => {
-        const row = rows.find((r) => r.token_hash === tokenHash);
-        if (row && !row.revoked_at) row.revoked_at = new Date();
-      },
-      revokeAllForUser: async () => {},
-      insertSession: async (data: {
+      create: async (data: {
         discordId: string;
         discordUsername: string | null;
         discordAvatar: string | null;
         tokenHash: string;
-        familyId: string | null;
+        familyId?: string;
         ipAddress: string | null;
         userAgent: string | null;
         expiresAt: Date;
       }) => {
-        const row: SessionRow = {
+        rows.push({
           id: nextId++,
-          discord_id: data.discordId,
-          discord_username: data.discordUsername,
-          discord_avatar: data.discordAvatar,
-          token_hash: data.tokenHash,
-          family_id: data.familyId ?? `family-${nextId}`,
-          ip_address: data.ipAddress,
-          user_agent: data.userAgent,
-          revoked_at: null,
-          expires_at: data.expiresAt,
-        };
-        rows.push(row);
-        return row;
+          discordId: data.discordId,
+          discordUsername: data.discordUsername,
+          discordAvatar: data.discordAvatar,
+          tokenHash: data.tokenHash,
+          familyId: data.familyId ?? `family-${nextId}`,
+          ipAddress: data.ipAddress,
+          userAgent: data.userAgent,
+          revokedAt: null,
+          expiresAt: data.expiresAt,
+        });
       },
-      deleteExpired: async () => 0,
+      deleteAll: async () => 0,
     },
   };
   return {
-    auth,
+    Q: { auth },
     db: {
       inTransaction: async <T>(fn: (tx: { auth: typeof auth }) => Promise<T>) =>
         fn({ auth }),
@@ -125,15 +130,15 @@ function seedSession(
 ): SessionRow {
   const row: SessionRow = {
     id: nextId++,
-    discord_id: "user-1",
-    discord_username: "tester",
-    discord_avatar: null,
-    token_hash: hash(token),
-    family_id: "family-1",
-    ip_address: null,
-    user_agent: null,
-    revoked_at: null,
-    expires_at: new Date(Date.now() + 30 * 86_400_000),
+    discordId: "user-1",
+    discordUsername: "tester",
+    discordAvatar: null,
+    tokenHash: hash(token),
+    familyId: "family-1",
+    ipAddress: null,
+    userAgent: null,
+    revokedAt: null,
+    expiresAt: new Date(Date.now() + 30 * 86_400_000),
     ...overrides,
   };
   rows.push(row);
@@ -161,12 +166,12 @@ describe("SessionService.rotateToken", () => {
     expect(result).not.toBeNull();
     expect(result!.rawToken).not.toBe(tok("valid"));
     expect(result!.discordId).toBe("user-1");
-    expect(seeded.revoked_at).not.toBeNull();
+    expect(seeded.revokedAt).not.toBeNull();
 
-    const successor = rows.find((r) => r.token_hash === hash(result!.rawToken));
+    const successor = rows.find((r) => r.tokenHash === hash(result!.rawToken));
     expect(successor).toBeDefined();
-    expect(successor!.family_id).toBe("family-1");
-    expect(successor!.revoked_at).toBeNull();
+    expect(successor!.familyId).toBe("family-1");
+    expect(successor!.revokedAt).toBeNull();
   });
 
   it("returns null for an unknown token", async () => {
@@ -176,32 +181,32 @@ describe("SessionService.rotateToken", () => {
 
   it("returns null and revokes an expired token", async () => {
     const seeded = seedSession(tok("expired"), {
-      expires_at: new Date(Date.now() - 1000),
+      expiresAt: new Date(Date.now() - 1000),
     });
 
     const result = await sessionService.rotateToken(tok("expired"));
 
     expect(result).toBeNull();
-    expect(seeded.revoked_at).not.toBeNull();
+    expect(seeded.revokedAt).not.toBeNull();
   });
 
   it("revokes the whole family when a revoked token is replayed", async () => {
     seedSession(tok("stolen"), {
-      revoked_at: new Date(),
-      family_id: "family-theft",
+      revokedAt: new Date(),
+      familyId: "family-theft",
     });
     const sibling = seedSession(tok("sibling"), {
-      family_id: "family-theft",
+      familyId: "family-theft",
     });
 
     const result = await sessionService.rotateToken(tok("stolen"));
 
     expect(result).toBeNull();
-    expect(sibling.revoked_at).not.toBeNull();
+    expect(sibling.revokedAt).not.toBeNull();
   });
 
   it("returns the same successor to concurrent rotations of the same token", async () => {
-    seedSession(tok("race"), { family_id: "family-race" });
+    seedSession(tok("race"), { familyId: "family-race" });
 
     const [a, b] = await Promise.all([
       sessionService.rotateToken(tok("race")),
@@ -212,13 +217,13 @@ describe("SessionService.rotateToken", () => {
     expect(b).not.toBeNull();
     expect(a!.rawToken).toBe(b!.rawToken);
     expect(rows).toHaveLength(2);
-    expect(rows.filter((r) => r.revoked_at === null)).toHaveLength(1);
+    expect(rows.filter((r) => r.revokedAt === null)).toHaveLength(1);
   });
 
   it("issues no successor and revokes the family when another process claims the token first", async () => {
-    seedSession(tok("claimed"), { family_id: "family-claimed" });
+    seedSession(tok("claimed"), { familyId: "family-claimed" });
     const sibling = seedSession(tok("claimed-sibling"), {
-      family_id: "family-claimed",
+      familyId: "family-claimed",
     });
     claimedElsewhere = true;
 
@@ -226,11 +231,11 @@ describe("SessionService.rotateToken", () => {
 
     expect(result).toBeNull();
     expect(rows).toHaveLength(2);
-    expect(sibling.revoked_at).not.toBeNull();
+    expect(sibling.revokedAt).not.toBeNull();
   });
 
   it("returns the same successor to a replay within the grace window without revoking the family", async () => {
-    seedSession(tok("grace"), { family_id: "family-grace" });
+    seedSession(tok("grace"), { familyId: "family-grace" });
 
     const first = await sessionService.rotateToken(tok("grace"));
     const replay = await sessionService.rotateToken(tok("grace"));
@@ -240,14 +245,14 @@ describe("SessionService.rotateToken", () => {
     expect(replay!.rawToken).toBe(first!.rawToken);
     expect(rows).toHaveLength(2);
 
-    const successor = rows.find((r) => r.token_hash === hash(first!.rawToken));
-    expect(successor!.revoked_at).toBeNull();
+    const successor = rows.find((r) => r.tokenHash === hash(first!.rawToken));
+    expect(successor!.revokedAt).toBeNull();
   });
 
   it("returns null on a grace replay after a logout without treating it as theft", async () => {
-    seedSession(tok("logout"), { family_id: "family-logout" });
+    seedSession(tok("logout"), { familyId: "family-logout" });
     const sibling = seedSession(tok("logout-sibling"), {
-      family_id: "family-logout",
+      familyId: "family-logout",
     });
 
     const first = await sessionService.rotateToken(tok("logout"));
@@ -259,13 +264,13 @@ describe("SessionService.rotateToken", () => {
     const replay = await sessionService.rotateToken(tok("logout"));
 
     expect(replay).toBeNull();
-    expect(sibling.revoked_at).toBeNull();
+    expect(sibling.revokedAt).toBeNull();
     expect(warn).not.toHaveBeenCalled();
     warn.mockRestore();
   });
 
   it("follows the rotation chain when the successor was itself already rotated", async () => {
-    seedSession(tok("chain"), { family_id: "family-chain" });
+    seedSession(tok("chain"), { familyId: "family-chain" });
 
     const first = await sessionService.rotateToken(tok("chain"));
     const second = await sessionService.rotateToken(first!.rawToken);
@@ -277,7 +282,7 @@ describe("SessionService.rotateToken", () => {
   });
 
   it("evicts the cache entry when rotation throws so a retry can succeed", async () => {
-    seedSession(tok("flaky"), { family_id: "family-flaky" });
+    seedSession(tok("flaky"), { familyId: "family-flaky" });
 
     failNextFind = true;
     await expect(sessionService.rotateToken(tok("flaky"))).rejects.toThrow(
@@ -290,7 +295,7 @@ describe("SessionService.rotateToken", () => {
 
   it("treats a replay after the grace window as theft", async () => {
     vi.useFakeTimers();
-    seedSession(tok("late"), { family_id: "family-late" });
+    seedSession(tok("late"), { familyId: "family-late" });
 
     const first = await sessionService.rotateToken(tok("late"));
     expect(first).not.toBeNull();
@@ -300,7 +305,7 @@ describe("SessionService.rotateToken", () => {
     const replay = await sessionService.rotateToken(tok("late"));
 
     expect(replay).toBeNull();
-    const successor = rows.find((r) => r.token_hash === hash(first!.rawToken));
-    expect(successor!.revoked_at).not.toBeNull();
+    const successor = rows.find((r) => r.tokenHash === hash(first!.rawToken));
+    expect(successor!.revokedAt).not.toBeNull();
   });
 });

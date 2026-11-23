@@ -23,21 +23,15 @@ import {
   type PlateColumn,
   type PlateDesign,
 } from "@createrington/shared/team-tag";
-import { fitFontSize } from "@/utils/canvas";
 import {
   W,
   H,
   BG_BOT,
-  AMBER,
-  FOREGROUND,
-  MUTED,
-  TEXT_X,
   registerBrandFonts,
   drawImageCover,
   paintEllipseGradient,
-  paintUrlChip,
-  paintWordmark,
-  wrapText,
+  paintHeadlineCopy,
+  type HeadlineCopy,
 } from "@/utils/og-card";
 import { ASSETS, writeCard } from "./og-shared";
 
@@ -203,6 +197,14 @@ const PILE: readonly PileSpec[] = [
 type Bitmap = { width: number; height: number; data: Uint8ClampedArray };
 type Glyph = { bitmap: Bitmap; x: number; color: number };
 type PlateSheets = { riveted: Bitmap; letters: Bitmap };
+
+const COPY: HeadlineCopy = {
+  lead: "Design",
+  accent: "your party's tag.",
+  sub: "Four letters, your colours, on every member's name in the tab list.",
+  subWidth: 450,
+  url: "createrington.com/team-tag",
+};
 
 async function loadBitmap(file: string): Promise<Bitmap> {
   const img = await loadImage(join(TEAM_TAG_ASSETS, file));
@@ -422,49 +424,6 @@ function shadedPlate(plate: Canvas, shade: number): Canvas {
   return shaded;
 }
 
-async function paintCopy(ctx: SKRSContext2D): Promise<void> {
-  await paintWordmark(ctx);
-
-  const maxTextWidth = 500;
-  ctx.textBaseline = "alphabetic";
-
-  const headFont = (s: number) => `700 ${s}px Outfit`;
-  ctx.letterSpacing = "-1.4px";
-  const headSize = fitFontSize(
-    ctx,
-    "your party's tag.",
-    headFont,
-    [72, 66, 60],
-    maxTextWidth,
-  );
-  const line1Y = 286;
-  const line2Y = line1Y + headSize + 6;
-
-  ctx.font = headFont(headSize);
-  ctx.fillStyle = FOREGROUND;
-  ctx.fillText("Design", TEXT_X, line1Y);
-  ctx.fillStyle = AMBER;
-  ctx.fillText("your party's tag.", TEXT_X, line2Y);
-  ctx.letterSpacing = "0px";
-
-  const subFont = "400 22px Outfit";
-  const subLines = wrapText(
-    ctx,
-    "Four letters, your colours, on every member's name in the tab list.",
-    subFont,
-    450,
-  );
-  ctx.font = subFont;
-  ctx.fillStyle = MUTED;
-  let subY = line2Y + 52;
-  for (const line of subLines) {
-    ctx.fillText(line, TEXT_X, subY);
-    subY += 31;
-  }
-
-  paintUrlChip(ctx, "createrington.com/team-tag", TEXT_X, subY + 4);
-}
-
 async function main(): Promise<void> {
   const outPath = process.argv[2] ?? join(ASSETS, "og", "team-tag.png");
 
@@ -473,7 +432,7 @@ async function main(): Promise<void> {
     await paintBackdrop(ctx);
     paintPileLight(ctx);
     await paintPile(ctx);
-    await paintCopy(ctx);
+    await paintHeadlineCopy(ctx, COPY);
   });
 }
 

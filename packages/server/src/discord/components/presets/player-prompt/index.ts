@@ -1,3 +1,4 @@
+import { CustomIds } from "@/discord/custom-ids";
 import {
   ActionRowBuilder,
   ButtonBuilder,
@@ -9,9 +10,10 @@ import {
   SeparatorBuilder,
   SeparatorSpacingSize,
   TextDisplayBuilder,
+  roleMention,
 } from "discord.js";
 import { assetUrl } from "@/config";
-import { ComponentColors } from "../../colors";
+import { EmbedColors } from "@/discord/embeds/colors";
 import { discordTimestamp, formatSeconds, pluralize } from "@/utils/format";
 import type { TopLevelComponent } from "../../component-builder";
 import type { PlayerPrompt } from "@createrington/shared/db/player_prompt.types";
@@ -70,7 +72,9 @@ function buttonRow(
   state: "open" | "closed",
 ): ActionRowBuilder<ButtonBuilder> {
   const isMulti = prompt.entryMode === "multi";
-  const button = new ButtonBuilder().setCustomId(`prompt:respond:${prompt.id}`);
+  const button = new ButtonBuilder().setCustomId(
+    CustomIds.promptRespond.build({ promptId: prompt.id }),
+  );
 
   if (state === "open") {
     button
@@ -86,24 +90,13 @@ function buttonRow(
   return new ActionRowBuilder<ButtonBuilder>().addComponents(button);
 }
 
-/**
- * Wrap the role mention in Discord spoiler tags so the message reads clean
- * while the ping still fires. Components V2 messages can't carry `content`,
- * so the mention rides along as its own top-level text display above the
- * container, where `content` used to sit.
- */
 function mentionLine(prompt: PlayerPrompt): TextDisplayBuilder[] {
-  return prompt.rolePingId ? [text(`||<@&${prompt.rolePingId}>||`)] : [];
+  return prompt.rolePingId
+    ? [text(`||${roleMention(prompt.rolePingId)}||`)]
+    : [];
 }
 
-/**
- * Components V2 renderings of a player prompt: a gold-striped card while it
- * accepts answers, gray with a disabled button once it closes. Both open with
- * the full-width Createrington woodmark and return the top-level components
- * plus the `IS_COMPONENTS_V2` flag for `messageService.send` / `edit`.
- */
 export const PlayerPromptComponentPresets = {
-  /** The live announcement: question, closing time, entry rules, respond button. */
   active(prompt: PlayerPrompt): ComponentsMessage {
     const meta = [`**Closes** ${discordTimestamp(prompt.endsAt)}`];
     meta.push(
@@ -113,7 +106,7 @@ export const PlayerPromptComponentPresets = {
     );
 
     const container = new ContainerBuilder()
-      .setAccentColor(ComponentColors.Premium)
+      .setAccentColor(EmbedColors.Premium)
       .addMediaGalleryComponents(banner())
       .addTextDisplayComponents(heading(prompt))
       .addSeparatorComponents(divider())
@@ -127,7 +120,6 @@ export const PlayerPromptComponentPresets = {
     };
   },
 
-  /** The post-close card: same question, final tally, disabled button. */
   closed(prompt: PlayerPrompt, totals: PlayerPromptTotals): ComponentsMessage {
     const { entryCount, responderCount } = totals;
     const tally =
@@ -136,7 +128,7 @@ export const PlayerPromptComponentPresets = {
         : `**${entryCount} ${pluralize(entryCount, "response")}** received`;
 
     const container = new ContainerBuilder()
-      .setAccentColor(ComponentColors.Neutral)
+      .setAccentColor(EmbedColors.Neutral)
       .addMediaGalleryComponents(banner())
       .addTextDisplayComponents(heading(prompt, "Closed"))
       .addSeparatorComponents(divider())

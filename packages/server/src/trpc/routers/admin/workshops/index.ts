@@ -7,7 +7,7 @@ import {
   buildPagination,
   id,
   paginationInput,
-  rethrowTrpc,
+  pageOffset,
 } from "@/trpc/utils";
 import { createRateLimit } from "@/trpc/middleware/rate-limit";
 import { workshopService } from "@/services/workshop/workshop.service";
@@ -85,21 +85,17 @@ export const adminWorkshopsRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      try {
-        const workshop = await workshopAdminService.createWorkshop(
-          input,
-          ctx.user.discordId,
-        );
-        await Q.admin.log.action.logAction({
-          ...auditActor(ctx),
-          actionType: "workshop_create",
-          description: `Created workshop "${workshop.name}"`,
-          metadata: { workshopId: workshop.id, slug: workshop.slug },
-        });
-        return workshop;
-      } catch (error) {
-        rethrowTrpc(error);
-      }
+      const workshop = await workshopAdminService.createWorkshop(
+        input,
+        ctx.user.discordId,
+      );
+      await Q.admin.log.action.logAction({
+        ...auditActor(ctx),
+        actionType: "workshop_create",
+        description: `Created workshop "${workshop.name}"`,
+        metadata: { workshopId: workshop.id, slug: workshop.slug },
+      });
+      return workshop;
     }),
 
   update: adminProcedure
@@ -112,21 +108,17 @@ export const adminWorkshopsRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       assertPatchNotEmpty(input.patch);
-      try {
-        const workshop = await workshopAdminService.updateWorkshop(
-          input.workshopId,
-          input.patch,
-        );
-        await Q.admin.log.action.logAction({
-          ...auditActor(ctx),
-          actionType: "workshop_update",
-          description: `Updated workshop "${workshop.name}"`,
-          metadata: { workshopId: workshop.id, patch: input.patch },
-        });
-        return workshop;
-      } catch (error) {
-        rethrowTrpc(error);
-      }
+      const workshop = await workshopAdminService.updateWorkshop(
+        input.workshopId,
+        input.patch,
+      );
+      await Q.admin.log.action.logAction({
+        ...auditActor(ctx),
+        actionType: "workshop_update",
+        description: `Updated workshop "${workshop.name}"`,
+        metadata: { workshopId: workshop.id, patch: input.patch },
+      });
+      return workshop;
     }),
 
   delete: adminProcedure
@@ -136,46 +128,33 @@ export const adminWorkshopsRouter = router({
     })
     .input(z.object({ workshopId: id() }))
     .mutation(async ({ ctx, input }) => {
-      try {
-        const workshop = await workshopAdminService.deleteWorkshop(
-          input.workshopId,
-        );
-        await Q.admin.log.action.logAction({
-          ...auditActor(ctx),
-          actionType: "workshop_delete",
-          description: `Deleted workshop "${workshop.name}"`,
-          metadata: { workshopId: workshop.id, slug: workshop.slug },
-        });
-        return { deleted: true };
-      } catch (error) {
-        rethrowTrpc(error);
-      }
+      const workshop = await workshopAdminService.deleteWorkshop(
+        input.workshopId,
+      );
+      await Q.admin.log.action.logAction({
+        ...auditActor(ctx),
+        actionType: "workshop_delete",
+        description: `Deleted workshop "${workshop.name}"`,
+        metadata: { workshopId: workshop.id, slug: workshop.slug },
+      });
     }),
 
   listMods: adminProcedure
     .meta({ description: "List every mod in a workshop, all statuses" })
     .input(z.object({ workshopId: id() }))
     .query(async ({ input }) => {
-      try {
-        return await workshopModService.getWorkshopMods(input.workshopId, {
-          includeHidden: true,
-        });
-      } catch (error) {
-        rethrowTrpc(error);
-      }
+      return await workshopModService.getWorkshopMods(input.workshopId, {
+        includeHidden: true,
+      });
     }),
 
   getMod: adminProcedure
     .meta({ description: "Get a mod with its full project detail" })
     .input(z.object({ workshopModId: id() }))
     .query(async ({ input }) => {
-      try {
-        return await workshopModService.getModDetail(input.workshopModId, {
-          includeHidden: true,
-        });
-      } catch (error) {
-        rethrowTrpc(error);
-      }
+      return await workshopModService.getModDetail(input.workshopModId, {
+        includeHidden: true,
+      });
     }),
 
   searchProjects: adminProcedure
@@ -192,15 +171,11 @@ export const adminWorkshopsRouter = router({
       }),
     )
     .query(async ({ input }) => {
-      try {
-        return await workshopSuggestionService.searchProjects(
-          input.workshopId,
-          input.query,
-          { classId: input.classId },
-        );
-      } catch (error) {
-        rethrowTrpc(error);
-      }
+      return await workshopSuggestionService.searchProjects(
+        input.workshopId,
+        input.query,
+        { classId: input.classId },
+      );
     }),
 
   reviewMod: adminProcedure
@@ -227,18 +202,14 @@ export const adminWorkshopsRouter = router({
         }),
     )
     .mutation(async ({ ctx, input }) => {
-      try {
-        const mod = await workshopReviewService.reviewMod(
-          input.workshopModId,
-          input.action,
-          ctx.user.discordId,
-          { reason: input.reason, note: input.note },
-        );
-        await logModReview(auditActor(ctx), input, mod);
-        return mod;
-      } catch (error) {
-        rethrowTrpc(error);
-      }
+      const mod = await workshopReviewService.reviewMod(
+        input.workshopModId,
+        input.action,
+        ctx.user.discordId,
+        { reason: input.reason, note: input.note },
+      );
+      await logModReview(auditActor(ctx), input, mod);
+      return mod;
     }),
 
   setProjectEnvironment: adminProcedure
@@ -253,20 +224,12 @@ export const adminWorkshopsRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      try {
-        const project = await workshopReviewService.setProjectEnvironment(
-          input.curseforgeProjectId,
-          input.environment,
-        );
-        await logProjectEnvironment(
-          auditActor(ctx),
-          project,
-          input.environment,
-        );
-        return project;
-      } catch (error) {
-        rethrowTrpc(error);
-      }
+      const project = await workshopReviewService.setProjectEnvironment(
+        input.curseforgeProjectId,
+        input.environment,
+      );
+      await logProjectEnvironment(auditActor(ctx), project, input.environment);
+      return project;
     }),
 
   addMods: adminProcedure
@@ -282,26 +245,22 @@ export const adminWorkshopsRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      try {
-        const mods = await workshopReviewService.addModsAsAdmin(
-          input.workshopId,
-          input.projectIds,
-          ctx.user.discordId,
-          input.note,
-        );
-        await Q.admin.log.action.logAction({
-          ...auditActor(ctx),
-          actionType: "workshop_mods_admin_add",
-          description: `Added ${mods.length} mod(s) to workshop #${input.workshopId}`,
-          metadata: {
-            workshopId: input.workshopId,
-            projectIds: input.projectIds,
-          },
-        });
-        return mods;
-      } catch (error) {
-        rethrowTrpc(error);
-      }
+      const mods = await workshopReviewService.addModsAsAdmin(
+        input.workshopId,
+        input.projectIds,
+        ctx.user.discordId,
+        input.note,
+      );
+      await Q.admin.log.action.logAction({
+        ...auditActor(ctx),
+        actionType: "workshop_mods_admin_add",
+        description: `Added ${mods.length} mod(s) to workshop #${input.workshopId}`,
+        metadata: {
+          workshopId: input.workshopId,
+          projectIds: input.projectIds,
+        },
+      });
+      return mods;
     }),
 
   listForumChannels: adminProcedure
@@ -311,37 +270,25 @@ export const adminWorkshopsRouter = router({
   listGameVersions: adminProcedure
     .meta({ description: "Minecraft versions a workshop can target" })
     .query(async () => {
-      try {
-        return await getMinecraftVersions();
-      } catch (error) {
-        rethrowTrpc(error);
-      }
+      return await getMinecraftVersions();
     }),
 
   listPackMods: adminProcedure
     .meta({ description: "The published pack's contents" })
     .input(z.object({ workshopId: id() }))
     .query(async ({ input }) => {
-      try {
-        return await workshopService.getPackMods(input.workshopId);
-      } catch (error) {
-        rethrowTrpc(error);
-      }
+      return await workshopService.getPackMods(input.workshopId);
     }),
 
-  getAttention: adminProcedure
+  attention: adminProcedure
     .meta({
       description:
         "Contradictions between the workshop and the published pack that need an admin decision",
     })
     .input(z.object({ workshopId: id() }))
     .query(async ({ input }) => {
-      try {
-        const workshop = await workshopService.getWorkshop(input.workshopId);
-        return await modpackAttentionService.getWorkshopAttention(workshop);
-      } catch (error) {
-        rethrowTrpc(error);
-      }
+      const workshop = await workshopService.getWorkshop(input.workshopId);
+      return await modpackAttentionService.getWorkshopAttention(workshop);
     }),
 
   removeDroppedMember: adminProcedure
@@ -351,29 +298,24 @@ export const adminWorkshopsRouter = router({
     })
     .input(z.object({ workshopId: id(), modpackModId: id() }))
     .mutation(async ({ ctx, input }) => {
-      try {
-        const workshop = await workshopService.getWorkshop(input.workshopId);
-        const result = await modpackAttentionService.removeDroppedMember(
-          workshop,
-          input.modpackModId,
-          ctx.user.discordId,
-        );
-        await Q.admin.log.action.logAction({
-          ...auditActor(ctx),
-          actionType: "workshop_pack_member_remove",
-          description: `Removed dropped pack member "${result.projectName}" from modpack #${result.member.modpackId}`,
-          metadata: {
-            workshopId: workshop.id,
-            modpackId: result.member.modpackId,
-            modpackModId: result.member.id,
-            curseforgeProjectId: result.member.curseforgeProjectId,
-            workshopModId: result.mod?.id ?? null,
-          },
-        });
-        return { removed: true };
-      } catch (error) {
-        rethrowTrpc(error);
-      }
+      const workshop = await workshopService.getWorkshop(input.workshopId);
+      const result = await modpackAttentionService.removeDroppedMember(
+        workshop,
+        input.modpackModId,
+        ctx.user.discordId,
+      );
+      await Q.admin.log.action.logAction({
+        ...auditActor(ctx),
+        actionType: "workshop_pack_member_remove",
+        description: `Removed dropped pack member "${result.projectName}" from modpack #${result.member.modpackId}`,
+        metadata: {
+          workshopId: workshop.id,
+          modpackId: result.member.modpackId,
+          modpackModId: result.member.id,
+          curseforgeProjectId: result.member.curseforgeProjectId,
+          workshopModId: result.mod?.id ?? null,
+        },
+      });
     }),
 
   listDependencies: adminProcedure
@@ -383,13 +325,7 @@ export const adminWorkshopsRouter = router({
     })
     .input(z.object({ workshopId: id() }))
     .query(async ({ input }) => {
-      try {
-        return await workshopModService.getWorkshopDependencies(
-          input.workshopId,
-        );
-      } catch (error) {
-        rethrowTrpc(error);
-      }
+      return await workshopModService.getWorkshopDependencies(input.workshopId);
     }),
 
   listEvents: adminProcedure
@@ -406,22 +342,18 @@ export const adminWorkshopsRouter = router({
       }),
     )
     .query(async ({ input }) => {
-      try {
-        const { events, total } = await workshopService.getWorkshopEvents(
-          input.workshopId,
-          {
-            eventType: input.eventType,
-            search: input.search || undefined,
-            limit: input.limit,
-            offset: input.page * input.limit,
-          },
-        );
-        return {
-          events,
-          pagination: buildPagination(input.page, input.limit, total),
-        };
-      } catch (error) {
-        rethrowTrpc(error);
-      }
+      const { rows, total } = await workshopService.getWorkshopEvents(
+        input.workshopId,
+        {
+          eventType: input.eventType,
+          search: input.search || undefined,
+          limit: input.limit,
+          offset: pageOffset(input),
+        },
+      );
+      return {
+        items: rows,
+        pagination: buildPagination(input.page, input.limit, total),
+      };
     }),
 });

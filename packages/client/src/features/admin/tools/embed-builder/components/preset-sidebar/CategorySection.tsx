@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { PresetItem } from "./PresetItem";
 import { SkeletonList } from "./SkeletonList";
+import type { PresetRow } from "@/features/admin/tools/embed-builder/preset-row";
 
 interface CategorySectionProps {
   categoryId: number | "uncategorized";
@@ -25,19 +26,9 @@ interface CategorySectionProps {
   activePresetId: number | undefined;
   categories: { id: number; name: string }[];
   guardUnsaved: (action: () => void) => void;
-  onLoadPreset: (preset: {
-    id: number;
-    name: string;
-    data: unknown;
-    categoryId?: number | null;
-  }) => void;
+  onLoadPreset: (preset: PresetRow) => void;
   onDeletePreset: (id: number, name: string) => void;
-  onDuplicatePreset: (preset: {
-    id: number;
-    name: string;
-    data: unknown;
-    categoryId?: number | null;
-  }) => void;
+  onDuplicatePreset: (preset: PresetRow) => void;
   onMovePreset: (presetId: number, categoryId: number | null) => void;
   onRenameCategory?: () => void;
   onDeleteCategory?: () => void;
@@ -66,7 +57,7 @@ export function CategorySection({
       { enabled: isOpen },
     ),
   );
-  const presets = presetsQuery.data?.presets ?? [];
+  const presets = presetsQuery.data?.items ?? [];
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>

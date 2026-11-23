@@ -1,20 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
+import { skipToken, useMutation, useQuery } from "@tanstack/react-query";
 import { useLocation } from "react-router";
-import {
-  endSession as endSessionRequest,
-  fetchChatMessages,
-  fetchSessionStatus,
-  runStream,
-  sendChatMessage,
-  startSession,
-} from "../api";
-import type { ChatActionRecord } from "../actions";
-import {
-  isAdminChatModel,
-  type AdminChatModel,
-  type ChatMessage,
-  type PageContext,
-} from "../types";
+import type {
+  AdminChatModel,
+  ChatActionRecord,
+  ChatMessage,
+} from "@createrington/shared/admin-chat";
+import { useToastActions } from "@/hooks/use-toast";
+import { queryClient, trpc } from "@/lib/trpc";
+import { runStream } from "../stream";
+import type { PageContext } from "../types";
 
 interface UseAdminChatSessionArgs {
   isAdmin: boolean;
@@ -24,40 +19,165 @@ interface UseAdminChatSessionArgs {
 interface UseAdminChatSessionResult {
   sessionId: number | null;
   sessionActive: boolean;
-  /**
-   * The model the active (or last) session is pinned to. `null` for legacy
-   * sessions pinned to a model the picker no longer offers, or created before
-   * the picker landed; we don't surface those as an explicit value.
-   */
   activeModel: AdminChatModel | null;
   messages: ChatMessage[];
   starting: boolean;
   sending: boolean;
   awaitingReply: boolean;
-  start: (prefillMessage?: string, model?: AdminChatModel) => Promise<void>;
+  start: (prefillMessage?: string) => Promise<void>;
   send: (message: string) => Promise<void>;
   end: () => Promise<void>;
 }
 
-/**
- * Encapsulates the admin-chat session lifecycle: feature-flag/session
- * bootstrap, history load, SSE subscription, optimistic send, and
- * end-session. Keeps AdminChat.tsx a thin shell.
- */
+const NO_MESSAGES: ChatMessage[] = [];
+
+function sessionKey() {
+  return trpc.admin.chat.sessions.current.queryKey();
+}
+
+function transcriptKey(sessionId: number) {
+  return trpc.admin.chat.messages.list.queryKey({ sessionId });
+}
+
+function setSessionActive(sessionId: number, active: boolean): void {
+  queryClient.setQueryData(sessionKey(), (prev) =>
+    prev && prev.id === sessionId ? { ...prev, active } : prev,
+  );
+}
+
+function updateMessages(
+  sessionId: number,
+  update: (prev: ChatMessage[]) => ChatMessage[],
+): void {
+  queryClient.setQueryData(transcriptKey(sessionId), (prev) => ({
+    sessionActive: prev?.sessionActive ?? true,
+    messages: update(prev?.messages ?? []),
+  }));
+}
+
+function hasAssistantReply(messages: ChatMessage[]): boolean {
+  return messages.some((m) => m.role === "assistant" && m.content.length > 0);
+}
+
+function optimisticUserMessage(content: string): ChatMessage {
+  return {
+    id: -Date.now(),
+    role: "user",
+    content,
+    createdAt: new Date().toISOString(),
+  };
+}
+
+function mergeMessages(
+  prev: ChatMessage[],
+  incoming: ChatMessage[],
+): ChatMessage[] {
+  if (incoming.length === 0) return prev;
+  const byId = new Map<number, ChatMessage>(
+    prev.map((m) => [m.id, m] as const),
+  );
+  for (const m of incoming) {
+    const prior = byId.get(m.id);
+    byId.set(
+      m.id,
+      !m.actions && prior?.actions ? { ...m, actions: prior.actions } : m,
+    );
+  }
+  const incomingUserContent = new Set(
+    incoming.filter((m) => m.role === "user").map((m) => m.content),
+  );
+  const merged = Array.from(byId.values()).filter(
+    (m) =>
+      !(m.id < 0 && m.role === "user" && incomingUserContent.has(m.content)),
+  );
+  merged.sort((a, b) => {
+    const aOpt = a.id < 0;
+    const bOpt = b.id < 0;
+    if (aOpt !== bOpt) return aOpt ? 1 : -1;
+    if (aOpt) return b.id - a.id;
+    return a.id - b.id;
+  });
+  return merged;
+}
+
+function attachAction(
+  prev: ChatMessage[],
+  record: ChatActionRecord,
+): ChatMessage[] {
+  let changed = false;
+  const next = prev.map((m) => {
+    if (m.id !== record.chatMessageId) return m;
+    const existing = m.actions ?? [];
+    if (existing.some((a) => a.id === record.id)) return m;
+    changed = true;
+    return { ...m, actions: [...existing, record] };
+  });
+  return changed ? next : prev;
+}
+
 export function useAdminChatSession({
   isAdmin,
   open,
 }: UseAdminChatSessionArgs): UseAdminChatSessionResult {
   const location = useLocation();
-  const [sessionId, setSessionId] = useState<number | null>(null);
-  const [sessionActive, setSessionActive] = useState(false);
-  const [activeModel, setActiveModel] = useState<AdminChatModel | null>(null);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [starting, setStarting] = useState(false);
-  const [sending, setSending] = useState(false);
+  const toast = useToastActions();
   const [awaitingReply, setAwaitingReply] = useState(false);
 
-  /** Snapshot of the admin's current page, sent with every start/send. */
+  const { mutateAsync: startSession, isPending: starting } = useMutation(
+    trpc.admin.chat.sessions.start.mutationOptions(),
+  );
+  const { mutateAsync: sendMessage, isPending: sending } = useMutation(
+    trpc.admin.chat.messages.send.mutationOptions(),
+  );
+  const { mutateAsync: endSession } = useMutation(
+    trpc.admin.chat.sessions.end.mutationOptions(),
+  );
+
+  const sessionQuery = useQuery(
+    trpc.admin.chat.sessions.current.queryOptions(undefined, {
+      enabled: open && isAdmin,
+      staleTime: 0,
+    }),
+  );
+  const sessionId = sessionQuery.data?.id ?? null;
+
+  const transcriptOptions = trpc.admin.chat.messages.list.queryOptions(
+    sessionId !== null ? { sessionId } : skipToken,
+    { enabled: open, staleTime: 0 },
+  );
+  const fetchTranscript = transcriptOptions.queryFn;
+  const historyQuery = useQuery({
+    ...transcriptOptions,
+    queryFn:
+      sessionId === null || typeof fetchTranscript !== "function"
+        ? skipToken
+        : async (context) => {
+            const data = await fetchTranscript(context);
+            setSessionActive(sessionId, data.sessionActive);
+            if (hasAssistantReply(data.messages)) setAwaitingReply(false);
+            return {
+              ...data,
+              messages: mergeMessages(
+                queryClient.getQueryData(transcriptKey(sessionId))?.messages ??
+                  [],
+                data.messages,
+              ),
+            };
+          },
+  });
+
+  useEffect(() => {
+    if (sessionQuery.error) {
+      toast.error("Couldn't load your assistant session");
+    }
+  }, [sessionQuery.error, toast]);
+
+  useEffect(() => {
+    if (historyQuery.error) {
+      toast.error("Couldn't load the chat history");
+    }
+  }, [historyQuery.error, toast]);
+
   const pageContext = useCallback(
     (type: PageContext["type"]): PageContext => ({
       type,
@@ -72,246 +192,111 @@ export function useAdminChatSession({
     [location.pathname, location.search],
   );
 
-  // Check for existing session on drawer open
   useEffect(() => {
-    if (!open || !isAdmin) return;
-    fetchSessionStatus()
-      .then((data) => {
-        const nextId = data.active ? data.sessionId : data.lastSessionId;
-        if (!nextId) return;
-        // Only tear down message state when the session ID is actually
-        // changing: reopening the drawer on the same session would
-        // otherwise flicker between empty → messages as the stream
-        // refills.
-        setSessionId((prev) => {
-          if (prev !== nextId) setMessages([]);
-          return nextId;
-        });
-        setSessionActive(Boolean(data.active));
-        const reportedModel = data.active ? data.model : data.lastSessionModel;
-        setActiveModel(isAdminChatModel(reportedModel) ? reportedModel : null);
-      })
-      .catch(console.error);
-  }, [open, isAdmin]);
-
-  /**
-   * Merge one or a batch of incoming messages into state by id. Streaming
-   * rows update in place (same id, growing content); new rows append.
-   * Also swaps out optimistic user messages (id < 0) once the server's
-   * copy of the same content arrives.
-   */
-  const mergeMessages = useCallback((incoming: ChatMessage[]): void => {
-    if (incoming.length === 0) return;
-    setMessages((prev) => {
-      const byId = new Map<number, ChatMessage>(
-        prev.map((m) => [m.id, m] as const),
-      );
-      for (const m of incoming) {
-        // SSE message events don't include the actions relation (Prisma
-        // update() returns only scalar fields); history load does. When
-        // overwriting a message, preserve whatever actions we had if the
-        // incoming copy doesn't carry its own.
-        const prior = byId.get(m.id);
-        const next: ChatMessage = m.actions
-          ? m
-          : prior?.actions
-            ? { ...m, actions: prior.actions }
-            : m;
-        byId.set(m.id, next);
-      }
-      const incomingUserContent = new Set(
-        incoming.filter((m) => m.role === "user").map((m) => m.content),
-      );
-      const merged = Array.from(byId.values()).filter(
-        (m) =>
-          !(
-            m.id < 0 &&
-            m.role === "user" &&
-            incomingUserContent.has(m.content)
-          ),
-      );
-      merged.sort((a, b) => {
-        const aOpt = a.id < 0;
-        const bOpt = b.id < 0;
-        if (aOpt !== bOpt) return aOpt ? 1 : -1;
-        if (aOpt) return b.id - a.id;
-        return a.id - b.id;
-      });
-      return merged;
-    });
-    // Any assistant content arriving clears the awaiting flag.
-    if (incoming.some((m) => m.role === "assistant" && m.content.length > 0)) {
-      setAwaitingReply(false);
-    }
-  }, []);
-
-  /**
-   * Append a live MCP-tool action record to its parent message (by
-   * chatMessageId). Dedupes by record id so an SSE event that races a
-   * history refetch doesn't double-render a card.
-   */
-  const attachAction = useCallback((record: ChatActionRecord): void => {
-    setMessages((prev) => {
-      let changed = false;
-      const next = prev.map((m) => {
-        if (m.id !== record.chatMessageId) return m;
-        const existing = m.actions ?? [];
-        if (existing.some((a) => a.id === record.id)) return m;
-        changed = true;
-        return { ...m, actions: [...existing, record] };
-      });
-      return changed ? next : prev;
-    });
-  }, []);
-
-  // Load history once + open the SSE stream.
-  useEffect(() => {
-    if (!sessionId || !open) return;
+    if (sessionId === null || !open) return;
     const abort = new AbortController();
-    let cancelled = false;
-
-    void (async (): Promise<void> => {
-      try {
-        const data = await fetchChatMessages(sessionId);
-        if (cancelled) return;
-        if (data.messages) mergeMessages(data.messages);
-        if (data.sessionActive !== undefined) {
-          setSessionActive(data.sessionActive);
-        }
-      } catch {
-        // Non-fatal: live stream will still surface new messages.
-      }
-
-      if (cancelled) return;
-      try {
-        await runStream(
-          sessionId,
-          {
-            onMessage: (m) => mergeMessages([m]),
-            onAction: (record) => attachAction(record),
-            onSessionEnded: () => setSessionActive(false),
-          },
-          abort.signal,
-        );
-      } catch (error) {
-        if ((error as { name?: string }).name !== "AbortError") {
-          console.error("[admin-chat] stream error:", error);
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-      abort.abort();
+    const lostConnection = (): void => {
+      toast.error("Lost connection to the assistant");
     };
-  }, [sessionId, open, mergeMessages, attachAction]);
+
+    runStream(
+      sessionId,
+      {
+        onMessage: (m) => {
+          updateMessages(sessionId, (prev) => mergeMessages(prev, [m]));
+          if (hasAssistantReply([m])) setAwaitingReply(false);
+        },
+        onAction: (record) =>
+          updateMessages(sessionId, (prev) => attachAction(prev, record)),
+        onSessionEnded: () => setSessionActive(sessionId, false),
+        onError: lostConnection,
+      },
+      abort.signal,
+    ).catch((error: unknown) => {
+      if ((error as { name?: string }).name !== "AbortError") {
+        lostConnection();
+      }
+    });
+
+    return () => abort.abort();
+  }, [sessionId, open, toast]);
 
   const start = useCallback(
-    async (prefillMessage?: string, model?: AdminChatModel): Promise<void> => {
+    async (prefillMessage?: string): Promise<void> => {
       if (!isAdmin) return;
-      setStarting(true);
       try {
-        const data = await startSession({
+        const { sessionId: id, model } = await startSession({
           pageContext: pageContext("admin-chat"),
-          ...(model && { model }),
         });
-        if (!data.sessionId) return;
-        setSessionId(data.sessionId);
-        setSessionActive(true);
-        setActiveModel(isAdminChatModel(data.model) ? data.model : null);
-        setMessages([]);
-        if (prefillMessage) {
-          // Optimistic user bubble + fire-and-forget send. The new SSE
-          // stream opened by the sessionId effect will pick up the reply.
-          const trimmed = prefillMessage.trim();
-          if (trimmed) {
-            const optimisticId = -Date.now();
-            setMessages([
-              {
-                id: optimisticId,
-                role: "user",
-                content: trimmed,
-                createdAt: new Date().toISOString(),
-              },
-            ]);
-            setAwaitingReply(true);
-            void sendChatMessage({
-              sessionId: data.sessionId,
-              message: trimmed,
-              pageContext: pageContext("admin-chat"),
-            }).catch((err) => {
-              console.error("[admin-chat] Failed to send prefill:", err);
-              setAwaitingReply(false);
-            });
-          }
-        }
-      } catch (error) {
-        console.error("[admin-chat] Failed to start session:", error);
-      } finally {
-        setStarting(false);
+        const prefill = prefillMessage?.trim();
+        const optimistic = prefill ? optimisticUserMessage(prefill) : null;
+        await queryClient.cancelQueries({ queryKey: sessionKey() });
+        queryClient.setQueryData(transcriptKey(id), {
+          messages: optimistic ? [optimistic] : [],
+          sessionActive: true,
+        });
+        queryClient.setQueryData(sessionKey(), { id, active: true, model });
+        if (!optimistic) return;
+        setAwaitingReply(true);
+        sendMessage({
+          sessionId: id,
+          message: optimistic.content,
+          pageContext: pageContext("admin-chat"),
+        }).catch(() => {
+          toast.error("Couldn't send your message");
+          updateMessages(id, (prev) =>
+            prev.filter((m) => m.id !== optimistic.id),
+          );
+          setAwaitingReply(false);
+        });
+      } catch {
+        toast.error("Couldn't start a new chat");
       }
     },
-    [isAdmin, pageContext],
+    [isAdmin, pageContext, startSession, sendMessage, toast],
   );
 
   const send = useCallback(
     async (message: string): Promise<void> => {
       const trimmed = message.trim();
-      if (!trimmed || !sessionId) return;
-      setSending(true);
-      // Add the optimistic bubble BEFORE the POST. With SSE the real
-      // message can arrive before the POST's await resolves; if we added
-      // optimistic after, the SSE dedup pass has nothing to dedup against
-      // and both end up in state. Negative id so it can't collide with a
-      // DB sequence; mergeMessages swaps it out when the server copy
-      // arrives with the same content.
-      const optimisticId = -Date.now();
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: optimisticId,
-          role: "user",
-          content: trimmed,
-          createdAt: new Date().toISOString(),
-        },
-      ]);
+      if (!trimmed || sessionId === null) return;
+      const optimistic = optimisticUserMessage(trimmed);
+      updateMessages(sessionId, (prev) => [...prev, optimistic]);
       setAwaitingReply(true);
       try {
-        await sendChatMessage({
+        await sendMessage({
           sessionId,
           message: trimmed,
           pageContext: pageContext(
             location.pathname.startsWith("/admin") ? "admin" : "page",
           ),
         });
-      } catch (error) {
-        console.error("[admin-chat] Failed to send message:", error);
-        // POST failed: drop the optimistic so the admin doesn't see a
-        // ghost message that never actually reached the backend.
-        setMessages((prev) => prev.filter((m) => m.id !== optimisticId));
+      } catch {
+        toast.error("Couldn't send your message");
+        updateMessages(sessionId, (prev) =>
+          prev.filter((m) => m.id !== optimistic.id),
+        );
         setAwaitingReply(false);
-      } finally {
-        setSending(false);
       }
     },
-    [sessionId, pageContext, location.pathname],
+    [sessionId, pageContext, location.pathname, sendMessage, toast],
   );
 
   const end = useCallback(async (): Promise<void> => {
-    if (!sessionId) return;
+    if (sessionId === null) return;
     try {
-      await endSessionRequest(sessionId);
-      setSessionActive(false);
-    } catch (error) {
-      console.error("[admin-chat] Failed to end session:", error);
+      await endSession({ sessionId });
+      setSessionActive(sessionId, false);
+    } catch {
+      toast.error("Couldn't end the chat");
     }
-  }, [sessionId]);
+  }, [sessionId, endSession, toast]);
 
   return {
     sessionId,
-    sessionActive,
-    activeModel,
-    messages,
+    sessionActive: sessionQuery.data?.active ?? false,
+    activeModel: sessionQuery.data?.model ?? null,
+    messages: historyQuery.data?.messages ?? NO_MESSAGES,
     starting,
     sending,
     awaitingReply,

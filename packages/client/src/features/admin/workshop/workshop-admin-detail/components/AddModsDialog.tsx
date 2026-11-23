@@ -14,7 +14,6 @@ import { Badge } from "@/components/ui/badge";
 import { FormDialog } from "@/components/form-dialog";
 import { SearchInput } from "@/components/search-input";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { ProjectThumb } from "@/features/workshop/components/ProjectThumb";
 import {
   MOD_STATUS_STYLES,
@@ -22,6 +21,8 @@ import {
   projectKindLabel,
 } from "@/features/workshop/format";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { pluralize } from "@/lib/format";
+import { Field, FieldLabel } from "@/components/ui/field";
 
 interface SelectedProject {
   id: number;
@@ -72,7 +73,7 @@ export function AddModsDialog({
     trpc.admin.workshops.addMods.mutationOptions(
       useMutationToast({
         success: (mods) =>
-          `Added ${mods.length} project${mods.length !== 1 ? "s" : ""} as approved`,
+          `Added ${pluralize(mods.length, "project")} as approved`,
         onSuccess: () => {
           onAdded();
           setSelected([]);
@@ -285,8 +286,8 @@ export function AddModsDialog({
           )}
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="add-mods-note">Note (Optional)</Label>
+      <Field>
+        <FieldLabel htmlFor="add-mods-note">Note (Optional)</FieldLabel>
         <Input
           id="add-mods-note"
           placeholder="Why these? Shown to players on every project in this add."
@@ -299,7 +300,7 @@ export function AddModsDialog({
             Give it at least 10 characters, or leave it empty.
           </p>
         )}
-      </div>
+      </Field>
     </FormDialog>
   );
 }

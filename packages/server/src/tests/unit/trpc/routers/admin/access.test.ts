@@ -45,7 +45,7 @@ vi.mock("@/services/auth/admin-status/admin-status.service", () => ({
 import { TRPCError } from "@trpc/server";
 import { AuthRole, type JWTPayload } from "@createrington/shared/auth";
 import { adminRouter } from "@/trpc/routers/admin";
-import type { Context } from "@/trpc/context";
+import { testContext } from "@/tests/helpers/trpc";
 
 type Callable = (input?: unknown) => Promise<unknown>;
 
@@ -91,11 +91,7 @@ const CALLERS = [
 ] as const;
 
 function procedureAt(user: JWTPayload | null, path: string): Callable {
-  const caller: unknown = adminRouter.createCaller({
-    user,
-    service: null,
-    ip: "127.0.0.1",
-  } satisfies Context);
+  const caller: unknown = adminRouter.createCaller(testContext(user));
   return path
     .split(".")
     .reduce(
@@ -123,7 +119,7 @@ it("walks the whole admin router", () => {
       "refetchDiscordEntities",
       "players.bans.issueTemporary",
       "players.balance.adjust",
-      "servers.toggleMaintenance",
+      "servers.maintenance.toggle",
     ]),
   );
 });

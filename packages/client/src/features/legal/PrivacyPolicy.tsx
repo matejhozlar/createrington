@@ -1,10 +1,8 @@
-import React from "react";
-import { NavLink } from "react-router";
-import { PageHeader } from "@/components/page-header";
-import { Separator } from "@/components/ui/separator";
-import { CONTACT_EMAIL, DISCORD_INVITE_URL } from "@/lib/external-urls";
+import { Link } from "react-router";
+import { LegalPage, type LegalSection } from "./LegalPage";
+import { CONTACT_EMAIL, DISCORD_INVITE_URL } from "@/lib/externalUrls";
 
-const sections = [
+const SECTIONS: LegalSection[] = [
   {
     title: "1. Data We Collect",
     content: (
@@ -241,9 +239,13 @@ const sections = [
           request, we will remove your personal data from our systems within a
           reasonable timeframe.
         </p>
-        {/* TODO: Add link to data deletion request form once implemented */}
         <p className="mt-2">
-          To request data deletion, contact us at{" "}
+          You can delete your account and your personal data yourself from your{" "}
+          <Link to="/settings" className="text-primary hover:underline">
+            Settings
+          </Link>{" "}
+          (this also removes you from our Discord server). You can also ask us
+          to do it by contacting us at{" "}
           <a
             href={`mailto:${CONTACT_EMAIL}`}
             className="text-primary hover:underline"
@@ -288,8 +290,13 @@ const sections = [
           </li>
         </ul>
         <p className="mt-2">
-          To exercise any of these rights, contact us using the information
-          below.
+          You can export a copy of your data or delete your account yourself
+          from your{" "}
+          <Link to="/settings" className="text-primary hover:underline">
+            Settings
+          </Link>
+          . To exercise any of these rights otherwise, contact us using the
+          information below.
         </p>
       </>
     ),
@@ -333,50 +340,12 @@ const sections = [
 
 export function PrivacyPolicy() {
   return (
-    <div>
-      <PageHeader
-        title="Privacy Policy"
-        description="How we collect, use, and protect your personal data."
-        imageSrc="/assets/hero/dark-warehouse.webp"
-      />
-
-      <section className="pb-12 md:py-16 px-5 md:px-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="max-w-5xl">
-            <p className="text-sm text-muted-foreground mb-8">
-              Effective date: September 9, 2026
-            </p>
-
-            <div className="flex flex-col gap-6">
-              {sections.map((section, index) => (
-                <React.Fragment key={section.title}>
-                  {index > 0 ? <Separator className="my-2" /> : null}
-
-                  <div>
-                    <h2 className="text-foreground text-xl md:text-2xl font-semibold mb-3">
-                      {section.title}
-                    </h2>
-
-                    <div className="text-muted-foreground text-base/7">
-                      {section.content}
-                    </div>
-                  </div>
-                </React.Fragment>
-              ))}
-            </div>
-
-            <Separator className="my-6" />
-
-            <p className="text-sm text-muted-foreground">
-              Please also review our{" "}
-              <NavLink to="/terms" className="text-primary hover:underline">
-                Terms of Service
-              </NavLink>
-              .
-            </p>
-          </div>
-        </div>
-      </section>
-    </div>
+    <LegalPage
+      title="Privacy Policy"
+      description="How we collect, use, and protect your personal data."
+      effectiveDate="November 23, 2026"
+      sections={SECTIONS}
+      related={{ to: "/terms", label: "Terms of Service" }}
+    />
   );
 }

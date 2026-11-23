@@ -1,60 +1,47 @@
-import { useState } from "react";
+import { ADMIN_REASON_MAX_LENGTH } from "@createrington/shared/admin-reason";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { trpc, queryClient } from "@/lib/trpc";
-import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
+import { useDialogDraft } from "@/hooks/use-dialog-draft";
 import { FormDialog } from "@/components/form-dialog";
 import { useMutation } from "@tanstack/react-query";
 import { Textarea } from "@/components/ui/textarea";
 
 interface LiftWorkshopBanModalProps {
-  open: boolean;
+  banId: number | null;
   onClose: () => void;
-  banId: number;
 }
 
 export function LiftWorkshopBanModal({
-  open,
-  onClose,
   banId,
+  onClose,
 }: LiftWorkshopBanModalProps) {
-  const toast = useToastActions();
+  const open = banId !== null;
+  const [{ reason }, update] = useDialogDraft(open, () => ({ reason: "" }));
+
   const liftBan = useMutation(
-    trpc.admin.workshops.bans.lift.mutationOptions({
-      onSuccess: () =>
-        void queryClient.invalidateQueries(
-          trpc.admin.workshops.bans.pathFilter(),
-        ),
-    }),
+    trpc.admin.workshops.bans.lift.mutationOptions(
+      useMutationToast({
+        success: "Suggestion block lifted",
+        onSuccess: () => {
+          void queryClient.invalidateQueries(
+            trpc.admin.workshops.bans.pathFilter(),
+          );
+          onClose();
+        },
+      }),
+    ),
   );
 
-  const [reason, setReason] = useState("");
-
-  const handleClose = () => {
-    setReason("");
-    onClose();
-  };
-
-  const handleSubmit = async () => {
-    if (!reason.trim()) {
-      toast.error("Reason is required");
-      return;
-    }
-
-    try {
-      await liftBan.mutateAsync({ banId, reason: reason.trim() });
-      toast.success("Suggestion block lifted");
-      handleClose();
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to lift the block",
-      );
-    }
+  const handleSubmit = () => {
+    if (banId === null) return;
+    liftBan.mutate({ banId, reason: reason.trim() });
   };
 
   return (
     <FormDialog
       open={open}
-      onClose={handleClose}
+      onClose={onClose}
       title="Lift suggestion block"
       description="The user will be able to submit new mod suggestions again."
       onConfirm={handleSubmit}
@@ -77,9 +64,9 @@ export function LiftWorkshopBanModal({
           id="lift-workshop-ban-reason"
           placeholder="Enter reason for lifting the block..."
           value={reason}
-          onChange={(e) => setReason(e.target.value)}
+          onChange={(e) => update({ reason: e.target.value })}
           rows={4}
-          maxLength={500}
+          maxLength={ADMIN_REASON_MAX_LENGTH}
         />
       </Field>
     </FormDialog>

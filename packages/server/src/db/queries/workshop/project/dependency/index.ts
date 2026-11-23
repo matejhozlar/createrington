@@ -12,13 +12,6 @@ export interface WorkshopDependencyGroup {
   optionalByCount: number;
 }
 
-/**
- * Custom queries for workshop_project_dependency table
- *
- * Extends the auto-generated base class with custom methods.
- * This file is scaffolded once and never overwritten - add your custom
- * query methods here while inheriting all generated CRUD operations.
- */
 export class WorkshopProjectDependencyQueries extends WorkshopProjectDependencyBaseQueries {
   constructor(db: Pool | PoolClient) {
     super(db);
@@ -106,10 +99,7 @@ export class WorkshopProjectDependencyQueries extends WorkshopProjectDependencyB
       relationType,
       modpackId,
     ]);
-    return result.rows.map((row) => ({
-      curseforgeProjectId: row.curseforge_project_id,
-      dependsOnProjectId: row.depends_on_project_id,
-    }));
+    return this.mapRowsToEntities(result.rows);
   }
 
   /**
@@ -163,10 +153,6 @@ export class WorkshopProjectDependencyQueries extends WorkshopProjectDependencyB
       required_by_project_ids: number[];
       optional_by_count: number;
     }>("workshop dependency groups", query, [workshopId, requiredRelationType]);
-    return result.rows.map((row) => ({
-      dependsOnProjectId: row.depends_on_project_id,
-      requiredByProjectIds: row.required_by_project_ids,
-      optionalByCount: row.optional_by_count,
-    }));
+    return this.mapRowsToEntities(result.rows);
   }
 }

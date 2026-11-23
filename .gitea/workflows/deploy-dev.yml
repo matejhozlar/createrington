@@ -19,6 +19,8 @@ jobs:
   deploy:
     if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
     runs-on: hetzner
+    concurrency:
+      group: deploy-dev
     env:
       INFISICAL_API_URL: ${{ secrets.INFISICAL_API_URL }}
       INFISICAL_PROJECT_ID: ${{ vars.INFISICAL_PROJECT_ID }}
@@ -27,7 +29,6 @@ jobs:
       DEPLOY_OWNER: ${{ vars.DEPLOY_OWNER }}
       MAVEN_REPO: ${{ vars.MAVEN_REPO }}
       NPM_REGISTRY: ${{ vars.NPM_REGISTRY }}
-      API_URL: ${{ vars.DEV_API_URL }}
       BLUEMAP_URL: ${{ vars.DEV_BLUEMAP_URL }}
     steps:
       - uses: actions/checkout@v4
@@ -37,7 +38,7 @@ jobs:
       - name: Validate deploy variables
         run: |
           : "${INFISICAL_PROJECT_ID:?}" "${APP_DIR:?}" "${WWW_DIR:?}" "${DEPLOY_OWNER:?}"
-          : "${MAVEN_REPO:?}" "${NPM_REGISTRY:?}" "${API_URL:?}" "${BLUEMAP_URL:?}"
+          : "${MAVEN_REPO:?}" "${NPM_REGISTRY:?}" "${BLUEMAP_URL:?}"
 
       - name: Install pnpm
         run: npm install -g pnpm
@@ -64,7 +65,6 @@ jobs:
             export DB_PORT="$DEPLOY_DB_PORT"
             pnpm generate:ci
             pnpm generate-command-docs:json
-            pnpm generate-api-docs
             pnpm deploy-commands
           '
 
@@ -134,7 +134,6 @@ jobs:
       - name: Build
         env:
           VITE_APP_VERSION: ${{ env.APP_VERSION }}
-          VITE_API_URL: ${{ env.API_URL }}
           VITE_BLUEMAP_URL: ${{ env.BLUEMAP_URL }}
           VITE_LAUNCHER_ENABLED: "true"
         run: pnpm build

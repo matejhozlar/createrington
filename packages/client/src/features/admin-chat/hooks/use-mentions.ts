@@ -1,13 +1,9 @@
-import { useCallback, useMemo, useRef, useState } from "react";
-import { fetchRepos } from "../api";
-import type { MentionState, RepoSuggestion } from "../types";
+import { useCallback, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import type { RepoSuggestion } from "@createrington/shared/admin-chat";
+import { trpc } from "@/lib/trpc";
+import type { MentionState } from "../types";
 
-/**
- * Walk back from the cursor to find an active `@`-mention. Returns the
- * mention state or null. Triggers only when `@` sits at a word boundary
- * (start of input or after whitespace) and the query is plain
- * repo-name-ish text: a space or newline closes the menu.
- */
 export function detectMention(
   value: string,
   cursor: number,
@@ -38,37 +34,15 @@ interface UseMentionsResult {
   syncFromCursor: (ta: HTMLTextAreaElement) => void;
 }
 
-/**
- * Hook that manages @-mention autocomplete state + lazy-loaded repo list.
- * Repos are fetched once on the first `@` keystroke so opening the drawer
- * doesn't fan out to Gitea if the admin never uses the feature.
- */
 export function useMentions(): UseMentionsResult {
-  const [repos, setRepos] = useState<RepoSuggestion[] | null>(null);
-  // Mirror of `repos` for the guard inside loadRepos. Using a ref keeps
-  // loadRepos stable across repo-list state transitions, so callbacks
-  // that depend on it (onValueChange, syncFromCursor) don't get fresh
-  // identities on every keystroke after repos finish loading.
-  const reposRef = useRef<RepoSuggestion[] | null>(null);
-  const reposLoadingRef = useRef(false);
   const [mention, setMention] = useState<MentionState | null>(null);
   const [index, setIndex] = useState(0);
-
-  const loadRepos = useCallback(async (): Promise<void> => {
-    if (reposRef.current !== null || reposLoadingRef.current) return;
-    reposLoadingRef.current = true;
-    try {
-      const data = await fetchRepos();
-      const loaded = data.repos ?? [];
-      reposRef.current = loaded;
-      setRepos(loaded);
-    } catch {
-      reposRef.current = [];
-      setRepos([]);
-    } finally {
-      reposLoadingRef.current = false;
-    }
-  }, []);
+  const { data: repos } = useQuery(
+    trpc.admin.chat.repos.queryOptions(undefined, {
+      enabled: mention !== null,
+      staleTime: Infinity,
+    }),
+  );
 
   const matches = useMemo<RepoSuggestion[]>(() => {
     if (!mention || !repos) return [];
@@ -76,17 +50,11 @@ export function useMentions(): UseMentionsResult {
     return repos.filter((r) => r.name.toLowerCase().includes(q)).slice(0, 8);
   }, [mention, repos]);
 
-  const onValueChange = useCallback(
-    (value: string, cursor: number): void => {
-      const next = detectMention(value, cursor);
-      setMention(next);
-      if (next) {
-        void loadRepos();
-        setIndex(0);
-      }
-    },
-    [loadRepos],
-  );
+  const onValueChange = useCallback((value: string, cursor: number): void => {
+    const next = detectMention(value, cursor);
+    setMention(next);
+    if (next) setIndex(0);
+  }, []);
 
   const clear = useCallback((): void => {
     setMention(null);
@@ -109,20 +77,10 @@ export function useMentions(): UseMentionsResult {
     [mention],
   );
 
-  const syncFromCursor = useCallback(
-    (ta: HTMLTextAreaElement): void => {
-      // Arrow keys / clicks move the cursor without firing onChange, so
-      // re-detect on keyup / click to keep the menu state in sync with
-      // where the caret actually sits.
-      const next = detectMention(
-        ta.value,
-        ta.selectionStart ?? ta.value.length,
-      );
-      setMention(next);
-      if (next) void loadRepos();
-    },
-    [loadRepos],
-  );
+  const syncFromCursor = useCallback((ta: HTMLTextAreaElement): void => {
+    const next = detectMention(ta.value, ta.selectionStart ?? ta.value.length);
+    setMention(next);
+  }, []);
 
   return {
     mention,

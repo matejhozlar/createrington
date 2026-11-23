@@ -1,11 +1,10 @@
 import { z } from "zod";
+import { DONATION_STATUSES } from "@createrington/shared/donation";
 import { router, ownerProcedure } from "@/trpc/trpc";
-import { Q, donationRepo } from "@/db";
-import { getService, Services } from "@/services";
-import config from "@/config";
+import { Q } from "@/db";
+import { getOptionalService, Services } from "@/services";
 import { paginateQuery, paginationInput } from "@/trpc/utils";
 
-/** Owner donations router: paginated list and aggregate stats. */
 export const ownerDonationsRouter = router({
   stats: ownerProcedure
     .meta({
@@ -13,7 +12,7 @@ export const ownerDonationsRouter = router({
         "Get aggregate donation statistics: total raised, unique donor count, and total donation count",
     })
     .query(async () => {
-      return donationRepo.getStats();
+      return Q.donation.getCompletedStats();
     }),
 
   subscriptionStats: ownerProcedure
@@ -22,10 +21,12 @@ export const ownerDonationsRouter = router({
         "Get active subscription count, cancelling count, and monthly recurring revenue",
     })
     .query(async () => {
-      if (!config.stripe.enabled) {
+      const donationService = await getOptionalService(
+        Services.DONATION_SERVICE,
+      );
+      if (!donationService) {
         return { activeCount: 0, cancellingCount: 0, mrrCents: 0 };
       }
-      const donationService = await getService(Services.DONATION_SERVICE);
       return donationService.getSubscriptionStats();
     }),
 
@@ -36,9 +37,7 @@ export const ownerDonationsRouter = router({
     })
     .input(
       z.object({
-        status: z
-          .enum(["pending", "completed", "refunded", "cancelled"])
-          .optional(),
+        status: z.enum(DONATION_STATUSES).optional(),
         type: z.enum(["one_time", "monthly"]).optional(),
         discordId: z.string().optional(),
         ...paginationInput(),
@@ -57,7 +56,7 @@ export const ownerDonationsRouter = router({
       );
 
       return {
-        donations: rows.map((d) => ({
+        items: rows.map((d) => ({
           id: d.id,
           playerDiscordId: d.playerDiscordId,
           type: d.type,

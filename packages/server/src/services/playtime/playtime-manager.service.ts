@@ -1,5 +1,6 @@
-import { playtimeRepo } from "@/db";
-import { MINECRAFT_SERVERS } from "./config";
+import { Q, playtimeRepo } from "@/db";
+import { PlaytimePersistence } from "./persistence";
+import { SERVERS } from "@/services/mc-server/servers";
 import { getPlaytimeForwarder } from "./forwarder.service";
 import { PlaytimeService } from "./playtime.service";
 import type { MessageCacheService } from "../discord/message/cache";
@@ -11,9 +12,14 @@ interface BringUpOptions {
   forward: boolean;
 }
 
+export type ServiceListener = (
+  serverId: number,
+  service: PlaytimeService,
+) => void;
+
 /**
  * Coordinates one PlaytimeService per Minecraft server: spins up each entry
- * of MINECRAFT_SERVERS at boot, restores the sessions the previous process
+ * of SERVERS at boot, restores the sessions the previous process
  * left open, wires them to the playtime repository and, when sync is
  * configured, to the playtime forwarder, and exposes per-server status.
  * Servers outside the static config, such as the synced test server, get
@@ -27,23 +33,18 @@ interface BringUpOptions {
  * `initialize()` to enable server start/shutdown detection from the Discord
  * relay.
  */
-export type ServiceListener = (
-  serverId: number,
-  service: PlaytimeService,
-) => void;
-
 export class PlaytimeManagerService {
   private playtimeServices: Map<number, PlaytimeService> = new Map();
   private pendingServices: Map<number, Promise<PlaytimeService>> = new Map();
-  private messageCacheService?: MessageCacheService;
   private serviceListeners: ServiceListener[] = [];
   private stopped = false;
+  private readonly persistence = new PlaytimePersistence(playtimeRepo);
 
-  /** Brings up a PlaytimeService for each entry in MINECRAFT_SERVERS in parallel. Throws if none succeed. */
+  /** Brings up a PlaytimeService for each entry in SERVERS in parallel. Throws if none succeed. */
   async initialize(): Promise<void> {
     logger.info("Initializing the PlaytimeManagerService...");
 
-    const serverConfigs = Object.values(MINECRAFT_SERVERS);
+    const serverConfigs = SERVERS;
 
     if (serverConfigs.length === 0) {
       logger.warn(
@@ -107,7 +108,7 @@ export class PlaytimeManagerService {
       pending = this.createService(serverId, options)
         .then((service) => {
           if (this.stopped) {
-            service.stop();
+            service.shutdown();
             throw new Error(
               `PlaytimeManagerService shut down while bringing up server ${serverId}`,
             );
@@ -131,12 +132,12 @@ export class PlaytimeManagerService {
     serverId: number,
     options: BringUpOptions,
   ): Promise<PlaytimeService> {
-    const openSessions = await playtimeRepo.getOpenSessions(serverId);
+    const openSessions = await Q.player.session.getOpenWithUsername(serverId);
 
     const service = new PlaytimeService({ serverId });
     service.hydrate(openSessions);
 
-    playtimeRepo.connectToService(service, serverId);
+    this.persistence.connect(service, serverId);
     if (options.forward) {
       getPlaytimeForwarder()?.connectToService(service, serverId);
     }
@@ -163,11 +164,11 @@ export class PlaytimeManagerService {
 
     for (const [serverId, service] of this.playtimeServices) {
       logger.info(`Stopping PlaytimeService for server ${serverId}...`);
-      service.stop();
+      service.shutdown();
     }
 
     this.playtimeServices.clear();
-    await playtimeRepo.flush(SHUTDOWN_FLUSH_TIMEOUT_MS);
+    await this.persistence.flush(SHUTDOWN_FLUSH_TIMEOUT_MS);
     logger.info("All PlaytimeServices shut down");
   }
 
@@ -187,17 +188,6 @@ export class PlaytimeManagerService {
   /** Returns a shallow copy of the server-id to PlaytimeService map. */
   getAllServices(): Map<number, PlaytimeService> {
     return new Map(this.playtimeServices);
-  }
-
-  /** True if at least one PlaytimeService is initialized. */
-  isInitialized(): boolean {
-    return this.playtimeServices.size > 0;
-  }
-
-  /** True if the named server's PlaytimeService reports ONLINE. False if offline or unknown. */
-  isServerOnline(serverId: number): boolean {
-    const service = this.playtimeServices.get(serverId);
-    return service?.isOnline() ?? false;
   }
 
   /** Current ServerState for `serverId`, or undefined if no service exists for it. */
@@ -221,8 +211,6 @@ export class PlaytimeManagerService {
    * server: failures are logged but do not block the others.
    */
   setupMessageCacheIntegration(messageCacheService: MessageCacheService): void {
-    this.messageCacheService = messageCacheService;
-
     logger.info(
       "Setting up message cache integration for playtime services...",
     );

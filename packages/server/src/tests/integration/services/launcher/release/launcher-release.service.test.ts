@@ -81,7 +81,7 @@ async function clearReleases(): Promise<void> {
   await Q.launcher.release.deleteAll({
     platform: { $in: [PLATFORM, LINUX] },
   });
-  launcherReleaseService.clearCache();
+  await launcherReleaseService.clearCache();
 }
 
 describe("LauncherReleaseService", () => {
@@ -727,25 +727,6 @@ describe("LauncherReleaseService", () => {
       expect(releases.map((r) => [r.version, r.status])).toEqual([
         ["0.5.0", "released"],
         ["0.2.0", "pruned"],
-      ]);
-    });
-  });
-
-  describe("list", () => {
-    it("returns every state, newest publish first", async () => {
-      await publishAndRelease("0.2.0");
-      const withdrawn = await launcherReleaseService.publish(input("0.3.0"));
-      await launcherReleaseService.withdraw(withdrawn.id, OWNER);
-      await launcherReleaseService.publish(input("0.4.0"));
-
-      const releases = (await launcherReleaseService.list()).filter(
-        (r) => r.platform === PLATFORM,
-      );
-
-      expect(releases.map((r) => [r.version, r.status])).toEqual([
-        ["0.4.0", "pending"],
-        ["0.3.0", "withdrawn"],
-        ["0.2.0", "released"],
       ]);
     });
   });

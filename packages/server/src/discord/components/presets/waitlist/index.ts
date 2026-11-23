@@ -1,4 +1,5 @@
 import config from "@/config";
+import { siteUrl } from "@/config/site-url";
 import {
   ActionRowBuilder,
   ButtonBuilder,
@@ -9,18 +10,10 @@ import {
   SeparatorSpacingSize,
   TextDisplayBuilder,
 } from "discord.js";
-import { ComponentColors } from "../../colors";
+import { EmbedColors } from "@/discord/embeds/colors";
 import type { TopLevelComponent } from "../../component-builder";
 import { discordTimestamp } from "@/utils/format";
-
-/** Custom ID of the button that puts the member in the waitlist queue */
-export const WAITLIST_JOIN_BUTTON_ID = "waitlist:join";
-
-/** Custom ID of the button that re-renders the member's queue position */
-export const WAITLIST_REFRESH_BUTTON_ID = "waitlist:refresh";
-
-/** Custom ID of the button that removes the member from the queue */
-export const WAITLIST_LEAVE_BUTTON_ID = "waitlist:leave";
+import { CustomIds } from "@/discord/custom-ids";
 
 export interface WaitlistMessage {
   components: TopLevelComponent[];
@@ -43,7 +36,7 @@ function message(container: ContainerBuilder): WaitlistMessage {
 
 function joinButton(): ButtonBuilder {
   return new ButtonBuilder()
-    .setCustomId(WAITLIST_JOIN_BUTTON_ID)
+    .setCustomId(CustomIds.waitlist.build({ action: "join" }))
     .setLabel("Join Waitlist")
     .setStyle(ButtonStyle.Primary)
     .setEmoji("📝");
@@ -56,18 +49,10 @@ function websiteButton(): ButtonBuilder {
     .setURL(config.meta.links.website);
 }
 
-/**
- * Components V2 renderings of the waitlist flow inside a member's
- * verification channel while the server is at capacity: the join offer, the
- * live waiting card with queue position (refreshed on demand), and the
- * left-the-queue card. Every method returns the top-level components plus
- * the `IS_COMPONENTS_V2` flag.
- */
 export const WaitlistComponentPresets = {
-  /** The at-capacity welcome card offering a spot in the queue. */
   queueOffer(params: { memberMention: string }): WaitlistMessage {
     const container = new ContainerBuilder()
-      .setAccentColor(ComponentColors.Warning)
+      .setAccentColor(EmbedColors.Warning)
       .addTextDisplayComponents(
         text("## 🎉 Welcome to Createrington!"),
         text(
@@ -86,34 +71,31 @@ export const WaitlistComponentPresets = {
     return message(container);
   },
 
-  /** The waiting card: queue position, queued date, refresh and leave buttons. */
   waiting(params: {
     memberMention: string;
     position: number;
     total: number;
     queuedAt: Date;
   }): WaitlistMessage {
-    const site = config.meta.links.website;
-
     const container = new ContainerBuilder()
-      .setAccentColor(ComponentColors.Warning)
+      .setAccentColor(EmbedColors.Warning)
       .addTextDisplayComponents(
         text("## ⏳ You're on the waitlist!"),
         text(
           `Hey ${params.memberMention}, you're **#${params.position} of ${params.total}** in line (joined ${discordTimestamp(params.queuedAt, "R")}).\n\n` +
-            `We'll ping you right here as soon as a spot opens up. In the meantime, feel free to look around the Discord, check out the [website](${site}) or read up on the [rules](${site}/rules).`,
+            `We'll ping you right here as soon as a spot opens up. In the meantime, feel free to look around the Discord, check out the [website](${siteUrl()}) or read up on the [rules](${siteUrl("/rules")}).`,
         ),
       )
       .addSeparatorComponents(divider())
       .addActionRowComponents(
         new ActionRowBuilder<ButtonBuilder>().addComponents(
           new ButtonBuilder()
-            .setCustomId(WAITLIST_REFRESH_BUTTON_ID)
+            .setCustomId(CustomIds.waitlist.build({ action: "refresh" }))
             .setLabel("Refresh Position")
             .setStyle(ButtonStyle.Secondary)
             .setEmoji("🔄"),
           new ButtonBuilder()
-            .setCustomId(WAITLIST_LEAVE_BUTTON_ID)
+            .setCustomId(CustomIds.waitlist.build({ action: "leave" }))
             .setLabel("Leave Waitlist")
             .setStyle(ButtonStyle.Danger),
         ),
@@ -122,10 +104,9 @@ export const WaitlistComponentPresets = {
     return message(container);
   },
 
-  /** The card shown after leaving the queue, with the option to rejoin. */
   left(params: { memberMention: string }): WaitlistMessage {
     const container = new ContainerBuilder()
-      .setAccentColor(ComponentColors.Neutral)
+      .setAccentColor(EmbedColors.Neutral)
       .addTextDisplayComponents(
         text("## 👋 You've left the waitlist"),
         text(

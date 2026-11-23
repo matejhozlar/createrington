@@ -29,11 +29,11 @@ That's it. The database is ready to use.
 
 ## Schema changes
 
-The database schema is defined in TypeScript at `packages/server/src/db/schema.ts` using [Drizzle ORM](https://orm.drizzle.team/).
+The database schema is defined in TypeScript under `packages/server/src/db/schema/` (one file per domain) using [Drizzle ORM](https://orm.drizzle.team/).
 
 To add or modify tables:
 
-1. Edit `packages/server/src/db/schema.ts`
+1. Edit the domain file under `packages/server/src/db/schema/`
 2. Run `pnpm db:generate` — creates a migration SQL file in `packages/server/drizzle/`
 3. Run `pnpm db:migrate` — applies it to your local database
 4. Run `pnpm generate` — regenerates TypeScript types and query classes
@@ -76,7 +76,7 @@ Local dev does not need any of this: the role does not exist in the Docker datab
 
 ## Troubleshooting
 
-**Port 5432 is already in use.** You likely have PostgreSQL installed locally on your machine. Either stop your local PostgreSQL service or switch the container to a different port.
+**Port 5433 is already in use.** Something else on your machine is bound to the port the container publishes. Stop it or change the host side of the `5433:5432` mapping in `docker/db/docker-compose.yml` (and `DB_PORT` to match).
 
 **Connection refused after db:up.** The container might still be starting up. Wait a few seconds and try again. If it persists, check the logs with `pnpm db:logs`.
 

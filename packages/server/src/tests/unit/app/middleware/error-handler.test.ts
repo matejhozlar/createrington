@@ -14,14 +14,13 @@ import type { Server } from "node:http";
 vi.mock("@/config", () => ({
   default: { envMode: { isProd: false, isDev: false } },
 }));
-vi.mock("@/db/utils", () => ({
-  DatabaseError: class DatabaseError extends Error {},
-  NotFoundError: class NotFoundError extends Error {},
-  ConstraintViolationError: class ConstraintViolationError extends Error {},
-  QueryError: class QueryError extends Error {},
-}));
+vi.mock("@/db/utils", async () =>
+  (await import("@/tests/helpers/mocks/db-utils")).dbUtilsMock(),
+);
 
-import { AppError, errorHandler } from "@/app/middleware/error-handler";
+import { errorHandler } from "@/app/middleware/error-handler";
+import { AppError } from "@/errors";
+import { DatabaseError, NotFoundError as DbNotFoundError } from "@/db/utils";
 
 let server: Server;
 let baseUrl: string;
@@ -189,5 +188,75 @@ describe("errorHandler with request body errors", () => {
         query: { apiKey: "[REDACTED]", page: "2" },
       }),
     );
+  });
+
+  it("logs a raw body as its size instead of its bytes", async () => {
+    const app = express();
+    app.use(express.raw({ type: "application/json" }));
+    app.post("/boom", () => {
+      throw new Error("kaboom");
+    });
+    app.use(errorHandler);
+    const errorLog = vi.spyOn(logger, "error").mockImplementation(() => logger);
+    const local = app.listen(0);
+    await new Promise<void>((resolve) => local.once("listening", resolve));
+
+    const payload = JSON.stringify({ customer_email: "steve@example.com" });
+    await fetch(
+      `http://127.0.0.1:${(local.address() as AddressInfo).port}/boom`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: payload,
+      },
+    );
+    await new Promise<void>((resolve) => local.close(() => resolve()));
+
+    expect(errorLog).toHaveBeenCalledWith(
+      "Error Handler:",
+      expect.objectContaining({ body: `[${payload.length} bytes]` }),
+    );
+  });
+});
+
+describe("errorHandler with database errors", () => {
+  async function answer(error: Error) {
+    const app = express();
+    app.get("/db", () => {
+      throw error;
+    });
+    app.use(errorHandler);
+    const local = app.listen(0);
+    await new Promise<void>((resolve) => local.once("listening", resolve));
+    const res = await fetch(
+      `http://127.0.0.1:${(local.address() as AddressInfo).port}/db`,
+    );
+    await new Promise<void>((resolve) => local.close(() => resolve()));
+    return { status: res.status, json: await res.json() };
+  }
+
+  it("answers 404 for a missing row and logs it as a client error", async () => {
+    const errorLog = vi.spyOn(logger, "error");
+    const warnLog = vi.spyOn(logger, "warn").mockImplementation(() => logger);
+
+    const error = new DbNotFoundError("Player", { id: 7 });
+
+    const { status, json } = await answer(error);
+
+    expect(status).toBe(404);
+    expect(json).toEqual(errorBody(404, error.message));
+    expect(errorLog).not.toHaveBeenCalled();
+    expect(warnLog).toHaveBeenCalledWith(
+      "Client Error:",
+      expect.objectContaining({ statusCode: 404 }),
+    );
+  });
+
+  it("answers 500 for any other database error", async () => {
+    vi.spyOn(logger, "error").mockImplementation(() => logger);
+
+    const { status } = await answer(new DatabaseError("connection reset"));
+
+    expect(status).toBe(500);
   });
 });

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, useNavigate, NavLink } from "react-router";
-import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
+import { AdminPage } from "@/features/admin/components/AdminPage";
 import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,11 +8,15 @@ import { MessageSquare, Lock, RefreshCw, Trash2 } from "lucide-react";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
 import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
-import { formatDateTime } from "@/lib/format";
-import { describeEntryRules } from "./format";
+import { formatDateTime, pluralize } from "@/lib/format";
+import { describeEntryRules, PROMPT_STATUS_DISPLAY } from "./format";
 import { DeletePromptModal } from "./components/DeletePromptModal";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { LoadingState } from "@/components/query-states";
+import {
+  EmptyState,
+  ErrorState,
+  LoadingState,
+} from "@/components/query-states";
 
 type ResponseRow = RouterOutput["admin"]["prompts"]["get"]["responses"][number];
 
@@ -23,9 +27,6 @@ interface ResponderGroup {
   entries: ResponseRow[];
 }
 
-// The list is ordered by the newer of submitted/updated, so an edited answer
-// sorts to the top; label it with the edit time rather than the original
-// submission it would otherwise contradict.
 function formatEntryTime(entry: ResponseRow): string {
   const submitted = new Date(entry.submittedAt).getTime();
   const updated = new Date(entry.updatedAt).getTime();
@@ -80,21 +81,29 @@ export function PromptDetail() {
   );
 
   if (!Number.isFinite(promptId)) {
-    return <div className="p-6 text-muted-foreground">Invalid prompt id.</div>;
+    return <EmptyState icon={MessageSquare} message="Invalid prompt id." />;
   }
 
   if (detailQuery.isLoading) {
     return <LoadingState text="Loading..." className="py-10" />;
   }
 
+  if (detailQuery.isError && detailQuery.error.data?.code !== "NOT_FOUND") {
+    return (
+      <ErrorState
+        message={detailQuery.error.message}
+        onRetry={() => detailQuery.refetch()}
+      />
+    );
+  }
+
   if (!detailQuery.data) {
     return (
-      <div className="p-6 text-muted-foreground">
-        Prompt not found.{" "}
+      <EmptyState icon={MessageSquare} message="Prompt not found.">
         <NavLink to="/admin/tools/prompts" className="text-primary underline">
           Back to list
         </NavLink>
-      </div>
+      </EmptyState>
     );
   }
 
@@ -105,143 +114,137 @@ export function PromptDetail() {
     creator?.minecraftUsername ?? `Discord user ${prompt.createdBy}`;
   const groups = groupByResponder(responses);
   const countLabel = isMulti
-    ? `${responses.length} ${responses.length === 1 ? "entry" : "entries"} from ${groups.length} ${groups.length === 1 ? "player" : "players"}`
-    : `${responses.length} response${responses.length === 1 ? "" : "s"}`;
+    ? `${pluralize(responses.length, "entry", "entries")} from ${pluralize(groups.length, "player")}`
+    : pluralize(responses.length, "response");
 
   return (
-    <div className="flex flex-1 flex-col gap-4">
-      <AdminPageHeader
-        trail={[
-          { label: "Admin", href: "/admin/dashboard" },
-          { label: "Tools", href: "/admin/tools" },
-          { label: "Prompts", href: "/admin/tools/prompts" },
-          { label: prompt.question },
-        ]}
-      />
-
-      <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
-        <AdminPageTitle
-          title={prompt.question}
-          icon={MessageSquare}
-          badges={
-            <>
-              <Badge variant={isActive ? "default" : "secondary"}>
-                {prompt.status}
-              </Badge>
-              <Badge variant="outline">
-                {isMulti ? "Multiple entries" : "Single entry"}
-              </Badge>
-            </>
-          }
-          description={
-            <>
-              {prompt.description && <p>{prompt.description}</p>}
-              <p className="text-xs">
-                Created {formatDateTime(prompt.createdAt)} by{" "}
-                <span className="font-medium">{authorLabel}</span> • Closes{" "}
-                {formatDateTime(prompt.endsAt)} • {countLabel}
-              </p>
-              <p className="text-xs text-muted-foreground/80">
-                {describeEntryRules(prompt)}
-              </p>
-            </>
-          }
-          actions={
-            <>
+    <AdminPage
+      trail={[
+        { label: "Admin", href: "/admin/dashboard" },
+        { label: "Tools", href: "/admin/tools" },
+        { label: "Prompts", href: "/admin/tools/prompts" },
+        { label: prompt.question },
+      ]}
+    >
+      <AdminPageTitle
+        title={prompt.question}
+        icon={MessageSquare}
+        badges={
+          <>
+            <Badge tone={PROMPT_STATUS_DISPLAY[prompt.status].tone}>
+              {PROMPT_STATUS_DISPLAY[prompt.status].label}
+            </Badge>
+            <Badge variant="outline">
+              {isMulti ? "Multiple entries" : "Single entry"}
+            </Badge>
+          </>
+        }
+        description={
+          <>
+            {prompt.description && <p>{prompt.description}</p>}
+            <p className="text-xs">
+              Created {formatDateTime(prompt.createdAt)} by{" "}
+              <span className="font-medium">{authorLabel}</span> • Closes{" "}
+              {formatDateTime(prompt.endsAt)} • {countLabel}
+            </p>
+            <p className="text-xs text-muted-foreground/80">
+              {describeEntryRules(prompt)}
+            </p>
+          </>
+        }
+        actions={
+          <>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => void detailQuery.refetch()}
+              disabled={detailQuery.isFetching}
+              title="Refresh"
+            >
+              <RefreshCw
+                className={
+                  detailQuery.isFetching ? "size-4 animate-spin" : "size-4"
+                }
+              />
+            </Button>
+            {isActive && (
               <Button
                 variant="outline"
-                size="icon"
-                onClick={() => void detailQuery.refetch()}
-                disabled={detailQuery.isFetching}
-                title="Refresh"
+                onClick={() => closeMutation.mutate({ id: prompt.id })}
+                disabled={closeMutation.isPending}
               >
-                <RefreshCw
-                  className={
-                    detailQuery.isFetching ? "size-4 animate-spin" : "size-4"
-                  }
-                />
+                <Lock className="size-4" /> Close now
               </Button>
-              {isActive && (
-                <Button
-                  variant="outline"
-                  onClick={() => closeMutation.mutate({ id: prompt.id })}
-                  disabled={closeMutation.isPending}
-                >
-                  <Lock className="size-4" /> Close now
-                </Button>
-              )}
-              <Button variant="destructive" onClick={() => setDeleteOpen(true)}>
-                <Trash2 className="size-4" /> Delete
-              </Button>
-            </>
-          }
-        />
+            )}
+            <Button variant="destructive" onClick={() => setDeleteOpen(true)}>
+              <Trash2 className="size-4" /> Delete
+            </Button>
+          </>
+        }
+      />
 
-        {responses.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-border bg-card py-12 text-center">
-            <MessageSquare className="size-8 text-muted-foreground" />
-            <p className="text-muted-foreground">No responses yet.</p>
-          </div>
-        ) : (
-          <ul className="flex flex-col gap-3">
-            {groups.map((group) => (
-              <li
-                key={group.discordId}
-                className="flex gap-3 rounded-lg border border-border/60 bg-card p-3"
-              >
-                <MinecraftAvatar
-                  uuid={group.minecraftUuid ?? undefined}
-                  username={group.minecraftUsername ?? "?"}
-                  size={40}
-                  className="shrink-0 rounded"
-                />
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <div className="flex items-baseline gap-2">
-                      <span className="font-medium">
-                        {group.minecraftUsername ??
-                          `Discord user ${group.discordId}`}
-                      </span>
-                      {!group.minecraftUsername && (
-                        <span className="text-xs text-muted-foreground">
-                          (no linked Minecraft account)
-                        </span>
-                      )}
-                    </div>
-                    <span className="text-xs text-muted-foreground">
-                      {group.entries.length > 1
-                        ? `${group.entries.length} entries`
-                        : formatEntryTime(group.entries[0])}
+      {responses.length === 0 ? (
+        <div className="rounded-lg border border-border bg-card">
+          <EmptyState icon={MessageSquare} message="No responses yet." />
+        </div>
+      ) : (
+        <ul className="flex flex-col gap-3">
+          {groups.map((group) => (
+            <li
+              key={group.discordId}
+              className="flex gap-3 rounded-lg border border-border/60 bg-card p-3"
+            >
+              <MinecraftAvatar
+                uuid={group.minecraftUuid ?? undefined}
+                username={group.minecraftUsername ?? "?"}
+                size={40}
+                className="shrink-0 rounded"
+              />
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <div className="flex items-baseline gap-2">
+                    <span className="font-medium">
+                      {group.minecraftUsername ??
+                        `Discord user ${group.discordId}`}
                     </span>
+                    {!group.minecraftUsername && (
+                      <span className="text-xs text-muted-foreground">
+                        (no linked Minecraft account)
+                      </span>
+                    )}
                   </div>
-                  {group.entries.length === 1 ? (
-                    <p className="mt-1 whitespace-pre-wrap text-sm text-foreground">
-                      {group.entries[0].responseText}
-                    </p>
-                  ) : (
-                    <ol className="mt-2 flex flex-col gap-2">
-                      {group.entries.map((entry) => (
-                        <li
-                          key={entry.id}
-                          className="border-l-2 border-border/60 pl-3"
-                        >
-                          <div className="text-xs text-muted-foreground">
-                            Entry #{entry.entryNumber} •{" "}
-                            {formatEntryTime(entry)}
-                          </div>
-                          <p className="mt-0.5 whitespace-pre-wrap text-sm text-foreground">
-                            {entry.responseText}
-                          </p>
-                        </li>
-                      ))}
-                    </ol>
-                  )}
+                  <span className="text-xs text-muted-foreground">
+                    {group.entries.length > 1
+                      ? `${group.entries.length} entries`
+                      : formatEntryTime(group.entries[0])}
+                  </span>
                 </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+                {group.entries.length === 1 ? (
+                  <p className="mt-1 whitespace-pre-wrap text-sm text-foreground">
+                    {group.entries[0].responseText}
+                  </p>
+                ) : (
+                  <ol className="mt-2 flex flex-col gap-2">
+                    {group.entries.map((entry) => (
+                      <li
+                        key={entry.id}
+                        className="border-l-2 border-border/60 pl-3"
+                      >
+                        <div className="text-xs text-muted-foreground">
+                          Entry #{entry.entryNumber} • {formatEntryTime(entry)}
+                        </div>
+                        <p className="mt-0.5 whitespace-pre-wrap text-sm text-foreground">
+                          {entry.responseText}
+                        </p>
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
 
       <DeletePromptModal
         prompt={deleteOpen ? prompt : null}
@@ -252,6 +255,6 @@ export function PromptDetail() {
           void navigate("/admin/tools/prompts");
         }}
       />
-    </div>
+    </AdminPage>
   );
 }

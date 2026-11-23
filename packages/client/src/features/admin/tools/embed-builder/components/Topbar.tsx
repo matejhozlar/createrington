@@ -21,7 +21,7 @@ import {
   embedDataSchema,
   componentsDataSchema,
 } from "@createrington/shared/api/embed";
-import type { UseEmbedBuilder } from "../hooks/use-embed-builder";
+import type { UseEmbedBuilder } from "@/features/admin/tools/embed-builder/hooks/use-embed-builder";
 import { SendModal } from "./SendModal";
 import { SaveAsNewModal } from "./SaveAsNewModal";
 
@@ -32,30 +32,25 @@ interface TopbarProps {
 
 export function Topbar({ builder, onOpenPresets }: TopbarProps) {
   const {
-    kind,
-    components,
-    presetName,
+    state,
+    payload,
     setPresetName,
-    activePreset,
     isDirty,
     hasContent,
     isPending,
     handleSave,
-    handleImportEmbed,
-    handleImportComponents,
-    externalData,
+    importPayload,
   } = builder;
+  const { presetName, activePreset } = state;
   const toast = useToastActions();
   const { copy } = useClipboard();
   const [sendOpen, setSendOpen] = useState(false);
   const [saveOpen, setSaveOpen] = useState(false);
 
   function handleCopyJson() {
-    const json =
-      kind === "components"
-        ? JSON.stringify({ components }, null, 2)
-        : JSON.stringify(externalData, null, 2);
-    void copy(json);
+    const data =
+      payload.kind === "components" ? payload.components : payload.embed;
+    void copy(JSON.stringify(data, null, 2));
   }
 
   async function handleImportJson() {
@@ -75,19 +70,16 @@ export function Topbar({ builder, onOpenPresets }: TopbarProps) {
       return;
     }
 
-    // Try components first: its schema requires a non-empty `components` array,
-    // so an embed JSON won't false-match it (embedDataSchema is all-optional and
-    // would accept almost anything). Matching either format switches the mode.
     const componentsResult = componentsDataSchema.safeParse(raw);
     if (componentsResult.success) {
-      handleImportComponents(componentsResult.data.components);
+      importPayload({ kind: "components", components: componentsResult.data });
       toast.success("Components imported from clipboard");
       return;
     }
 
     const embedResult = embedDataSchema.safeParse(raw);
     if (embedResult.success) {
-      handleImportEmbed(embedResult.data);
+      importPayload({ kind: "embed", embed: embedResult.data });
       toast.success("Embed imported from clipboard");
       return;
     }
@@ -151,7 +143,7 @@ export function Topbar({ builder, onOpenPresets }: TopbarProps) {
               "h-9 min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-2 text-center text-[14px] font-medium outline-none transition-colors",
               "placeholder:text-muted-foreground",
               "hover:bg-accent",
-              "focus-visible:border-input focus-visible:bg-background focus-visible:ring-[3px] focus-visible:ring-[var(--primary-glow)]",
+              "focus-visible:border-input focus-visible:bg-background focus-visible:ring-[3px] focus-visible:ring-primary-glow",
             )}
           />
           {isDirty && (

@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from "vitest";
 import { Q, playtimeRepo } from "@/db";
 import { calendarDay } from "@/db/utils";
+import { getPlayerActivity } from "@/services/playtime/activity";
 
 const STEVE = "aaaaaaaa-0000-4000-8000-000000000001";
 const ALEX = "aaaaaaaa-0000-4000-8000-000000000002";
@@ -60,25 +61,25 @@ afterAll(async () => {
 
 describe("PlaytimeRepository (integration)", () => {
   it("persists the tick baseline on start and exposes open sessions with usernames", async () => {
-    const sessionId = await playtimeRepo.startSession({
+    const started = await playtimeRepo.startSession({
       uuid: STEVE,
       username: "steve",
       serverId,
       sessionStart: T0,
       playTimeTicks: ticks(1000),
     });
-    expect(sessionId).not.toBeNull();
+    expect(started).not.toBeNull();
 
-    const row = await Q.player.session.get({ id: sessionId! });
+    const row = await Q.player.session.get({ id: started!.sessionId });
     expect(row.startPlayTicks).toBe(ticks(1000));
     expect(row.lastPlayTicks).toBe(ticks(1000));
     expect(row.lastSeenAt).toEqual(T0);
     expect(row.activeSeconds).toBe(0n);
 
-    const open = await playtimeRepo.getOpenSessions(serverId);
+    const open = await Q.player.session.getOpenWithUsername(serverId);
     expect(open).toEqual([
       expect.objectContaining({
-        id: sessionId,
+        id: started!.sessionId,
         playerMinecraftUuid: STEVE,
         minecraftUsername: "steve",
         lastSeenAt: T0,
@@ -99,7 +100,7 @@ describe("PlaytimeRepository (integration)", () => {
       serverId,
       sessionStart: T0,
       playTimeTicks: ticks(1000),
-    }))!;
+    }))!.sessionId;
 
     await playtimeRepo.progressSession({
       sessionId,
@@ -201,7 +202,7 @@ describe("PlaytimeRepository (integration)", () => {
       serverId,
       sessionStart: T0,
       playTimeTicks: ticks(1000),
-    }))!;
+    }))!.sessionId;
 
     await playtimeRepo.endSession({
       sessionId,
@@ -227,7 +228,7 @@ describe("PlaytimeRepository (integration)", () => {
       serverId,
       sessionStart: T0,
       playTimeTicks: ticks(1000),
-    }))!;
+    }))!.sessionId;
 
     await expect(
       playtimeRepo.progressSession({
@@ -258,7 +259,7 @@ describe("PlaytimeRepository (integration)", () => {
       serverId,
       sessionStart: T0,
       playTimeTicks: ticks(1000),
-    }))!;
+    }))!.sessionId;
 
     await expect(
       playtimeRepo.endSession({
@@ -290,7 +291,7 @@ describe("PlaytimeRepository (integration)", () => {
       serverId,
       sessionStart: T0,
       playTimeTicks: ticks(1000),
-    }))!;
+    }))!.sessionId;
     await playtimeRepo.progressSession({
       sessionId,
       uuid: STEVE,
@@ -467,7 +468,7 @@ describe("PlaytimeRepository (integration)", () => {
         totalSeconds: 50_000n,
       });
 
-      const activity = await playtimeRepo.getPlayerActivity({
+      const activity = await getPlayerActivity({
         minecraftUuid: STEVE,
         online: false,
       });
@@ -494,7 +495,7 @@ describe("PlaytimeRepository (integration)", () => {
       await seedDay(1, 600);
       await seedDay(2, 600);
 
-      const activity = await playtimeRepo.getPlayerActivity({
+      const activity = await getPlayerActivity({
         minecraftUuid: STEVE,
         online: false,
       });
@@ -503,7 +504,7 @@ describe("PlaytimeRepository (integration)", () => {
     });
 
     it("reports no busiest weekday for a player with no recent playtime", async () => {
-      const activity = await playtimeRepo.getPlayerActivity({
+      const activity = await getPlayerActivity({
         minecraftUuid: ALEX,
         online: false,
       });
@@ -525,7 +526,7 @@ describe("PlaytimeRepository (integration)", () => {
         playTimeTicks: ticks(0),
       });
 
-      const activity = await playtimeRepo.getPlayerActivity({
+      const activity = await getPlayerActivity({
         minecraftUuid: STEVE,
         online: true,
       });
@@ -579,5 +580,34 @@ describe("PlaytimeRepository (integration)", () => {
       expect(winner.minecraftUsername).toBe("alex");
       expect(rest).toEqual([]);
     });
+  });
+});
+
+describe("PlayerPlaytimeSummaryQueries.getServerStats (integration)", () => {
+  it("counts sessions separately from players", async () => {
+    await Q.player.playtime.summary.create({
+      playerMinecraftUuid: STEVE,
+      serverId,
+      totalSeconds: 3600n,
+      totalSessions: 3,
+    });
+    await Q.player.playtime.summary.create({
+      playerMinecraftUuid: ALEX,
+      serverId,
+      totalSeconds: 1800n,
+      totalSessions: 5,
+    });
+
+    const stats = await Q.player.playtime.summary.getServerStats(serverId);
+
+    expect(stats.totalPlayers).toBe(2);
+    expect(stats.totalSeconds).toBe(5400);
+    expect(stats.totalSessions).toBe(8);
+  });
+
+  it("reports zero sessions for a server without playtime", async () => {
+    const stats = await Q.player.playtime.summary.getServerStats(serverId);
+
+    expect(stats.totalSessions).toBe(0);
   });
 });

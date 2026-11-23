@@ -1,19 +1,15 @@
 import { useState } from "react";
 import { ArrowDown, ArrowUp, Package, Trash2 } from "lucide-react";
 import type { LauncherPackSource } from "@createrington/shared/launcher";
-import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { AdminPage } from "@/features/admin/components/AdminPage";
+import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { CellDate, CellText } from "@/components/cell-text";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { EmptyState, ErrorState } from "@/components/query-states";
 import {
   BadgeCellSkeleton,
   DataTable,
@@ -81,7 +77,7 @@ export function OwnerLauncherPacks() {
     ),
   );
   const removeMutation = useMutation(
-    trpc.owner.launcherPacks.remove.mutationOptions(
+    trpc.owner.launcherPacks.delete.mutationOptions(
       useMutationToast({
         success: (pack) => `No longer offering "${pack.slug}"`,
         onSuccess: refresh,
@@ -212,53 +208,50 @@ export function OwnerLauncherPacks() {
   };
 
   return (
-    <div className="flex flex-1 flex-col gap-4">
-      <AdminPageHeader
-        trail={[
-          { label: "Home", href: "/" },
-          { label: "Owner" },
-          { label: PAGE_COPY.title },
-        ]}
+    <AdminPage
+      trail={[
+        { label: "Home", href: "/" },
+        { label: "Owner" },
+        { label: PAGE_COPY.title },
+      ]}
+    >
+      <AdminPageTitle
+        title={PAGE_COPY.title}
+        description={PAGE_COPY.description}
+        actions={
+          <Button onClick={() => setAdding(true)}>
+            <Package className="mr-2 size-4" />
+            Offer a modpack
+          </Button>
+        }
       />
-
-      <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
-        <Card>
-          <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
-            <div>
-              <CardTitle>
-                {PAGE_COPY.title}
-                {!packsQuery.isLoading && ` (${packs.length})`}
-              </CardTitle>
-              <CardDescription>{PAGE_COPY.description}</CardDescription>
-            </div>
-            <Button onClick={() => setAdding(true)}>
-              <Package className="mr-2 size-4" />
-              Offer a modpack
-            </Button>
-          </CardHeader>
-          <CardContent className="p-0">
-            {packsQuery.isError ? (
-              <p className="py-8 text-center text-destructive">
-                Failed to load the launcher packs: {packsQuery.error.message}
-              </p>
-            ) : !packsQuery.isLoading && packs.length === 0 ? (
-              <p className="px-6 py-8 text-center text-muted-foreground">
-                {PAGE_COPY.empty}
-              </p>
-            ) : (
-              <DataTable
-                columns={columns}
-                rows={packs}
-                loading={packsQuery.isLoading}
-                loadingRows={2}
-                rowKey={(pack) => pack.id}
-                actions={rowActions}
-                actionSlots={2}
-              />
-            )}
-          </CardContent>
-        </Card>
-      </div>
+      <Card className="pt-0">
+        <CardContent className="p-0">
+          {packsQuery.isError ? (
+            <ErrorState
+              message={`Failed to load the launcher packs: ${packsQuery.error.message}`}
+              onRetry={() => packsQuery.refetch()}
+              compact
+            />
+          ) : !packsQuery.isLoading && packs.length === 0 ? (
+            <EmptyState
+              icon={Package}
+              message={PAGE_COPY.empty}
+              className="py-8"
+            />
+          ) : (
+            <DataTable
+              columns={columns}
+              rows={packs}
+              loading={packsQuery.isLoading}
+              loadingRows={2}
+              rowKey={(pack) => pack.id}
+              actions={rowActions}
+              actionSlots={2}
+            />
+          )}
+        </CardContent>
+      </Card>
 
       <AddLauncherPackDialog
         open={adding}
@@ -279,6 +272,6 @@ export function OwnerLauncherPacks() {
           if (removing) await removeMutation.mutateAsync({ id: removing.id });
         }}
       />
-    </div>
+    </AdminPage>
   );
 }

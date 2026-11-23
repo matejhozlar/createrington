@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from "vitest";
-import { Q } from "@/db";
+import { db, Q } from "@/db";
 
 const ALICE = "dddddddd-0000-4000-8000-000000000001";
 const BOB = "dddddddd-0000-4000-8000-000000000002";
@@ -7,7 +7,6 @@ const UUIDS = [ALICE, BOB];
 const DISCORD_IDS = ["779000000000000001", "779000000000000002"];
 const SERVER_IDENTIFIERS = ["stat-total-test-a", "stat-total-test-b"];
 
-const stats = Q.player.minecraft.stats;
 const totals = Q.player.minecraft.stat.total;
 
 let serverA: number;
@@ -32,13 +31,15 @@ function upsert(
   serverId: number,
   entries: Record<string, Record<string, Record<string, unknown>>>,
 ): Promise<string[]> {
-  return stats.batchUpsert(
-    serverId,
-    Object.entries(entries).map(([minecraftUuid, playerStats]) => ({
-      minecraftUuid,
-      stats: playerStats,
-      dataVersion: null,
-    })),
+  return db.inTransaction((tx) =>
+    tx.player.minecraft.stats.batchUpsert(
+      serverId,
+      Object.entries(entries).map(([minecraftUuid, playerStats]) => ({
+        minecraftUuid,
+        stats: playerStats,
+        dataVersion: null,
+      })),
+    ),
   );
 }
 
@@ -137,7 +138,7 @@ describe("PlayerMinecraftStatTotalQueries projection (integration)", () => {
       [BOB]: { "minecraft:mined": { "totaltest:ice": 1 } },
     });
 
-    const rows = await totals.compareItem("totaltest:ice", [
+    const rows = await totals.getItemComparison("totaltest:ice", [
       "minecraft:used",
       "minecraft:mined",
     ]);
@@ -252,7 +253,7 @@ describe("PlayerMinecraftStatTotalQueries projection (integration)", () => {
     });
 
     expect(
-      await Q.player.minecraft.stat.key.searchStats("search rock"),
+      await Q.player.minecraft.stat.key.getMatchingStats("search rock"),
     ).toEqual([
       {
         category: "minecraft:mined",
@@ -273,13 +274,12 @@ describe("PlayerMinecraftStatTotalQueries projection (integration)", () => {
       },
     });
 
-    const byVanillaNamespace = await Q.player.minecraft.stat.key.searchStats(
-      "minecraft",
-      100,
-    );
-    const byName = await Q.player.minecraft.stat.key.searchStats("totaltest_q");
+    const byVanillaNamespace =
+      await Q.player.minecraft.stat.key.getMatchingStats("minecraft", 100);
+    const byName =
+      await Q.player.minecraft.stat.key.getMatchingStats("totaltest_q");
     const byModNamespace =
-      await Q.player.minecraft.stat.key.searchStats("totaltestmod");
+      await Q.player.minecraft.stat.key.getMatchingStats("totaltestmod");
 
     expect(byVanillaNamespace.map((stat) => stat.item)).not.toContain(
       "minecraft:totaltest_quarry",

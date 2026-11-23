@@ -29,6 +29,8 @@ merged pull request. For a feature/architecture overview, see the
 - **pnpm** (pinned via the `packageManager` field in `package.json`; run
   `corepack enable` to use the correct version automatically)
 - **Docker** (for the PostgreSQL container)
+- Access to the Createrington project in **Infisical** (`secrets.matejhoz.com`),
+  which holds the dev environment
 - A Discord application (bot token + OAuth credentials) and a Minecraft server
   with RCON enabled if you need to exercise those integrations
 
@@ -39,8 +41,8 @@ git clone https://gitea.matejhoz.com/Createrington/app.git createrington
 cd createrington
 pnpm install
 
-# Configure environment
-cp .env.example .env   # then fill in section 1
+# Environment (pnpm dev runs the server under `infisical run --env=dev`)
+pnpm exec infisical login   # once per machine
 
 # Database
 pnpm db:up        # start PostgreSQL on port 5433
@@ -52,9 +54,11 @@ pnpm generate     # generate DB types + query classes, then typecheck
 pnpm dev
 ```
 
-`.env.example` at the repository root documents every environment variable.
-Filling in section 1 is enough to boot locally; sections 2 and 3 cover
-production-only values and optional integrations. See the
+The server's environment comes from the Infisical `dev` environment, and it also
+reads a root `.env` for values Infisical does not set. `.env.example` at the
+repository root documents every environment variable: section 1 is what a local
+boot needs, and sections 2 and 3 cover production-only values and optional
+integrations. See the
 [README quick start](./README.md#quick-start) for the short version.
 
 ## Repository Layout
@@ -63,14 +67,14 @@ This is a pnpm monorepo with four workspaces under `packages/`:
 
 | Workspace            | Description                                                        |
 | -------------------- | ------------------------------------------------------------------ |
-| `packages/server`    | Express 5 + tRPC v11 backend, Discord bots, PostgreSQL (port 5001) |
+| `packages/server`    | Express 5 + tRPC v11 backend, Discord bot, PostgreSQL (port 5001)  |
 | `packages/client`    | React 19 + Vite SPA (port 3000)                                    |
 | `packages/shared`    | Zod schemas and shared TypeScript types (incl. generated DB types) |
 | `packages/api-types` | Published tRPC contracts for first-party consumer apps             |
 
 Other top-level directories: `docker/` (PostgreSQL and local Minecraft server
-containers, migrations, seed data), `mod-api/` (generated Java API library),
-and `scripts/` (build helpers).
+containers, seed data), `mod-api/` (generated Java API library), and `scripts/`
+(build helpers). Migrations live in `packages/server/drizzle/`.
 
 ## Branching Strategy
 
@@ -94,12 +98,13 @@ and `scripts/` (build helpers).
 | `pnpm lint`             | Lint all workspaces (`lint:server`, `lint:client`)    |
 | `pnpm format`           | Format the repo with Prettier                         |
 | `pnpm format:check`     | Verify formatting without writing                     |
-| `pnpm test:unit`        | Run server unit tests                                 |
+| `pnpm test:unit`        | Run server and client unit tests                      |
 | `pnpm test:integration` | Run server integration tests (requires the DB)        |
 | `pnpm generate`         | Regenerate DB types + query classes, then typecheck   |
 
 Before opening a PR, make sure the same checks CI runs pass locally:
-`pnpm format:check`, `pnpm lint`, `pnpm typecheck`, and `pnpm test:unit`.
+`pnpm format:check`, `pnpm lint`, `pnpm typecheck`, `pnpm knip`, and
+`pnpm test:unit`.
 
 ## Code Style
 
@@ -114,11 +119,12 @@ instead.
 
 ### Conventions
 
-- **Comments**: default to none. Add a comment only when the _why_ is
-  non-obvious (a hidden constraint, a subtle invariant, a workaround). Do not
-  explain _what_ the code does or leave historical/PR notes. Service and
-  repository classes are the exception: give them a one-paragraph class header
-  and a one-line note on each public method.
+- **Comments**: none in feature code (routes, tRPC procedures, components,
+  hooks, services, utilities), not even a one-line _why_. Put the explanation in
+  the PR description instead. Two exceptions: table and column comments in the
+  schema files under `packages/server/src/db/schema/`, and JSDoc on service and
+  repository classes (a one-paragraph class header and a one-line note on each
+  public method).
 - **Logging (server)**: use the global `logger` (Winston). Never use
   `console.log` in server code; it is only acceptable in `src/scripts/`.
 - **Client data**: extract static display data (labels, metrics, feature lists)
@@ -152,15 +158,17 @@ Important rules:
   repositories. The base query methods are documented in
   `packages/server/src/db/queries/base.queries.ts`.
 - Three access patterns are available: `Q` (singleton query instances), `db`
-  (`db.inTransaction(...)` for transactions), and `R` (repositories for complex
-  business logic).
+  (`db.inTransaction(...)` for transactions), and repositories, named
+  singletons imported from `@/db` (`balanceRepo`, `playerBanRepo`, ...) for
+  logic that owns a transaction plus an audit or ledger write.
 
 ## API Conventions
 
 The server exposes a type-safe tRPC API (and a thin layer of Express REST routes
-for webhooks, OAuth, and uploads). tRPC procedures have three auth levels:
-`publicProcedure`, `userProcedure`, and `adminProcedure`
-(`packages/server/src/trpc/trpc.ts`).
+for webhooks, OAuth, and uploads). `packages/server/src/trpc/trpc.ts` defines
+the procedure levels: `publicProcedure`, `userProcedure`, `adminProcedure`,
+`ownerProcedure`, and `sandboxServiceProcedure` (service-to-service calls from
+the sandbox).
 
 Procedure naming:
 
@@ -176,10 +184,10 @@ type-safe.
 
 ## Mod-Facing API (Spec Files)
 
-Endpoints consumed by the Minecraft mods (under `/api/currency`, `/api/presence`,
-`/api/trains`) are documented via structured **spec files** next to each
-controller (`*.api-spec.ts`). These specs drive both the generated Java client
-library (`mod-api/`) and the API reference docs.
+Endpoints consumed by the Minecraft mods (under `/api/currency`, `/api/parties`,
+`/api/presence`, `/api/trains`) are documented via structured **spec files** next
+to each controller (`*.api-spec.ts`). These specs drive the generated Java client
+library (`mod-api/`).
 
 When adding or changing a mod-facing endpoint: update the spec file and bump the
 version in `mod-api/gradle.properties`. CI handles generation and publishing.
@@ -207,10 +215,11 @@ automated.
 
 ## Testing
 
-Tests use **Vitest** and live in the server workspace
-(`packages/server/src/tests/`).
+Tests use **Vitest** and live in `packages/server/src/tests/` and
+`packages/client/src/tests/`.
 
-- `pnpm test:unit` runs unit tests (no external dependencies).
+- `pnpm test:unit` runs the server and client unit tests (no external
+  dependencies).
 - `pnpm test:integration` runs integration tests, which require a running
   database (`pnpm db:up` first; `pnpm db:reset` for a clean slate).
 - `pnpm test` runs the server suite in watch mode.
@@ -228,7 +237,8 @@ correctness.
 We use the Gitea CLI, `tea`, for issues and pull requests (not `gh`).
 
 1. Branch off `dev`, make your change, and ensure local checks pass
-   (`pnpm format:check`, `pnpm lint`, `pnpm typecheck`, `pnpm test:unit`).
+   (`pnpm format:check`, `pnpm lint`, `pnpm typecheck`, `pnpm knip`,
+   `pnpm test:unit`).
 2. Push your branch and open a PR **targeting `dev`**:
 
    ```bash
@@ -261,8 +271,10 @@ CI runs on every pull request to `main` and `dev`
 | `format`    | `pnpm format:check`                         |
 | `lint`      | `pnpm lint`                                 |
 | `typecheck` | `pnpm generate:ci` then `pnpm typecheck`    |
+| `unused`    | `pnpm knip` (unused files, exports, deps)   |
 | `build`     | `pnpm build:server` and `pnpm build:client` |
-| `test-unit` | server unit tests                           |
+| `test-unit` | server and client unit tests                |
+| `audit`     | `pnpm audit --audit-level=high`             |
 
 Merges into `dev` and `main` trigger the dev and production deploy workflows
 respectively.

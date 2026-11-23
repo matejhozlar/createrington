@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { BAN_REASON_MAX_LENGTH } from "@createrington/shared/admin-reason";
 import { Field, FieldLabel } from "@/components/ui/field";
 import {
@@ -13,9 +12,12 @@ import { AlertTriangle } from "lucide-react";
 import { trpc, queryClient } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
+import { useDialogDraft } from "@/hooks/use-dialog-draft";
 import { FormDialog } from "@/components/form-dialog";
 import { useMutation } from "@tanstack/react-query";
 import { Textarea } from "@/components/ui/textarea";
+import type { BanType } from "@createrington/shared/db";
+import { pluralize } from "@/lib/format";
 
 interface IssueBanModalProps {
   open: boolean;
@@ -24,7 +26,24 @@ interface IssueBanModalProps {
   playerUsername: string;
 }
 
-type BanType = "temporary" | "permanent";
+const BAN_TYPE_OPTIONS: { value: BanType; label: string }[] = [
+  { value: "temporary", label: "Temporary" },
+  { value: "permanent", label: "Permanent (Deletes Player)" },
+];
+
+const DURATION_DAYS = [1, 3, 7, 14, 30, 60, 90];
+
+const EMPTY_DRAFT: {
+  banType: BanType;
+  reason: string;
+  durationDays: number;
+  confirmingPermanent: boolean;
+} = {
+  banType: "temporary",
+  reason: "",
+  durationDays: 7,
+  confirmingPermanent: false,
+};
 
 const invalidatePlayers = () =>
   void queryClient.invalidateQueries(trpc.admin.players.pathFilter());
@@ -59,27 +78,12 @@ export function IssueBanModal({
     ),
   );
 
-  const [banType, setBanType] = useState<BanType>("temporary");
-  const [reason, setReason] = useState("");
-  const [durationDays, setDurationDays] = useState<number>(7);
-  const [showPermanentConfirm, setShowPermanentConfirm] = useState(false);
-
-  const handleClose = () => {
-    setReason("");
-    setDurationDays(7);
-    setBanType("temporary");
-    setShowPermanentConfirm(false);
-    onClose();
-  };
+  const [draft, update] = useDialogDraft(open, EMPTY_DRAFT);
+  const { banType, reason, durationDays } = draft;
 
   const handleSubmit = async () => {
-    if (!reason.trim()) {
-      toast.error("Reason is required");
-      return;
-    }
-
     if (banType === "permanent") {
-      setShowPermanentConfirm(true);
+      update({ confirmingPermanent: true });
       return;
     }
 
@@ -104,10 +108,6 @@ export function IssueBanModal({
       toast.success("Player permanently banned and deleted");
     }
 
-    setReason("");
-    setDurationDays(7);
-    setBanType("temporary");
-
     onClose();
   };
 
@@ -115,7 +115,7 @@ export function IssueBanModal({
     <>
       <FormDialog
         open={open}
-        onClose={handleClose}
+        onClose={onClose}
         title="Issue Ban"
         onConfirm={handleSubmit}
         confirmLabel="Issue Ban"
@@ -135,16 +135,17 @@ export function IssueBanModal({
           <FieldLabel htmlFor="ban-type">Ban Type</FieldLabel>
           <Select
             value={banType}
-            onValueChange={(value) => setBanType(value as BanType)}
+            onValueChange={(value) => update({ banType: value as BanType })}
           >
             <SelectTrigger id="ban-type">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className="z-[100]">
-              <SelectItem value="temporary">Temporary</SelectItem>
-              <SelectItem value="permanent">
-                Permanent (Deletes Player)
-              </SelectItem>
+            <SelectContent>
+              {BAN_TYPE_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </Field>
@@ -154,19 +155,19 @@ export function IssueBanModal({
             <FieldLabel htmlFor="duration">Duration (Days)</FieldLabel>
             <Select
               value={durationDays.toString()}
-              onValueChange={(value) => setDurationDays(parseInt(value))}
+              onValueChange={(value) =>
+                update({ durationDays: parseInt(value) })
+              }
             >
               <SelectTrigger id="duration">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="z-[100]">
-                <SelectItem value="1">1 Day</SelectItem>
-                <SelectItem value="3">3 Days</SelectItem>
-                <SelectItem value="7">7 Days</SelectItem>
-                <SelectItem value="14">14 Days</SelectItem>
-                <SelectItem value="30">30 Days</SelectItem>
-                <SelectItem value="60">60 Days</SelectItem>
-                <SelectItem value="90">90 Days</SelectItem>
+              <SelectContent>
+                {DURATION_DAYS.map((days) => (
+                  <SelectItem key={days} value={String(days)}>
+                    {pluralize(days, "Day")}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </Field>
@@ -196,7 +197,7 @@ export function IssueBanModal({
             id="ban-reason"
             placeholder="Enter reason for ban..."
             value={reason}
-            onChange={(e) => setReason(e.target.value)}
+            onChange={(e) => update({ reason: e.target.value })}
             maxLength={BAN_REASON_MAX_LENGTH}
             rows={4}
             required
@@ -205,8 +206,8 @@ export function IssueBanModal({
       </FormDialog>
 
       <ConfirmDialog
-        open={showPermanentConfirm}
-        onOpenChange={setShowPermanentConfirm}
+        open={draft.confirmingPermanent}
+        onOpenChange={(confirmingPermanent) => update({ confirmingPermanent })}
         title={<span className="text-destructive">Confirm Permanent Ban</span>}
         description={
           <>

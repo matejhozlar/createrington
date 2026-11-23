@@ -1,47 +1,51 @@
-import { useState } from "react";
-import { trpc, queryClient } from "@/lib/trpc";
+import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { FormDialog } from "@/components/form-dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { modpackFormError } from "../validation";
+import { modpackFormError } from "@/features/admin/workshop/validation";
 import { useMutation } from "@tanstack/react-query";
+import { useDialogDraft } from "@/hooks/use-dialog-draft";
+import { Field, FieldLabel } from "@/components/ui/field";
 
-interface ModpackSettings {
-  id: number;
-  name: string;
-  description: string | null;
-  curseforgeProjectId: number | null;
-  shipsServerPack: boolean;
-  titleImageUrl: string | null;
-  iconUrl: string | null;
-}
+type ModpackSettings = RouterOutput["admin"]["modpacks"]["list"][number];
 
 export function ModpackSettingsDialog({
-  open,
-  onOpenChange,
   modpack,
+  onOpenChange,
 }: {
-  open: boolean;
+  modpack: ModpackSettings | null;
   onOpenChange: (open: boolean) => void;
-  modpack: ModpackSettings;
 }) {
+  const open = modpack !== null;
   const toast = useToastActions();
 
-  const [name, setName] = useState(modpack.name);
-  const [description, setDescription] = useState(modpack.description ?? "");
-  const [publishedPackId, setPublishedPackId] = useState(
-    modpack.curseforgeProjectId ? String(modpack.curseforgeProjectId) : "",
-  );
-  const [shipsServerPack, setShipsServerPack] = useState(
-    modpack.shipsServerPack,
-  );
-  const [titleImageUrl, setTitleImageUrl] = useState(
-    modpack.titleImageUrl ?? "",
-  );
-  const [iconUrl, setIconUrl] = useState(modpack.iconUrl ?? "");
+  const [draft, update] = useDialogDraft<{
+    name: string;
+    description: string;
+    publishedPackId: string;
+    shipsServerPack: boolean;
+    titleImageUrl: string;
+    iconUrl: string;
+  }>(open, () => ({
+    name: modpack?.name ?? "",
+    description: modpack?.description ?? "",
+    publishedPackId: modpack?.curseforgeProjectId
+      ? String(modpack.curseforgeProjectId)
+      : "",
+    shipsServerPack: modpack?.shipsServerPack ?? false,
+    titleImageUrl: modpack?.titleImageUrl ?? "",
+    iconUrl: modpack?.iconUrl ?? "",
+  }));
+  const {
+    name,
+    description,
+    publishedPackId,
+    shipsServerPack,
+    titleImageUrl,
+    iconUrl,
+  } = draft;
 
   const updateMutation = useMutation(
     trpc.admin.modpacks.update.mutationOptions(
@@ -55,7 +59,7 @@ export function ModpackSettingsDialog({
             trpc.admin.workshops.listPackMods.pathFilter(),
           );
           void queryClient.invalidateQueries(
-            trpc.admin.workshops.getAttention.pathFilter(),
+            trpc.admin.workshops.attention.pathFilter(),
           );
           void queryClient.invalidateQueries(
             trpc.user.workshops.list.pathFilter(),
@@ -70,6 +74,7 @@ export function ModpackSettingsDialog({
   );
 
   const handleSave = () => {
+    if (!modpack) return;
     const validationError = modpackFormError(
       publishedPackId,
       titleImageUrl,
@@ -105,77 +110,81 @@ export function ModpackSettingsDialog({
       loading={updateMutation.isPending}
       contentClassName="sm:max-w-lg"
     >
-      <div className="space-y-2">
-        <Label htmlFor="modpack-settings-name">Name</Label>
+      <Field>
+        <FieldLabel htmlFor="modpack-settings-name">Name</FieldLabel>
         <Input
           id="modpack-settings-name"
           maxLength={120}
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={(e) => update({ name: e.target.value })}
         />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="modpack-settings-desc">Description</Label>
+      </Field>
+      <Field>
+        <FieldLabel htmlFor="modpack-settings-desc">Description</FieldLabel>
         <Input
           id="modpack-settings-desc"
           maxLength={2000}
           value={description}
-          onChange={(e) => setDescription(e.target.value)}
+          onChange={(e) => update({ description: e.target.value })}
         />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="modpack-settings-published">
+      </Field>
+      <Field>
+        <FieldLabel htmlFor="modpack-settings-published">
           Published Modpack Project ID (Optional)
-        </Label>
+        </FieldLabel>
         <Input
           id="modpack-settings-published"
           type="number"
           placeholder="CurseForge project the pack is published under"
           value={publishedPackId}
-          onChange={(e) => setPublishedPackId(e.target.value)}
+          onChange={(e) => update({ publishedPackId: e.target.value })}
         />
         <p className="text-xs text-muted-foreground">
           Set this once the pack is on CurseForge. It is what "Check Published
           Pack" reads, and it applies to every workshop feeding this modpack.
         </p>
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="modpack-settings-title-image">
+      </Field>
+      <Field>
+        <FieldLabel htmlFor="modpack-settings-title-image">
           Title Image URL (Optional)
-        </Label>
+        </FieldLabel>
         <Input
           id="modpack-settings-title-image"
           inputMode="url"
           maxLength={2048}
           placeholder="https://assets.createrington.com/titles/..."
           value={titleImageUrl}
-          onChange={(e) => setTitleImageUrl(e.target.value)}
+          onChange={(e) => update({ titleImageUrl: e.target.value })}
         />
         <p className="text-xs text-muted-foreground">
           Full-width banner at the top of this pack's changelog posts in
           Discord. Leave empty to use a text heading instead.
         </p>
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="modpack-settings-icon">Icon URL (Optional)</Label>
+      </Field>
+      <Field>
+        <FieldLabel htmlFor="modpack-settings-icon">
+          Icon URL (Optional)
+        </FieldLabel>
         <Input
           id="modpack-settings-icon"
           inputMode="url"
           maxLength={2048}
           placeholder="https://assets.createrington.com/icons/..."
           value={iconUrl}
-          onChange={(e) => setIconUrl(e.target.value)}
+          onChange={(e) => update({ iconUrl: e.target.value })}
         />
         <p className="text-xs text-muted-foreground">
           Square icon the launcher shows for this pack when its releases do not
           come from CurseForge. A published pack uses its CurseForge icon
           instead.
         </p>
-      </div>
-      <label className="flex cursor-pointer items-start gap-3 rounded-md border border-border bg-card p-3 hover:border-[var(--border-strong)]">
+      </Field>
+      <label className="flex cursor-pointer items-start gap-3 rounded-md border border-border bg-card p-3 hover:border-border-strong">
         <Switch
           checked={shipsServerPack}
-          onCheckedChange={setShipsServerPack}
+          onCheckedChange={(value: boolean) =>
+            update({ shipsServerPack: value })
+          }
         />
         <div className="space-y-0.5">
           <div className="text-[13px] font-medium text-foreground">

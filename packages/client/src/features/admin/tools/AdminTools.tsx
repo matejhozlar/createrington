@@ -1,14 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import type { LucideIcon } from "lucide-react";
-import {
-  Breadcrumb,
-  BreadcrumbList,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbSeparator,
-  BreadcrumbPage,
-} from "@/components/ui/breadcrumb";
+import { AdminPage } from "@/features/admin/components/AdminPage";
 import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { FilterBar } from "@/features/admin/components/FilterBar";
 import { Badge } from "@/components/ui/badge";
@@ -217,101 +210,90 @@ export function AdminTools() {
   };
 
   return (
-    <div className="flex flex-1 flex-col gap-4">
-      <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-border bg-sidebar px-4">
-        <Breadcrumb>
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbLink href="/admin/dashboard">Admin</BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbPage>Tools</BreadcrumbPage>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
+    <AdminPage
+      trail={[{ label: "Admin", href: "/admin/dashboard" }, { label: "Tools" }]}
+      headerActions={
+        <>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-8"
+                onClick={() => refetchMutation.mutate()}
+                disabled={refetchMutation.isPending}
+                aria-label="Refresh Discord data"
+              >
+                <RefreshCw
+                  className={`size-4 ${refetchMutation.isPending ? "animate-spin" : ""}`}
+                />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Refresh Discord data</TooltipContent>
+          </Tooltip>
+        </>
+      }
+    >
+      <AdminPageTitle
+        title="Tools"
+        description="Operational utilities for Discord, the game servers, and the community."
+      />
 
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-8"
-              onClick={() => refetchMutation.mutate()}
-              disabled={refetchMutation.isPending}
-              aria-label="Refresh Discord data"
-            >
-              <RefreshCw
-                className={`size-4 ${refetchMutation.isPending ? "animate-spin" : ""}`}
-              />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Refresh Discord data</TooltipContent>
-        </Tooltip>
-      </header>
+      {pinnedTools.length > 0 && (
+        <PinnedTools tools={pinnedTools} onOpen={(href) => navigate(href)} />
+      )}
 
-      <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
-        <AdminPageTitle
-          title="Tools"
-          description="Operational utilities for Discord, the game servers, and the community."
+      <Tabs value={category} onValueChange={setCategory} className="gap-4">
+        <div className="overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <TabsList>
+            {CATEGORIES.map(({ value, count }) => (
+              <TabsTrigger
+                key={value}
+                value={value}
+                className="cursor-pointer text-foreground/80"
+              >
+                {value}
+                <Badge
+                  variant="outline"
+                  className="border-transparent bg-foreground/10"
+                >
+                  {count}
+                </Badge>
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </div>
+
+        <FilterBar
+          search={query}
+          onSearchChange={setQuery}
+          placeholder="Search tools..."
+          activeCount={query.trim() ? 1 : 0}
         />
 
-        {pinnedTools.length > 0 && (
-          <PinnedTools tools={pinnedTools} onOpen={(href) => navigate(href)} />
-        )}
-
-        <Tabs value={category} onValueChange={setCategory} className="gap-4">
-          <div className="overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <TabsList>
-              {CATEGORIES.map(({ value, count }) => (
-                <TabsTrigger
-                  key={value}
-                  value={value}
-                  className="cursor-pointer text-foreground/80"
-                >
-                  {value}
-                  <Badge
-                    variant="outline"
-                    className="border-transparent bg-foreground/10"
-                  >
-                    {count}
-                  </Badge>
-                </TabsTrigger>
+        <TabsContent value={category} tabIndex={-1}>
+          {filtered.length > 0 ? (
+            <div className="grid auto-rows-fr grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {filtered.map((tool) => (
+                <ToolCard
+                  key={tool.href}
+                  title={tool.title}
+                  description={tool.description}
+                  section={tool.section}
+                  icon={tool.icon}
+                  pinned={pinned.includes(tool.href)}
+                  onOpen={() => navigate(tool.href)}
+                  onTogglePin={() => handleTogglePin(tool.href)}
+                />
               ))}
-            </TabsList>
-          </div>
-
-          <FilterBar
-            search={query}
-            onSearchChange={setQuery}
-            placeholder="Search tools..."
-            activeCount={query.trim() ? 1 : 0}
-          />
-
-          <TabsContent value={category} tabIndex={-1}>
-            {filtered.length > 0 ? (
-              <div className="grid auto-rows-fr grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                {filtered.map((tool) => (
-                  <ToolCard
-                    key={tool.href}
-                    title={tool.title}
-                    description={tool.description}
-                    section={tool.section}
-                    icon={tool.icon}
-                    pinned={pinned.includes(tool.href)}
-                    onOpen={() => navigate(tool.href)}
-                    onTogglePin={() => handleTogglePin(tool.href)}
-                  />
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                No tools match “{query}”.
-              </p>
-            )}
-          </TabsContent>
-        </Tabs>
-      </div>
-    </div>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              No tools match “{query}”.
+            </p>
+          )}
+        </TabsContent>
+      </Tabs>
+    </AdminPage>
   );
 }

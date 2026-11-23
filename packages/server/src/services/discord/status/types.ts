@@ -1,17 +1,12 @@
 import config from "@/config";
-import { R } from "@/db";
+import { playtimeRepo } from "@/db";
 import { formatPlaytime } from "@createrington/shared/format";
 
 export interface StatusConfig {
-  /** Fallback text shown when the dynamic resolver throws or returns null */
   text: string;
   dynamic?: () => Promise<string | null> | string | null;
 }
 
-/**
- * Discord caps custom-status state at 128 characters. We truncate well below
- * that to leave room for any future suffix and avoid silent server-side trims.
- */
 export const MAX_STATUS_LENGTH = 120;
 
 /**
@@ -27,7 +22,7 @@ export function buildMainBotStatuses(): StatusConfig[] {
         const endOfDay = new Date();
         endOfDay.setHours(23, 59, 59, 999);
 
-        const top = await R.playtimeRepo.getTopPlayersByDateRange(
+        const top = await playtimeRepo.getTopPlayersByDateRange(
           config.servers.rails.id,
           startOfDay,
           endOfDay,

@@ -23,21 +23,32 @@ export interface IssuedLauncherSession {
  * Issues opaque refresh tokens on sign-in, rotates them on each use, and revokes the whole
  * token family when an already-revoked token is replayed (theft detection). Every revocation
  * also denies the access tokens already issued for the sessions it ends, so the launcher's
- * next request is refused, not only its next refresh. Singleton; an hourly cleanup of
- * expired rows starts on first access.
+ * next request is refused, not only its next refresh. The hourly cleanup of expired rows
+ * runs between the container's `initialize()` and `shutdown()`.
  */
-class LauncherSessionService {
-  private static instance: LauncherSessionService;
+export class LauncherSessionService {
+  private cleanupInterval: NodeJS.Timeout | null = null;
 
-  private constructor() {
-    setInterval(() => void this.cleanupExpired(), 60 * 60 * 1000).unref();
+  /** Starts the hourly cleanup of expired launcher sessions. */
+  initialize(): void {
+    if (this.cleanupInterval) return;
+    this.cleanupInterval = setInterval(
+      () => {
+        this.cleanupExpired().catch((error: unknown) => {
+          logger.error("Expired launcher session cleanup failed:", error);
+        });
+      },
+      60 * 60 * 1000,
+    );
+    this.cleanupInterval.unref();
   }
 
-  static getInstance(): LauncherSessionService {
-    if (!LauncherSessionService.instance) {
-      LauncherSessionService.instance = new LauncherSessionService();
+  /** Stops the hourly cleanup. */
+  shutdown(): void {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = null;
     }
-    return LauncherSessionService.instance;
   }
 
   /** Issues a session in a new token family and returns the raw refresh token with the family id. */
@@ -189,4 +200,4 @@ class LauncherSessionService {
   }
 }
 
-export const launcherSessionService = LauncherSessionService.getInstance();
+export const launcherSessionService = new LauncherSessionService();

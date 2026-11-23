@@ -1,12 +1,11 @@
 import { db, Q } from "@/db";
+import { SYSTEM_AUDIT_ACTOR } from "@/db/queries/admin/log/action";
 import { DatabaseTable, type DatabaseQueries } from "@/generated/db";
-import { NotFoundError } from "@/app/middleware/error-handler";
-import { AdminEdit } from "@/types";
+import { NotFoundError } from "@/errors";
 import { minecraftRcon, WhitelistAction } from "@/utils/rcon";
 import { launcherSessionService } from "@/services/auth/launcher/launcher-session.service";
 import type { PlayerIdentifier } from "@/db/repositories/player/base";
 
-/** Who triggered a deletion. `system` covers automated cleanup paths. */
 export type DeletionActor =
   | { type: "admin" | "user"; discordId: string; username: string }
   | { type: "system"; username?: string };
@@ -17,22 +16,19 @@ export function deletionAuditIdentity(actor: DeletionActor): {
   username: string;
 } {
   return actor.type === "system"
-    ? { discordId: "system", username: actor.username ?? "System" }
+    ? {
+        discordId: SYSTEM_AUDIT_ACTOR.discordId,
+        username: actor.username ?? SYSTEM_AUDIT_ACTOR.username,
+      }
     : { discordId: actor.discordId, username: actor.username };
 }
 
-/** Snapshot of the removed player, captured before the row is deleted. */
 export interface DeletedPlayer {
   minecraftUuid: string;
   discordId: string;
   minecraftUsername: string;
 }
 
-/**
- * Fire-and-forget side effect run after a successful deletion (e.g. the
- * waitlist promotion pass), told who triggered the deletion. Hooks must not
- * throw; failures are logged and never block the deletion.
- */
 export type PostDeletionHook = (
   player: DeletedPlayer,
   actor: DeletionActor,
@@ -41,19 +37,11 @@ export type PostDeletionHook = (
 export interface DeletePlayerOptions {
   actor: DeletionActor;
   reason: string;
-  /** Remove the player from every Minecraft whitelist via RCON. Default true. */
   removeFromWhitelist?: boolean;
-  /** Write a DELETE_PLAYER admin_log_action row. Default true. */
   writeAudit?: boolean;
-  /** Resolve to null instead of throwing when the player row is already gone. Default false. */
   ignoreMissing?: boolean;
   serverId?: number;
   metadata?: Record<string, unknown>;
-  /**
-   * Extra DB work to run in the same transaction as the audit row and the
-   * player delete, before the delete (e.g. writing a ban record). Lets callers
-   * that need atomicity fold their own writes into the deletion transaction.
-   */
   beforeDelete?: (tx: DatabaseQueries, player: DeletedPlayer) => Promise<void>;
 }
 
@@ -67,10 +55,6 @@ export interface DeletePlayerOptions {
  */
 export class PlayerDeletionService {
   private readonly hooks: PostDeletionHook[] = [];
-
-  initialize(): void {
-    logger.info("PlayerDeletionService initialized");
-  }
 
   /** Register a fire-and-forget side effect that runs after every successful deletion. */
   onDeleted(hook: PostDeletionHook): void {
@@ -121,7 +105,7 @@ export class PlayerDeletionService {
         await tx.admin.log.action.create({
           adminDiscordId: identity.discordId,
           adminUsername: identity.username,
-          actionType: AdminEdit.DELETE_PLAYER,
+          actionType: "delete_player",
           targetPlayerUuid: snapshot.minecraftUuid,
           targetPlayerName: snapshot.minecraftUsername,
           tableName: DatabaseTable.PLAYER.TABLE,

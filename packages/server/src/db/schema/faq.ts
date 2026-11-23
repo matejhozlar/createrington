@@ -8,6 +8,7 @@ import {
   timestamp,
   index,
 } from "drizzle-orm/pg-core";
+import { faqMatchModeEnum } from "./enums";
 
 // --- faq_entry ---
 
@@ -15,9 +16,7 @@ export const faqEntry = pgTable(
   "faq_entry",
   {
     id: serial("id").primaryKey(),
-    matchMode: varchar("match_mode", { length: 20 })
-      .notNull()
-      .default("keywords"),
+    matchMode: faqMatchModeEnum("match_mode").notNull().default("keywords"),
     pattern: text("pattern").notNull(),
     title: varchar("title", { length: 100 }).notNull(),
     response: text("response").notNull(),

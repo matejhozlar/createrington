@@ -16,24 +16,22 @@ import {
 import type { AddressInfo } from "node:net";
 import type { NextFunction, Request, Response } from "express";
 
-const env = vi.hoisted(() => ({
-  CLAUDE_API_URL: "",
-  ADMIN_CHAT_SECRET: "s".repeat(32),
+const adminChat = vi.hoisted(() => ({
+  url: "",
+  secret: "s".repeat(32),
 }));
 
 vi.mock("@/config", () => ({
-  default: { envMode: { isProd: false, isDev: false } },
+  default: {
+    envMode: { isProd: false, isDev: false, isDevDeployment: true },
+    adminChat,
+  },
 }));
-vi.mock("@/db/utils", () => ({
-  DatabaseError: class DatabaseError extends Error {},
-}));
-vi.mock("@/config/env/env.config", () => ({
-  env,
-  envMode: { isDevDeployment: true },
-}));
-vi.mock("@/app/middleware", async () => ({
-  ...(await vi.importActual("@/app/middleware/error-handler")),
-  ...(await vi.importActual("@/app/middleware/async-handler")),
+vi.mock("@/db/utils", async () =>
+  (await import("@/tests/helpers/mocks/db-utils")).dbUtilsMock(),
+);
+vi.mock("@/app/middleware/auth.middleware", () => ({
+  requireUser: (_req: Request, _res: Response, next: NextFunction) => next(),
   authenticate: (req: Request, _res: Response, next: NextFunction) => {
     req.user = { minecraftUsername: "matej" } as Request["user"];
     next();
@@ -116,7 +114,7 @@ afterAll(async () => {
 
 beforeEach(() => {
   seen = [];
-  env.CLAUDE_API_URL = upstreamUrl;
+  adminChat.url = upstreamUrl;
   respond = answerJson(200, { ok: true });
 });
 
@@ -124,103 +122,41 @@ function chat(path: string, init?: RequestInit): Promise<globalThis.Response> {
   return fetch(`${appUrl}/api/admin/chat${path}`, init);
 }
 
-function postJson(path: string, body: unknown): Promise<globalThis.Response> {
-  return chat(path, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
+describe("admin chat stream", () => {
+  it("rejects a missing, empty or zero session id before calling upstream", async () => {
+    for (const path of [
+      "/stream",
+      "/stream?sessionId=",
+      "/stream?sessionId=0",
+    ]) {
+      const res = await chat(path);
+      expect(res.status).toBe(400);
+      await expect(res.json()).resolves.toMatchObject({
+        message: "sessionId is required",
+      });
+    }
+    expect(seen).toHaveLength(0);
   });
-}
 
-describe("admin chat proxy", () => {
   it("answers 503 when claude-automation is not configured", async () => {
-    env.CLAUDE_API_URL = "";
+    adminChat.url = "";
 
-    const res = await chat("/enabled");
+    const res = await chat("/stream?sessionId=9");
 
     expect(res.status).toBe(503);
     expect(seen).toHaveLength(0);
   });
 
-  it("forwards a GET with its query and the shared secret", async () => {
-    respond = answerJson(200, { enabled: true });
-
-    const res = await chat("/enabled");
-
-    expect(res.status).toBe(200);
-    await expect(res.json()).resolves.toEqual({ enabled: true });
-    expect(seen).toEqual([
-      {
-        method: "GET",
-        path: "/api/chat/enabled",
-        query: { repo: "Createrington/app", environment: "dev" },
-        secret: "s".repeat(32),
-        body: undefined,
-      },
-    ]);
-  });
-
-  it("takes the username from the session and forwards only string query values", async () => {
-    await chat("/sessions?limit=20&cursor=a&cursor=b");
-
-    expect(seen[0]?.path).toBe("/api/chat/sessions");
-    expect(seen[0]?.query).toEqual({
-      username: "matej",
-      environment: "dev",
-      limit: "20",
-    });
-  });
-
-  it("forwards a POST body with the username added", async () => {
-    respond = answerJson(200, { messageId: 3 });
-
-    const res = await postJson("/send", { sessionId: 9, message: "hello" });
-
-    await expect(res.json()).resolves.toEqual({ messageId: 3 });
-    expect(seen[0]).toMatchObject({
-      method: "POST",
-      path: "/api/chat/send",
-      body: { username: "matej", sessionId: 9, message: "hello" },
-    });
-  });
-
-  it("rejects a messages request without a session id before calling upstream", async () => {
-    const res = await chat("/messages");
-
-    expect(res.status).toBe(400);
-    expect(seen).toHaveLength(0);
-  });
-
-  it("passes an upstream error status and body through", async () => {
-    respond = answerJson(403, { error: "admin chat is switched off" });
-
-    const res = await chat("/enabled");
-
-    expect(res.status).toBe(403);
-    await expect(res.json()).resolves.toEqual({
-      error: "admin chat is switched off",
-    });
-  });
-
-  it("answers 500 when claude-automation cannot be reached", async () => {
-    const unused = createServer();
-    env.CLAUDE_API_URL = await listen(unused);
-    await close(unused);
-
-    const res = await chat("/enabled");
-
-    expect(res.status).toBe(500);
-  });
-});
-
-describe("admin chat stream", () => {
-  it("passes an upstream rejection through with its status and body", async () => {
+  it("answers an upstream rejection with its status and error message", async () => {
     respond = answerJson(404, { error: "session not found" });
 
     const res = await chat("/stream?sessionId=9");
 
     expect(res.status).toBe(404);
-    await expect(res.json()).resolves.toEqual({ error: "session not found" });
+    await expect(res.json()).resolves.toMatchObject({
+      success: false,
+      message: "session not found",
+    });
     expect(seen[0]?.query).toEqual({ username: "matej", sessionId: "9" });
   });
 

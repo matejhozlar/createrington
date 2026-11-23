@@ -1,9 +1,6 @@
-import {
-  BadRequestError,
-  ForbiddenError,
-  getValidated,
-  InternalServerError,
-} from "@/app/middleware";
+import { getValidated } from "@/app/middleware/validation.middleware";
+import { respondSuccess } from "@/app/middleware/api-envelope";
+import { BadRequestError, ForbiddenError, InternalServerError } from "@/errors";
 import { getService, Services } from "@/services";
 import type {
   HeartbeatPlayer,
@@ -16,26 +13,7 @@ import { resolveServerId } from "../shared/resolve-server-id";
 import type { Request, Response } from "express";
 import type { HeartbeatBody, PresenceBody } from "./presence.schemas";
 
-/**
- * Presence Controller
- *
- * Handles Minecraft player join/leave events reported by the presenceAPI mod:
- * - Validates and parses incoming presence payloads
- * - Resolves the originating server by IP or explicit serverId
- * - Delegates session tracking to the appropriate PlaytimeService instance
- */
 export class PresenceController {
-  /**
-   * Records a player join or leave event from a Minecraft server.
-   *
-   * Resolves the target server from either the `serverId` field in the request
-   * body or the verified server IP attached by the middleware. Dispatches to the
-   * correct PlaytimeService instance and responds with the echoed event details.
-   *
-   * @param req - Express request containing presence payload in the body
-   * @param res - Express response
-   * @returns Promise that resolves when the event has been processed
-   */
   static async updatePresence(req: Request, res: Response): Promise<void> {
     const { body } = getValidated<{ body: PresenceBody }>(res);
     const { minecraftUsername, uuid, state, timestamp, playTimeTicks } = body;
@@ -48,7 +26,11 @@ export class PresenceController {
       throw new ForbiddenError("Token player does not match reported player");
     }
 
-    const targetServerId = resolveServerId(req, "Presence update");
+    const targetServerId = resolveServerId(
+      req,
+      body.serverId,
+      "Presence update",
+    );
     const eventTimestamp = parseEventTimestamp(timestamp);
     if (!eventTimestamp) {
       throw new BadRequestError("Invalid timestamp");
@@ -96,8 +78,7 @@ export class PresenceController {
         );
       }
 
-      res.json({
-        success: true,
+      respondSuccess(res, {
         message: "Presence updated successfully",
         data: {
           minecraftUsername,
@@ -115,13 +96,6 @@ export class PresenceController {
     }
   }
 
-  /**
-   * Receives a heartbeat from the mod containing the full online player list.
-   * Reconciles tracked sessions against reality to clean up stale sessions.
-   *
-   * @param req - Express request with heartbeat payload
-   * @param res - Express response
-   */
   static async heartbeat(req: Request, res: Response): Promise<void> {
     if (req.modAuth?.uuid) {
       logger.warn(
@@ -131,7 +105,7 @@ export class PresenceController {
     }
 
     const {
-      body: { players },
+      body: { players, serverId },
     } = getValidated<{ body: HeartbeatBody }>(res);
     const onlinePlayers: HeartbeatPlayer[] = players
       .filter((p) => p !== null)
@@ -141,7 +115,7 @@ export class PresenceController {
         playTimeTicks: p.playTimeTicks,
       }));
 
-    const targetServerId = resolveServerId(req, "Heartbeat");
+    const targetServerId = resolveServerId(req, serverId, "Heartbeat");
 
     try {
       const playtimeManager = await getService(
@@ -164,8 +138,7 @@ export class PresenceController {
         `Heartbeat received for server ${targetServerId}: ${onlinePlayers.length} player(s) online`,
       );
 
-      res.json({
-        success: true,
+      respondSuccess(res, {
         message: "Heartbeat processed",
         data: {
           serverId: targetServerId,

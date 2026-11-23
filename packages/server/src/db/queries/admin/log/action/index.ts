@@ -1,24 +1,60 @@
 import type { Pool, PoolClient } from "pg";
 import { AdminLogActionBaseQueries } from "@/generated/db/admin_log_action.queries";
 import { escapeLike } from "@/db/utils";
-import type { AdminLogAction } from "@createrington/shared/db/admin_log_action.types";
+import type {
+  AdminLogAction,
+  AdminLogActionCreate,
+  AdminLogActionRow,
+} from "@createrington/shared/db/admin_log_action.types";
+import type { AdminActionType } from "@createrington/shared/admin-action";
 
-/**
- * Custom queries for admin_log_action table
- *
- * - Provides structured admin action logging with full audit context
- * - All admin mutations (balance, bans, strikes, player edits) route through logAction()
- */
+export const SYSTEM_AUDIT_ACTOR = {
+  discordId: "system",
+  username: "System",
+} as const;
+
+type AdminLogActionInsert = AdminLogActionCreate & {
+  actionType: AdminActionType;
+};
+
 export class AdminLogActionQueries extends AdminLogActionBaseQueries {
   constructor(db: Pool | PoolClient) {
     super(db);
+  }
+
+  /** Inserts one audit row; `actionType` must be a known AdminActionType. */
+  override async create(data: AdminLogActionInsert): Promise<void> {
+    return super.create(data);
+  }
+
+  /** Inserts one audit row and returns it; `actionType` must be a known AdminActionType. */
+  override async createAndReturn(
+    data: AdminLogActionInsert,
+  ): Promise<AdminLogAction> {
+    return super.createAndReturn(data);
+  }
+
+  /** Inserts several audit rows; every `actionType` must be a known AdminActionType. */
+  override async createMany(
+    rows: AdminLogActionInsert[],
+    options?: { onConflict?: "ignore" },
+  ): Promise<void> {
+    return super.createMany(rows, options);
+  }
+
+  /** Inserts several audit rows and returns them; every `actionType` must be a known AdminActionType. */
+  override async createManyAndReturn(
+    rows: AdminLogActionInsert[],
+    options?: { onConflict?: "ignore" },
+  ): Promise<AdminLogAction[]> {
+    return super.createManyAndReturn(rows, options);
   }
 
   /**
    * Search audit logs with text matching across description and targetPlayerName.
    * Supports pagination, sorting, and optional action type filter.
    */
-  async search(opts: {
+  async getPage(opts: {
     search?: string;
     actionType?: string;
     adminUsername?: string;
@@ -26,7 +62,7 @@ export class AdminLogActionQueries extends AdminLogActionBaseQueries {
     orderDirection: "asc" | "desc";
     limit: number;
     offset: number;
-  }): Promise<{ actions: AdminLogAction[]; total: number }> {
+  }): Promise<{ rows: AdminLogAction[]; total: number }> {
     const conditions: string[] = [];
     const params: unknown[] = [];
     let paramIndex = 1;
@@ -64,20 +100,20 @@ export class AdminLogActionQueries extends AdminLogActionBaseQueries {
     const dir = opts.orderDirection === "asc" ? "ASC" : "DESC";
 
     const [dataResult, countResult] = await Promise.all([
-      this.db.query(
-        `SELECT * FROM admin_log_action ${where} ORDER BY ${sortCol} ${dir} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
+      this.runQuery<AdminLogActionRow>(
+        "search admin log actions",
+        `SELECT * FROM ${this.table} ${where} ORDER BY ${sortCol} ${dir} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
         [...params, opts.limit, opts.offset],
       ),
-      this.db.query<{ count: number }>(
-        `SELECT COUNT(*)::int AS count FROM admin_log_action ${where}`,
+      this.runQuery<{ count: number }>(
+        "count admin log actions",
+        `SELECT COUNT(*)::int AS count FROM ${this.table} ${where}`,
         params,
       ),
     ]);
 
     return {
-      actions: dataResult.rows.map((row: Record<string, unknown>) =>
-        this.mapRowToEntity(row),
-      ),
+      rows: this.mapRowsToEntities(dataResult.rows),
       total: countResult.rows[0]?.count ?? 0,
     };
   }
@@ -86,8 +122,9 @@ export class AdminLogActionQueries extends AdminLogActionBaseQueries {
    * Get distinct admin usernames that have audit log entries
    */
   async getDistinctAdmins(): Promise<string[]> {
-    const result = await this.db.query<{ admin_username: string }>(
-      `SELECT DISTINCT admin_username FROM admin_log_action ORDER BY admin_username ASC`,
+    const result = await this.runQuery<{ admin_username: string }>(
+      "get distinct admin log usernames",
+      `SELECT DISTINCT admin_username FROM ${this.table} ORDER BY admin_username ASC`,
     );
     return result.rows.map((r) => r.admin_username);
   }
@@ -100,7 +137,7 @@ export class AdminLogActionQueries extends AdminLogActionBaseQueries {
   async logAction(data: {
     adminDiscordId: string;
     adminUsername: string;
-    actionType: string;
+    actionType: AdminActionType;
     description?: string;
     targetPlayerUuid?: string;
     targetPlayerName?: string;

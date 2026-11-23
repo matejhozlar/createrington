@@ -1,4 +1,4 @@
-import { formatMoney } from "@/lib/format";
+import { formatMoney } from "@createrington/shared/format";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 
 interface ApproveDialogProps {

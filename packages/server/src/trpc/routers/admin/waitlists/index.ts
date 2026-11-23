@@ -8,18 +8,17 @@ import {
   paginationInput,
   paginateQuery,
   sortDirection,
-  rethrowTrpc,
+  id,
 } from "@/trpc/utils";
 import type { WaitlistEntryFilters } from "@createrington/shared/db";
 
-/** Admin waitlists router: stats, list, detail, promote, and delete waitlist entries. */
 export const waitlistsRouter = router({
   stats: adminProcedure
     .meta({
       description: "Get overall waitlist statistics for the admin dashboard.",
     })
     .query(async () => {
-      return await waitlistRepo.getStats();
+      return await Q.waitlist.entry.getFunnelStats();
     }),
 
   list: adminProcedure
@@ -57,16 +56,16 @@ export const waitlistsRouter = router({
         { orderBy: input.orderBy, orderDirection: input.orderDirection },
       );
 
-      return { entries, pagination };
+      return { items: entries, pagination };
     }),
 
   get: adminProcedure
     .meta({
       description: "Get detailed information for a single waitlist entry.",
     })
-    .input(z.object({ id: z.number().int().positive() }))
+    .input(z.object({ id: id() }))
     .query(async ({ input }) => {
-      const entry = await waitlistRepo.getDetailed(input.id);
+      const entry = await Q.waitlist.entry.get({ id: input.id });
 
       return { entry };
     }),
@@ -76,23 +75,19 @@ export const waitlistsRouter = router({
       description:
         "Force-promote a waitlist entry: the bot pings the member in their verification channel and they can register immediately",
     })
-    .input(z.object({ id: z.number().int().positive() }))
+    .input(z.object({ id: id() }))
     .mutation(async ({ input, ctx }) => {
-      try {
-        return await waitlistPromotionService.promote(
-          input.id,
-          ctx.user.discordId,
-        );
-      } catch (error) {
-        rethrowTrpc(error);
-      }
+      return await waitlistPromotionService.promote(
+        input.id,
+        ctx.user.discordId,
+      );
     }),
 
   delete: adminProcedure
     .meta({ description: "Delete a waitlist entry with a reason for audit" })
     .input(
       z.object({
-        id: z.number().int().positive(),
+        id: id(),
         reason: z
           .string()
           .min(1, "Reason is required")
@@ -110,7 +105,5 @@ export const waitlistsRouter = router({
       void waitlistPromotionService.promoteEligible().catch((error) => {
         logger.error("Promotion pass after waitlist delete failed:", error);
       });
-
-      return { message: "Waitlist entry deleted successfully" };
     }),
 });

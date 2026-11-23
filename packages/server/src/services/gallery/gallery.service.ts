@@ -1,13 +1,8 @@
 import { randomBytes } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
-import {
-  BadRequestError,
-  ConflictError,
-  NotFoundError,
-} from "@/app/middleware/error-handler";
+import { BadRequestError, ConflictError, NotFoundError } from "@/errors";
 import { balanceRepo, db, Q } from "@/db";
-import { BalanceTransactionType } from "@/db/repositories/balance";
 import { UniqueViolationError, translateDbError } from "@/db/utils/errors";
 import { EmbedPresets } from "@/discord/embeds";
 import type {
@@ -16,7 +11,8 @@ import type {
 } from "@/services/discord/sticky-message";
 import { FeatureFlags, featureFlagService } from "@/services/feature-flag";
 import { settings } from "@/services/settings";
-import { objectStorage } from "@/services/storage";
+import { objectStorage } from "@/services/storage/object-storage.service";
+import { DownloadTooLargeError, downloadCapped } from "@/utils/http";
 import type { GallerySubmission } from "@createrington/shared/db";
 import {
   galleryCaption,
@@ -201,11 +197,9 @@ export class GalleryService {
       await this.removeOriginal(submission.originalPath);
     }
 
-    if (pending.length > 0) {
-      logger.info(
-        `Gallery: withdrew ${pending.length} pending submission(s) after message ${messageId} was deleted`,
-      );
-    }
+    logger.info(
+      `Gallery: withdrew ${pending.length} pending submission(s) after message ${messageId} was deleted`,
+    );
 
     return pending.length;
   }
@@ -245,31 +239,11 @@ export class GalleryService {
       throw new NotFoundError("Submitting player no longer exists");
     }
 
-    const original = await this.readOriginal(submission);
-    const variants = await createGalleryVariants(original);
-    const token = randomBytes(6).toString("hex");
-    const fullKey = `${STORAGE_PREFIX}/${id}-${token}.webp`;
-    const thumbKey = `${STORAGE_PREFIX}/${id}-${token}-thumb.webp`;
-
-    await objectStorage.put({
-      key: fullKey,
-      body: variants.full.body,
-      contentType: variants.full.contentType,
-    });
-    await objectStorage.put({
-      key: thumbKey,
-      body: variants.thumb.body,
-      contentType: variants.thumb.contentType,
-    });
-
-    const [defaultAmount, cap, used] = await Promise.all([
-      settings.getGalleryRewardAmount(),
-      settings.getGalleryWeeklyRewardCap(),
-      this.weeklyRewardsUsed(author.minecraftUuid),
-    ]);
-    const requested = input.rewardAmount ?? defaultAmount;
-    const capReached = used >= cap;
-    const rewardAmount = capReached ? 0 : requested;
+    const upload = await this.uploadVariants(submission);
+    const { rewardAmount, capReached } = await this.rewardFor(
+      author.minecraftUuid,
+      input.rewardAmount,
+    );
 
     const creditUuids = [...new Set(input.creditPlayerUuids ?? [])].filter(
       (uuid) => uuid !== author.minecraftUuid,
@@ -279,20 +253,11 @@ export class GalleryService {
         ? submission.caption
         : galleryCaption(input.caption ?? "");
 
-    if (rewardAmount > 0) {
-      const balance = await Q.player.balance.find({
-        minecraftUuid: author.minecraftUuid,
-      });
-      if (!balance) {
-        await balanceRepo.create(author.minecraftUuid, 0);
-      }
-    }
-
     const approved = await this.withUploadCleanup(
-      [fullKey, thumbKey],
+      [upload.fullKey, upload.thumbKey],
       async () =>
         db.inTransaction(async (tx) => {
-          const locked = await tx.gallery.submission.getForUpdate(id);
+          const locked = await tx.gallery.submission.findForUpdate(id);
           if (!locked || locked.status !== "pending") {
             throw new ConflictError(
               `Gallery submission is already ${locked?.status ?? "gone"}`,
@@ -307,7 +272,7 @@ export class GalleryService {
               { minecraftUuid: author.minecraftUuid },
               rewardAmount,
               `Gallery screenshot #${id} approved`,
-              BalanceTransactionType.GALLERY_REWARD,
+              "gallery_reward",
               { tx, idempotencyKey, metadata: { gallerySubmissionId: id } },
             );
             const ledger = await tx.player.balance.transaction
@@ -323,10 +288,10 @@ export class GalleryService {
             {
               status: "approved",
               caption,
-              fullKey,
-              thumbKey,
-              width: variants.full.width,
-              height: variants.full.height,
+              fullKey: upload.fullKey,
+              thumbKey: upload.thumbKey,
+              width: upload.width,
+              height: upload.height,
               reviewedBy: reviewer.discordId,
               reviewedAt: new Date(),
               rewardAmount,
@@ -345,32 +310,13 @@ export class GalleryService {
         }),
     );
 
-    const creditNames =
-      creditUuids.length > 0
-        ? (
-            await Q.player.where({ minecraftUuid: { $in: creditUuids } }).all()
-          ).map((player) => player.minecraftUsername)
-        : [];
-
-    const announcement = await announceApproval({
-      submissionId: id,
+    const announced = await this.announce(approved, {
       authorDiscordId: author.discordId,
       caption,
-      creditNames,
+      creditUuids,
       rewardAmount,
-      imageUrl: objectStorage.publicUrl(fullKey),
+      fullKey: upload.fullKey,
     });
-
-    let final = approved;
-    if (announcement) {
-      final = await Q.gallery.submission.updateAndReturn(
-        { id },
-        {
-          announcementChannelId: announcement.channelId,
-          announcementMessageId: announcement.messageId,
-        },
-      );
-    }
 
     await markSourceMessage(
       submission.sourceChannelId,
@@ -383,10 +329,10 @@ export class GalleryService {
     );
 
     return {
-      submission: final,
+      submission: announced ?? approved,
       rewardPaid: rewardAmount,
       capReached,
-      announced: announcement !== null,
+      announced: announced !== null,
     };
   }
 
@@ -526,10 +472,13 @@ export class GalleryService {
     });
     if (existing) return null;
 
-    const bytes = await this.download(attachment.url);
-    if (bytes.length > GALLERY_MAX_ORIGINAL_BYTES) {
+    let bytes: Buffer;
+    try {
+      bytes = await this.download(attachment.url);
+    } catch (error) {
+      if (!(error instanceof DownloadTooLargeError)) throw error;
       logger.warn(
-        `Gallery: attachment ${attachment.id} is ${bytes.length} bytes, over the ${GALLERY_MAX_ORIGINAL_BYTES} byte cap`,
+        `Gallery: attachment ${attachment.id} is over the ${GALLERY_MAX_ORIGINAL_BYTES} byte cap`,
       );
       return null;
     }
@@ -564,13 +513,103 @@ export class GalleryService {
       });
     } catch (error) {
       const translated = translateDbError(error);
-      // A unique violation means a concurrent delivery of the same message
-      // already owns this file, so deleting it would strand that row.
       if (!(translated instanceof UniqueViolationError)) {
         await this.removeOriginal(originalPath);
       }
       throw translated;
     }
+  }
+
+  private async uploadVariants(submission: GallerySubmission): Promise<{
+    fullKey: string;
+    thumbKey: string;
+    width: number;
+    height: number;
+  }> {
+    const variants = await createGalleryVariants(
+      await this.readOriginal(submission),
+    );
+    const token = randomBytes(6).toString("hex");
+    const fullKey = `${STORAGE_PREFIX}/${submission.id}-${token}.webp`;
+    const thumbKey = `${STORAGE_PREFIX}/${submission.id}-${token}-thumb.webp`;
+
+    await objectStorage.put({
+      key: fullKey,
+      body: variants.full.body,
+      contentType: variants.full.contentType,
+    });
+    await objectStorage.put({
+      key: thumbKey,
+      body: variants.thumb.body,
+      contentType: variants.thumb.contentType,
+    });
+    return {
+      fullKey,
+      thumbKey,
+      width: variants.full.width,
+      height: variants.full.height,
+    };
+  }
+
+  private async rewardFor(
+    authorMinecraftUuid: string,
+    requestedAmount: number | undefined,
+  ): Promise<{ rewardAmount: number; capReached: boolean }> {
+    const [defaultAmount, cap, used] = await Promise.all([
+      settings.getGalleryRewardAmount(),
+      settings.getGalleryWeeklyRewardCap(),
+      this.weeklyRewardsUsed(authorMinecraftUuid),
+    ]);
+    const capReached = used >= cap;
+    const rewardAmount = capReached ? 0 : (requestedAmount ?? defaultAmount);
+
+    if (rewardAmount > 0) {
+      const balance = await Q.player.balance.find({
+        minecraftUuid: authorMinecraftUuid,
+      });
+      if (!balance) {
+        await balanceRepo.create(authorMinecraftUuid, 0);
+      }
+    }
+    return { rewardAmount, capReached };
+  }
+
+  private async announce(
+    approved: GallerySubmission,
+    details: {
+      authorDiscordId: string;
+      caption: string | null;
+      creditUuids: string[];
+      rewardAmount: number;
+      fullKey: string;
+    },
+  ): Promise<GallerySubmission | null> {
+    const creditNames =
+      details.creditUuids.length > 0
+        ? (
+            await Q.player
+              .where({ minecraftUuid: { $in: details.creditUuids } })
+              .all()
+          ).map((player) => player.minecraftUsername)
+        : [];
+
+    const announcement = await announceApproval({
+      submissionId: approved.id,
+      authorDiscordId: details.authorDiscordId,
+      caption: details.caption,
+      creditNames,
+      rewardAmount: details.rewardAmount,
+      imageUrl: objectStorage.publicUrl(details.fullKey),
+    });
+    if (!announcement) return null;
+
+    return Q.gallery.submission.updateAndReturn(
+      { id: approved.id },
+      {
+        announcementChannelId: announcement.channelId,
+        announcementMessageId: announcement.messageId,
+      },
+    );
   }
 
   private async withUploadCleanup<T>(
@@ -598,7 +637,11 @@ export class GalleryService {
     try {
       return await fs.readFile(this.originalFilePath(submission));
     } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      if (
+        error instanceof Error &&
+        "code" in error &&
+        error.code === "ENOENT"
+      ) {
         throw new ConflictError(
           "The stored image is gone, so this screenshot can no longer be published. Reject it and ask the player to post it again.",
         );
@@ -618,16 +661,9 @@ export class GalleryService {
   }
 }
 
-async function downloadAttachment(url: string): Promise<Buffer> {
-  const response = await fetch(url, {
-    signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS),
+function downloadAttachment(url: string): Promise<Buffer> {
+  return downloadCapped(url, {
+    timeoutMs: DOWNLOAD_TIMEOUT_MS,
+    maxBytes: GALLERY_MAX_ORIGINAL_BYTES,
   });
-
-  if (!response.ok) {
-    throw new Error(
-      `Attachment download failed with status ${response.status}`,
-    );
-  }
-
-  return Buffer.from(await response.arrayBuffer());
 }

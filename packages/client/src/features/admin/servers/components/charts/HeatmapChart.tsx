@@ -1,15 +1,9 @@
 import { useMemo } from "react";
 import { cn } from "@/lib/utils";
-
-interface HeatmapDataPoint {
-  day: string;
-  hour: number;
-  uniquePlayers: number;
-  totalSeconds: number;
-}
+import type { RouterOutput } from "@/lib/trpc";
 
 interface HeatmapChartProps {
-  data: HeatmapDataPoint[];
+  data: RouterOutput["admin"]["servers"]["heatmap"]["heatmap"];
 }
 
 const DAYS_OF_WEEK = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -51,7 +45,6 @@ export function HeatmapChart({ data }: HeatmapChartProps) {
   return (
     <div className="overflow-x-auto">
       <div className="min-w-[700px]">
-        {/* Hour labels */}
         <div className="mb-1 flex gap-[2px] pl-10">
           {HOURS.map((hour) => (
             <div
@@ -63,7 +56,6 @@ export function HeatmapChart({ data }: HeatmapChartProps) {
           ))}
         </div>
 
-        {/* Grid rows */}
         {DAYS_OF_WEEK.map((dayName, dayIndex) => (
           <div key={dayName} className="flex items-center gap-[2px] mb-[2px]">
             <div className="w-10 text-right text-xs text-muted-foreground pr-2">
@@ -87,7 +79,6 @@ export function HeatmapChart({ data }: HeatmapChartProps) {
           </div>
         ))}
 
-        {/* Legend */}
         <div className="mt-3 flex items-center justify-end gap-1 text-xs text-muted-foreground">
           <span>Less</span>
           <div className="size-3 rounded-sm bg-muted/50" />

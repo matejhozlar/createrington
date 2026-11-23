@@ -37,25 +37,17 @@ vi.mock("@/config", () => ({
   },
 }));
 vi.mock("@/db", () => ({ Q: { player: { find: mocks.findPlayer } } }));
-vi.mock("@/db/utils", () => ({
-  DatabaseError: class DatabaseError extends Error {},
-  NotFoundError: class NotFoundError extends Error {},
-  ConstraintViolationError: class ConstraintViolationError extends Error {},
-  QueryError: class QueryError extends Error {},
-}));
-vi.mock("@/services/auth/token/access-cookie.service", () => ({
-  accessCookieService: {
-    isEnabled: () => false,
-    extractFromRequest: () => undefined,
-  },
-}));
-vi.mock("@/services/auth/admin-status/admin-status.service", () => ({
-  adminStatusService: { isAdmin: vi.fn(async () => false) },
-}));
-vi.mock("@/services/skin-api", () => ({
+vi.mock("@/db/utils", async () =>
+  (await import("@/tests/helpers/mocks/db-utils")).dbUtilsMock(),
+);
+vi.mock("@/services/auth/token/access-cookie.service", async () =>
+  (await import("@/tests/helpers/mocks/auth")).authMocks.accessCookie(),
+);
+vi.mock("@/services/auth/admin-status/admin-status.service", async () =>
+  (await import("@/tests/helpers/mocks/auth")).authMocks.adminStatus(),
+);
+vi.mock("@/services/skin-api/client", () => ({
   getSkinApiClient: () => ({ avatar: mocks.avatar, render: mocks.render }),
-  POSE_RENDER_STYLE: "cel",
-  MAX_QUALITY_RENDER: { width: 1600, height: 2400 },
 }));
 
 import express from "express";

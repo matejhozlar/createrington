@@ -1,4 +1,4 @@
-import EventEmitter from "node:events";
+import { typedEmitter } from "@/utils/typed-emitter";
 import type {
   CachedMessage,
   MessageCacheServiceConfig,
@@ -8,17 +8,13 @@ import type {
   ParsedEmbed,
   ServerCacheConfig,
   SystemMessageData,
-  WebMessageData,
 } from "./types";
 import { MessageSource } from "./types";
-import type {
-  Client,
-  Embed,
-  Message,
-  PartialMessage,
-  TextChannel,
-} from "discord.js";
-import { isSendableChannel } from "@/discord/utils/channel-guard";
+import type { Client, Embed, Message, PartialMessage } from "discord.js";
+import {
+  type GuildTextChannel,
+  isGuildTextChannel,
+} from "@/discord/utils/channel-guard";
 import { Q } from "@/db";
 import config from "@/config";
 
@@ -27,18 +23,8 @@ export interface MessageCacheEvents {
   messageUpdate: (serverId: number, message: CachedMessage) => void;
   messageDelete: (serverId: number, messageId: string) => void;
   cacheReady: () => void;
-  /** Emitted when a "server started" embed is detected from the relay bot. */
   serverStarted: (serverId: number) => void;
-  /** Emitted when a "server closed" embed is detected from the relay bot. */
   serverClosed: (serverId: number) => void;
-}
-
-interface TypedEventEmitter<T> {
-  on<K extends keyof T>(event: K, listener: T[K]): this;
-  emit<K extends keyof T>(
-    event: K,
-    ...args: T[K] extends (...args: infer A) => unknown ? A : never
-  ): boolean;
 }
 
 /**
@@ -53,8 +39,7 @@ interface TypedEventEmitter<T> {
  * downstream WebSocket fanout. The per-server buffer is bounded by
  * `maxMessages` (default 100) and trims oldest-first on overflow.
  */
-export class MessageCacheService extends (EventEmitter as new () => TypedEventEmitter<MessageCacheEvents> &
-  EventEmitter) {
+export class MessageCacheService extends typedEmitter<MessageCacheEvents>() {
   private cache: Map<number, CachedMessage[]> = new Map();
   private serverConfig: Map<number, ServerCacheConfig> = new Map();
   private isInitialized = false;
@@ -153,18 +138,17 @@ export class MessageCacheService extends (EventEmitter as new () => TypedEventEm
     try {
       const channel = await this.bot.channels.fetch(serverConfig.channelId);
 
-      if (!channel || !isSendableChannel(channel)) {
+      if (!isGuildTextChannel(channel)) {
         logger.warn(
           `Channel ${serverConfig.channelId} not found or not text-based`,
         );
         return;
       }
 
-      const textChannel = channel as TextChannel;
       const maxMessages = serverConfig.maxMessages || 100;
 
-      const messages = await textChannel.messages.fetch({ limit: maxMessages });
-      await this.loadAuthorMembers(textChannel, messages.values());
+      const messages = await channel.messages.fetch({ limit: maxMessages });
+      await this.loadAuthorMembers(channel, messages.values());
 
       const cachedMessages = Array.from(messages.values())
         .map((msg) => this.convertToCachedMessage(msg, serverConfig.serverId))
@@ -184,7 +168,7 @@ export class MessageCacheService extends (EventEmitter as new () => TypedEventEm
   }
 
   private async loadAuthorMembers(
-    channel: TextChannel,
+    channel: GuildTextChannel,
     messages: Iterable<Message>,
   ): Promise<void> {
     const missing = new Set<string>();
@@ -318,13 +302,11 @@ export class MessageCacheService extends (EventEmitter as new () => TypedEventEm
       return MessageSource.WEB;
     }
 
-    const isCreateringtonBot =
-      message.author.id === this.config.botConfig.createringtonBotId;
     const isCreateringtonTag =
       message.author.tag.startsWith("Createrington#") ||
       message.author.tag === "Createrington";
 
-    if (isCreateringtonBot || isCreateringtonTag) {
+    if (isCreateringtonTag) {
       if (message.embeds.length > 0) {
         return MessageSource.SYSTEM;
       }
@@ -353,12 +335,6 @@ export class MessageCacheService extends (EventEmitter as new () => TypedEventEm
       title: embed.title || undefined,
       description: embed.description || undefined,
     };
-  }
-
-  // TODO: implement when web messages are added
-  private parseWebData(_message: Message): WebMessageData | undefined {
-    // TODO: Implement web message detection
-    return undefined;
   }
 
   private parseEmbeds(embeds: Embed[]): ParsedEmbed[] {
@@ -467,17 +443,14 @@ export class MessageCacheService extends (EventEmitter as new () => TypedEventEm
   }
 
   private resolveMentions(text: string): string {
-    // User mentions: <@123456> or <@!123456>
     text = text.replace(/<@!?(\d+)>/g, (match, id: string) => {
       const name = this.userMap.get(id);
       return name ? `@${name}` : match;
     });
-    // Role mentions: <@&123456>
     text = text.replace(/<@&(\d+)>/g, (match, id: string) => {
       const name = this.roleMap.get(id);
       return name ? `@${name}` : match;
     });
-    // Channel mentions: <#123456> → markdown link to Discord channel
     const guildId = config.discord.guild.id;
     text = text.replace(/<#(\d+)>/g, (match, id: string) => {
       const name = this.channelMap.get(id);
@@ -520,9 +493,6 @@ export class MessageCacheService extends (EventEmitter as new () => TypedEventEm
         break;
       case MessageSource.SYSTEM:
         cached.systemData = this.parseSystemData(message);
-        break;
-      case MessageSource.WEB:
-        cached.webData = this.parseWebData(message);
         break;
     }
 
@@ -585,63 +555,8 @@ export class MessageCacheService extends (EventEmitter as new () => TypedEventEm
     return messages;
   }
 
-  /** Single cached message by id, or undefined if not in the buffer. */
-  getMessage(serverId: number, messageId: string): CachedMessage | undefined {
-    const cache = this.cache.get(serverId);
-    if (!cache) {
-      return;
-    }
-
-    return cache.find((m) => m.messageId === messageId);
-  }
-
   /** Most recent `count` messages for a server, newest first. */
   getRecentMessages(serverId: number, count: number): CachedMessage[] {
     return this.getMessages(serverId, { limit: count });
-  }
-
-  /** Per-server counts, oldest/newest timestamps, and breakdown by source. */
-  getStats(): Record<
-    number,
-    {
-      messageCount: number;
-      oldestMessage?: Date | string;
-      newestMessage?: Date | string;
-      bySource: Record<MessageSource, number>;
-    }
-  > {
-    const stats: ReturnType<MessageCacheService["getStats"]> = {};
-
-    for (const [serverId, cache] of this.cache) {
-      const bySource: Record<MessageSource, number> = {
-        [MessageSource.SYSTEM]: 0,
-        [MessageSource.DISCORD]: 0,
-        [MessageSource.MINECRAFT]: 0,
-        [MessageSource.WEB]: 0,
-      };
-
-      cache.forEach((msg) => {
-        bySource[msg.source]++;
-      });
-
-      stats[serverId] = {
-        messageCount: cache.length,
-        oldestMessage: cache.length > 0 ? cache[0].createdAt : undefined,
-        newestMessage:
-          cache.length > 0 ? cache[cache.length - 1].createdAt : undefined,
-        bySource,
-      };
-    }
-
-    return stats;
-  }
-
-  /** Empty the in-memory buffer for a single server. */
-  clearCache(serverId: number): void {
-    const cache = this.cache.get(serverId);
-    if (cache) {
-      cache.length = 0;
-    }
-    logger.info(`Cleared cache for server ${serverId}`);
   }
 }

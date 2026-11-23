@@ -104,7 +104,7 @@ export function resetWaitlistState(): void {
     send: async () => ({ id: "sent-1" }),
   }));
   state.adminSend.mockReset();
-  state.adminSend.mockResolvedValue({ success: true, messageId: "admin-1" });
+  state.adminSend.mockResolvedValue({ id: "admin-1" });
   state.progressEmbed.mockReset();
   state.progressEmbed.mockResolvedValue(undefined);
 }
@@ -113,6 +113,8 @@ type MockFactory = () => Record<string, unknown>;
 export const waitlistMocks: Record<
   | "errors"
   | "db"
+  | "capacity"
+  | "progressEmbed"
   | "config"
   | "client"
   | "constants"
@@ -120,7 +122,7 @@ export const waitlistMocks: Record<
   | "registrationPresets"
   | "waitlistPresets"
   | "verificationChannel"
-  | "errorHandler",
+  | "appErrors",
   MockFactory
 > = {
   errors: () => ({
@@ -186,19 +188,23 @@ export const waitlistMocks: Record<
         player: { exists: async () => false },
         discord: { guild: { member: { join: { recordJoin: async () => 1 } } } },
       },
-      waitlistRepo: {
-        getFreeSlots: async () => {
-          if (state.freeDelayMs > 0) {
-            await new Promise((resolve) =>
-              setTimeout(resolve, state.freeDelayMs),
-            );
-          }
-          return state.free;
-        },
-        updateProgressEmbed: state.progressEmbed,
-      },
     };
   },
+  capacity: () => ({
+    waitlistCapacityService: {
+      getFreeSlots: async () => {
+        if (state.freeDelayMs > 0) {
+          await new Promise((resolve) =>
+            setTimeout(resolve, state.freeDelayMs),
+          );
+        }
+        return state.free;
+      },
+    },
+  }),
+  progressEmbed: () => ({
+    updateProgressEmbed: state.progressEmbed,
+  }),
   config: () => ({
     default: { discord: { guild: { id: "guild-1" } } },
   }),
@@ -246,7 +252,7 @@ export const waitlistMocks: Record<
   verificationChannel: () => ({
     createVerificationChannel: vi.fn(),
   }),
-  errorHandler: () => ({
+  appErrors: () => ({
     BadRequestError: class BadRequestError extends Error {},
   }),
 };

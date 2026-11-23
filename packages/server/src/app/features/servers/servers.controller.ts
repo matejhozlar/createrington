@@ -1,14 +1,16 @@
-import { BadRequestError, NotFoundError } from "@/app/middleware";
+import { getValidated } from "@/app/middleware/validation.middleware";
+import { NotFoundError } from "@/errors";
 import { getService, Services } from "@/services";
-import { MINECRAFT_SERVERS } from "@/services/playtime/config";
+import { SERVERS } from "@/services/mc-server/servers";
 import {
   buildServerStatusSummary,
+  buildServerStatuses,
   type ServerStatusSummary,
 } from "@/services/playtime/server-status";
 import type { PlaytimeManagerService } from "@/services/playtime";
 import type { Request, Response } from "express";
+import type { ServerStatusQuery } from "./servers.schemas";
 
-const SERVER_SLUG_RE = /^[a-z0-9-]{1,32}$/;
 const CACHE_CONTROL = "public, max-age=10";
 
 export interface ServerStatusEntry {
@@ -27,18 +29,6 @@ export interface ServerStatusResponse {
   generatedAt: string;
 }
 
-function parseServerSlug(value: unknown): string | undefined {
-  if (value === undefined || value === "") {
-    return undefined;
-  }
-
-  if (typeof value !== "string" || !SERVER_SLUG_RE.test(value)) {
-    throw new BadRequestError("server must be a valid server slug");
-  }
-
-  return value;
-}
-
 async function getPlaytimeManager(): Promise<
   PlaytimeManagerService | undefined
 > {
@@ -53,23 +43,12 @@ async function getPlaytimeManager(): Promise<
 }
 
 export class ServersController {
-  /**
-   * GET /api/servers/status
-   *
-   * Current status and player counts of every configured server. `?server=<slug>` narrows the list to one server (404 when the slug is unknown; an empty value is ignored).
-   *
-   * Response is a flat JSON body, not enveloped:
-   * `{ servers: [{ id, slug, name, status: "online" | "offline" | "unknown", maintenance, playerCount, maxPlayers }], totalPlayers, generatedAt }`
-   * Errors use the standard `{ success: false, message, error }` envelope.
-   *
-   * `status` mirrors the tracked server state (relay messages, heartbeats, join events). `playerCount` is the number of tracked sessions and may lag `status` by a few seconds during a transition. `generatedAt` is the response time, not a poll time. Cacheable for 10 seconds.
-   */
-  static async getStatus(req: Request, res: Response): Promise<void> {
-    const slug = parseServerSlug(req.query.server);
+  static async getStatus(_req: Request, res: Response): Promise<void> {
+    const {
+      query: { server: slug },
+    } = getValidated<{ query: ServerStatusQuery }>(res);
 
-    const configs = Object.values(MINECRAFT_SERVERS)
-      .filter((server) => !slug || server.slug === slug)
-      .sort((a, b) => a.id - b.id);
+    const configs = SERVERS.filter((server) => !slug || server.slug === slug);
 
     if (slug && configs.length === 0) {
       throw new NotFoundError(`Server "${slug}" not found`);
@@ -77,23 +56,19 @@ export class ServersController {
 
     const manager = await getPlaytimeManager();
 
-    const servers: ServerStatusEntry[] = configs.map((serverConfig) => {
-      const summary = buildServerStatusSummary(
-        serverConfig.id,
-        serverConfig,
-        manager?.getService(serverConfig.id),
-      );
-
-      return {
-        id: summary.serverId,
-        slug: summary.serverSlug,
-        name: summary.serverName,
-        status: summary.status,
-        maintenance: summary.maintenance,
-        playerCount: summary.playerCount,
-        maxPlayers: summary.maxPlayers,
-      };
-    });
+    const servers: ServerStatusEntry[] = buildServerStatuses(
+      manager,
+      buildServerStatusSummary,
+      configs,
+    ).map((summary) => ({
+      id: summary.serverId,
+      slug: summary.serverSlug,
+      name: summary.serverName,
+      status: summary.status,
+      maintenance: summary.maintenance,
+      playerCount: summary.playerCount,
+      maxPlayers: summary.maxPlayers,
+    }));
 
     const body: ServerStatusResponse = {
       servers,

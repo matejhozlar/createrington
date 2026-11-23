@@ -8,56 +8,25 @@ import {
   vi,
 } from "vitest";
 
-vi.mock("@/services/workshop/discord", () => ({
-  discordThreadUrl: vi.fn(
-    (threadId: string) => `https://discord.com/channels/0/${threadId}`,
-  ),
-  listForumChannels: vi.fn(async () => []),
-  assertForumChannel: vi.fn(async () => undefined),
-  announceSuggestion: vi.fn(async () => undefined),
-  announceReview: vi.fn(async () => undefined),
-  announcePulledDependencies: vi.fn(async () => undefined),
-  announceRemoval: vi.fn(async () => undefined),
-  healThreads: vi.fn(async () => undefined),
-}));
-
-vi.mock("@/services/curseforge/mods", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("@/services/curseforge/mods")>();
-  return {
-    ...actual,
-    getMod: vi.fn(async () => {
-      throw new Error("getMod must not be called in this suite");
-    }),
-    getMods: vi.fn(async () => []),
-    searchMods: vi.fn(async () => []),
-  };
-});
-vi.mock("@/services/curseforge/files", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("@/services/curseforge/files")>();
-  return {
-    ...actual,
-    getFilesDependencies: vi.fn(async () => []),
-    getFilesDetails: vi.fn(async () => []),
-  };
-});
-vi.mock("@/services/curseforge/modpack-manifest", async (importOriginal) => {
-  const actual =
-    await importOriginal<
-      typeof import("@/services/curseforge/modpack-manifest")
-    >();
-  return {
-    ...actual,
-    getModpackModIds: vi.fn(async () => new Set<number>()),
-  };
-});
-
-vi.mock("@/services/curseforge/ingest", () => ({
-  ingestProject: vi.fn(),
-  ingestProjects: vi.fn(),
-  refreshProjects: vi.fn(async () => 0),
-}));
+vi.mock("@/services/workshop/discord", async () =>
+  (
+    await import("@/tests/helpers/mocks/workshop-discord")
+  ).workshopDiscordMock(),
+);
+vi.mock("@/services/curseforge/mods", async () =>
+  (await import("@/tests/helpers/mocks/curseforge")).curseforgeMocks.mods(),
+);
+vi.mock("@/services/curseforge/files", async () =>
+  (await import("@/tests/helpers/mocks/curseforge")).curseforgeMocks.files(),
+);
+vi.mock("@/services/modpack/manifest", async () =>
+  (
+    await import("@/tests/helpers/mocks/curseforge")
+  ).curseforgeMocks.modpackManifest(),
+);
+vi.mock("@/services/curseforge/ingest", async () =>
+  (await import("@/tests/helpers/mocks/curseforge")).curseforgeMocks.ingest(),
+);
 
 import pool, { Q } from "@/db";
 import {
@@ -65,13 +34,14 @@ import {
   ConflictError,
   ForbiddenError,
   NotFoundError,
-} from "@/app/middleware/error-handler";
+} from "@/errors";
 import { workshopSuggestionService } from "@/services/workshop/suggestion.service";
 import { workshopReviewService } from "@/services/workshop/review.service";
 import { issueBan, liftBan } from "@/services/workshop/bans";
 import { CurseForgeClass } from "@/services/curseforge/client";
 import { searchMods } from "@/services/curseforge/mods";
-import { ingestProject, ingestProjects } from "@/services/curseforge/ingest";
+import { ingestProjects } from "@/services/curseforge/ingest";
+import { findModpackModIds } from "@/services/modpack/manifest";
 import {
   createWorkshopTestContext,
   cleanupWorkshopTestContext,
@@ -93,10 +63,6 @@ const ctx = createWorkshopTestContext(990_000_000);
 
 beforeAll(async () => {
   await pool.query("SELECT 1");
-  vi.mocked(ingestProject).mockImplementation(async (projectId: number) => ({
-    entity: await Q.curseforge.project.get({ id: projectId }),
-    data: makeProjectData(projectId),
-  }));
   vi.mocked(ingestProjects).mockImplementation(
     async (projectIds: number[]) =>
       new Map(projectIds.map((id) => [id, makeProjectData(id)])),
@@ -568,7 +534,6 @@ describe("WorkshopSuggestionService.searchProjects", () => {
       gameVersion: GAME_VERSION,
       modLoaderType: null,
       classId: CurseForgeClass.resourcePacks,
-      packProjectId: null,
     });
   });
 
@@ -581,8 +546,25 @@ describe("WorkshopSuggestionService.searchProjects", () => {
       gameVersion: GAME_VERSION,
       modLoaderType: MOD_LOADER_TYPE,
       classId: CurseForgeClass.mods,
-      packProjectId: null,
     });
+  });
+
+  it("marks hits against the base modpack's mods, and against none without a base modpack", async () => {
+    const based = await seedWorkshop(ctx, {
+      baseModpackProjectId: 990_123_456,
+    });
+    const unbased = await seedWorkshop(ctx);
+    vi.mocked(findModpackModIds).mockResolvedValueOnce(new Set([42]));
+
+    await workshopSuggestionService.searchProjects(based.id, "create");
+    await workshopSuggestionService.searchProjects(unbased.id, "create");
+
+    const [withBase, withoutBase] = vi
+      .mocked(searchMods)
+      .mock.calls.map(([, , options]) => options?.packModIds);
+    expect(await withBase?.()).toEqual(new Set([42]));
+    expect(findModpackModIds).toHaveBeenCalledExactlyOnceWith(990_123_456);
+    expect(withoutBase).toBeUndefined();
   });
 
   it("rejects a class the workshop cannot take", async () => {

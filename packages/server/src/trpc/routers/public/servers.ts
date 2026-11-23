@@ -1,12 +1,13 @@
 import { router, publicProcedure } from "@/trpc/trpc";
 import { getService, Services } from "@/services";
-import { getServerById, MINECRAFT_SERVERS } from "@/services/playtime/config";
-import { buildServerStatus } from "@/services/playtime/server-status";
-import type { ServerStatus } from "@/services/playtime/server-status";
+import { requireServer } from "@/services/mc-server/servers";
+import {
+  buildServerStatus,
+  buildServerStatuses,
+  summarizeServerStatuses,
+} from "@/services/playtime/server-status";
 import { z } from "zod";
-import { trpcError } from "@/trpc/utils";
 
-/** Public servers router: server list with status and individual server lookup. */
 export const serversRouter = router({
   list: publicProcedure
     .meta({
@@ -15,42 +16,14 @@ export const serversRouter = router({
     })
     .query(async () => {
       const manager = await getService(Services.PLAYTIME_MANAGER_SERVICE);
-
-      const servers: ServerStatus[] = [];
-      let totalPlayers = 0;
-      let onlineServers = 0;
-
-      for (const [serverId, serverConfig] of Object.entries(
-        MINECRAFT_SERVERS,
-      )) {
-        const id = parseInt(serverId, 10);
-        const service = manager.getService(id);
-        const status = buildServerStatus(id, serverConfig, service);
-
-        if (status.status === "online") {
-          onlineServers++;
-        }
-        totalPlayers += status.playerCount;
-
-        servers.push(status);
-      }
-
-      servers.sort((a, b) => a.serverId - b.serverId);
-
-      return {
-        servers,
-        summary: {
-          totalServers: servers.length,
-          onlineServers,
-          totalPlayers,
-        },
-      };
+      const servers = buildServerStatuses(manager, buildServerStatus);
+      return { servers, summary: summarizeServerStatuses(servers) };
     }),
 
   get: publicProcedure
     .meta({
       description:
-        "Returns a single Minecraft server's status, player list, and connection info by server ID. Throws BAD_REQUEST if the server ID doesn't exist in config",
+        "Returns a single Minecraft server's status, player list, and connection info by server ID. Throws NOT_FOUND if the server ID doesn't exist in config",
     })
     .input(
       z.object({
@@ -58,10 +31,7 @@ export const serversRouter = router({
       }),
     )
     .query(async ({ input }) => {
-      const serverConfig = getServerById(input.id);
-      if (!serverConfig) {
-        throw trpcError.badRequest(`Server with id ${input.id} not found`);
-      }
+      const serverConfig = requireServer(input.id);
 
       const manager = await getService(Services.PLAYTIME_MANAGER_SERVICE);
 

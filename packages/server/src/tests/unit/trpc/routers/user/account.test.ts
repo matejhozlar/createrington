@@ -1,19 +1,19 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const { sessionRow, transactionRow, banRow, strikeRow, ticketRow, Q } =
   vi.hoisted(() => {
     const empty = () => vi.fn().mockResolvedValue([]);
     const sessionRow = {
       id: 4,
-      discord_id: "100000000000000001",
-      token_hash: "f".repeat(64),
-      family_id: "0f6a7b1c-5d4e-4f3a-9b2c-1d0e9f8a7b6c",
-      ip_address: "203.0.113.7",
-      user_agent: "Firefox",
-      created_at: new Date("2026-01-04T00:00:00Z"),
-      last_used_at: new Date("2026-01-05T00:00:00Z"),
-      expires_at: new Date("2026-02-04T00:00:00Z"),
-      revoked_at: null,
+      discordId: "100000000000000001",
+      tokenHash: "f".repeat(64),
+      familyId: "0f6a7b1c-5d4e-4f3a-9b2c-1d0e9f8a7b6c",
+      ipAddress: "203.0.113.7",
+      userAgent: "Firefox",
+      createdAt: new Date("2026-01-04T00:00:00Z"),
+      lastUsedAt: new Date("2026-01-05T00:00:00Z"),
+      expiresAt: new Date("2026-02-04T00:00:00Z"),
+      revokedAt: null,
     };
     const transactionRow = {
       id: 5,
@@ -107,25 +107,24 @@ vi.mock("@/services/auth/admin-status/admin-status.service", () => ({
   adminStatusService: { isAdmin: vi.fn() },
 }));
 
-vi.mock("@/services/player/deletion", () => ({ playerDeletionService: {} }));
+const { deletePlayer, fetchGuildMember } = vi.hoisted(() => ({
+  deletePlayer: vi.fn(),
+  fetchGuildMember: vi.fn(),
+}));
+
+vi.mock("@/services/player/deletion", () => ({
+  playerDeletionService: { delete: deletePlayer },
+}));
+
+vi.mock("@/discord/utils/fetch-guild-member", () => ({ fetchGuildMember }));
 
 vi.mock("@/services", () => ({ getService: vi.fn(), Services: {} }));
 
 import { accountRouter } from "@/trpc/routers/user/account";
-import { AuthRole } from "@createrington/shared/auth";
-import type { Context } from "@/trpc/context";
+import { userContext } from "@/tests/helpers/trpc";
 
 function callerFor(discordId: string) {
-  return accountRouter.createCaller({
-    user: {
-      discordId,
-      minecraftUuid: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
-      role: AuthRole.USER,
-      isAdmin: false,
-    },
-    service: null,
-    ip: "127.0.0.1",
-  } as unknown as Context);
+  return accountRouter.createCaller(userContext({ discordId }));
 }
 
 describe("user.account.exportData", () => {
@@ -136,11 +135,11 @@ describe("user.account.exportData", () => {
     expect(data.sessions).toEqual([
       {
         id: sessionRow.id,
-        ipAddress: sessionRow.ip_address,
-        userAgent: sessionRow.user_agent,
-        createdAt: sessionRow.created_at.toISOString(),
-        lastUsedAt: sessionRow.last_used_at.toISOString(),
-        expiresAt: sessionRow.expires_at.toISOString(),
+        ipAddress: sessionRow.ipAddress,
+        userAgent: sessionRow.userAgent,
+        createdAt: sessionRow.createdAt.toISOString(),
+        lastUsedAt: sessionRow.lastUsedAt.toISOString(),
+        expiresAt: sessionRow.expiresAt.toISOString(),
       },
     ]);
     expect(data.balanceTransactions).toEqual([
@@ -201,5 +200,67 @@ describe("user.account.exportData", () => {
     await expect(
       callerFor("100000000000000003").exportData(),
     ).resolves.toBeDefined();
+  });
+});
+
+describe("user.account.deleteAccount", () => {
+  const discordId = "100000000000000004";
+  const confirmation = "DELETE MY ACCOUNT";
+  const kick = vi.fn();
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    Q.player.find.mockResolvedValue({ discordId, minecraftUsername: "steve" });
+    fetchGuildMember.mockResolvedValue({ kick });
+  });
+
+  it("deletes the player with their tickets as the user, then kicks them from Discord", async () => {
+    const tx = { ticket: { deleteAll: vi.fn() } };
+    deletePlayer.mockImplementationOnce(
+      async (
+        _id: unknown,
+        options: { beforeDelete: (tx: unknown) => Promise<void> },
+      ) => {
+        await options.beforeDelete(tx);
+      },
+    );
+
+    await callerFor(discordId).deleteAccount({ confirmation });
+
+    expect(deletePlayer).toHaveBeenCalledWith(
+      { discordId },
+      expect.objectContaining({
+        actor: { type: "user", discordId, username: "steve" },
+      }),
+    );
+    expect(tx.ticket.deleteAll).toHaveBeenCalledWith({
+      creatorDiscordId: discordId,
+    });
+    expect(kick).toHaveBeenCalledWith("Account deleted by user");
+  });
+
+  it("still succeeds when the Discord kick fails", async () => {
+    kick.mockRejectedValueOnce(new Error("missing permissions"));
+
+    await expect(
+      callerFor(discordId).deleteAccount({ confirmation }),
+    ).resolves.toBeUndefined();
+    expect(deletePlayer).toHaveBeenCalled();
+  });
+
+  it("answers NOT_FOUND for a user without a player", async () => {
+    Q.player.find.mockResolvedValue(null);
+
+    await expect(
+      callerFor(discordId).deleteAccount({ confirmation }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND", message: "Player not found" });
+    expect(deletePlayer).not.toHaveBeenCalled();
+  });
+
+  it("refuses without the confirmation phrase", async () => {
+    await expect(
+      callerFor(discordId).deleteAccount({ confirmation: "delete" }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(deletePlayer).not.toHaveBeenCalled();
   });
 });

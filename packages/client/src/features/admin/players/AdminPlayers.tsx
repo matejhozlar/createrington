@@ -1,33 +1,19 @@
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
-import {
-  EmptyState,
-  ErrorState,
-  LoadingState,
-} from "@/components/query-states";
+import { LoadingState } from "@/components/query-states";
 import { StatCard } from "@/components/stat-card";
-import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardFooter,
-} from "@/components/ui/card";
-import { Paginator } from "@/components/paginator";
+import { AdminPage } from "@/features/admin/components/AdminPage";
+import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
+import { FilterBar } from "@/features/admin/components/FilterBar";
+import { TableCard } from "@/components/paged-table";
 import { useAdminPlayers } from "@/contexts/admin";
-import { CellText } from "@/components/cell-text";
+import { CellDate, CellText } from "@/components/cell-text";
 import {
   AvatarCellSkeleton,
   BadgeCellSkeleton,
-  DataTable,
-  loadingRowCount,
   type DataTableColumn,
 } from "@/components/data-table";
-import { SearchInput } from "@/components/search-input";
-import { Button } from "@/components/ui/button";
 import { PresenceBadge } from "@/components/presence-badge";
-import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -35,21 +21,54 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Filter, Users, TrendingUp, Coins, UserPlus } from "lucide-react";
+import { Users, TrendingUp, Coins, UserPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { usePagedQuery } from "@/hooks/use-paged-query";
+import { useTableSort } from "@/hooks/use-table-sort";
+import { useQuery } from "@tanstack/react-query";
 import { trpc, type RouterOutput } from "@/lib/trpc";
-import { formatMoney, formatRelativeDate } from "@/lib/format";
-import { formatFullDate, toIso } from "../format";
+import { formatMoney } from "@createrington/shared/format";
+import { isDiscordId } from "@createrington/shared/discord-id";
 
 type PlayerRow =
-  RouterOutput["admin"]["players"]["players"]["list"]["players"][number];
+  RouterOutput["admin"]["players"]["players"]["list"]["items"][number];
 
 type SortField = "minecraftUsername" | "lastSeen" | "createdAt";
 
 type ViolationFilter = "all" | "strikes" | "bans" | "any";
+
+type OnlineFilter = "all" | "online" | "offline";
+
+const ONLINE_FILTER_OPTIONS: { value: OnlineFilter; label: string }[] = [
+  { value: "all", label: "All Statuses" },
+  { value: "online", label: "Online" },
+  { value: "offline", label: "Offline" },
+];
+
+const VIOLATION_FILTER_OPTIONS: { value: ViolationFilter; label: string }[] = [
+  { value: "all", label: "All Players" },
+  { value: "any", label: "Any Violations" },
+  { value: "strikes", label: "With Strikes" },
+  { value: "bans", label: "With Bans" },
+];
+
+type Violation = "ban" | "strike";
+
+const VIOLATION_STYLES: Record<Violation, { dot: string; row: string }> = {
+  ban: { dot: "bg-destructive", row: "bg-destructive/5" },
+  strike: { dot: "bg-tone-warning", row: "bg-tone-warning/5" },
+};
+
+function violationOf(
+  player: PlayerRow,
+): { count: number; kind: Violation } | null {
+  const strikes = player.activeStrikeCount ?? 0;
+  const bans = player.activeBanCount ?? 0;
+  if (strikes + bans === 0) return null;
+  return { count: strikes + bans, kind: bans > 0 ? "ban" : "strike" };
+}
 
 type SearchFilters = {
   discordId?: string;
@@ -61,7 +80,7 @@ function classifySearch(input: string): SearchFilters {
   const trimmed = input.trim();
   if (!trimmed) return {};
 
-  if (/^\d{17,20}$/.test(trimmed)) {
+  if (isDiscordId(trimmed)) {
     return { discordId: trimmed };
   }
 
@@ -80,18 +99,12 @@ export function AdminPlayers() {
   const { isPlayerOnline, getPlayerServerId, getServerName } =
     useAdminPlayers();
 
-  const [page, setPage] = useState(0);
-  const [limit] = useState(20);
-
   const [searchQuery, setSearchQuery] = useState("");
-  const [onlineFilter, setOnlineFilter] = useState<boolean | undefined>(
-    undefined,
-  );
+  const [onlineFilter, setOnlineFilter] = useState<OnlineFilter>("all");
   const [violationFilter, setViolationFilter] =
     useState<ViolationFilter>("all");
 
-  const [orderBy, setOrderBy] = useState<SortField>("lastSeen");
-  const [orderDirection, setOrderDirection] = useState<"asc" | "desc">("desc");
+  const sort = useTableSort<SortField>("lastSeen");
 
   const debouncedSearch = useDebouncedValue(searchQuery);
   const searchFilters = useMemo(
@@ -101,68 +114,22 @@ export function AdminPlayers() {
 
   const statsQuery = useQuery(trpc.admin.players.players.stats.queryOptions());
 
-  const playersQuery = useQuery(
-    trpc.admin.players.players.list.queryOptions(
-      {
-        page,
-        limit,
-        orderBy,
-        orderDirection,
-        ...searchFilters,
-        online: onlineFilter,
-        hasStrikes: violationFilter === "strikes" ? true : undefined,
-        hasBans: violationFilter === "bans" ? true : undefined,
-        hasViolations: violationFilter === "any" ? true : undefined,
-        includeStrikeCounts: true,
-        includeBanCounts: true,
-      },
-      { placeholderData: keepPreviousData },
-    ),
+  const players = usePagedQuery(
+    {
+      ...sort.order,
+      ...searchFilters,
+      online: onlineFilter === "all" ? undefined : onlineFilter === "online",
+      hasStrikes: violationFilter === "strikes" ? true : undefined,
+      hasBans: violationFilter === "bans" ? true : undefined,
+      hasViolations: violationFilter === "any" ? true : undefined,
+      includeStrikeCounts: true,
+      includeBanCounts: true,
+    },
+    (input) => trpc.admin.players.players.list.queryOptions(input),
   );
 
   const stats = statsQuery.data;
   const statsLoading = statsQuery.isLoading;
-  const players = playersQuery.data?.players ?? [];
-  const total = playersQuery.data?.pagination.total ?? 0;
-  const totalPages = playersQuery.data?.pagination.totalPages ?? 0;
-  const loading = playersQuery.isLoading || playersQuery.isPlaceholderData;
-  const loadingRows = loadingRowCount(page, limit, total);
-  const error = playersQuery.error?.message ?? null;
-
-  const handleSearch = useCallback((e: React.FormEvent) => {
-    e.preventDefault();
-    setPage(0);
-  }, []);
-
-  const handleSort = useCallback(
-    (field: SortField) => {
-      if (orderBy === field) {
-        setOrderDirection((prev) => (prev === "asc" ? "desc" : "asc"));
-      } else {
-        setOrderBy(field);
-        setOrderDirection("asc");
-      }
-      setPage(0);
-    },
-    [orderBy],
-  );
-
-  const getPlayerBadgeInfo = useCallback((player: PlayerRow) => {
-    const strikeCount = player.activeStrikeCount ?? 0;
-    const banCount = player.activeBanCount ?? 0;
-    const totalCount = strikeCount + banCount;
-
-    if (totalCount === 0) {
-      return { count: 0, color: null, hasIssues: false };
-    }
-
-    // Any bans (with or without strikes) → red; strikes-only → yellow.
-    if (banCount > 0) {
-      return { count: totalCount, color: "red" as const, hasIssues: true };
-    }
-
-    return { count: totalCount, color: "yellow" as const, hasIssues: true };
-  }, []);
 
   const navigate = useNavigate();
 
@@ -171,11 +138,10 @@ export function AdminPlayers() {
       key: "player",
       header: "Player",
       minWidth: 240,
-      sorted: orderBy === "minecraftUsername" ? orderDirection : false,
-      onSort: () => handleSort("minecraftUsername"),
+      ...sort.column("minecraftUsername"),
       skeleton: () => <AvatarCellSkeleton />,
       render: (player) => {
-        const badgeInfo = getPlayerBadgeInfo(player);
+        const violation = violationOf(player);
         return (
           <div className="flex min-w-0 items-center gap-3">
             <div className="relative shrink-0">
@@ -183,15 +149,14 @@ export function AdminPlayers() {
                 uuid={player.minecraftUuid}
                 username={player.minecraftUsername}
               />
-              {badgeInfo.hasIssues && (
+              {violation && (
                 <div
                   className={cn(
                     "absolute -right-1 -top-1 flex size-5 items-center justify-center rounded-full text-[10px] font-bold text-white ring-2 ring-background",
-                    badgeInfo.color === "yellow" && "bg-yellow-500",
-                    badgeInfo.color === "red" && "bg-destructive",
+                    VIOLATION_STYLES[violation.kind].dot,
                   )}
                 >
-                  {badgeInfo.count}
+                  {violation.count}
                 </div>
               )}
             </div>
@@ -251,206 +216,117 @@ export function AdminPlayers() {
       key: "lastSeen",
       header: "Last Seen",
       width: 160,
-      sorted: orderBy === "lastSeen" ? orderDirection : false,
-      onSort: () => handleSort("lastSeen"),
-      render: (player) => {
-        const iso = toIso(player.lastSeen);
-        return (
-          <CellText
-            value={formatFullDate(iso)}
-            display={formatRelativeDate(iso)}
-            className="text-sm text-muted-foreground"
-          />
-        );
-      },
+      ...sort.column("lastSeen"),
+      render: (player) => <CellDate value={player.lastSeen} relative />,
     },
   ];
 
   return (
-    <div className="flex flex-1 flex-col gap-4">
-      {/* Header */}
-      <AdminPageHeader
-        trail={[
-          { label: "Admin", href: "/admin/dashboard" },
-          { label: "Players" },
-        ]}
-      />
-
-      <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
-        {statsLoading ? (
-          <LoadingState
-            text="Loading statistics..."
-            className="flex-none py-8"
+    <AdminPage
+      trail={[
+        { label: "Admin", href: "/admin/dashboard" },
+        { label: "Players" },
+      ]}
+    >
+      <AdminPageTitle title="Players" />
+      {statsLoading ? (
+        <LoadingState text="Loading statistics..." className="flex-none py-8" />
+      ) : stats ? (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <StatCard
+            label="Total Players"
+            value={stats.total}
+            icon={Users}
+            tone="primary"
+            footer={`${stats.online} currently online`}
           />
-        ) : stats ? (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <StatCard
-              label="Total Players"
-              value={stats.total}
-              icon={Users}
-              tone="primary"
-              footer={`${stats.online} currently online`}
-            />
-            <StatCard
-              label="New This Week"
-              value={stats.registered.thisWeek}
-              icon={UserPlus}
-              tone="chart-2"
-              footer={`${stats.registered.today} today`}
-            />
-            <StatCard
-              label="Total Balance"
-              value={formatMoney(stats.balance.total)}
-              icon={Coins}
-              tone="chart-3"
-              footer={`Avg: ${formatMoney(stats.balance.average)}`}
-            />
-            <StatCard
-              label="Monthly Growth"
-              value={stats.registered.thisMonth}
-              icon={TrendingUp}
-              tone="chart-4"
-              footer="New registrations"
-            />
-          </div>
-        ) : null}
+          <StatCard
+            label="New This Week"
+            value={stats.registered.thisWeek}
+            icon={UserPlus}
+            tone="chart-2"
+            footer={`${stats.registered.today} today`}
+          />
+          <StatCard
+            label="Total Balance"
+            value={formatMoney(Number(stats.balance.total))}
+            icon={Coins}
+            tone="chart-3"
+            footer={`Avg: ${formatMoney(Number(stats.balance.average))}`}
+          />
+          <StatCard
+            label="Monthly Growth"
+            value={stats.registered.thisMonth}
+            icon={TrendingUp}
+            tone="chart-4"
+            footer="New registrations"
+          />
+        </div>
+      ) : null}
 
-        {/* Filters & Search */}
-        <Card className="gap-2">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Filter className="size-4 text-muted-foreground" />
-              Filters
-              {(searchQuery ||
-                onlineFilter !== undefined ||
-                violationFilter !== "all") && (
-                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                  {(searchQuery ? 1 : 0) +
-                    (onlineFilter !== undefined ? 1 : 0) +
-                    (violationFilter !== "all" ? 1 : 0)}
-                </Badge>
-              )}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSearch} className="flex flex-wrap gap-2">
-              <SearchInput
-                className="min-w-48 flex-1"
-                placeholder="Search by username, Discord ID, or UUID..."
-                value={searchQuery}
-                onValueChange={(value) => {
-                  setSearchQuery(value);
-                  setPage(0);
-                }}
-              />
+      <FilterBar
+        search={searchQuery}
+        onSearchChange={setSearchQuery}
+        placeholder="Search by username, Discord ID, or UUID..."
+        activeCount={
+          (searchQuery ? 1 : 0) +
+          (onlineFilter !== "all" ? 1 : 0) +
+          (violationFilter !== "all" ? 1 : 0)
+        }
+      >
+        <Select
+          value={onlineFilter}
+          onValueChange={(v) => setOnlineFilter(v as OnlineFilter)}
+        >
+          <SelectTrigger className="min-w-[120px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {ONLINE_FILTER_OPTIONS.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
-              <Select
-                value={
-                  onlineFilter === undefined
-                    ? "all"
-                    : onlineFilter
-                      ? "online"
-                      : "offline"
-                }
-                onValueChange={(v) => {
-                  setOnlineFilter(v === "all" ? undefined : v === "online");
-                  setPage(0);
-                }}
-              >
-                <SelectTrigger className="min-w-[120px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="online">Online</SelectItem>
-                  <SelectItem value="offline">Offline</SelectItem>
-                </SelectContent>
-              </Select>
+        <Select
+          value={violationFilter}
+          onValueChange={(v) => setViolationFilter(v as ViolationFilter)}
+        >
+          <SelectTrigger className="min-w-[160px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {VIOLATION_FILTER_OPTIONS.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </FilterBar>
 
-              <Select
-                value={violationFilter}
-                onValueChange={(v) => {
-                  setViolationFilter(v as ViolationFilter);
-                  setPage(0);
-                }}
-              >
-                <SelectTrigger className="min-w-[160px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Players</SelectItem>
-                  <SelectItem value="any">Any Violations</SelectItem>
-                  <SelectItem value="strikes">With Strikes</SelectItem>
-                  <SelectItem value="bans">With Bans</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Button type="submit" className="min-w-[85px]">
-                Search
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-
-        {/* Players Table */}
-        <Card className="gap-0">
-          <CardHeader className="border-b gap-0">
-            <CardTitle>Players ({total.toLocaleString()})</CardTitle>
-          </CardHeader>
-
-          {error ? (
-            <ErrorState
-              message={error}
-              onRetry={() => playersQuery.refetch()}
-            />
-          ) : !loading && players.length === 0 ? (
-            <EmptyState
-              icon={Users}
-              message="No players found"
-              hint={
-                violationFilter !== "all" && "Try changing the violation filter"
-              }
-            />
-          ) : (
-            <>
-              {/* Table */}
-              <CardContent className="px-0">
-                <DataTable
-                  columns={columns}
-                  rows={players}
-                  loading={loading}
-                  loadingRows={loadingRows}
-                  rowKey={(player) => player.minecraftUuid}
-                  onRowClick={(player) =>
-                    navigate(`/admin/players/${player.minecraftUuid}`)
-                  }
-                  rowClassName={(player) => {
-                    const badgeInfo = getPlayerBadgeInfo(player);
-                    if (!badgeInfo.hasIssues) return undefined;
-                    return badgeInfo.color === "red"
-                      ? "bg-destructive/5"
-                      : "bg-yellow-500/5";
-                  }}
-                />
-              </CardContent>
-
-              {total > 0 && (
-                <CardFooter className="border-t">
-                  <Paginator
-                    page={page}
-                    limit={limit}
-                    total={total}
-                    totalPages={totalPages}
-                    onPageChange={setPage}
-                    itemLabel="player"
-                    className="w-full"
-                  />
-                </CardFooter>
-              )}
-            </>
-          )}
-        </Card>
-      </div>
-    </div>
+      <TableCard
+        title="Players"
+        paged={players}
+        empty={{
+          icon: Users,
+          message: "No players found",
+          hint:
+            violationFilter !== "all" && "Try changing the violation filter",
+        }}
+        itemLabel="player"
+        columns={columns}
+        rowKey={(player) => player.minecraftUuid}
+        onRowClick={(player) =>
+          navigate(`/admin/players/${player.minecraftUuid}`)
+        }
+        rowClassName={(player) => {
+          const violation = violationOf(player);
+          return violation ? VIOLATION_STYLES[violation.kind].row : undefined;
+        }}
+      />
+    </AdminPage>
   );
 }

@@ -4,12 +4,12 @@ import type {
   CurseforgeFileWithProject,
 } from "@/db/queries/curseforge/file";
 import type { CurseForgeProjectData } from "@/services/curseforge/mods";
-import type { CurseForgeContentFile } from "@/services/curseforge/content";
+import type { CurseForgeFile } from "@/services/curseforge/client";
+import { curseforgeFile } from "@/tests/helpers/curseforge-file";
 import {
   classForProjectKind,
   contentKindForClass,
   curseforgeFilePageUrl,
-  curseforgeProjectUrl,
   describeLauncherProject,
   projectKindForClass,
   sortFieldForContentSort,
@@ -89,61 +89,6 @@ describe("projectKindForClass", () => {
   });
 });
 
-describe("curseforgeProjectUrl", () => {
-  it("is the stored page without a trailing slash", () => {
-    expect(
-      curseforgeProjectUrl(makeProject({ websiteUrl: `${CREATE_PAGE}/` })),
-    ).toBe(CREATE_PAGE);
-  });
-
-  it.each([
-    [6, "mc-mods"],
-    [12, "texture-packs"],
-    [6552, "shaders"],
-    [4471, "modpacks"],
-  ])(
-    "builds the page from the slug when a class %i project has no stored page",
-    (classId, sitePath) => {
-      expect(
-        curseforgeProjectUrl({
-          websiteUrl: null,
-          classId,
-          slug: "some-project",
-        }),
-      ).toBe(`https://www.curseforge.com/minecraft/${sitePath}/some-project`);
-    },
-  );
-
-  it.each(["", "/"])(
-    "builds the page from the slug when the stored page is %j",
-    (websiteUrl) => {
-      expect(
-        curseforgeProjectUrl({ websiteUrl, classId: 6, slug: "some-project" }),
-      ).toBe("https://www.curseforge.com/minecraft/mc-mods/some-project");
-    },
-  );
-
-  it("has no page for a class the launcher does not install", () => {
-    expect(
-      curseforgeProjectUrl({
-        websiteUrl: null,
-        classId: 6945,
-        slug: "some-pack",
-      }),
-    ).toBeNull();
-  });
-
-  it("has no page for an empty stored page of a class the launcher does not install", () => {
-    expect(
-      curseforgeProjectUrl({
-        websiteUrl: "",
-        classId: 6945,
-        slug: "some-pack",
-      }),
-    ).toBeNull();
-  });
-});
-
 describe("curseforgeFilePageUrl", () => {
   it("links the file page of the project", () => {
     expect(
@@ -172,10 +117,10 @@ describe("curseforgeFilePageUrl", () => {
     );
   });
 
-  it("has no file page for a class the launcher does not install", () => {
+  it("has no file page for a class CurseForge has no site path for", () => {
     expect(
       curseforgeFilePageUrl(
-        { websiteUrl: null, classId: 6945, slug: "some-pack" },
+        { websiteUrl: null, classId: 17, slug: "some-world" },
         7001234,
       ),
     ).toBeNull();
@@ -656,11 +601,11 @@ describe("toLauncherContentFile", () => {
     ).toEqual({ servedBy: "manual", url: null });
   });
 
-  it("has no file for a class the launcher does not install", () => {
+  it("has no file for a class CurseForge has no site path for", () => {
     expect(
       toLauncherContentFile(
         makeFile({
-          project: makeProject({ classId: 6945, websiteUrl: null }),
+          project: makeProject({ classId: 17, websiteUrl: null }),
         }),
       ),
     ).toBeNull();
@@ -681,9 +626,9 @@ describe("classForProjectKind", () => {
 
 describe("toLauncherContentFileDetails", () => {
   function makeContentFile(
-    overrides: Partial<CurseForgeContentFile> = {},
-  ): CurseForgeContentFile {
-    return {
+    overrides: Partial<CurseForgeFile> = {},
+  ): CurseForgeFile {
+    return curseforgeFile({
       id: 7000001,
       projectId: 439890,
       gameId: 432,
@@ -697,11 +642,11 @@ describe("toLauncherContentFileDetails", () => {
       sha1: "a".repeat(40),
       gameVersions: ["Client", "1.21.1", "NeoForge", "Server", "1.21"],
       dependencies: [
-        { projectId: 238222, required: false },
-        { projectId: 328085, required: true },
+        { projectId: 238222, relationType: 2 },
+        { projectId: 328085, relationType: 3 },
       ],
       ...overrides,
-    };
+    });
   }
 
   const PROJECT_PAGE =

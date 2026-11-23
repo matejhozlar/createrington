@@ -1,4 +1,4 @@
-import { Q } from "@/db";
+import { Q } from "@/db/pool";
 import { DatabaseTable } from "@/generated/db";
 import type { AdminLogAction } from "@createrington/shared/db";
 import { BasePlayerRepository, type PlayerIdentifier } from "../base";
@@ -8,10 +8,6 @@ import { BasePlayerRepository, type PlayerIdentifier } from "../base";
  * Used by the admin panel audit-log views.
  */
 export class PlayerAuditRepository extends BasePlayerRepository {
-  constructor() {
-    super();
-  }
-
   /** Paginated admin actions targeting the player, newest first. */
   async getLog(
     identifier: PlayerIdentifier,

@@ -69,11 +69,6 @@ export class OneTimeStore<T> {
     return fromMemory ?? fromRedis;
   }
 
-  /** Forgets every token kept in memory. */
-  clearMemory(): void {
-    this.memory.clear();
-  }
-
   private newToken(): string {
     return crypto.randomBytes(this.options.tokenBytes).toString("hex");
   }

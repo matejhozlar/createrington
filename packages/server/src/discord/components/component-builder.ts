@@ -16,11 +16,11 @@ import {
   COMPONENTS_V2_MAX_COMPONENTS,
   COMPONENTS_V2_MAX_TEXT,
   componentsDataSchema,
+  measureComponentsV2,
   type ComponentActionRow,
   type ComponentButton,
   type ComponentContainer,
   type ComponentMediaGallery,
-  type ComponentNode,
   type ComponentSection,
   type ComponentSeparator,
   type ComponentTextDisplay,
@@ -130,7 +130,6 @@ function buildContainer(node: ComponentContainer): ContainerBuilder {
   return builder;
 }
 
-/** Translate a validated Components V2 tree into top-level discord.js builders. */
 export function buildComponentsV2(data: ComponentsData): TopLevelComponent[] {
   return data.components.map((node) => {
     switch (node.type) {
@@ -150,56 +149,6 @@ export function buildComponentsV2(data: ComponentsData): TopLevelComponent[] {
   });
 }
 
-type AnyComponentNode =
-  ComponentNode | ComponentContainer["components"][number];
-
-function measure(node: AnyComponentNode): { count: number; text: number } {
-  switch (node.type) {
-    case "text":
-      return { count: 1, text: node.content.length };
-    case "separator":
-      return { count: 1, text: 0 };
-    case "media_gallery":
-      return { count: 1 + node.items.length, text: 0 };
-    case "action_row":
-      return { count: 1 + node.components.length, text: 0 };
-    case "section": {
-      const textLength = node.components.reduce(
-        (sum, t) => sum + t.content.length,
-        0,
-      );
-      // Each text display + the accessory each count as a component.
-      return { count: 1 + node.components.length + 1, text: textLength };
-    }
-    case "container": {
-      let count = 1;
-      let textLength = 0;
-      for (const child of node.components) {
-        const childMeasure = measure(child);
-        count += childMeasure.count;
-        textLength += childMeasure.text;
-      }
-      return { count, text: textLength };
-    }
-  }
-}
-
-/** Aggregate component count and text length of a tree, as Discord counts them. */
-export function measureComponentsV2(nodes: AnyComponentNode[]): {
-  count: number;
-  text: number;
-} {
-  let count = 0;
-  let text = 0;
-  for (const node of nodes) {
-    const result = measure(node);
-    count += result.count;
-    text += result.text;
-  }
-  return { count, text };
-}
-
-/** Enforce Discord's aggregate component/text ceilings; returns an error string or null. */
 export function validateComponentsV2(data: ComponentsData): string | null {
   if (data.components.length === 0) {
     return "Add at least one component";
@@ -303,12 +252,6 @@ export function container(
   };
 }
 
-/**
- * Validate a data-first Components V2 tree and produce send-ready pieces.
- * Applies schema defaults, enforces the aggregate limits, and returns the
- * top-level builders plus the `IS_COMPONENTS_V2` flag for `messageService.send`.
- * Throws if the tree is invalid (a programming error for in-code callers).
- */
 export function buildComponentsMessage(data: ComponentsData): {
   components: TopLevelComponent[];
   flags: number;

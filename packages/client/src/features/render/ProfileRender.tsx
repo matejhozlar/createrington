@@ -1,28 +1,13 @@
+import { RenderFrame } from "./components/RenderFrame";
+import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
-import { formatDate } from "@createrington/shared/format";
+import { formatDate, formatMoney } from "@createrington/shared/format";
 import { LoadingScreen } from "@/components/query-states";
-import { formatMoney } from "@/lib/format";
 import { RenderTeamTag } from "./components/RenderTeamTag";
 import { RenderUnavailable } from "./components/RenderUnavailable";
 import { useRenderData } from "./hooks/use-render-data";
 import { useRenderPlatesReady } from "./hooks/use-render-plates";
 import { loadSkin, randomPose } from "./skin-utils";
-
-interface ProfileData {
-  username: string;
-  uuid: string;
-  online: boolean;
-  cashBalance: string;
-  playtime: string;
-  playtimeSeconds: number;
-  sessions: number;
-  memberSince: string;
-  blocksMined: number;
-  mobsKilled: number;
-  deaths: number;
-  distanceKm: number;
-  tagCode: string | null;
-}
 
 function StatPill({
   label,
@@ -35,7 +20,10 @@ function StatPill({
 }) {
   return (
     <div
-      className={`flex flex-col gap-1 rounded-md bg-card/60 border border-border px-4 py-2.5 ${className ?? ""}`}
+      className={cn(
+        "flex flex-col gap-1 rounded-md border border-border bg-card/60 px-4 py-2.5",
+        className,
+      )}
     >
       <span className="text-[9px] font-semibold tracking-[0.2em] uppercase text-muted-foreground/50">
         {label}
@@ -48,9 +36,7 @@ function StatPill({
 }
 
 export function ProfileRender() {
-  const { data, unavailable } = useRenderData<ProfileData>("profile", [
-    "player",
-  ]);
+  const { data, unavailable } = useRenderData("profile", ["player"]);
   const [skinSrc, setSkinSrc] = useState<string | null>(null);
   const [pose] = useState(randomPose);
   const platesReady = useRenderPlatesReady();
@@ -64,33 +50,20 @@ export function ProfileRender() {
   if (!data || !skinSrc || !platesReady) return <LoadingScreen />;
 
   return (
-    <div
+    <RenderFrame
       id="profile-container"
-      className="relative w-[900px] h-[500px] overflow-hidden bg-background text-foreground flex flex-col"
+      banner={{
+        src: "/assets/render/player-profile.webp",
+        alt: "Player Profile",
+      }}
+      glows={[
+        "-left-16 top-12 h-[320px] w-[320px] bg-chart-1 opacity-20",
+        "-right-16 -bottom-8 h-[280px] w-[280px] bg-chart-3 opacity-15",
+      ]}
     >
-      {/* Background grid */}
-      <div className="absolute inset-0 pointer-events-none render-bg-grid" />
-      {/* Background glows */}
-      <div className="absolute -left-16 top-12 w-[320px] h-[320px] rounded-full blur-[120px] opacity-20 pointer-events-none bg-chart-1" />
-      <div className="absolute -right-16 -bottom-8 w-[280px] h-[280px] rounded-full blur-[120px] opacity-15 pointer-events-none bg-chart-3" />
-
-      {/* Header */}
-      <div className="flex items-center gap-4 px-8 pt-5 z-10">
-        <div className="flex-1 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
-        <img
-          src="/assets/render/player-profile.webp"
-          alt="Player Profile"
-          className="h-[44px] [image-rendering:pixelated]"
-        />
-        <div className="flex-1 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
-      </div>
-
-      {/* Body */}
       <div className="flex-1 flex items-center px-6 pt-1 z-10">
-        {/* Left: Skin render */}
         <div className="flex flex-col items-center w-[300px] shrink-0">
           <div className="relative h-[380px] flex items-end justify-center">
-            {/* Glow beneath skin */}
             <div className="absolute bottom-2 w-36 h-36 rounded-full blur-[60px] opacity-40 bg-chart-1" />
             <img
               src={skinSrc}
@@ -100,9 +73,7 @@ export function ProfileRender() {
           </div>
         </div>
 
-        {/* Right: Stats */}
         <div className="flex-1 flex flex-col gap-2.5 pl-2 pr-4">
-          {/* Username + Status */}
           <div className="flex items-center gap-3">
             <div className="flex items-baseline gap-3">
               <RenderTeamTag code={data.tagCode} height={22} inline />
@@ -112,19 +83,29 @@ export function ProfileRender() {
             </div>
             <div className="flex items-center gap-1.5 ml-auto">
               <div
-                className={`w-2 h-2 rounded-full ${data.online ? "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.6)]" : "bg-muted-foreground/40"}`}
+                className={cn(
+                  "h-2 w-2 rounded-full",
+                  data.online
+                    ? "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.6)]"
+                    : "bg-muted-foreground/40",
+                )}
               />
               <span
-                className={`text-[11px] font-semibold tracking-wide uppercase ${data.online ? "text-emerald-400" : "text-muted-foreground/40"}`}
+                className={cn(
+                  "text-[11px] font-semibold tracking-wide uppercase",
+                  data.online ? "text-emerald-400" : "text-muted-foreground/40",
+                )}
               >
                 {data.online ? "Online" : "Offline"}
               </span>
             </div>
           </div>
 
-          {/* Balance and activity row */}
           <div className="grid grid-cols-4 gap-2">
-            <StatPill label="Balance" value={formatMoney(data.cashBalance)} />
+            <StatPill
+              label="Balance"
+              value={formatMoney(Number(data.cashBalance))}
+            />
             <StatPill label="Playtime" value={data.playtime} />
             <StatPill label="Sessions" value={data.sessions.toLocaleString()} />
             <StatPill
@@ -133,7 +114,6 @@ export function ProfileRender() {
             />
           </div>
 
-          {/* Minecraft stats row */}
           <div className="grid grid-cols-4 gap-2">
             <StatPill
               label="Blocks Mined"
@@ -151,13 +131,6 @@ export function ProfileRender() {
           </div>
         </div>
       </div>
-
-      {/* Footer */}
-      <div className="pb-3.5 text-center z-10">
-        <span className="text-[11px] font-semibold tracking-[0.3em] uppercase text-foreground/15">
-          createrington.com
-        </span>
-      </div>
-    </div>
+    </RenderFrame>
   );
 }

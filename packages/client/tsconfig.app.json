@@ -20,7 +20,6 @@
     "types": ["vite/client"],
     "paths": {
       "@/*": ["./src/*"],
-      "@createrington/shared": ["../shared/src"],
       "@createrington/shared/*": ["../shared/src/*"]
     }
   },

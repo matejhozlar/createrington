@@ -1,24 +1,11 @@
-/**
- * tRPC initialization and procedure definitions.
- *
- * Exports four auth-level procedures used across all routers:
- * - `publicProcedure`: no auth required
- * - `userProcedure`: requires valid JWT and verified account
- * - `adminProcedure`: requires valid JWT, verified account, and isAdmin flag
- * - `ownerProcedure`: additionally requires JWT discordId to match
- *   `config.app.auth.owner.discordId` (single-owner gate, env-rooted)
- * - `sandboxServiceProcedure`: requires the sandbox's service token instead
- *   of a user JWT (server-to-server calls with no session behind them)
- */
 import { initTRPC } from "@trpc/server";
 import type { Context } from "./context";
-import { trpcError } from "@/trpc/utils";
+import { mapDomainError, trpcError } from "@/trpc/utils";
 import { AuthRole } from "@createrington/shared/auth";
 import { adminStatusService } from "@/services/auth/admin-status/admin-status.service";
 import { httpLogger, colorDuration } from "@/http-logger";
 import config from "@/config";
 
-/** Optional metadata attached to each procedure (used for auto-documentation). */
 export interface Meta {
   description?: string;
 }
@@ -51,12 +38,21 @@ const loggingMiddleware = middleware(async ({ ctx, path, type, next }) => {
   return result;
 });
 
-const baseProcedure = t.procedure.use(loggingMiddleware);
+const domainErrorMiddleware = middleware(async ({ next }) => {
+  const result = await next();
+  if (!result.ok) {
+    const mapped = mapDomainError(result.error);
+    if (mapped) throw mapped;
+  }
+  return result;
+});
 
-/** Procedure with no authentication requirement. */
+const baseProcedure = t.procedure
+  .use(loggingMiddleware)
+  .use(domainErrorMiddleware);
+
 export const publicProcedure = baseProcedure;
 
-/** Rejects unauthenticated or unverified users. */
 const isAuthenticated = middleware(async ({ ctx, next }) => {
   if (!ctx.user) {
     throw trpcError.unauthorized("Authentication required");
@@ -69,13 +65,11 @@ const isAuthenticated = middleware(async ({ ctx, next }) => {
   return next({ ctx: { user: ctx.user } });
 });
 
-/** Rejects non-admin users. */
 const isAdmin = middleware(async ({ ctx, next }) => {
   if (!ctx.user?.isAdmin) {
     throw trpcError.forbidden("Admin access required");
   }
 
-  // JWT isAdmin can be stale up to the access-token lifetime; confirm against DB.
   const stillAdmin = await adminStatusService.isAdmin(ctx.user.discordId);
   if (!stillAdmin) {
     throw trpcError.forbidden("Admin access required");
@@ -84,7 +78,6 @@ const isAdmin = middleware(async ({ ctx, next }) => {
   return next({ ctx: { user: ctx.user } });
 });
 
-/** Rejects anyone whose JWT discordId doesn't match the configured owner. */
 const isOwner = middleware(async ({ ctx, next }) => {
   if (ctx.user?.discordId !== config.app.auth.owner.discordId) {
     throw trpcError.forbidden("Owner access required");
@@ -92,7 +85,6 @@ const isOwner = middleware(async ({ ctx, next }) => {
   return next({ ctx: { user: ctx.user } });
 });
 
-/** Rejects everything but the sandbox server presenting its service token. */
 const isSandboxService = middleware(async ({ ctx, next }) => {
   if (ctx.service !== "sandbox") {
     throw trpcError.unauthorized("Sandbox service token required");
@@ -100,7 +92,6 @@ const isSandboxService = middleware(async ({ ctx, next }) => {
   return next();
 });
 
-/** Answers NOT_FOUND on the production deployment, where the launcher is not released yet. */
 export const launcherAvailable = middleware(async ({ next }) => {
   if (!config.launcher.available) {
     throw trpcError.notFound("Not found");
@@ -108,14 +99,7 @@ export const launcherAvailable = middleware(async ({ next }) => {
   return next();
 });
 
-/** Procedure that requires a valid JWT and a verified (non-UNVERIFIED) account. */
 export const userProcedure = baseProcedure.use(isAuthenticated);
-/**
- * Procedure for the sandbox server calling on its own behalf (background
- * jobs with no user session), gated on the shared SANDBOX_SERVICE_TOKEN.
- */
 export const sandboxServiceProcedure = baseProcedure.use(isSandboxService);
-/** Procedure that requires a valid JWT, a verified account, and the isAdmin flag. */
 export const adminProcedure = baseProcedure.use(isAuthenticated).use(isAdmin);
-/** Procedure gated on matching the configured owner Discord ID. */
 export const ownerProcedure = baseProcedure.use(isAuthenticated).use(isOwner);

@@ -1,7 +1,7 @@
 import type { ComponentType, SVGProps } from "react";
 import type { LauncherPlatform } from "@createrington/shared/launcher";
-import { LinuxIcon } from "@/components/icons/linux";
-import { WindowsIcon } from "@/components/icons/windows";
+import { LinuxIcon } from "./components/LinuxIcon";
+import { WindowsIcon } from "./components/WindowsIcon";
 
 type LauncherPlatformDisplay = {
   label: string;

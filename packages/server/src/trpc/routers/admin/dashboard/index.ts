@@ -2,7 +2,6 @@ import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
 import type { AdminLogActionFilters } from "@createrington/shared/db/admin_log_action.types";
 
-/** Admin dashboard router: profile data and recent action statistics. */
 export const dashboardRouter = router({
   profile: adminProcedure
     .meta({ description: "Get admin profile data for the dashboard" })
@@ -31,7 +30,7 @@ export const dashboardRouter = router({
     .meta({ description: "Get top slash command usage statistics" })
     .query(async () => {
       const [topCommands, totalToday] = await Promise.all([
-        Q.discord.command.usage.topCommands(10),
+        Q.discord.command.usage.getTopCommands(10),
         Q.discord.command.usage.countToday(),
       ]);
 

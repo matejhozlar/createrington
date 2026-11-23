@@ -10,8 +10,8 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { ProjectThumb } from "../../components/ProjectThumb";
-import { MOD_STATUS_STYLES } from "../../format";
+import { ProjectThumb } from "@/features/workshop/components/ProjectThumb";
+import { MOD_STATUS_STYLES } from "@/features/workshop/format";
 import { useMutation } from "@tanstack/react-query";
 
 type Suggestion = RouterOutput["user"]["workshops"]["mySuggestions"][number];
@@ -127,9 +127,9 @@ export function ActiveSlots({
         {Array.from({ length: emptySlots }, (_, index) => (
           <div
             key={index}
-            className="flex items-center gap-3 rounded-[10px] border border-dashed border-[var(--border-strong)] px-3.5 py-[9px] opacity-60"
+            className="flex items-center gap-3 rounded-[10px] border border-dashed border-border-strong px-3.5 py-[9px] opacity-60"
           >
-            <span className="size-8 shrink-0 rounded-lg border border-dashed border-[var(--border-strong)]" />
+            <span className="size-8 shrink-0 rounded-lg border border-dashed border-border-strong" />
             <span className="text-xs text-muted-foreground">Empty slot</span>
           </div>
         ))}

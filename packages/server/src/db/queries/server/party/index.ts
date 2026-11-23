@@ -1,66 +1,74 @@
 import type { Pool, PoolClient } from "pg";
 import type { PartyMemberRank } from "@createrington/shared/party";
+import type { CamelCaseKeys } from "@createrington/shared/types";
 import { ServerPartyBaseQueries } from "@/generated/db/server_party.queries";
 import { escapeLike } from "@/db/utils";
 
-export interface PartyOverview {
+export interface PartyOverviewRow {
   id: number;
-  teamId: string;
+  team_id: string;
   name: string;
   description: string;
   color: number;
-  freeToJoin: boolean;
-  ownerUuid: string;
-  ownerName: string | null;
-  tagCode: string | null;
+  free_to_join: boolean;
+  owner_uuid: string;
+  owner_name: string | null;
+  tag_code: string | null;
   tag: string | null;
-  memberCount: number;
-  allyCount: number;
-  claimCount: number | null;
-  forceloadCount: number | null;
-  firstSeenAt: Date;
-  syncedAt: Date;
+  member_count: number;
+  ally_count: number;
+  claim_count: number | null;
+  forceload_count: number | null;
+  first_seen_at: Date;
+  synced_at: Date;
 }
 
-export interface PartyMembership extends PartyOverview {
+export interface PartyMembershipRow extends PartyOverviewRow {
   rank: PartyMemberRank;
 }
 
-export interface MemberTagCode {
-  minecraftUuid: string;
-  tagCode: string;
+export interface MemberTagCodeRow {
+  minecraft_uuid: string;
+  tag_code: string;
 }
 
-export interface PartyStats {
+export interface PartyStatsRow {
   parties: number;
-  taggedParties: number;
+  tagged_parties: number;
   players: number;
-  claimCount: number | null;
-  forceloadCount: number | null;
-  lastSyncedAt: Date | null;
-  claimsSyncedAt: Date | null;
+  claim_count: number | null;
+  forceload_count: number | null;
+  last_synced_at: Date | null;
+  claims_synced_at: Date | null;
 }
+
+export type PartyOverview = CamelCaseKeys<PartyOverviewRow>;
+
+export type PartyMembership = CamelCaseKeys<PartyMembershipRow>;
+
+export type MemberTagCode = CamelCaseKeys<MemberTagCodeRow>;
+
+export type PartyStats = CamelCaseKeys<PartyStatsRow>;
 
 const OVERVIEW_COLUMNS = `
         p.id,
-        p.team_id AS "teamId",
+        p.team_id,
         p.name,
         p.description,
         p.color,
-        p.free_to_join AS "freeToJoin",
-        p.owner_uuid AS "ownerUuid",
-        o.minecraft_username AS "ownerName",
-        p.tag_code AS "tagCode",
+        p.free_to_join,
+        p.owner_uuid,
+        o.minecraft_username AS owner_name,
+        p.tag_code,
         p.tag,
-        COALESCE(m.member_count, 0)::int AS "memberCount",
-        COALESCE(a.ally_count, 0)::int AS "allyCount",
-        CASE WHEN cs.id IS NULL THEN m.claim_count ELSE c.claim_count END::int AS "claimCount",
-        CASE WHEN cs.id IS NULL THEN m.forceload_count ELSE c.forceload_count END::int AS "forceloadCount",
-        p.first_seen_at AS "firstSeenAt",
-        p.synced_at AS "syncedAt"`;
+        COALESCE(m.member_count, 0)::int AS member_count,
+        COALESCE(a.ally_count, 0)::int AS ally_count,
+        CASE WHEN cs.id IS NULL THEN m.claim_count ELSE c.claim_count END::int AS claim_count,
+        CASE WHEN cs.id IS NULL THEN m.forceload_count ELSE c.forceload_count END::int AS forceload_count,
+        p.first_seen_at,
+        p.synced_at`;
 
 const OVERVIEW_JOINS = `
-      FROM server_party p
       LEFT JOIN player o ON o.minecraft_uuid = p.owner_uuid
       LEFT JOIN server_party_claim_sync cs ON cs.server_id = p.server_id
       LEFT JOIN LATERAL (
@@ -97,24 +105,28 @@ export class ServerPartyQueries extends ServerPartyBaseQueries {
 
   /** Every party of a server with owner name, member, ally and chunk counts, ordered by name. */
   async getOverview(serverId: number): Promise<PartyOverview[]> {
-    const result = await this.db.query<PartyOverview>(
+    const result = await this.runQuery<PartyOverviewRow>(
+      "get party overview",
       `SELECT ${OVERVIEW_COLUMNS}
+      FROM ${this.table} p
       ${OVERVIEW_JOINS}
       WHERE p.server_id = $1
       ${OVERVIEW_ORDER}`,
       [serverId],
     );
-    return result.rows;
+    return this.mapRowsToEntities(result.rows);
   }
 
   /** The party a player is a member of, with their rank, or null. */
-  async getForMember(
+  async findForMember(
     serverId: number,
     minecraftUuid: string,
   ): Promise<PartyMembership | null> {
-    const result = await this.db.query<PartyMembership>(
+    const result = await this.runQuery<PartyMembershipRow>(
+      "get party for member",
       `SELECT ${OVERVIEW_COLUMNS},
         pm.rank
+      FROM ${this.table} p
       ${OVERVIEW_JOINS}
       JOIN server_party_member pm
         ON pm.party_id = p.id AND pm.minecraft_uuid = $2
@@ -123,7 +135,7 @@ export class ServerPartyQueries extends ServerPartyBaseQueries {
       LIMIT 1`,
       [serverId, minecraftUuid],
     );
-    return result.rows[0] ?? null;
+    return result.rows[0] ? this.mapRowToEntity(result.rows[0]) : null;
   }
 
   /** The parties a player holds the ally rank in, ordered by name. */
@@ -131,8 +143,10 @@ export class ServerPartyQueries extends ServerPartyBaseQueries {
     serverId: number,
     minecraftUuid: string,
   ): Promise<PartyOverview[]> {
-    const result = await this.db.query<PartyOverview>(
+    const result = await this.runQuery<PartyOverviewRow>(
+      "get parties for ally",
       `SELECT ${OVERVIEW_COLUMNS}
+      FROM ${this.table} p
       ${OVERVIEW_JOINS}
       WHERE p.server_id = $1
         AND EXISTS (
@@ -142,19 +156,20 @@ export class ServerPartyQueries extends ServerPartyBaseQueries {
       ${OVERVIEW_ORDER}`,
       [serverId, minecraftUuid],
     );
-    return result.rows;
+    return this.mapRowsToEntities(result.rows);
   }
 
   /** Server-wide totals for the admin Parties page. */
   async getStats(serverId: number): Promise<PartyStats> {
-    const result = await this.db.query<PartyStats>(
+    const result = await this.runQuery<PartyStatsRow>(
+      "get party stats",
       `SELECT
-        COUNT(*)::int AS "parties",
-        COUNT(*) FILTER (WHERE p.tag IS NOT NULL)::int AS "taggedParties",
+        COUNT(*)::int AS parties,
+        COUNT(*) FILTER (WHERE p.tag IS NOT NULL)::int AS tagged_parties,
         (SELECT COUNT(DISTINCT m.minecraft_uuid)::int
           FROM server_party_member m
           JOIN server_party mp ON mp.id = m.party_id
-          WHERE mp.server_id = $1) AS "players",
+          WHERE mp.server_id = $1) AS players,
         CASE WHEN EXISTS (SELECT 1 FROM server_party_claim_sync cs WHERE cs.server_id = $1) THEN
           (SELECT COUNT(*)::int FROM server_party_claim c WHERE c.server_id = $1)
         ELSE
@@ -162,7 +177,7 @@ export class ServerPartyQueries extends ServerPartyBaseQueries {
             FROM server_party_member m
             JOIN server_party mp ON mp.id = m.party_id
             WHERE mp.server_id = $1)
-        END AS "claimCount",
+        END AS claim_count,
         CASE WHEN EXISTS (SELECT 1 FROM server_party_claim_sync cs WHERE cs.server_id = $1) THEN
           (SELECT COUNT(*)::int FROM server_party_claim c
             WHERE c.server_id = $1 AND c.forceloaded)
@@ -171,59 +186,58 @@ export class ServerPartyQueries extends ServerPartyBaseQueries {
             FROM server_party_member m
             JOIN server_party mp ON mp.id = m.party_id
             WHERE mp.server_id = $1)
-        END AS "forceloadCount",
-        MAX(p.synced_at) AS "lastSyncedAt",
-        (SELECT cs.synced_at FROM server_party_claim_sync cs WHERE cs.server_id = $1) AS "claimsSyncedAt"
-      FROM server_party p
+        END AS forceload_count,
+        MAX(p.synced_at) AS last_synced_at,
+        (SELECT cs.synced_at FROM server_party_claim_sync cs WHERE cs.server_id = $1) AS claims_synced_at
+      FROM ${this.table} p
       WHERE p.server_id = $1`,
       [serverId],
     );
-    return result.rows[0];
+    return this.mapRowToEntity(result.rows[0]);
   }
 
   /** Parties whose name contains the query, for autocompletes. */
-  async searchByName(
+  async getNameMatches(
     serverId: number,
     query: string,
     limit = 25,
   ): Promise<{ teamId: string; name: string; memberCount: number }[]> {
     const trimmed = query.trim();
-    const result = await this.db.query<{
-      teamId: string;
+    const result = await this.runQuery<{
+      team_id: string;
       name: string;
-      memberCount: number;
+      member_count: number;
     }>(
+      "search parties by name",
       `SELECT
-        p.team_id AS "teamId",
+        p.team_id,
         p.name,
-        (SELECT COUNT(*)::int FROM server_party_member m WHERE m.party_id = p.id) AS "memberCount"
-      FROM server_party p
+        (SELECT COUNT(*)::int FROM server_party_member m WHERE m.party_id = p.id) AS member_count
+      FROM ${this.table} p
       WHERE p.server_id = $1
         AND ($2 = '' OR p.name ILIKE $3)
       ORDER BY LOWER(p.name) ASC
       LIMIT $4`,
       [serverId, trimmed, `%${escapeLike(trimmed)}%`, limit],
     );
-    return result.rows;
+    return this.mapRowsToEntities(result.rows);
   }
 
   /** Tagged parties whose name or tag contains the query, for autocompletes. */
-  async searchTagged(
+  async getTaggedMatches(
     serverId: number,
     query: string,
     limit = 25,
   ): Promise<{ teamId: string; name: string; tag: string }[]> {
     const trimmed = query.trim();
-    const result = await this.db.query<{
-      teamId: string;
+    const result = await this.runQuery<{
+      team_id: string;
       name: string;
       tag: string;
     }>(
-      `SELECT
-        p.team_id AS "teamId",
-        p.name,
-        p.tag
-      FROM server_party p
+      "search tagged parties",
+      `SELECT p.team_id, p.name, p.tag
+      FROM ${this.table} p
       WHERE p.server_id = $1
         AND p.tag_code IS NOT NULL
         AND ($2 = '' OR p.name ILIKE $3 OR p.tag ILIKE $3)
@@ -231,7 +245,7 @@ export class ServerPartyQueries extends ServerPartyBaseQueries {
       LIMIT $4`,
       [serverId, trimmed, `%${escapeLike(trimmed)}%`, limit],
     );
-    return result.rows;
+    return this.mapRowsToEntities(result.rows);
   }
 
   /** Design codes of the tagged parties the given players are members of, one row per tagged player. */
@@ -240,17 +254,16 @@ export class ServerPartyQueries extends ServerPartyBaseQueries {
     minecraftUuids: string[],
   ): Promise<MemberTagCode[]> {
     if (minecraftUuids.length === 0) return [];
-    const result = await this.db.query<MemberTagCode>(
-      `SELECT
-        pm.minecraft_uuid AS "minecraftUuid",
-        p.tag_code AS "tagCode"
+    const result = await this.runQuery<MemberTagCodeRow>(
+      "get member tag codes",
+      `SELECT pm.minecraft_uuid, p.tag_code
       FROM server_party_member pm
-      JOIN server_party p ON p.id = pm.party_id
+      JOIN ${this.table} p ON p.id = pm.party_id
       WHERE p.server_id = $1
         AND p.tag_code IS NOT NULL
         AND pm.minecraft_uuid = ANY($2::uuid[])`,
       [serverId, minecraftUuids],
     );
-    return result.rows;
+    return this.mapRowsToEntities(result.rows);
   }
 }

@@ -1,75 +1,60 @@
 import { Q } from "@/db";
-import { BalanceUtils } from "@/db/repositories/balance/utils";
+import { BalanceUtils } from "@/db/utils/balance";
 import { EmbedPresets } from "@/discord/embeds";
-import { replyError } from "@/discord/utils/interaction-reply";
 import { CooldownType } from "@/discord/utils/cooldown";
+import { replyError } from "@/discord/utils/interaction-reply";
 import {
   type ChatInputCommandInteraction,
   MessageFlags,
   SlashCommandBuilder,
 } from "discord.js";
+import type {
+  CommandCooldown,
+  CommandModule,
+} from "@/discord/bots/common/loaders/command-loader";
 
-/**
- * Slash command definition for the money command
- * Displays the user's current balance from their linked Minecraft account
- */
-export const data = new SlashCommandBuilder()
+const data = new SlashCommandBuilder()
   .setName("money")
   .setDescription("Check your current balance");
 
-/**
- * Cooldown configuration for the money command
- *
- * - duration: 5 seconds
- * - type: "user" - Each user has their own cooldown
- * - message: Custom message shown when user is on cooldown
- */
-export const cooldown = {
+const cooldown: CommandCooldown = {
   duration: 5,
   type: CooldownType.USER,
   message: "Please wait before checking your balance again!",
 };
 
-/**
- * Executes the money command to retrieve and display user's balance
- *
- * Process:
- * 1. Extract the Discord user ID from the interaction
- * 2. Query the database for the user's balance and Minecraft username
- * 3. Format the balance with proper number formatting
- * 4. Display the balance in an embed
- * 5. Handle and report any errors that occur during the process
- *
- * @param interaction - The chat input command interaction
- * @returns Promise resolving when the command execution is completed
- */
-export async function execute(
+async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
   const discordId = interaction.user.id;
 
-  try {
-    const player = await Q.player.get({ discordId });
-    const balance = await Q.player.balance.get({
-      minecraftUuid: player.minecraftUuid,
-    });
-
-    const embed = EmbedPresets.plain({
-      title: "💰 Your Balance",
-      description: `$${BalanceUtils.formatWithCommas(balance.balance)}`,
-    });
-
-    await interaction.reply({
-      embeds: [embed.build()],
-      flags: MessageFlags.Ephemeral,
-    });
-  } catch (error) {
-    logger.error("/money failed:", error);
-
+  const player = await Q.player.find({ discordId });
+  if (!player) {
     await replyError(
       interaction,
-      "Balance Error",
-      "Something went wrong while fetching your balance. Please try again.",
+      "Not Registered",
+      "You must be registered to have a balance. Use `/register` to get started.",
     );
+    return;
   }
+
+  const balance = await Q.player.balance.find({
+    minecraftUuid: player.minecraftUuid,
+  });
+
+  const embed = EmbedPresets.plain({
+    title: "💰 Your Balance",
+    description: BalanceUtils.formatMoney(balance?.balance ?? 0n),
+  });
+
+  await interaction.reply({
+    embeds: [embed.build()],
+    flags: MessageFlags.Ephemeral,
+  });
 }
+
+export default {
+  data,
+  cooldown,
+  execute,
+} satisfies CommandModule;

@@ -1,7 +1,8 @@
 import { z } from "zod";
+import { errorMessage } from "@/errors";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
-import { paginationInput, buildPagination, auditActor } from "@/trpc/utils";
+import { paginationInput, auditActor, paginateQuery } from "@/trpc/utils";
 import { getRotationService } from "./helpers";
 
 const rotationConfigRouter = router({
@@ -44,8 +45,8 @@ const rotationConfigRouter = router({
     }),
 });
 
-export const structurePackRotationProcedures = {
-  forceRotation: adminProcedure
+export const structurePackRotationRouter = router({
+  force: adminProcedure
     .meta({ description: "Trigger a manual rotation" })
     .mutation(async ({ ctx }) => {
       const service = await getRotationService();
@@ -58,7 +59,7 @@ export const structurePackRotationProcedures = {
           description: "Manual structure pack rotation failed",
           metadata: {
             success: false,
-            reason: error instanceof Error ? error.message : String(error),
+            reason: errorMessage(error),
           },
         });
         throw error;
@@ -69,10 +70,9 @@ export const structurePackRotationProcedures = {
         description: "Triggered manual structure pack rotation",
         metadata: { success: true },
       });
-      return { triggered: true };
     }),
 
-  clearRotation: adminProcedure
+  clear: adminProcedure
     .meta({ description: "Clear the current rotation and remove active mods" })
     .mutation(async ({ ctx }) => {
       const service = await getRotationService();
@@ -82,23 +82,20 @@ export const structurePackRotationProcedures = {
         actionType: "structure_pack_clear_rotation",
         description: "Cleared active structure pack rotation",
       });
-      return { cleared: true };
     }),
 
-  rotationHistory: adminProcedure
+  history: adminProcedure
     .meta({ description: "Get paginated rotation history" })
     .input(z.object({ ...paginationInput() }))
     .query(async ({ input }) => {
-      const service = await getRotationService();
-      const { rows, total } = await service.getRotationHistory(
-        input.limit,
-        input.page * input.limit,
+      const { rows, pagination } = await paginateQuery(
+        Q.structure.pack.rotation,
+        {},
+        input,
+        { orderBy: "rotatedAt", orderDirection: "desc" },
       );
-      return {
-        data: rows,
-        pagination: buildPagination(input.page, input.limit, total),
-      };
+      return { items: rows, pagination };
     }),
 
-  rotationConfig: rotationConfigRouter,
-};
+  config: rotationConfigRouter,
+});

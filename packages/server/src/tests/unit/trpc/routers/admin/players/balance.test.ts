@@ -9,35 +9,23 @@ const { balanceRepo, bulkAdjust } = vi.hoisted(() => ({
   bulkAdjust: vi.fn(),
 }));
 
-vi.mock("@/db", () => ({ balanceRepo }));
-vi.mock("@/services/player", () => ({
-  playerService: { balance: { bulkAdjust } },
+vi.mock("@/db", () => ({
+  balanceRepo,
+  playerBalanceRepo: { bulkAdjust },
+  playerRepo: {},
 }));
 vi.mock("@/services/auth/admin-status/admin-status.service", () => ({
   adminStatusService: { isAdmin: vi.fn().mockResolvedValue(true) },
 }));
 
 import { TRPCError } from "@trpc/server";
-import { AuthRole } from "@createrington/shared/auth";
 import { balanceRouter } from "@/trpc/routers/admin/players/balance";
-import { NotFoundError } from "@/app/middleware/error-handler";
-import type { Context } from "@/trpc/context";
+import { NotFoundError } from "@/errors";
+import { adminContext, TEST_ADMIN } from "@/tests/helpers/trpc";
 
 const PLAYER_UUID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
-const ADMIN = {
-  discordId: "100000000000000009",
-  username: "admin",
-  minecraftUsername: "Admin",
-  minecraftUuid: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
-  role: AuthRole.ADMIN,
-  isAdmin: true,
-};
 
-const caller = balanceRouter.createCaller({
-  user: ADMIN,
-  service: null,
-  ip: "127.0.0.1",
-} satisfies Context);
+const caller = balanceRouter.createCaller(adminContext());
 
 async function rejection(call: Promise<unknown>): Promise<TRPCError> {
   try {
@@ -78,8 +66,8 @@ describe("admin.players.balance.adjust", () => {
       expect(repoCall).toHaveBeenCalledWith(
         { minecraftUuid: PLAYER_UUID },
         50,
-        ADMIN.discordId,
-        ADMIN.minecraftUsername,
+        TEST_ADMIN.discordId,
+        TEST_ADMIN.minecraftUsername,
         "event prize",
       );
     },
@@ -101,8 +89,8 @@ describe("admin.players.balance.adjust", () => {
     expect(balanceRepo.adminGrant).toHaveBeenCalledWith(
       expect.anything(),
       50,
-      ADMIN.discordId,
-      ADMIN.minecraftUsername,
+      TEST_ADMIN.discordId,
+      TEST_ADMIN.minecraftUsername,
       "event prize",
     );
   });
@@ -129,8 +117,8 @@ describe("admin.players.balance.adjust", () => {
     expect(balanceRepo.adminSet).toHaveBeenCalledWith(
       expect.anything(),
       0,
-      ADMIN.discordId,
-      ADMIN.minecraftUsername,
+      TEST_ADMIN.discordId,
+      TEST_ADMIN.minecraftUsername,
       "event prize",
     );
   });
@@ -143,8 +131,8 @@ describe("admin.players.balance.adjust", () => {
       expect(balanceRepo.adminGrant).toHaveBeenCalledWith(
         expect.anything(),
         amount,
-        ADMIN.discordId,
-        ADMIN.minecraftUsername,
+        TEST_ADMIN.discordId,
+        TEST_ADMIN.minecraftUsername,
         "event prize",
       );
     },
@@ -235,8 +223,8 @@ describe("admin.players.balance.bulkAdjust", () => {
     expect(bulkAdjust).toHaveBeenCalledWith(
       input.playerUuids,
       -25,
-      ADMIN.discordId,
-      ADMIN.minecraftUsername,
+      TEST_ADMIN.discordId,
+      TEST_ADMIN.minecraftUsername,
       "duplication exploit",
     );
     expect(result.summary).toEqual({ total: 2, successful: 1, failed: 1 });
@@ -250,8 +238,8 @@ describe("admin.players.balance.bulkAdjust", () => {
     expect(bulkAdjust).toHaveBeenCalledWith(
       input.playerUuids,
       -25,
-      ADMIN.discordId,
-      ADMIN.minecraftUsername,
+      TEST_ADMIN.discordId,
+      TEST_ADMIN.minecraftUsername,
       "duplication exploit",
     );
   });

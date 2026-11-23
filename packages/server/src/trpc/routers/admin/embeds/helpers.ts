@@ -1,5 +1,4 @@
-import { getServiceSync, Services } from "@/services";
-import { DiscordMessageService } from "@/services/discord/message/message.service";
+import { CustomIds } from "@/discord/custom-ids";
 import {
   ActionRowBuilder,
   ButtonBuilder,
@@ -8,7 +7,6 @@ import {
   MessageFlags,
 } from "discord.js";
 import {
-  type EmbedBot,
   type EmbedData,
   type MessagePayload,
   type PresetKind,
@@ -30,15 +28,6 @@ export const embedSendLimit = createRateLimit({
   windowMs: 60 * 60 * 1000,
   key: (ctx) => ctx.user!.discordId,
 });
-
-const BOT_SERVICES = {
-  main: Services.DISCORD_MAIN_BOT,
-} as const satisfies Record<EmbedBot, string>;
-
-export function getMessageService(bot: EmbedBot = "main") {
-  const client = getServiceSync(BOT_SERVICES[bot]);
-  return DiscordMessageService.getInstance(client);
-}
 
 export function hasEmbedContent(data: EmbedData): boolean {
   return !!(
@@ -116,13 +105,12 @@ export function buildButtons(
     }
   }
 
-  // Action buttons (require a preset to reference)
   if (hasActionButtons && presetId) {
     for (let i = 0; i < data.actionButtons.length; i++) {
       const btn = data.actionButtons[i];
       const button = new ButtonBuilder()
         .setLabel(btn.label)
-        .setCustomId(`embed-action:${presetId}:${i}`)
+        .setCustomId(CustomIds.embedAction.build({ presetId, buttonIndex: i }))
         .setStyle(ButtonStyle.Primary);
 
       if (btn.emoji) button.setEmoji(btn.emoji);
@@ -149,11 +137,6 @@ export type BuiltMessage =
     }
   | { ok: false; error: string };
 
-/**
- * Validate a builder payload and produce the discord.js pieces to send/edit.
- * Components V2 messages carry the IS_COMPONENTS_V2 flag and never set
- * content or embeds; classic embeds never set that flag.
- */
 export function buildMessage(
   payload: MessagePayload,
   presetId?: number,
@@ -189,7 +172,6 @@ export function buildMessage(
 
 type BuiltOk = Extract<BuiltMessage, { ok: true }>;
 
-/** Translate a built message into `messageService.send` arguments. */
 export function toSendOptions(
   built: BuiltOk,
   channelId: string,
@@ -204,11 +186,6 @@ export function toSendOptions(
       };
 }
 
-/**
- * Translate a built message into `messageService.edit` arguments. Classic
- * embeds explicitly clear absent fields; Components V2 omits content/embeds
- * entirely since they cannot coexist with the IS_COMPONENTS_V2 flag.
- */
 export function toEditOptions(
   built: BuiltOk,
   channelId: string,
@@ -225,7 +202,6 @@ export function toEditOptions(
       };
 }
 
-/** Map a builder payload to the `kind` + `data` columns persisted on a preset. */
 export function payloadToStorage(payload: MessagePayload): {
   kind: PresetKind;
   data: Record<string, unknown>;

@@ -1,11 +1,14 @@
 import type { Pool, PoolClient } from "pg";
+import type { CamelCaseKeys } from "@createrington/shared/types";
 import { ServerPartyClaimBaseQueries } from "@/generated/db/server_party_claim.queries";
 
-export interface ClaimDimensionTotals {
+export interface ClaimDimensionTotalsRow {
   dimension: string;
-  claimCount: number;
-  forceloadCount: number;
+  claim_count: number;
+  forceload_count: number;
 }
+
+export type ClaimDimensionTotals = CamelCaseKeys<ClaimDimensionTotalsRow>;
 
 /**
  * Queries over the OPAC claimed chunks core syncs into server_party_claim.
@@ -22,17 +25,18 @@ export class ServerPartyClaimQueries extends ServerPartyClaimBaseQueries {
     serverId: number,
     ownerUuid: string,
   ): Promise<ClaimDimensionTotals[]> {
-    const result = await this.db.query<ClaimDimensionTotals>(
+    const result = await this.runQuery<ClaimDimensionTotalsRow>(
+      "get claim dimension totals",
       `SELECT
         dimension,
-        COUNT(*)::int AS "claimCount",
-        COUNT(*) FILTER (WHERE forceloaded)::int AS "forceloadCount"
-      FROM server_party_claim
+        COUNT(*)::int AS claim_count,
+        COUNT(*) FILTER (WHERE forceloaded)::int AS forceload_count
+      FROM ${this.table}
       WHERE server_id = $1 AND owner_uuid = $2
       GROUP BY dimension
-      ORDER BY "claimCount" DESC, dimension ASC`,
+      ORDER BY claim_count DESC, dimension ASC`,
       [serverId, ownerUuid],
     );
-    return result.rows;
+    return this.mapRowsToEntities(result.rows);
   }
 }

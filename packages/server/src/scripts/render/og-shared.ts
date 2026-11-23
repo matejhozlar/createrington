@@ -28,6 +28,37 @@ export const ASSETS = join(PUBLIC, "assets");
 // One cache for every card's posed figures, keyed by username and pose.
 const FIGURES = join(here, "assets", "figures");
 
+export const TEAM = {
+  saunhardy: {
+    username: "saunhardy",
+    uuid: "091b900c-4174-478c-900c-a0fe5a31a329",
+  },
+  Agent772: {
+    username: "Agent772",
+    uuid: "3e0db446-147a-4692-87fd-c3facc4341db",
+  },
+  The_BigShot: {
+    username: "The_BigShot",
+    uuid: "4cada83a-c012-4a31-8d80-942f3f79e8a1",
+  },
+  diablothe2nd: {
+    username: "diablothe2nd",
+    uuid: "8cca5cab-b782-452b-a8b9-8bb4ae0f6d0f",
+  },
+  Tetsuoken: {
+    username: "Tetsuoken",
+    uuid: "32ff995f-cf92-417b-b745-891738346120",
+  },
+  Cailin05: {
+    username: "Cailin05",
+    uuid: "aee71815-6420-444c-a245-9047c41f4a39",
+  },
+  Saidai_V: {
+    username: "Saidai_V",
+    uuid: "2d6b2f99-34ae-4c25-acda-dca5e5def564",
+  },
+} as const;
+
 export interface PoseFigureRequest {
   uuid: string;
   pose: string;

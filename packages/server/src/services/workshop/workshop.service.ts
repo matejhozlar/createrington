@@ -1,11 +1,8 @@
 import { Q } from "@/db";
-import { BadRequestError, NotFoundError } from "@/app/middleware/error-handler";
+import { BadRequestError, NotFoundError } from "@/errors";
 import type { WorkshopModEventListItem } from "@/db/queries/workshop/mod/event";
-import type {
-  Workshop,
-  WorkshopModEventType,
-  WorkshopModStatus,
-} from "@createrington/shared/db";
+import type { Workshop, WorkshopModEventType } from "@createrington/shared/db";
+import { USER_VISIBLE_MOD_STATUSES } from "@createrington/shared/workshop";
 import { modpackService } from "@/services/modpack/modpack.service";
 import type { ModpackModListItem } from "@/services/modpack/modpack.service";
 
@@ -53,14 +50,6 @@ export interface WorkshopSummary {
 
 export type WorkshopListItem = Workshop & { summary: WorkshopSummary | null };
 
-export const USER_VISIBLE_MOD_STATUSES: WorkshopModStatus[] = [
-  "pending",
-  "approved",
-  "testing",
-  "next_update",
-  "in_pack",
-];
-
 /**
  * Community modpack workshops, read side: listing and lookup with the
  * visibility rules users are held to (drafts and archived workshops read as
@@ -86,7 +75,7 @@ export class WorkshopService {
 
   /** All workshops regardless of status, for the admin panel. */
   async listAllWorkshops(): Promise<(Workshop & { modCount: number })[]> {
-    return Q.workshop.listAllWithModCount();
+    return Q.workshop.getAllWithModCount();
   }
 
   /** A user-visible workshop by slug; drafts and archived workshops read as missing. */
@@ -199,9 +188,9 @@ export class WorkshopService {
       limit: number;
       offset: number;
     },
-  ): Promise<{ events: WorkshopModEventListItem[]; total: number }> {
+  ): Promise<{ rows: WorkshopModEventListItem[]; total: number }> {
     await this.getWorkshop(workshopId);
-    return Q.workshop.mod.event.search({ workshopId, ...options });
+    return Q.workshop.mod.event.getPage({ workshopId, ...options });
   }
 }
 

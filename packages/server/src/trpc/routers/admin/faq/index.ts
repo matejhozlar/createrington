@@ -10,20 +10,20 @@ import {
   trpcError,
   auditActor,
   assertPatchNotEmpty,
+  id,
 } from "@/trpc/utils";
-import { container, Services } from "@/services/container";
+import { getServiceSync, Services } from "@/services";
 import { FaqService } from "@/services/discord/faq";
 import type { FaqEntryFilters } from "@createrington/shared/db";
+import { FAQ_MATCH_MODES, type FaqMatchMode } from "@createrington/shared/faq";
 
-const matchModeSchema = z.enum(["keywords", "regex"]).default("keywords");
+const matchModeSchema = z.enum(FAQ_MATCH_MODES).default("keywords");
 
 const MAX_PATTERN_LENGTH = 200;
-// Catastrophic-backtracking shapes: `(a+)+`, `(.*)*`, `(a|a)+`, etc. FAQ
-// patterns run against every #questions message, so reject these shapes.
 const NESTED_QUANTIFIER = /\([^()]*[+*][^()]*\)[+*?{]/;
 const QUANTIFIED_ALTERNATION = /\([^()]*\|[^()]*\)[+*]/;
 
-function validatePattern(matchMode: string, pattern: string): void {
+function validatePattern(matchMode: FaqMatchMode, pattern: string): void {
   if (pattern.length > MAX_PATTERN_LENGTH) {
     throw trpcError.badRequest(
       `Pattern must be at most ${MAX_PATTERN_LENGTH} characters`,
@@ -54,7 +54,6 @@ function validatePattern(matchMode: string, pattern: string): void {
   }
 }
 
-/** Admin FAQ router: CRUD for FAQ entries and welcome message management. */
 export const faqRouter = router({
   list: adminProcedure
     .meta({ description: "List FAQ entries with filtering and pagination" })
@@ -79,12 +78,12 @@ export const faqRouter = router({
         { orderBy: input.orderBy, orderDirection: input.orderDirection },
       );
 
-      return { entries, pagination };
+      return { items: entries, pagination };
     }),
 
   get: adminProcedure
     .meta({ description: "Get a single FAQ entry by ID" })
-    .input(z.object({ id: z.number().int().positive() }))
+    .input(z.object({ id: id() }))
     .query(async ({ input }) => {
       const entry = await findOrThrow(
         Q.faq.entry.find({ id: input.id }),
@@ -118,7 +117,7 @@ export const faqRouter = router({
         enabled: input.enabled,
       });
 
-      const faqService = container.getSync(Services.FAQ_SERVICE);
+      const faqService = getServiceSync(Services.FAQ_SERVICE);
       await faqService.refreshPatterns();
 
       await Q.admin.log.action.logAction({
@@ -126,16 +125,14 @@ export const faqRouter = router({
         actionType: "faq_create",
         description: `Created FAQ entry "${input.title}"`,
       });
-
-      return { message: "FAQ entry created" };
     }),
 
   update: adminProcedure
     .meta({ description: "Update an existing FAQ entry" })
     .input(
       z.object({
-        id: z.number().int().positive(),
-        matchMode: z.enum(["keywords", "regex"]).optional(),
+        id: id(),
+        matchMode: z.enum(FAQ_MATCH_MODES).optional(),
         pattern: z.string().min(1).optional(),
         title: z.string().min(1).max(100).optional(),
         response: z.string().min(1).optional(),
@@ -157,7 +154,7 @@ export const faqRouter = router({
       assertPatchNotEmpty(updates);
       await Q.faq.entry.update({ id }, updates);
 
-      const faqService = container.getSync(Services.FAQ_SERVICE);
+      const faqService = getServiceSync(Services.FAQ_SERVICE);
       await faqService.refreshPatterns();
 
       await Q.admin.log.action.logAction({
@@ -165,13 +162,11 @@ export const faqRouter = router({
         actionType: "faq_update",
         description: `Updated FAQ entry "${existing.title}"`,
       });
-
-      return { message: "FAQ entry updated" };
     }),
 
   delete: adminProcedure
     .meta({ description: "Delete a FAQ entry" })
-    .input(z.object({ id: z.number().int().positive() }))
+    .input(z.object({ id: id() }))
     .mutation(async ({ input, ctx }) => {
       const existing = await findOrThrow(
         Q.faq.entry.find({ id: input.id }),
@@ -180,7 +175,7 @@ export const faqRouter = router({
 
       await Q.faq.entry.delete({ id: input.id });
 
-      const faqService = container.getSync(Services.FAQ_SERVICE);
+      const faqService = getServiceSync(Services.FAQ_SERVICE);
       await faqService.refreshPatterns();
 
       await Q.admin.log.action.logAction({
@@ -188,14 +183,12 @@ export const faqRouter = router({
         actionType: "faq_delete",
         description: `Deleted FAQ entry "${existing.title}"`,
       });
-
-      return { message: "FAQ entry deleted" };
     }),
 
   repostWelcome: adminProcedure
     .meta({ description: "Manually trigger a welcome message repost" })
     .mutation(async ({ ctx }) => {
-      const faqService = container.getSync(Services.FAQ_SERVICE);
+      const faqService = getServiceSync(Services.FAQ_SERVICE);
       await faqService.repostWelcomeMessage();
 
       await Q.admin.log.action.logAction({
@@ -203,7 +196,5 @@ export const faqRouter = router({
         actionType: "faq_repost_welcome",
         description: "Reposted FAQ welcome message",
       });
-
-      return { message: "Welcome message reposted" };
     }),
 });

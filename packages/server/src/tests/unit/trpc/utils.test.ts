@@ -3,11 +3,14 @@ import { TRPCError } from "@trpc/server";
 
 vi.mock("@/db", () => ({}));
 
-import { AppError } from "@/app/middleware/error-handler";
+import { AppError, NotFoundError } from "@/errors";
+import { NotFoundError as DbNotFoundError } from "@/db/utils/errors";
 import {
   findOrThrow,
   paginateQuery,
-  rethrowTrpc,
+  mapDomainError,
+  pageOffset,
+  playerId,
   sortDirection,
 } from "@/trpc/utils";
 
@@ -19,6 +22,36 @@ describe("sortDirection", () => {
 
   it("carries no default of its own", () => {
     expect(sortDirection().safeParse(undefined).success).toBe(false);
+  });
+});
+
+describe("playerId", () => {
+  it("turns a Minecraft username into a username identifier", () => {
+    expect(playerId().parse("Steve")).toEqual({ minecraftUsername: "Steve" });
+  });
+
+  it("turns a Discord ID into a Discord identifier", () => {
+    expect(playerId().parse("100000000000000001")).toEqual({
+      discordId: "100000000000000001",
+    });
+  });
+
+  it("rejects an unrecognised ID with a BAD_REQUEST naming the accepted forms", () => {
+    let thrown: unknown;
+    try {
+      playerId().parse("not a player!");
+    } catch (error) {
+      thrown = error;
+    }
+    expect(thrown).toBeInstanceOf(TRPCError);
+    expect((thrown as TRPCError).code).toBe("BAD_REQUEST");
+    expect((thrown as TRPCError).message).toMatch(/^Invalid player ID\./);
+  });
+});
+
+describe("pageOffset", () => {
+  it("skips the rows of every earlier page", () => {
+    expect(pageOffset({ page: 3, limit: 20 })).toBe(60);
   });
 });
 
@@ -122,18 +155,49 @@ describe("paginateQuery", () => {
   });
 });
 
-describe("rethrowTrpc", () => {
-  it("maps a 503 AppError to SERVICE_UNAVAILABLE", () => {
-    const error = new AppError("CurseForge is holding this server off", 503);
+describe("mapDomainError", () => {
+  const wrapped = (cause: Error) =>
+    new TRPCError({ code: "INTERNAL_SERVER_ERROR", cause });
 
-    expect(() => rethrowTrpc(error)).toThrow(
-      expect.objectContaining({ code: "SERVICE_UNAVAILABLE", cause: error }),
-    );
+  it("maps an AppError to the code of its status", () => {
+    const cause = new AppError("CurseForge is holding this server off", 503);
+
+    expect(mapDomainError(wrapped(cause))).toMatchObject({
+      code: "SERVICE_UNAVAILABLE",
+      message: "CurseForge is holding this server off",
+      cause,
+    });
   });
 
-  it("passes an error that is no AppError through unchanged", () => {
-    const error = new Error("boom");
+  it("maps an AppError NotFoundError to NOT_FOUND", () => {
+    expect(
+      mapDomainError(wrapped(new NotFoundError("Player not found"))),
+    ).toMatchObject({ code: "NOT_FOUND", message: "Player not found" });
+  });
 
-    expect(() => rethrowTrpc(error)).toThrow(error);
+  it("maps a missing database row to NOT_FOUND", () => {
+    const cause = new DbNotFoundError("Player", { id: 7 });
+
+    expect(mapDomainError(wrapped(cause))).toMatchObject({
+      code: "NOT_FOUND",
+      message: cause.message,
+    });
+  });
+
+  it("leaves an AppError without a client status as an internal error", () => {
+    expect(mapDomainError(wrapped(new AppError("broken", 500)))).toBeNull();
+  });
+
+  it("leaves an unknown error as an internal error", () => {
+    expect(mapDomainError(wrapped(new Error("boom")))).toBeNull();
+  });
+
+  it("leaves a TRPCError a procedure threw on purpose alone", () => {
+    const error = new TRPCError({
+      code: "CONFLICT",
+      cause: new AppError("ignored", 404),
+    });
+
+    expect(mapDomainError(error)).toBeNull();
   });
 });

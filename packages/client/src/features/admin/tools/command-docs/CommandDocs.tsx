@@ -1,8 +1,12 @@
 import { useState } from "react";
-import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
+import { AdminPage } from "@/features/admin/components/AdminPage";
 import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { SearchInput } from "@/components/search-input";
-import { Badge } from "@/components/ui/badge";
+import {
+  Badge,
+  badgeToneVariants,
+  type BadgeTone,
+} from "@/components/ui/badge";
 import {
   ShieldAlert,
   Crown,
@@ -15,28 +19,11 @@ import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 import { useQuery } from "@tanstack/react-query";
 import { LoadingState } from "@/components/query-states";
-
-interface CommandOption {
-  type: number;
-  name: string;
-  description: string;
-  required?: boolean;
-  choices?: { name: string; value: string | number }[];
-  min_value?: number;
-  max_value?: number;
-  options?: CommandOption[];
-}
-
-interface CommandData {
-  name: string;
-  description: string;
-  category: string;
-  options: CommandOption[];
-  defaultMemberPermissions: string | null;
-  permissions?: { requireAdmin?: boolean; requireOwner?: boolean };
-  cooldown?: { duration: number; type: string; message?: string };
-  env: string;
-}
+import { formatDate } from "@createrington/shared/format";
+import type {
+  DiscordCommandDoc,
+  DiscordCommandOption,
+} from "@createrington/shared/discord-commands";
 
 const OPTION_TYPE_LABELS: Record<number, string> = {
   3: "String",
@@ -52,19 +39,19 @@ const OPTION_TYPE_LABELS: Record<number, string> = {
 
 const CATEGORY_ORDER = ["owner", "admin", "user", "public"] as const;
 
-const CATEGORY_META: Record<string, { label: string; color: string }> = {
-  owner: { label: "Owner", color: "bg-amber-500/10 text-amber-400" },
-  admin: { label: "Admin", color: "bg-red-500/10 text-red-400" },
-  user: { label: "User", color: "bg-blue-500/10 text-blue-400" },
-  public: { label: "Public", color: "bg-green-500/10 text-green-400" },
+const CATEGORY_META: Record<string, { label: string; tone: BadgeTone }> = {
+  owner: { label: "Owner", tone: "warning" },
+  admin: { label: "Admin", tone: "danger" },
+  user: { label: "User", tone: "info" },
+  public: { label: "Public", tone: "success" },
 };
 
-function getDisplayCategory(cmd: CommandData): string {
+function getDisplayCategory(cmd: DiscordCommandDoc): string {
   if (cmd.permissions?.requireOwner) return "owner";
   return cmd.category;
 }
 
-function PermissionBadge({ command }: { command: CommandData }) {
+function PermissionBadge({ command }: { command: DiscordCommandDoc }) {
   if (command.permissions?.requireOwner) {
     return (
       <Badge tone="warning">
@@ -84,7 +71,11 @@ function PermissionBadge({ command }: { command: CommandData }) {
   return null;
 }
 
-function CooldownBadge({ cooldown }: { cooldown?: CommandData["cooldown"] }) {
+function CooldownBadge({
+  cooldown,
+}: {
+  cooldown?: DiscordCommandDoc["cooldown"];
+}) {
   if (!cooldown) return null;
   return (
     <Badge
@@ -97,7 +88,7 @@ function CooldownBadge({ cooldown }: { cooldown?: CommandData["cooldown"] }) {
   );
 }
 
-function formatOptionType(opt: CommandOption): string {
+function formatOptionType(opt: DiscordCommandOption): string {
   const base = OPTION_TYPE_LABELS[opt.type] ?? `Type(${opt.type})`;
   if (
     (opt.type === 4 || opt.type === 10) &&
@@ -111,7 +102,7 @@ function formatOptionType(opt: CommandOption): string {
   return base;
 }
 
-function OptionRow({ option }: { option: CommandOption }) {
+function OptionRow({ option }: { option: DiscordCommandOption }) {
   return (
     <div className="flex items-start gap-3 rounded-md bg-muted/30 px-3 py-2 text-sm">
       <code className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-xs font-medium text-foreground">
@@ -137,7 +128,7 @@ function SubcommandBlock({
   sub,
   prefix,
 }: {
-  sub: CommandOption;
+  sub: DiscordCommandOption;
   prefix?: string;
 }) {
   const label = prefix ? `${prefix} ${sub.name}` : sub.name;
@@ -160,7 +151,7 @@ function SubcommandBlock({
   );
 }
 
-function CommandCard({ command }: { command: CommandData }) {
+function CommandCard({ command }: { command: DiscordCommandDoc }) {
   const [expanded, setExpanded] = useState(false);
 
   const subcommands = command.options.filter(
@@ -246,7 +237,7 @@ export function CommandDocs() {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
 
-  const allCommands = (payload?.commands ?? []) as CommandData[];
+  const allCommands = payload?.commands ?? [];
 
   const filtered = allCommands.filter((cmd) => {
     if (categoryFilter && getDisplayCategory(cmd) !== categoryFilter)
@@ -258,7 +249,7 @@ export function CommandDocs() {
     return true;
   });
 
-  const grouped = new Map<string, CommandData[]>();
+  const grouped = new Map<string, DiscordCommandDoc[]>();
   for (const cmd of filtered) {
     const cat = getDisplayCategory(cmd);
     const list = grouped.get(cat) ?? [];
@@ -273,30 +264,24 @@ export function CommandDocs() {
   );
 
   return (
-    <div className="flex flex-1 flex-col gap-4">
-      <AdminPageHeader
-        trail={[
-          { label: "Admin", href: "/admin/dashboard" },
-          { label: "Tools", href: "/admin/tools" },
-          { label: "Command Docs" },
-        ]}
-      />
-
+    <AdminPage
+      trail={[
+        { label: "Admin", href: "/admin/dashboard" },
+        { label: "Tools", href: "/admin/tools" },
+        { label: "Command Docs" },
+      ]}
+    >
       {isLoading ? (
         <LoadingState text="Loading commands..." className="py-0" />
       ) : (
-        <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
+        <>
           <AdminPageTitle
             title="Discord Commands"
             description={
               <p>
                 {allCommands.length} commands registered
                 {payload?.generatedAt && (
-                  <>
-                    {" "}
-                    · Generated{" "}
-                    {new Date(payload.generatedAt).toLocaleDateString()}
-                  </>
+                  <> · Generated {formatDate(payload.generatedAt)}</>
                 )}
               </p>
             }
@@ -339,7 +324,7 @@ export function CommandDocs() {
                     className={cn(
                       "rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
                       categoryFilter === cat
-                        ? meta.color
+                        ? badgeToneVariants({ tone: meta.tone })
                         : "text-muted-foreground hover:bg-muted",
                     )}
                   >
@@ -360,16 +345,13 @@ export function CommandDocs() {
             <div className="flex flex-col gap-6">
               {sortedCategories.map((category) => {
                 const cmds = grouped.get(category)!;
-                const meta = CATEGORY_META[category] ?? {
-                  label: category,
-                  color: "bg-muted text-muted-foreground",
-                };
+                const label = CATEGORY_META[category]?.label ?? category;
 
                 return (
                   <section key={category}>
                     <div className="mb-3 flex items-center gap-2">
                       <h2 className="text-lg font-semibold">
-                        {meta.label} Commands
+                        {label} Commands
                       </h2>
                       <Badge variant="secondary" className="text-xs">
                         {cmds.length}
@@ -385,8 +367,8 @@ export function CommandDocs() {
               })}
             </div>
           )}
-        </div>
+        </>
       )}
-    </div>
+    </AdminPage>
   );
 }

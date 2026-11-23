@@ -66,7 +66,6 @@ export const STAGE_CONFIG: Record<
     dateHeader: string;
     dateField: "createdAt" | "reviewedAt";
     columns: readonly StageColumn[];
-    // Stages where the environment gates what happens next
     showEnvironment?: boolean;
   }
 > = {

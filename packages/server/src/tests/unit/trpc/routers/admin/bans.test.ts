@@ -1,25 +1,33 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-type BeforeCommit = (() => Promise<void>) | undefined;
+type TransactionWork = (tx: unknown) => Promise<unknown>;
 
-const { Q, bans, rcon, revokeAllForUser, revokeAllForPlayer, deletePlayer } =
-  vi.hoisted(() => ({
-    Q: {
-      player: {
-        get: vi.fn(),
-        find: vi.fn(),
-        ban: { get: vi.fn() },
-      },
+const TX = { transaction: true };
+
+const {
+  db,
+  Q,
+  bans,
+  rcon,
+  revokeAllForUser,
+  revokeAllForPlayer,
+  deletePlayer,
+} = vi.hoisted(() => ({
+  db: { inTransaction: vi.fn() },
+  Q: {
+    player: {
+      get: vi.fn(),
+      ban: { get: vi.fn() },
     },
-    bans: { issueTemporary: vi.fn(), createPermanent: vi.fn(), unban: vi.fn() },
-    rcon: { banAll: vi.fn(), pardonAll: vi.fn(), whitelistAll: vi.fn() },
-    revokeAllForUser: vi.fn(),
-    revokeAllForPlayer: vi.fn(),
-    deletePlayer: vi.fn(),
-  }));
+  },
+  bans: { issueTemporary: vi.fn(), createPermanent: vi.fn(), unban: vi.fn() },
+  rcon: { banAll: vi.fn(), pardonAll: vi.fn(), whitelistAll: vi.fn() },
+  revokeAllForUser: vi.fn(),
+  revokeAllForPlayer: vi.fn(),
+  deletePlayer: vi.fn(),
+}));
 
-vi.mock("@/db", () => ({ Q }));
-vi.mock("@/services/player", () => ({ playerService: { bans } }));
+vi.mock("@/db", () => ({ db, Q, playerBanRepo: bans }));
 vi.mock("@/services/player/deletion", () => ({
   playerDeletionService: { delete: deletePlayer },
 }));
@@ -29,6 +37,7 @@ vi.mock("@/services", () => ({
   }),
   Services: {},
 }));
+
 vi.mock("@/services/auth/session/session.service", () => ({
   sessionService: { revokeAllForUser },
 }));
@@ -48,15 +57,24 @@ vi.mock("@/discord/constants", () => ({
     Messages: { send: vi.fn() },
   },
 }));
-vi.mock("@/discord/embeds", () => ({
-  EmbedColors: { Success: 0 },
-  EmbedPresets: { plain: () => ({ build: () => [] }) },
-}));
+vi.mock("@/discord/embeds", () => {
+  const embed = () => ({ build: () => [] });
+  return {
+    EmbedPresets: {
+      bans: {
+        temporary: embed,
+        permanent: embed,
+        unbanned: embed,
+        autoUnbanned: embed,
+      },
+    },
+  };
+});
 
+import { getService } from "@/services";
 import { bansRouter } from "@/trpc/routers/admin/players/bans";
-import { AuthRole } from "@createrington/shared/auth";
 import { BAN_REASON_MAX_LENGTH } from "@createrington/shared/admin-reason";
-import type { Context } from "@/trpc/context";
+import { adminContext } from "@/tests/helpers/trpc";
 
 const EXPIRES_AT = new Date("2026-11-01T00:00:00.000Z");
 
@@ -66,40 +84,28 @@ const PLAYER = {
   minecraftUuid: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
 };
 
-const caller = bansRouter.createCaller({
-  user: {
-    discordId: "100000000000000009",
-    minecraftUsername: "admin",
-    minecraftUuid: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
-    role: AuthRole.ADMIN,
-    isAdmin: true,
-  },
-  service: null,
-  ip: "127.0.0.1",
-} as unknown as Context);
+const caller = bansRouter.createCaller(
+  adminContext({ minecraftUsername: "admin" }),
+);
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(getService).mockResolvedValue({
+    guilds: { cache: { first: () => undefined } },
+  } as never);
   Q.player.get.mockResolvedValue(PLAYER);
-  Q.player.find.mockResolvedValue(PLAYER);
   Q.player.ban.get.mockResolvedValue({
     id: 1,
     reason: "griefing",
     expiresAt: EXPIRES_AT,
     playerMinecraftUuid: PLAYER.minecraftUuid,
   });
-  bans.issueTemporary.mockImplementation(
-    async (_id, _data, _admin, _name, beforeCommit: BeforeCommit) => {
-      await beforeCommit?.();
-      return { id: 1, playerMinecraftUuid: PLAYER.minecraftUuid };
-    },
-  );
-  bans.unban.mockImplementation(
-    async (_banId, _admin, _name, _reason, beforeCommit: BeforeCommit) => {
-      await beforeCommit?.();
-      return { id: 1 };
-    },
-  );
+  db.inTransaction.mockImplementation((work: TransactionWork) => work(TX));
+  bans.issueTemporary.mockResolvedValue({
+    id: 1,
+    playerMinecraftUuid: PLAYER.minecraftUuid,
+  });
+  bans.unban.mockResolvedValue({ id: 1 });
   bans.createPermanent.mockResolvedValue({ id: 2 });
   deletePlayer.mockImplementation(
     async (
@@ -150,22 +156,29 @@ describe("admin.players.bans.issueTemporary", () => {
     rcon.banAll.mockRejectedValue(new Error("ban failed on: Rails 'n Sails"));
 
     await expect(caller.issueTemporary(input)).rejects.toMatchObject({
-      code: "BAD_GATEWAY",
+      code: "SERVICE_UNAVAILABLE",
     });
     expect(rcon.pardonAll).toHaveBeenCalledWith(PLAYER.minecraftUsername);
     expect(revokeAllForUser).not.toHaveBeenCalled();
   });
 
   it("undoes the in-game ban when the ban fails to commit afterwards", async () => {
-    bans.issueTemporary.mockImplementation(
-      async (_id, _data, _admin, _name, beforeCommit: BeforeCommit) => {
-        await beforeCommit?.();
-        throw new Error("commit failed");
-      },
-    );
+    db.inTransaction.mockImplementation(async (work: TransactionWork) => {
+      await work(TX);
+      throw new Error("commit failed");
+    });
 
     await expect(caller.issueTemporary(input)).rejects.toThrow("commit failed");
     expect(rcon.pardonAll).toHaveBeenCalledWith(PLAYER.minecraftUsername);
+  });
+
+  it("bans while the Discord bot is unavailable", async () => {
+    vi.mocked(getService).mockRejectedValue(new Error("bot offline"));
+
+    await expect(caller.issueTemporary(input)).resolves.toMatchObject({
+      ban: { id: 1 },
+    });
+    expect(rcon.banAll).toHaveBeenCalled();
   });
 
   it("leaves the game alone when the ban is refused before the in-game step", async () => {
@@ -199,7 +212,7 @@ describe("admin.players.bans.issuePermanent", () => {
     rcon.banAll.mockRejectedValue(new Error("ban failed on: Rails 'n Sails"));
 
     await expect(caller.issuePermanent(input)).rejects.toMatchObject({
-      code: "BAD_GATEWAY",
+      code: "SERVICE_UNAVAILABLE",
     });
     expect(rcon.pardonAll).toHaveBeenCalledWith(PLAYER.minecraftUsername);
     expect(rcon.whitelistAll).toHaveBeenLastCalledWith(
@@ -218,7 +231,7 @@ describe("admin.players.bans.unban", () => {
     );
 
     await expect(caller.unban(input)).rejects.toMatchObject({
-      code: "BAD_GATEWAY",
+      code: "SERVICE_UNAVAILABLE",
     });
     expect(rcon.banAll).toHaveBeenCalledWith(
       PLAYER.minecraftUsername,
@@ -236,7 +249,7 @@ describe("admin.players.bans.unban", () => {
     rcon.pardonAll.mockRejectedValue(new Error("pardon failed"));
 
     await expect(caller.unban(input)).rejects.toMatchObject({
-      code: "BAD_GATEWAY",
+      code: "SERVICE_UNAVAILABLE",
     });
     expect(rcon.banAll).toHaveBeenCalledWith(
       PLAYER.minecraftUsername,
@@ -244,18 +257,20 @@ describe("admin.players.bans.unban", () => {
     );
   });
 
-  it("lifts the ban without an in-game step when the player row is gone", async () => {
-    Q.player.find.mockResolvedValue(null);
-
+  it("pardons the banned player in game and lifts the ban", async () => {
     await caller.unban(input);
 
+    expect(Q.player.get).toHaveBeenCalledWith({
+      minecraftUuid: PLAYER.minecraftUuid,
+    });
+    expect(rcon.pardonAll).toHaveBeenCalledWith(PLAYER.minecraftUsername);
     expect(bans.unban).toHaveBeenCalledWith(
       1,
       "100000000000000009",
       "admin",
       "appeal accepted",
-      undefined,
+      { tx: TX },
     );
-    expect(rcon.pardonAll).not.toHaveBeenCalled();
+    expect(rcon.banAll).not.toHaveBeenCalled();
   });
 });

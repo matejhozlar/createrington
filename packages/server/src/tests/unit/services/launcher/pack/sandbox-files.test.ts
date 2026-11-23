@@ -6,7 +6,7 @@ const { packFiles, links } = vi.hoisted(() => ({
     internalUrl: null as string | null,
   },
   links: {
-    website: undefined as string | undefined,
+    website: "",
   },
 }));
 
@@ -78,14 +78,6 @@ describe("storage links", () => {
     links.website = `${WEBSITE}/`;
 
     expect(storageFileUrl(1)).toBe(`${STORAGE}/1`);
-  });
-
-  it("fall back to the public website while none is configured", () => {
-    links.website = undefined;
-
-    expect(storageFileUrl(1)).toBe(
-      "https://createrington.com/api/launcher/packs/files/1",
-    );
   });
 });
 

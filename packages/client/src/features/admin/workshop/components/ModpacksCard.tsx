@@ -20,8 +20,8 @@ import {
   TwoLineCellSkeleton,
   type DataTableColumn,
 } from "@/components/data-table";
-import { CreateModpackDialog } from "./CreateModpackDialog";
-import { ModpackSettingsDialog } from "./ModpackSettingsDialog";
+import { CreateModpackDialog } from "@/features/admin/workshop/components/CreateModpackDialog";
+import { ModpackSettingsDialog } from "@/features/admin/workshop/components/ModpackSettingsDialog";
 import { useQuery, useMutation } from "@tanstack/react-query";
 
 type AdminModpackRow = RouterOutput["admin"]["modpacks"]["list"][number];
@@ -111,11 +111,9 @@ export function ModpacksCard() {
   const modpacksQuery = useQuery(trpc.admin.modpacks.list.queryOptions());
 
   const [createOpen, setCreateOpen] = useState(false);
-  const [createKey, setCreateKey] = useState(0);
   const [settingsTarget, setSettingsTarget] = useState<AdminModpackRow | null>(
     null,
   );
-  const [settingsKey, setSettingsKey] = useState(0);
   const [deleteTarget, setDeleteTarget] = useState<AdminModpackRow | null>(
     null,
   );
@@ -134,16 +132,6 @@ export function ModpacksCard() {
     ),
   );
 
-  const openCreate = () => {
-    setCreateKey((key) => key + 1);
-    setCreateOpen(true);
-  };
-
-  const openSettings = (modpack: AdminModpackRow) => {
-    setSettingsKey((key) => key + 1);
-    setSettingsTarget(modpack);
-  };
-
   const modpacks = modpacksQuery.data ?? [];
 
   return (
@@ -152,7 +140,11 @@ export function ModpacksCard() {
         <CardHeader className="gap-0 border-b">
           <CardTitle>Modpacks ({modpacks.length.toLocaleString()})</CardTitle>
           <CardAction>
-            <Button size="sm" variant="outline" onClick={openCreate}>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setCreateOpen(true)}
+            >
               <Plus className="mr-2 size-4" />
               New Modpack
             </Button>
@@ -177,7 +169,7 @@ export function ModpacksCard() {
                 {
                   label: "Edit",
                   icon: Pencil,
-                  onClick: () => openSettings(modpack),
+                  onClick: () => setSettingsTarget(modpack),
                 },
                 {
                   label: deleteLabel(modpack),
@@ -194,22 +186,14 @@ export function ModpacksCard() {
         )}
       </Card>
 
-      <CreateModpackDialog
-        key={createKey}
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-      />
+      <CreateModpackDialog open={createOpen} onOpenChange={setCreateOpen} />
 
-      {settingsTarget && (
-        <ModpackSettingsDialog
-          key={`settings-${settingsKey}`}
-          open
-          onOpenChange={(open) => {
-            if (!open) setSettingsTarget(null);
-          }}
-          modpack={settingsTarget}
-        />
-      )}
+      <ModpackSettingsDialog
+        modpack={settingsTarget}
+        onOpenChange={(open) => {
+          if (!open) setSettingsTarget(null);
+        }}
+      />
 
       <ConfirmDialog
         open={deleteTarget !== null}

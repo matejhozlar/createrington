@@ -1,87 +1,49 @@
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { CardDescription, CardTitle } from "@/components/ui/card";
 import { SearchInput } from "@/components/search-input";
-import { Paginator } from "@/components/paginator";
+import { TableCard } from "@/components/paged-table";
 import {
-  DataTable,
-  loadingRowCount,
   TwoLineCellSkeleton,
   type DataTableColumn,
 } from "@/components/data-table";
 import { RefreshCw, UserSearch } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { keepPreviousData, useQuery, useMutation } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { useToastActions } from "@/hooks/use-toast";
-import { CellText } from "@/components/cell-text";
-import { formatFullDate, toIso } from "@/features/admin/format";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
+import { usePagedQuery } from "@/hooks/use-paged-query";
+import { CellDate, CellText } from "@/components/cell-text";
+import { toIso } from "@/features/admin/format";
 import { formatRelativeDate } from "@/lib/format";
 import { trpc, queryClient } from "@/lib/trpc";
-import { EmptyState, ErrorState } from "@/components/query-states";
 
 export function UnlinkedMembersCard() {
-  const toast = useToastActions();
-
-  const [page, setPage] = useState(0);
-  const [limit] = useState(20);
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearch = useDebouncedValue(searchQuery);
 
-  const listQuery = useQuery(
-    trpc.admin.inactivity.unlinked.list.queryOptions(
-      {
-        search: debouncedSearch.trim() || undefined,
-        page,
-        limit,
-      },
-      { placeholderData: keepPreviousData },
-    ),
+  const members = usePagedQuery(
+    { search: debouncedSearch.trim() || undefined },
+    (input) => trpc.admin.inactivity.unlinked.list.queryOptions(input),
   );
 
   const refreshMembers = useMutation(
-    trpc.admin.inactivity.unlinked.refresh.mutationOptions({
-      onSuccess: () =>
-        void queryClient.invalidateQueries(
-          trpc.admin.inactivity.unlinked.pathFilter(),
-        ),
-    }),
+    trpc.admin.inactivity.unlinked.refresh.mutationOptions(
+      useMutationToast({
+        success: (result) => `Cache refreshed: ${result.count} member(s)`,
+        onSuccess: () =>
+          void queryClient.invalidateQueries(
+            trpc.admin.inactivity.unlinked.pathFilter(),
+          ),
+      }),
+    ),
   );
 
-  const members = listQuery.data?.items ?? [];
-  const total = listQuery.data?.pagination.total ?? 0;
-  const totalPages = listQuery.data?.pagination.totalPages ?? 0;
-  const lastRefreshedAt = listQuery.data?.lastRefreshedAt ?? null;
-  const loading = listQuery.isLoading || listQuery.isPlaceholderData;
-  const loadingRows = loadingRowCount(page, limit, total);
-  const error = listQuery.error?.message ?? null;
+  const lastRefreshedAt = members.query.data?.lastRefreshedAt ?? null;
 
-  const handleSearchChange = useCallback((value: string) => {
-    setSearchQuery(value);
-    setPage(0);
-  }, []);
+  const handleRefresh = () => refreshMembers.mutate();
 
-  const handleRefresh = useCallback(async () => {
-    try {
-      const result = await refreshMembers.mutateAsync();
-      toast.success(`Cache refreshed: ${result.count} member(s)`);
-    } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Failed to refresh unlinked member cache",
-      );
-    }
-  }, [refreshMembers, toast]);
-
-  type Member = (typeof members)[number];
+  type Member = (typeof members.rows)[number];
 
   const columns: DataTableColumn<Member>[] = [
     {
@@ -118,102 +80,66 @@ export function UnlinkedMembersCard() {
       header: "Joined",
       width: 140,
       cellClassName: "text-sm text-muted-foreground",
-      render: (member) => {
-        if (!member.joinedAt) return null;
-        const iso = toIso(member.joinedAt);
-        return (
-          <CellText
-            value={formatFullDate(iso)}
-            display={formatRelativeDate(iso)}
-          />
-        );
-      },
+      render: (member) => <CellDate value={member.joinedAt} relative />,
     },
   ];
 
   return (
-    <Card className="gap-0">
-      <CardHeader className="border-b">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <UserSearch className="size-5 text-muted-foreground" />
-              Members Missing from Database
-            </CardTitle>
-            <CardDescription className="mt-1">
-              Verified Discord members with no matching player record. Read-only
-              audit, cache populated on demand.
-            </CardDescription>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-muted-foreground">
-              {lastRefreshedAt
-                ? `Last refreshed ${formatRelativeDate(toIso(lastRefreshedAt))}`
-                : "Cache not yet populated"}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRefresh}
-              disabled={refreshMembers.isPending}
-            >
-              <RefreshCw
-                className={cn(
-                  "mr-2 size-4",
-                  refreshMembers.isPending && "animate-spin",
-                )}
-              />
-              Refresh
-            </Button>
-          </div>
-        </div>
-
-        <SearchInput
-          className="mt-3"
-          placeholder="Search by name or username..."
-          value={searchQuery}
-          onValueChange={handleSearchChange}
-        />
-      </CardHeader>
-
-      {error ? (
-        <ErrorState message={error} onRetry={() => listQuery.refetch()} />
-      ) : !loading && members.length === 0 ? (
-        <EmptyState
-          icon={UserSearch}
-          message={
-            lastRefreshedAt
-              ? "No unlinked members in the cache"
-              : "Click Refresh to populate the cache"
-          }
-        />
-      ) : (
+    <TableCard
+      header={
         <>
-          <CardContent className="px-0">
-            <DataTable
-              columns={columns}
-              rows={members}
-              loading={loading}
-              loadingRows={loadingRows}
-              rowKey={(member) => member.discordId}
-            />
-          </CardContent>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <UserSearch className="size-5 text-muted-foreground" />
+                Members Missing from Database
+              </CardTitle>
+              <CardDescription className="mt-1">
+                Verified Discord members with no matching player record.
+                Read-only audit, cache populated on demand.
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-muted-foreground">
+                {lastRefreshedAt
+                  ? `Last refreshed ${formatRelativeDate(toIso(lastRefreshedAt))}`
+                  : "Cache not yet populated"}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRefresh}
+                disabled={refreshMembers.isPending}
+              >
+                <RefreshCw
+                  className={cn(
+                    "mr-2 size-4",
+                    refreshMembers.isPending && "animate-spin",
+                  )}
+                />
+                Refresh
+              </Button>
+            </div>
+          </div>
 
-          {total > 0 && (
-            <CardFooter className="border-t">
-              <Paginator
-                page={page}
-                limit={limit}
-                total={total}
-                totalPages={totalPages}
-                onPageChange={setPage}
-                itemLabel="member"
-                className="w-full"
-              />
-            </CardFooter>
-          )}
+          <SearchInput
+            className="mt-3"
+            placeholder="Search by name or username..."
+            value={searchQuery}
+            onValueChange={setSearchQuery}
+          />
         </>
-      )}
-    </Card>
+      }
+      paged={members}
+      empty={{
+        icon: UserSearch,
+        message: lastRefreshedAt
+          ? "No unlinked members in the cache"
+          : "Click Refresh to populate the cache",
+      }}
+      itemLabel="member"
+      columns={columns}
+      rowKey={(member) => member.discordId}
+    />
   );
 }

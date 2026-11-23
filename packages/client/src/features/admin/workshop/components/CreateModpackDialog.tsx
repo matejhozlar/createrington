@@ -1,12 +1,12 @@
-import { useState } from "react";
 import { trpc, queryClient } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { FormDialog } from "@/components/form-dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { modpackFormError } from "../validation";
+import { modpackFormError } from "@/features/admin/workshop/validation";
 import { useMutation } from "@tanstack/react-query";
+import { useDialogDraft } from "@/hooks/use-dialog-draft";
+import { Field, FieldLabel } from "@/components/ui/field";
 
 export function CreateModpackDialog({
   open,
@@ -17,9 +17,12 @@ export function CreateModpackDialog({
 }) {
   const toast = useToastActions();
 
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [publishedPackId, setPublishedPackId] = useState("");
+  const [draft, update] = useDialogDraft<{
+    name: string;
+    description: string;
+    publishedPackId: string;
+  }>(open, () => ({ name: "", description: "", publishedPackId: "" }));
+  const { name, description, publishedPackId } = draft;
 
   const createMutation = useMutation(
     trpc.admin.modpacks.create.mutationOptions(
@@ -61,42 +64,42 @@ export function CreateModpackDialog({
       loading={createMutation.isPending}
       contentClassName="sm:max-w-lg"
     >
-      <div className="space-y-2">
-        <Label htmlFor="modpack-name">Name</Label>
+      <Field>
+        <FieldLabel htmlFor="modpack-name">Name</FieldLabel>
         <Input
           id="modpack-name"
           placeholder="Createrington Season 3"
           maxLength={120}
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={(e) => update({ name: e.target.value })}
         />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="modpack-desc">Description</Label>
+      </Field>
+      <Field>
+        <FieldLabel htmlFor="modpack-desc">Description</FieldLabel>
         <Input
           id="modpack-desc"
           placeholder="What is this pack?"
           maxLength={2000}
           value={description}
-          onChange={(e) => setDescription(e.target.value)}
+          onChange={(e) => update({ description: e.target.value })}
         />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="modpack-published">
+      </Field>
+      <Field>
+        <FieldLabel htmlFor="modpack-published">
           Published Modpack Project ID (Optional)
-        </Label>
+        </FieldLabel>
         <Input
           id="modpack-published"
           type="number"
           placeholder="CurseForge project the pack is published under"
           value={publishedPackId}
-          onChange={(e) => setPublishedPackId(e.target.value)}
+          onChange={(e) => update({ publishedPackId: e.target.value })}
         />
         <p className="text-xs text-muted-foreground">
           Leave empty until the pack is on CurseForge. Once set, live state is
           derived from the published manifest.
         </p>
-      </div>
+      </Field>
     </FormDialog>
   );
 }

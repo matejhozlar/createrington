@@ -1,16 +1,17 @@
 import type { Request, Response } from "express";
-import { NotFoundError } from "@/app/middleware";
+import { getValidated } from "@/app/middleware/validation.middleware";
+import type { GallerySubmissionParams } from "./gallery.schemas";
+import { NotFoundError } from "@/errors";
 import { Q } from "@/db";
-import { container, Services } from "@/services/container";
+import { getServiceSync, Services } from "@/services";
 
 const ORIGINAL_CACHE_CONTROL = "private, max-age=300";
 
 export class GalleryController {
-  static async original(req: Request, res: Response): Promise<void> {
-    const id = Number.parseInt(String(req.params.id), 10);
-    if (!Number.isInteger(id) || id <= 0) {
-      throw new NotFoundError("Gallery submission not found");
-    }
+  static async original(_req: Request, res: Response): Promise<void> {
+    const {
+      params: { id },
+    } = getValidated<{ params: GallerySubmissionParams }>(res);
 
     const submission = await Q.gallery.submission.find({ id });
     if (
@@ -20,7 +21,7 @@ export class GalleryController {
       throw new NotFoundError("Gallery submission not found");
     }
 
-    const gallery = container.getSync(Services.GALLERY_SERVICE);
+    const gallery = getServiceSync(Services.GALLERY_SERVICE);
 
     await new Promise<void>((resolve, reject) => {
       res.sendFile(
@@ -38,9 +39,6 @@ export class GalleryController {
             resolve();
             return;
           }
-          // Once the body is streaming there is no status left to set, so a
-          // late failure (an aborted download) must not reach the error
-          // handler, which would throw on the already-sent headers.
           if (res.headersSent) {
             resolve();
             return;

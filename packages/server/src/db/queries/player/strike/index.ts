@@ -4,7 +4,7 @@ import type {
   PlayerStrike,
   StrikeClassification,
 } from "@createrington/shared/db";
-import { DatabaseTable } from "@/generated/db";
+import type { Granularity } from "@/db/utils";
 
 export interface StrikeStatistics {
   total: number;
@@ -42,7 +42,7 @@ export class PlayerStrikeQueries extends PlayerStrikeBaseQueries {
   async getCountsByPeriod(
     start: Date,
     end: Date,
-    granularity: "day" | "week" | "month" = "day",
+    granularity: Granularity = "day",
   ): Promise<
     Array<{
       period: string;
@@ -54,7 +54,7 @@ export class PlayerStrikeQueries extends PlayerStrikeBaseQueries {
         SELECT
           DATE_TRUNC($3, issued_at)::text AS period,
           classification,
-          COUNT(*)::integer AS count
+          COUNT(*)::int AS count
         FROM ${this.table}
         WHERE issued_at >= $1 AND issued_at < $2
         GROUP BY 1, classification
@@ -95,7 +95,7 @@ export class PlayerStrikeQueries extends PlayerStrikeBaseQueries {
     Array<{ severity: number; count: number }>
   > {
     const query = `
-      SELECT severity, COUNT(*)::integer AS count
+      SELECT severity, COUNT(*)::int AS count
       FROM ${this.table}
       WHERE removed = false
       GROUP BY severity
@@ -119,52 +119,32 @@ export class PlayerStrikeQueries extends PlayerStrikeBaseQueries {
   ): Promise<Record<string, number>> {
     if (playerUUids.length === 0) return {};
 
-    const query = `
-      SELECT 
-        player_minecraft_uuid,
-        COUNT(*)::integer as count
-      FROM player_strike
-      WHERE 
-        player_minecraft_uuid = ANY($1)
-        AND removed = false
-      GROUP BY player_minecraft_uuid
-      `;
-
-    const result = await this.runQuery<{
-      player_minecraft_uuid: string;
-      count: number;
-    }>("get active strike counts", query, [playerUUids]);
-
-    const counts: Record<string, number> = {};
-
-    playerUUids.forEach((uuid) => {
-      counts[uuid] = 0;
+    const counts = await this.countBy("playerMinecraftUuid", {
+      playerMinecraftUuid: { $in: playerUUids },
+      removed: false,
     });
-
-    result.rows.forEach((row) => {
-      counts[row.player_minecraft_uuid] = row.count;
-    });
-
-    return counts;
+    return Object.fromEntries(
+      playerUUids.map((uuid) => [uuid, counts.get(uuid) ?? 0]),
+    );
   }
 
   /**
    * Get complete strike history for a player (including removed)
    *
    * @param playerMinecraftUuid - Player Minecraft UUID to get all strikes for
-   * @param includeRemoved - Whether to include removed strikes (default: true)
+   * @param options.includeRemoved - Whether to include removed strikes (default: true)
    * @returns Promise resolving to an array of player strikes
    */
   async getStrikeHistory(
     playerMinecraftUuid: string,
-    includeRemoved: boolean = true,
+    { includeRemoved = true }: { includeRemoved?: boolean } = {},
   ): Promise<PlayerStrike[]> {
     const filters = includeRemoved
       ? { playerMinecraftUuid }
       : { playerMinecraftUuid, removed: false };
 
     return await this.findAll(filters, {
-      orderBy: DatabaseTable.PLAYER_STRIKE.CAMEL_FIELDS.ISSUED_AT,
+      orderBy: "issuedAt",
       orderDirection: "desc",
     });
   }
@@ -233,54 +213,5 @@ export class PlayerStrikeQueries extends PlayerStrikeBaseQueries {
     }
 
     return stats;
-  }
-
-  /**
-   * Count active strikes for a player
-   *
-   * @param playerMinecraftUuid - Player Minecraft UUID to get count for
-   * @returns Promise resolving to the number of active strikes
-   */
-  async countActiveStrikes(playerMinecraftUuid: string): Promise<number> {
-    return await this.count({
-      playerMinecraftUuid,
-      removed: false,
-    });
-  }
-
-  /**
-   * Get all strikes issued by a specific admin
-   *
-   * @param adminDiscordid - Discord user ID of the admin
-   * @returns Promise resolving to an array of player strikes
-   */
-  async getByAdmin(adminDiscordId: string): Promise<PlayerStrike[]> {
-    return await this.findAll(
-      { issuedByDiscordId: adminDiscordId },
-      {
-        orderBy: DatabaseTable.PLAYER_STRIKE.CAMEL_FIELDS.ISSUED_AT,
-        orderDirection: "desc",
-      },
-    );
-  }
-
-  /**
-   * Get recent strikes across all players
-   *
-   * @param limit - Number of maximum strikes to return
-   * @param activeOnly - Whether to include only active strikes
-   * @returns Promise resolving to an array of most recent strikes
-   */
-  async getRecent(
-    limit: number = 50,
-    activeOnly: boolean = true,
-  ): Promise<PlayerStrike[]> {
-    const filters = activeOnly ? { removed: false } : undefined;
-
-    return await this.findAll(filters, {
-      limit,
-      orderBy: DatabaseTable.PLAYER_STRIKE.CAMEL_FIELDS.ISSUED_AT,
-      orderDirection: "desc",
-    });
   }
 }

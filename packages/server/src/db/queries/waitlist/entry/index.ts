@@ -66,15 +66,15 @@ export class WaitlistEntryQueries extends WaitlistEntryBaseQueries {
   ): Promise<WaitlistFunnelStats> {
     const query = `
       SELECT
-        COUNT(*)::integer AS total,
-        COUNT(*) FILTER (WHERE status = 'queued')::integer AS queued,
-        COUNT(*) FILTER (WHERE status = 'promoted')::integer AS promoted,
-        COUNT(*) FILTER (WHERE status = 'registered')::integer AS registered,
-        COUNT(*) FILTER (WHERE status = 'expired')::integer AS expired,
-        COUNT(*) FILTER (WHERE joined_minecraft = true)::integer AS joined_minecraft,
-        COUNT(*) FILTER (WHERE created_at >= $1)::integer AS signups_today,
-        COUNT(*) FILTER (WHERE created_at >= $2)::integer AS signups_this_week,
-        COUNT(*) FILTER (WHERE created_at >= $3)::integer AS signups_this_month
+        COUNT(*)::int AS total,
+        COUNT(*) FILTER (WHERE status = 'queued')::int AS queued,
+        COUNT(*) FILTER (WHERE status = 'promoted')::int AS promoted,
+        COUNT(*) FILTER (WHERE status = 'registered')::int AS registered,
+        COUNT(*) FILTER (WHERE status = 'expired')::int AS expired,
+        COUNT(*) FILTER (WHERE joined_minecraft = true)::int AS joined_minecraft,
+        COUNT(*) FILTER (WHERE created_at >= $1)::int AS signups_today,
+        COUNT(*) FILTER (WHERE created_at >= $2)::int AS signups_this_week,
+        COUNT(*) FILTER (WHERE created_at >= $3)::int AS signups_this_month
       FROM ${this.table}`;
 
     const result = await this.runQuery<{
@@ -92,18 +92,14 @@ export class WaitlistEntryQueries extends WaitlistEntryBaseQueries {
       windows.weekAgo,
       windows.monthAgo,
     ]);
-    const row = result.rows[0];
+    const { signups_today, signups_this_week, signups_this_month, ...counts } =
+      result.rows[0];
     return {
-      total: row.total,
-      queued: row.queued,
-      promoted: row.promoted,
-      registered: row.registered,
-      expired: row.expired,
-      joinedMinecraft: row.joined_minecraft,
+      ...this.mapRowToEntity(counts),
       signups: {
-        today: row.signups_today,
-        thisWeek: row.signups_this_week,
-        thisMonth: row.signups_this_month,
+        today: signups_today,
+        thisWeek: signups_this_week,
+        thisMonth: signups_this_month,
       },
     };
   }

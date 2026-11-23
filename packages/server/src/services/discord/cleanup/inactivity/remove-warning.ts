@@ -2,11 +2,6 @@ import { Q } from "@/db";
 import { getServiceSync, Services } from "@/services";
 import { playerDeletionService } from "@/services/player/deletion";
 
-/**
- * Minimal warning shape needed for removal. Compatible with both
- * `findExpiredWarnings` rows (from the scheduled path) and
- * `findByIdWithPlayer` rows (from the admin manual path).
- */
 export interface WarningToRemove {
   id: number;
   playerMinecraftUuid: string;
@@ -37,15 +32,15 @@ export interface WarningToRemove {
  *
  * Discord kick and RCON failures are logged but do not abort the rest
  * of the sequence: the DB delete always runs.
- *
- * @param warning - The warning to process
- * @param reason - Reason string passed to the Discord kick
  */
 export async function removeInactiveWarning(
   warning: WarningToRemove,
   reason = "Inactivity: 60+ days without logging in",
 ): Promise<void> {
-  await Q.player.inactivity.warning.markRemoved(warning.id);
+  await Q.player.inactivity.warning.update(
+    { id: warning.id },
+    { removedAt: new Date() },
+  );
 
   try {
     const mainBot = getServiceSync(Services.DISCORD_MAIN_BOT);
@@ -77,15 +72,15 @@ export async function removeInactiveWarning(
       },
     );
   } catch (error) {
-    // Rollback the markRemoved set above so the warning stays retryable
-    // by findExpiredWarnings and the leave-notification handler doesn't
-    // indefinitely suppress voluntary departures for this player.
     logger.error(
       `Failed to delete player ${warning.minecraftUsername}, rolling back removed_at on warning ${warning.id}`,
       error,
     );
     try {
-      await Q.player.inactivity.warning.clearRemoved(warning.id);
+      await Q.player.inactivity.warning.update(
+        { id: warning.id },
+        { removedAt: null },
+      );
     } catch (rollbackError) {
       logger.error(
         `Failed to roll back removed_at on warning ${warning.id}, row is now in an inconsistent state`,

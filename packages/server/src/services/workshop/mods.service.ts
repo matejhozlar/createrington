@@ -1,5 +1,5 @@
 import { Q } from "@/db";
-import { NotFoundError } from "@/app/middleware/error-handler";
+import { NotFoundError } from "@/errors";
 import type {
   CurseforgeProject,
   Workshop,
@@ -8,30 +8,18 @@ import type {
   WorkshopProjectDependency,
 } from "@createrington/shared/db";
 import { discordThreadUrl } from "./discord";
+import { loadDependencyContext } from "./dependencies";
 import {
-  loadDependencyContext,
   REQUIRED_DEPENDENCY,
+  USER_VISIBLE_MOD_STATUSES,
   type DependencyCoverage,
-} from "./dependencies";
-import { USER_VISIBLE_MOD_STATUSES, workshopService } from "./workshop.service";
-
-export type WorkshopProjectSummary = Pick<
-  CurseforgeProject,
-  | "id"
-  | "classId"
-  | "name"
-  | "slug"
-  | "summary"
-  | "thumbnailUrl"
-  | "websiteUrl"
-  | "primaryAuthor"
-  | "categories"
-  | "downloadCount"
-  | "dateReleased"
-  | "allowModDistribution"
-  | "environment"
-  | "environmentSource"
->;
+} from "@createrington/shared/workshop";
+import { workshopService } from "./workshop.service";
+import {
+  projectLabel,
+  toProjectSummary,
+  type CurseforgeProjectSummary,
+} from "@/services/curseforge/project";
 
 export interface WorkshopModDependencyInfo {
   curseforgeProjectId: number;
@@ -44,7 +32,7 @@ export interface WorkshopModDependencyInfo {
 }
 
 export interface WorkshopModListItem extends WorkshopMod {
-  project: WorkshopProjectSummary;
+  project: CurseforgeProjectSummary;
   upvoteCount: number;
   submitterName: string | null;
   submitterUuid: string | null;
@@ -69,6 +57,19 @@ export type WorkshopSuggestionHistoryItem = WorkshopModListItem & {
   workshopName: string;
   workshopSlug: string;
 };
+
+export interface WorkshopModDetail {
+  mod: WorkshopMod & {
+    submitterName: string | null;
+    submitterUuid: string | null;
+    reviewerName: string | null;
+    discordThreadUrl: string | null;
+    dependencies: WorkshopModDependencyInfo[];
+    liveInVersion: string | null;
+  };
+  project: CurseforgeProject;
+  upvoteCount: number;
+}
 
 /**
  * Suggestions as the workshop pages show them: rows decorated with project
@@ -117,18 +118,7 @@ export class WorkshopModService {
   async getModDetail(
     workshopModId: number,
     options: { includeHidden?: boolean } = {},
-  ): Promise<{
-    mod: WorkshopMod & {
-      submitterName: string | null;
-      submitterUuid: string | null;
-      reviewerName: string | null;
-      discordThreadUrl: string | null;
-      dependencies: WorkshopModDependencyInfo[];
-      liveInVersion: string | null;
-    };
-    project: CurseforgeProject;
-    upvoteCount: number;
-  }> {
+  ): Promise<WorkshopModDetail> {
     const mod = await Q.workshop.mod.find({ id: workshopModId });
     if (!mod) {
       throw new NotFoundError(`Mod #${workshopModId} not found`);
@@ -281,7 +271,7 @@ export class WorkshopModService {
           ("missing" as const),
         requiredBy: group.requiredByProjectIds.map((id) => ({
           curseforgeProjectId: id,
-          name: projectById.get(id)?.name ?? `#${id}`,
+          name: projectLabel(projectById.get(id)?.name, id),
         })),
         optionalByCount: group.optionalByCount,
         shippingDemand: context.demand.get(group.dependsOnProjectId) ?? 0,
@@ -329,7 +319,7 @@ export class WorkshopModService {
       return [
         {
           ...mod,
-          project: this.toProjectSummary(project),
+          project: toProjectSummary(project),
           upvoteCount: upvoteCounts[mod.id] ?? 0,
           submitterName: submitter?.minecraftUsername ?? null,
           submitterUuid: submitter?.minecraftUuid ?? null,
@@ -375,25 +365,6 @@ export class WorkshopModService {
       byProject.set(dep.curseforgeProjectId, list);
     }
     return byProject;
-  }
-
-  private toProjectSummary(project: CurseforgeProject): WorkshopProjectSummary {
-    return {
-      id: project.id,
-      classId: project.classId,
-      name: project.name,
-      slug: project.slug,
-      summary: project.summary,
-      thumbnailUrl: project.thumbnailUrl,
-      websiteUrl: project.websiteUrl,
-      primaryAuthor: project.primaryAuthor,
-      categories: project.categories,
-      downloadCount: project.downloadCount,
-      dateReleased: project.dateReleased,
-      allowModDistribution: project.allowModDistribution,
-      environment: project.environment,
-      environmentSource: project.environmentSource,
-    };
   }
 }
 

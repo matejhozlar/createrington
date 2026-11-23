@@ -20,6 +20,7 @@ import {
 import { TugRow } from "./components/TugRow";
 import { MatchupBar } from "./components/MatchupBar";
 import { EveryStat } from "./components/EveryStat";
+import "@/features/leaderboards/leaderboards.css";
 import { useQuery } from "@tanstack/react-query";
 
 const REROLL_COOLDOWN_MS = 3000;

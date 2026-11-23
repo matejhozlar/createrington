@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import {
   ArrowRight,
   Ban,
@@ -20,8 +19,8 @@ import { trpc } from "@/lib/trpc";
 import { formatFullDateSafe } from "@/features/admin/format";
 import { formatRelativeDate } from "@/lib/format";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { usePagedQuery } from "@/hooks/use-paged-query";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -33,29 +32,27 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { CellText } from "@/components/cell-text";
 import {
   BadgeCellSkeleton,
-  DataTable,
-  loadingRowCount,
   TwoLineCellSkeleton,
   type DataTableColumn,
 } from "@/components/data-table";
-import { Paginator } from "@/components/paginator";
+import { TableCard } from "@/components/paged-table";
 import { PlayerLabel } from "@/components/player-label";
 import { FilterBar } from "@/features/admin/components/FilterBar";
-import { EmptyState, ErrorState } from "@/components/query-states";
-import {
-  MOD_STATUS_STYLES,
-  REJECT_REASON_LABELS,
-} from "@/features/workshop/format";
+import { MOD_STATUS_STYLES } from "@/features/workshop/format";
 import {
   WORKSHOP_MOD_EVENT_TYPES,
   WORKSHOP_MOD_EVENT_TYPE_LABELS,
+  WORKSHOP_MOD_REJECT_REASON_LABELS,
 } from "@createrington/shared/workshop";
 import type {
   WorkshopModEventType,
   WorkshopModStatus,
 } from "@createrington/shared/db";
-import { ModCell, ModCellSkeleton } from "../ModCell";
-import type { WorkshopEvent } from "../../types";
+import {
+  ModCell,
+  ModCellSkeleton,
+} from "@/features/admin/workshop/workshop-admin-detail/components/ModCell";
+import type { WorkshopEvent } from "@/features/admin/workshop/workshop-admin-detail/types";
 
 const EVENTS_PER_PAGE = 25;
 
@@ -113,7 +110,9 @@ function eventContext(event: WorkshopEvent): string | null {
     case "rejected":
       return (
         [
-          event.rejectReason ? REJECT_REASON_LABELS[event.rejectReason] : null,
+          event.rejectReason
+            ? WORKSHOP_MOD_REJECT_REASON_LABELS[event.rejectReason]
+            : null,
           event.note,
         ]
           .filter(Boolean)
@@ -221,39 +220,27 @@ export function ActivityTab({
   workshopId,
   search,
   onSearchChange,
-  page,
-  onPageChange,
   onView,
 }: {
   workshopId: number;
   search: string;
   onSearchChange: (value: string) => void;
-  page: number;
-  onPageChange: (page: number) => void;
   onView: (workshopModId: number) => void;
 }) {
   const [eventType, setEventType] = useState<EventTypeFilter>("all");
   const debouncedSearch = useDebouncedValue(search.trim());
 
-  const eventsQuery = useQuery(
-    trpc.admin.workshops.listEvents.queryOptions(
-      {
-        workshopId,
-        page,
-        limit: EVENTS_PER_PAGE,
-        search: debouncedSearch || undefined,
-        eventType: eventType === "all" ? undefined : eventType,
-      },
-      { placeholderData: keepPreviousData, staleTime: 0 },
-    ),
+  const events = usePagedQuery(
+    {
+      workshopId,
+      search: debouncedSearch || undefined,
+      eventType: eventType === "all" ? undefined : eventType,
+    },
+    (input) =>
+      trpc.admin.workshops.listEvents.queryOptions(input, { staleTime: 0 }),
+    EVENTS_PER_PAGE,
   );
-
-  const events = eventsQuery.data?.events ?? [];
-  const total = eventsQuery.data?.pagination.total ?? 0;
-  const totalPages = eventsQuery.data?.pagination.totalPages ?? 0;
-  const loading = eventsQuery.isLoading || eventsQuery.isPlaceholderData;
   const filtering = debouncedSearch !== "" || eventType !== "all";
-  const error = eventsQuery.error?.message ?? null;
 
   const columns: DataTableColumn<WorkshopEvent>[] = [
     {
@@ -315,10 +302,7 @@ export function ActivityTab({
       >
         <Select
           value={eventType}
-          onValueChange={(value) => {
-            setEventType(value as EventTypeFilter);
-            onPageChange(0);
-          }}
+          onValueChange={(value) => setEventType(value as EventTypeFilter)}
         >
           <SelectTrigger className="min-w-[170px]">
             <SelectValue />
@@ -334,64 +318,39 @@ export function ActivityTab({
         </Select>
       </FilterBar>
 
-      <Card className="gap-0">
-        <CardHeader className="gap-0 border-b">
-          <CardTitle>Activity ({total.toLocaleString()})</CardTitle>
-        </CardHeader>
-
-        {error ? (
-          <ErrorState message={error} onRetry={() => eventsQuery.refetch()} />
-        ) : !loading && total === 0 ? (
-          filtering ? (
-            <EmptyState
-              icon={Search}
-              message="No activity matches your filters"
-            />
-          ) : (
-            <EmptyState
-              icon={History}
-              message="Nothing has happened in this workshop yet"
-            />
-          )
-        ) : (
-          <CardContent className="px-0">
-            <DataTable
-              columns={columns}
-              rows={events}
-              loading={loading}
-              loadingRows={loadingRowCount(page, EVENTS_PER_PAGE, total)}
-              rowKey={(event) => event.id}
-              onRowClick={(event) => {
-                if (event.modExists) onView(event.workshopModId);
-              }}
-              rowClassName={(event) =>
-                event.modExists ? undefined : "cursor-default"
+      <TableCard
+        title="Activity"
+        paged={events}
+        empty={
+          filtering
+            ? { icon: Search, message: "No activity matches your filters" }
+            : {
+                icon: History,
+                message: "Nothing has happened in this workshop yet",
               }
-              actions={(event) =>
-                event.modExists
-                  ? [
-                      {
-                        label: "View mod",
-                        icon: Eye,
-                        onClick: () => onView(event.workshopModId),
-                      },
-                    ]
-                  : []
-              }
-              actionSlots={1}
-            />
-            <Paginator
-              page={page}
-              limit={EVENTS_PER_PAGE}
-              total={total}
-              totalPages={totalPages}
-              onPageChange={onPageChange}
-              itemLabel="event"
-              className="px-4 pt-4"
-            />
-          </CardContent>
-        )}
-      </Card>
+        }
+        itemLabel="event"
+        columns={columns}
+        rowKey={(event) => event.id}
+        onRowClick={(event) => {
+          if (event.modExists) onView(event.workshopModId);
+        }}
+        rowClassName={(event) =>
+          event.modExists ? undefined : "cursor-default"
+        }
+        actions={(event) =>
+          event.modExists
+            ? [
+                {
+                  label: "View mod",
+                  icon: Eye,
+                  onClick: () => onView(event.workshopModId),
+                },
+              ]
+            : []
+        }
+        actionSlots={1}
+      />
     </>
   );
 }

@@ -6,20 +6,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Blocks, ExternalLink, Package } from "lucide-react";
-
-interface PackMod {
-  id: number;
-  modName: string;
-  modUrl: string | null;
-  thumbnailUrl: string | null;
-  fileName: string;
-}
+import { pluralize } from "@/lib/format";
+import type { PoolMod } from "@/features/structure-packs/types";
 
 interface PackModsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   packName: string;
-  mods: PackMod[];
+  mods: PoolMod[];
 }
 
 export function PackModsDialog({
@@ -37,8 +31,7 @@ export function PackModsDialog({
         <DialogHeader>
           <DialogTitle className="text-white">{packName}</DialogTitle>
           <DialogDescription className="text-white/55">
-            {mods.length} {mods.length === 1 ? "mod" : "mods"} included in this
-            dimension
+            {pluralize(mods.length, "mod")} included in this dimension
           </DialogDescription>
         </DialogHeader>
 
@@ -78,7 +71,7 @@ export function PackModsDialog({
                     href={mod.modUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex shrink-0 items-center gap-1 text-xs text-white/55 transition-colors hover:text-[var(--blue-bright)]"
+                    className="flex shrink-0 items-center gap-1 text-xs text-white/55 transition-colors hover:text-blue-bright"
                   >
                     CurseForge
                     <ExternalLink className="size-3" />

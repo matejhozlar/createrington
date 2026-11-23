@@ -10,91 +10,71 @@ import {
 import { EmbedPresets } from "@/discord/embeds";
 import { replyError } from "@/discord/utils/interaction-reply";
 import { getAllTicketTypes } from "@/services/discord/tickets";
-import { TicketButtonGenerator } from "@/services/discord/tickets";
+import { CustomIds } from "@/discord/custom-ids";
 import { isSendableChannel } from "@/discord/utils/channel-guard";
+import type {
+  CommandModule,
+  CommandPermissions,
+} from "@/discord/bots/common/loaders/command-loader";
 
-/**
- * Slash command definition for the ticket-panel command
- * Admin-only command to create or refresh the ticket support panel
- */
-export const data = new SlashCommandBuilder()
+const data = new SlashCommandBuilder()
   .setName("ticket-panel")
   .setDescription("Create or refresh the ticket panel")
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
 
-/**
- * Permission configuration for the ticket-panel command
- * Requires admin privileges to execute
- */
-export const permissions = {
+const permissions: CommandPermissions = {
   requireOwner: true,
 };
 
-/**
- * Executes the ticket-panel command to create a ticket support panel
- *
- * Process:
- * 1. Validates that the command is used in a sendable text channel
- * 2. Retrieves all configured ticket types from the system
- * 3. Creates an embed using the ticket panel preset
- * 4. Generates a button for each ticket type with label and emoji
- * 5. Sends the panel to the channel with all ticket buttons
- * 6. Sends ephemeral confirmation to the admin who ran the command
- *
- * @param interaction - The chat input command interaction
- * @returns Promise resolving when the command execution is completed
- */
-export async function execute(
+async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
-  try {
-    if (!isSendableChannel(interaction.channel)) {
-      await replyError(
-        interaction,
-        "Invalid Channel",
-        "This command can only be used in text channels.",
-      );
-      return;
-    }
-
-    const ticketTypes = getAllTicketTypes();
-
-    const embed = EmbedPresets.ticket.panel();
-
-    const buttons = ticketTypes.map((config) => {
-      const button = new ButtonBuilder()
-        .setCustomId(TicketButtonGenerator.create(config.type))
-        .setLabel(config.label)
-        .setStyle(ButtonStyle.Primary);
-
-      button.setEmoji(config.emoji);
-
-      return button;
-    });
-
-    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(buttons);
-
-    await interaction.channel.send({
-      embeds: [embed.build()],
-      components: [row],
-    });
-
-    const successEmbed = EmbedPresets.success(
-      "Panel Created",
-      "Ticket panel has been created in this channel.",
-    );
-
-    await interaction.reply({
-      embeds: [successEmbed.build()],
-      flags: MessageFlags.Ephemeral,
-    });
-  } catch (error) {
-    logger.error("/ticket-panel failed:", error);
-
+  if (!isSendableChannel(interaction.channel)) {
     await replyError(
       interaction,
-      "Panel Creation Failed",
-      "Failed to create ticket panel. Please try again.",
+      "Invalid Channel",
+      "This command can only be used in text channels.",
     );
+    return;
   }
+
+  const ticketTypes = getAllTicketTypes();
+
+  const embed = EmbedPresets.ticket.panel();
+
+  const buttons = ticketTypes.map((config) => {
+    const button = new ButtonBuilder()
+      .setCustomId(
+        CustomIds.ticket.build({ action: "create", target: config.type }),
+      )
+      .setLabel(config.label)
+      .setStyle(ButtonStyle.Primary);
+
+    button.setEmoji(config.emoji);
+
+    return button;
+  });
+
+  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(buttons);
+
+  await interaction.channel.send({
+    embeds: [embed.build()],
+    components: [row],
+  });
+
+  const successEmbed = EmbedPresets.success(
+    "Panel Created",
+    "Ticket panel has been created in this channel.",
+  );
+
+  await interaction.reply({
+    embeds: [successEmbed.build()],
+    flags: MessageFlags.Ephemeral,
+  });
 }
+
+export default {
+  data,
+  permissions,
+  execute,
+} satisfies CommandModule;

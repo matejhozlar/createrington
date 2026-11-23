@@ -1,6 +1,6 @@
 import type { Pool, PoolClient } from "pg";
 import { PlayerBalanceBaseQueries } from "@/generated/db/player_balance.queries";
-import { BalanceUtils } from "@/db/repositories/balance/utils";
+import { BalanceUtils } from "@/db/utils/balance";
 
 export type BalanceLeaderboardEntry = {
   name: string;
@@ -34,8 +34,8 @@ export class PlayerBalanceQueries extends PlayerBalanceBaseQueries {
   }> {
     const query = `
       SELECT
-        COALESCE(SUM(balance), 0) AS total_balance,
-        COUNT(*)::integer AS player_count
+        COALESCE(SUM(balance), 0)::bigint AS total_balance,
+        COUNT(*)::int AS player_count
       FROM ${this.table}`;
 
     const result = await this.runQuery<{
@@ -67,7 +67,7 @@ export class PlayerBalanceQueries extends PlayerBalanceBaseQueries {
           WHEN balance < ${5000 * 1000} THEN '1k-5k'
           ELSE '5k+'
         END AS range,
-        COUNT(*)::integer AS count
+        COUNT(*)::int AS count
       FROM ${this.table}
       GROUP BY 1
       ORDER BY MIN(balance)`;
@@ -92,7 +92,7 @@ export class PlayerBalanceQueries extends PlayerBalanceBaseQueries {
   }> {
     const query = `
       SELECT
-        COALESCE(SUM(balance), 0) AS total,
+        COALESCE(SUM(balance), 0)::bigint AS total,
         COALESCE(AVG(balance), 0)::bigint AS average,
         COALESCE(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY balance), 0)::bigint AS median
       FROM ${this.table}`;
@@ -102,12 +102,7 @@ export class PlayerBalanceQueries extends PlayerBalanceBaseQueries {
       average: bigint;
       median: bigint;
     }>("get balance aggregate stats", query);
-    const row = result.rows[0];
-    return {
-      total: BigInt(row.total),
-      average: BigInt(row.average),
-      median: BigInt(row.median),
-    };
+    return result.rows[0];
   }
 
   /**
@@ -118,7 +113,7 @@ export class PlayerBalanceQueries extends PlayerBalanceBaseQueries {
    *
    * @returns Balance in storage format, or null when the player has no balance row
    */
-  async getForUpdate(minecraftUuid: string): Promise<bigint | null> {
+  async findForUpdate(minecraftUuid: string): Promise<bigint | null> {
     const query = `
       SELECT balance
       FROM ${this.table}

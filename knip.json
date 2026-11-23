@@ -29,7 +29,7 @@
       "project": ["src/**/*.{ts,tsx,css}"]
     },
     "packages/shared": {
-      "entry": ["src/index.ts", "src/db/**/*.ts"],
+      "entry": ["src/db/**/*.ts"],
       "project": ["src/**/*.ts"]
     },
     "packages/api-types": {

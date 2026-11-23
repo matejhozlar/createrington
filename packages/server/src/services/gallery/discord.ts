@@ -1,4 +1,5 @@
 import config from "@/config";
+import { siteUrl } from "@/config/site-url";
 import { buildComponentsMessage, ComponentPresets } from "@/discord/components";
 import { Discord } from "@/discord/constants";
 import { GALLERY_INTAKE_REACTION } from "./intake";
@@ -23,7 +24,7 @@ const APPROVED_REACTION = "✅";
 const REJECTED_REACTION = "❌";
 
 export function galleryPageUrl(): string {
-  return `${config.meta.links.website}/gallery`;
+  return siteUrl("/gallery");
 }
 
 export async function announceApproval(
@@ -52,30 +53,29 @@ export async function announceApproval(
     return null;
   }
 
-  const result = await Discord.Messages.send({
+  const sent = await Discord.Messages.send({
     channelId,
     components: message.components,
     flags: message.flags,
     allowedMentions: { users: [announcement.authorDiscordId] },
-  });
-
-  if (!result.success || !result.messageId) {
+  }).catch((error: unknown) => {
     logger.error(
-      `Gallery: failed to announce submission #${announcement.submissionId}: ${result.error ?? "unknown error"}`,
+      `Gallery: failed to announce submission #${announcement.submissionId}:`,
+      error,
     );
     return null;
-  }
+  });
 
-  return { channelId, messageId: result.messageId };
+  return sent ? { channelId, messageId: sent.id } : null;
 }
 
 export async function deleteAnnouncement(ref: AnnouncementRef): Promise<void> {
-  const result = await Discord.Messages.delete(ref);
-  if (!result.success) {
+  await Discord.Messages.delete(ref).catch((error: unknown) => {
     logger.warn(
-      `Gallery: failed to delete announcement ${ref.messageId}: ${result.error ?? "unknown error"}`,
+      `Gallery: failed to delete announcement ${ref.messageId}:`,
+      error,
     );
-  }
+  });
 }
 
 export async function markSourceMessage(
@@ -84,13 +84,10 @@ export async function markSourceMessage(
   outcome: SourceOutcome,
 ): Promise<void> {
   try {
-    const result = await Discord.Messages.fetchMessage({
+    const message = await Discord.Messages.fetchMessage({
       channelId,
       messageId,
     });
-    if (!result.success) return;
-
-    const { message } = result;
     await message.reactions.cache.get(GALLERY_INTAKE_REACTION)?.users.remove();
     await message.react(
       outcome === "approved" ? APPROVED_REACTION : REJECTED_REACTION,

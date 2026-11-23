@@ -1,8 +1,13 @@
 import { Q } from "@/db";
 import { EmbedPresets } from "@/discord/embeds";
-import { replyError } from "@/discord/utils/interaction-reply";
+import {
+  replyError,
+  replyNotRegistered,
+} from "@/discord/utils/interaction-reply";
 import { CooldownType } from "@/discord/utils/cooldown";
-import { getSkinApiClient, MAX_QUALITY_RENDER } from "@/services/skin-api";
+import { InteractionError } from "@/discord/utils/interaction-error";
+import { getSkinApiClient } from "@/services/skin-api/client";
+import { MAX_QUALITY_RENDER } from "@/services/skin-api/quality";
 import {
   KNOWN_POSES,
   type KnownPose,
@@ -14,6 +19,10 @@ import {
   ChatInputCommandInteraction,
   SlashCommandBuilder,
 } from "discord.js";
+import type {
+  CommandCooldown,
+  CommandModule,
+} from "@/discord/bots/common/loaders/command-loader";
 
 const RENDER_STYLES = [
   "default",
@@ -38,7 +47,7 @@ function titleCasePose(pose: string): string {
   return pose.replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-export const data = new SlashCommandBuilder()
+const data = new SlashCommandBuilder()
   .setName("skin")
   .setDescription("Display a player's Minecraft skin")
   .addUserOption((opt) =>
@@ -59,13 +68,13 @@ export const data = new SlashCommandBuilder()
       .addChoices(...STYLE_CHOICES),
   );
 
-export const cooldown = {
+const cooldown: CommandCooldown = {
   duration: 5,
   type: CooldownType.USER,
   message: "Please wait before checking skins again!",
 };
 
-export async function autocomplete(
+async function autocomplete(
   interaction: AutocompleteInteraction,
 ): Promise<void> {
   const focused = interaction.options.getFocused().trim().toLowerCase();
@@ -81,7 +90,7 @@ export async function autocomplete(
   );
 }
 
-export async function execute(
+async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
   const userOption = interaction.options.getUser("user", false);
@@ -107,51 +116,47 @@ export async function execute(
       : "default";
   const pose = (poseInput as KnownPose | undefined) ?? DEFAULT_POSE;
 
-  let player: Awaited<ReturnType<typeof Q.player.get>>;
-  try {
-    player = await Q.player.get({ discordId: targetUser.id });
-  } catch {
-    await replyError(
-      interaction,
-      "Lookup Error",
-      `Could not find player data for ${targetUser.displayName}. They may not be registered.`,
-      { ephemeral: false },
-    );
+  const player = await Q.player.find({ discordId: targetUser.id });
+  if (!player) {
+    await replyNotRegistered(interaction, targetUser, { ephemeral: false });
     return;
   }
 
   await interaction.deferReply();
 
-  try {
-    const png = await getSkinApiClient().render({
+  const png = await getSkinApiClient()
+    .render({
       pose,
       source: { uuid: player.minecraftUuid },
       options: { ...MAX_QUALITY_RENDER, style },
+    })
+    .catch((error: unknown) => {
+      throw new InteractionError(
+        "Render Error",
+        `Could not render the **${titleCasePose(pose)}** pose for ${player.minecraftUsername}. Please try again later.`,
+        { cause: error },
+      );
     });
 
-    const styleSuffix = style === "default" ? "" : `_${style}`;
-    const fileName = `${player.minecraftUsername}_${pose}${styleSuffix}.png`;
-    const attachment = new AttachmentBuilder(Buffer.from(png), {
-      name: fileName,
-    });
+  const styleSuffix = style === "default" ? "" : `_${style}`;
+  const fileName = `${player.minecraftUsername}_${pose}${styleSuffix}.png`;
+  const attachment = new AttachmentBuilder(Buffer.from(png), {
+    name: fileName,
+  });
 
-    const styleLabel = style === "default" ? "" : ` (${STYLE_LABELS[style]})`;
-    const embed = EmbedPresets.info(
-      `${player.minecraftUsername} — ${titleCasePose(pose)}${styleLabel}`,
-    )
-      .image(`attachment://${fileName}`)
-      .build();
+  const styleLabel = style === "default" ? "" : ` (${STYLE_LABELS[style]})`;
+  const embed = EmbedPresets.info(
+    `${player.minecraftUsername} — ${titleCasePose(pose)}${styleLabel}`,
+  )
+    .image(`attachment://${fileName}`)
+    .build();
 
-    await interaction.editReply({ embeds: [embed], files: [attachment] });
-  } catch (error) {
-    logger.warn(
-      `Skin-api render failed for pose "${pose}" (style "${style}"):`,
-      error,
-    );
-    await replyError(
-      interaction,
-      "Render Error",
-      `Could not render the **${titleCasePose(pose)}** pose for ${player.minecraftUsername}. Please try again later.`,
-    );
-  }
+  await interaction.editReply({ embeds: [embed], files: [attachment] });
 }
+
+export default {
+  data,
+  cooldown,
+  autocomplete,
+  execute,
+} satisfies CommandModule;

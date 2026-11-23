@@ -25,40 +25,19 @@ export function isFileOpsAllowed(): boolean {
   return getLocalPath() !== null || isSftpAllowed();
 }
 
-/** Resolves SFTP config for a given server ID */
-function getSftpConfig(serverId: number) {
-  if (serverId === config.servers.rails.id) {
-    return config.servers.rails.sftp;
-  }
-  throw new Error(`No SFTP config for server ${serverId}`);
-}
-
-/** Resolves the SFTP base path for a server */
-function getBasePath(serverId: number): string {
-  const sftpConfig = getSftpConfig(serverId);
-  const parts = sftpConfig.statsPath.split("/");
+function getBasePath(): string {
+  const parts = config.servers.rails.sftp.statsPath.split("/");
   if (parts.length >= 3) {
     return parts.slice(0, -2).join("/") || ".";
   }
   return ".";
 }
 
-/** Creates a connected SFTP client */
 async function createSftpClient(): Promise<SftpClient> {
-  const sftpConfig = getSftpConfig(config.servers.rails.id);
+  const { host, port, username, password } = config.servers.rails.sftp;
   const sftp = new SftpClient();
-  await sftp.connect({
-    host: sftpConfig.host,
-    port: sftpConfig.port,
-    username: sftpConfig.username,
-    password: sftpConfig.password,
-  });
+  await sftp.connect({ host, port, username, password });
   return sftp;
-}
-
-/** Gets the SFTP base path for the default server */
-function getDefaultBasePath(): string {
-  return getBasePath(config.servers.rails.id);
 }
 
 function assertInsideDataDir(name: string): void {
@@ -85,7 +64,7 @@ export async function writeFile(
       typeof content === "string" ? "utf-8" : undefined,
     );
   } else {
-    const basePath = getDefaultBasePath();
+    const basePath = getBasePath();
     const sftp = await createSftpClient();
     try {
       const buf = typeof content === "string" ? Buffer.from(content) : content;
@@ -102,7 +81,7 @@ export async function deleteFile(name: string): Promise<void> {
   if (localPath) {
     await fs.unlink(path.join(localPath, name)).catch(() => {});
   } else {
-    const basePath = getDefaultBasePath();
+    const basePath = getBasePath();
     const sftp = await createSftpClient();
     try {
       const exists = await sftp.exists(`${basePath}/${name}`);
@@ -124,7 +103,7 @@ export async function fileExists(name: string): Promise<boolean> {
       return false;
     }
   } else {
-    const basePath = getDefaultBasePath();
+    const basePath = getBasePath();
     const sftp = await createSftpClient();
     try {
       const exists = await sftp.exists(`${basePath}/${name}`);
@@ -151,7 +130,7 @@ export async function copyFileToServer(
     await fs.mkdir(path.dirname(destFull), { recursive: true });
     await fs.copyFile(localSrcPath, destFull);
   } else {
-    const basePath = getDefaultBasePath();
+    const basePath = getBasePath();
     const sftp = await createSftpClient();
     try {
       await sftp.put(localSrcPath, `${basePath}/${serverDestPath}`);

@@ -4,11 +4,10 @@ import {
   ConflictError,
   ForbiddenError,
   NotFoundError,
-} from "@/app/middleware/error-handler";
+} from "@/errors";
 import type { BanType, WorkshopBan } from "@createrington/shared/db";
 import type { WorkshopBanWithScope } from "@/db/queries/workshop/ban";
 import { DatabaseTable } from "@/generated/db";
-import { AdminEdit } from "@/types/enums";
 import type { WorkshopAuditActor } from "@/services/workshop/audit";
 
 export interface IssueWorkshopBanInput {
@@ -109,7 +108,7 @@ export async function issueBan(
     await tx.admin.log.action.create({
       adminDiscordId: actor.adminDiscordId,
       adminUsername: actor.adminUsername,
-      actionType: AdminEdit.BAN_WORKSHOP_SUGGEST,
+      actionType: "ban_workshop_suggest",
       targetPlayerUuid: player?.minecraftUuid ?? null,
       targetPlayerName: player?.minecraftUsername ?? null,
       tableName: DatabaseTable.WORKSHOP_BAN.TABLE,
@@ -161,7 +160,7 @@ export async function liftBan(
     await tx.admin.log.action.create({
       adminDiscordId: actor.adminDiscordId,
       adminUsername: actor.adminUsername,
-      actionType: AdminEdit.UNBAN_WORKSHOP_SUGGEST,
+      actionType: "unban_workshop_suggest",
       targetPlayerUuid: player?.minecraftUuid ?? null,
       targetPlayerName: player?.minecraftUsername ?? null,
       tableName: DatabaseTable.WORKSHOP_BAN.TABLE,
@@ -185,5 +184,5 @@ export async function listBansForUser(
   discordId: string,
   includeInactive: boolean,
 ): Promise<WorkshopBanWithScope[]> {
-  return Q.workshop.ban.listForUser(discordId, includeInactive);
+  return Q.workshop.ban.getForUser(discordId, includeInactive);
 }

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { ArrowLeft, CheckCircle2, Plus } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Badge, type BadgeTone } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -13,21 +13,31 @@ import { FormDialog } from "@/components/form-dialog";
 import { SearchInput } from "@/components/search-input";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useToastActions } from "@/hooks/use-toast";
-import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { trpc, queryClient } from "@/lib/trpc";
 import { REQUIRED_DEPENDENCY } from "@createrington/shared/workshop";
+import {
+  CURSEFORGE_RELEASE_TYPES,
+  type LauncherContentReleaseType,
+} from "@createrington/shared/launcher";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Spinner } from "@/components/ui/spinner";
+import { pluralize } from "@/lib/format";
+import type { StructurePackMod } from "@/features/admin/structure-packs/structure-pack-detail/types";
 
-interface PackMod {
-  curseforgeModId: number;
-}
+const RELEASE_BADGES: Record<
+  LauncherContentReleaseType,
+  { label: string; tone: BadgeTone }
+> = {
+  release: { label: "Release", tone: "success" },
+  beta: { label: "Beta", tone: "warning" },
+  alpha: { label: "Alpha", tone: "danger" },
+};
 
 interface SelectedFile {
   id: number;
   fileName: string;
   displayName: string;
-  dependencies: Array<{ modId: number; relationType: number }>;
+  dependencies: Array<{ projectId: number; relationType: number }>;
 }
 
 export function AddModDialog({
@@ -39,7 +49,7 @@ export function AddModDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   packId: number;
-  packMods: PackMod[];
+  packMods: Pick<StructurePackMod, "curseforgeModId">[];
 }) {
   const toast = useToastActions();
 
@@ -52,36 +62,37 @@ export function AddModDialog({
   const debouncedSearch = useDebouncedValue(searchQuery, 400);
 
   const searchModsQuery = useQuery(
-    trpc.admin.structurePacks.searchMods.queryOptions(
+    trpc.admin.structurePacks.mods.search.queryOptions(
       { query: debouncedSearch },
       { enabled: debouncedSearch.length >= 2 },
     ),
   );
 
   const modFilesQuery = useQuery(
-    trpc.admin.structurePacks.getModFiles.queryOptions(
+    trpc.admin.structurePacks.mods.files.queryOptions(
       { modId: selectedModId! },
       { enabled: selectedModId !== null },
     ),
   );
 
   const addDepModIds = useMemo(
-    () => (selectedFile?.dependencies ?? []).map((d) => d.modId),
+    () => (selectedFile?.dependencies ?? []).map((d) => d.projectId),
     [selectedFile],
   );
   const depsQuery = useQuery(
-    trpc.admin.structurePacks.resolveDeps.queryOptions(
+    trpc.admin.structurePacks.mods.resolveDeps.queryOptions(
       { packId, modIds: addDepModIds },
       { enabled: addDepModIds.length > 0 && selectedFile !== null },
     ),
   );
 
-  // Default selection: required deps not yet in pack
   const defaultDepSelection = useMemo(() => {
     if (!depsQuery.data || !selectedFile) return new Set<number>();
     const set = new Set<number>();
     for (const dep of depsQuery.data) {
-      const rel = selectedFile.dependencies.find((d) => d.modId === dep.modId);
+      const rel = selectedFile.dependencies.find(
+        (d) => d.projectId === dep.modId,
+      );
       if (
         rel?.relationType === REQUIRED_DEPENDENCY &&
         !dep.inPack &&
@@ -96,18 +107,16 @@ export function AddModDialog({
   const selectedDeps = depOverrides ?? defaultDepSelection;
 
   const addModMutation = useMutation(
-    trpc.admin.structurePacks.addMod.mutationOptions(
-      useMutationToast({
-        onSuccess: () => {
-          void queryClient.invalidateQueries(
-            trpc.admin.structurePacks.get.queryFilter({ id: packId }),
-          );
-          void queryClient.invalidateQueries(
-            trpc.admin.structurePacks.list.pathFilter(),
-          );
-        },
-      }),
-    ),
+    trpc.admin.structurePacks.mods.create.mutationOptions({
+      onSuccess: () => {
+        void queryClient.invalidateQueries(
+          trpc.admin.structurePacks.get.queryFilter({ id: packId }),
+        );
+        void queryClient.invalidateQueries(
+          trpc.admin.structurePacks.list.pathFilter(),
+        );
+      },
+    }),
   );
 
   const handleDialogOpenChange = (next: boolean) => {
@@ -120,13 +129,6 @@ export function AddModDialog({
     onOpenChange(next);
   };
 
-  /**
-   * Adds the selected mod and any checked dependencies to the pack in sequence.
-   *
-   * The primary mod is added first, then each selected dependency is added
-   * individually. Failures on individual deps are swallowed so the remaining
-   * mods still get added.
-   */
   const handleBatchAdd = async () => {
     if (!selectedFile || !selectedModId) return;
     setAddingBatch(true);
@@ -135,19 +137,29 @@ export function AddModDialog({
         (m) => m.id === selectedModId,
       );
 
-      await addModMutation.mutateAsync({
-        packId,
-        curseforgeModId: selectedModId,
-        curseforgeFileId: selectedFile.id,
-        fileName: selectedFile.fileName,
-        modName: searchMod?.name ?? selectedFile.displayName,
-        modUrl: searchMod?.url,
-        thumbnailUrl: searchMod?.thumbnailUrl,
-      });
+      try {
+        await addModMutation.mutateAsync({
+          packId,
+          curseforgeModId: selectedModId,
+          curseforgeFileId: selectedFile.id,
+          fileName: selectedFile.fileName,
+          modName: searchMod?.name ?? selectedFile.displayName,
+          modUrl: searchMod?.websiteUrl,
+          thumbnailUrl: searchMod?.thumbnailUrl ?? undefined,
+        });
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Failed to add mod",
+        );
+        return;
+      }
 
-      for (const depModId of selectedDeps) {
+      const deps = [...selectedDeps].flatMap((depModId) => {
         const dep = depsQuery.data?.find((d) => d.modId === depModId);
-        if (!dep?.bestFile) continue;
+        return dep?.bestFile ? [{ ...dep, bestFile: dep.bestFile }] : [];
+      });
+      const failures: string[] = [];
+      for (const dep of deps) {
         try {
           await addModMutation.mutateAsync({
             packId,
@@ -158,13 +170,20 @@ export function AddModDialog({
             modUrl: dep.modUrl,
             thumbnailUrl: dep.thumbnailUrl,
           });
-        } catch {
-          // Continue adding remaining deps even if one fails
+        } catch (error) {
+          failures.push(
+            `${dep.modName}: ${error instanceof Error ? error.message : "Failed to add mod"}`,
+          );
         }
       }
 
-      const count = 1 + selectedDeps.size;
-      toast.success(`Added ${count} mod${count !== 1 ? "s" : ""} to pack`);
+      const total = 1 + deps.length;
+      const added = total - failures.length;
+      if (failures.length === 0) {
+        toast.success(`Added ${pluralize(total, "mod")} to pack`);
+      } else {
+        toast.warning(failures.join("; "), `Added ${added} of ${total} mods`);
+      }
       setSelectedFile(null);
       setSelectedModId(null);
       setDepOverrides(null);
@@ -176,7 +195,6 @@ export function AddModDialog({
 
   return (
     <>
-      {/* Search & File Picker */}
       <Dialog
         open={open && selectedFile === null}
         onOpenChange={handleDialogOpenChange}
@@ -236,9 +254,7 @@ export function AddModDialog({
                       </div>
                       <div className="flex shrink-0 gap-1">
                         {mod.inModpack && (
-                          <Badge className="bg-primary/20 text-xs text-primary">
-                            In modpack
-                          </Badge>
+                          <Badge tone="primary">In modpack</Badge>
                         )}
                         {alreadyAdded && (
                           <Badge variant="secondary">In pack</Badge>
@@ -292,26 +308,12 @@ export function AddModDialog({
                       <div>
                         <div className="font-medium">{file.displayName}</div>
                         <div className="text-xs text-muted-foreground">
-                          {file.fileName} ({(file.fileLength / 1024).toFixed(0)}{" "}
-                          KB)
+                          {file.fileName}
+                          {file.fileLength !== null &&
+                            ` (${(file.fileLength / 1024).toFixed(0)} KB)`}
                         </div>
                         <div className="mt-1 flex gap-1">
-                          <Badge
-                            variant="outline"
-                            className={`text-xs ${
-                              file.releaseType === 1
-                                ? "border-green-500/50 text-green-500"
-                                : file.releaseType === 2
-                                  ? "border-yellow-500/50 text-yellow-500"
-                                  : "border-red-500/50 text-red-500"
-                            }`}
-                          >
-                            {file.releaseType === 1
-                              ? "Release"
-                              : file.releaseType === 2
-                                ? "Beta"
-                                : "Alpha"}
-                          </Badge>
+                          <ReleaseBadge releaseType={file.releaseType} />
                           {file.gameVersions.slice(0, 3).map((v) => (
                             <Badge
                               key={v}
@@ -382,10 +384,9 @@ export function AddModDialog({
 
           {depsQuery.data?.map((dep) => {
             const relType = selectedFile?.dependencies.find(
-              (d) => d.modId === dep.modId,
+              (d) => d.projectId === dep.modId,
             )?.relationType;
-            // relationType 3 = Required in the CurseForge API
-            const isRequired = relType === 3;
+            const isRequired = relType === REQUIRED_DEPENDENCY;
             const isSelected = selectedDeps.has(dep.modId);
             const canSelect = !dep.inPack && !!dep.bestFile;
 
@@ -396,7 +397,7 @@ export function AddModDialog({
               >
                 <div className="shrink-0">
                   {dep.inPack ? (
-                    <CheckCircle2 className="size-4 text-green-600" />
+                    <CheckCircle2 className="size-4 text-tone-success" />
                   ) : canSelect ? (
                     <Checkbox
                       checked={isSelected}
@@ -424,9 +425,7 @@ export function AddModDialog({
                     >
                       {isRequired ? "Required" : "Optional"}
                     </Badge>
-                    {dep.inPack && (
-                      <Badge className="bg-green-600 text-xs">In pack</Badge>
-                    )}
+                    {dep.inPack && <Badge tone="success">In pack</Badge>}
                   </div>
                   {dep.bestFile ? (
                     <div className="truncate text-xs text-muted-foreground">
@@ -445,4 +444,10 @@ export function AddModDialog({
       </FormDialog>
     </>
   );
+}
+
+function ReleaseBadge({ releaseType }: { releaseType: number | null }) {
+  const { label, tone } =
+    RELEASE_BADGES[CURSEFORGE_RELEASE_TYPES[releaseType ?? 1] ?? "release"];
+  return <Badge tone={tone}>{label}</Badge>;
 }

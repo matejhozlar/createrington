@@ -21,7 +21,6 @@ export function transformWaypoints(text: string): string {
   );
 }
 
-// Mentions are resolved server-side in MessageCacheService; this only handles <t:...> timestamps.
 export function processDiscordTimestamps(text: string): string {
   return text.replace(
     /<t:(\d+)(?::([tTdDfFR]))?>/g,

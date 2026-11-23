@@ -8,7 +8,7 @@ import {
   CURSEFORGE_MODPACK_URL,
   DISCORD_INVITE_URL,
   SKIN_API_URL,
-} from "@/lib/external-urls";
+} from "@/lib/externalUrls";
 import { useQuery } from "@tanstack/react-query";
 
 const SOCIAL_LINKS = [
@@ -118,6 +118,7 @@ export const Footer = () => {
 
             <nav className="flex flex-col gap-2">
               <NavLink
+                id="footer-apply-link"
                 to="/apply-to-join"
                 className="text-sm text-muted-foreground hover:text-foreground transition-colors"
               >

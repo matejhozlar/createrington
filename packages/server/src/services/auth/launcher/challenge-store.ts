@@ -21,7 +21,3 @@ export async function consumeLauncherChallenge(
 ): Promise<boolean> {
   return (await challenges.consume(serverId)) !== null;
 }
-
-export function __resetLauncherChallengesForTests(): void {
-  challenges.clearMemory();
-}

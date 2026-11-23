@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { isDiscordId } from "@createrington/shared/discord-id";
 import { ADMIN_REASON_MAX_LENGTH } from "@createrington/shared/admin-reason";
 import { Input } from "@/components/ui/input";
 import {
@@ -8,14 +8,25 @@ import {
   FieldError,
 } from "@/components/ui/field";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { useToastActions } from "@/hooks/use-toast";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
-import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
+import { useDialogDraft } from "@/hooks/use-dialog-draft";
+import {
+  trpc,
+  queryClient,
+  type RouterInput,
+  type RouterOutput,
+} from "@/lib/trpc";
 import { FormDialog } from "@/components/form-dialog";
 import { useMutation } from "@tanstack/react-query";
 import { Textarea } from "@/components/ui/textarea";
 
 type PlayerDetailed = RouterOutput["admin"]["players"]["players"]["get"];
+
+type FieldErrors = {
+  minecraftUsername?: string;
+  discordId?: string;
+  reason?: string;
+};
 
 interface EditPlayerModalProps {
   open: boolean;
@@ -28,31 +39,37 @@ export function EditPlayerModal({
   onClose,
   player,
 }: EditPlayerModalProps) {
-  const toast = useToastActions();
+  const [draft, update] = useDialogDraft<{
+    minecraftUsername: string;
+    discordId: string;
+    reason: string;
+    errors: FieldErrors;
+    confirming: boolean;
+  }>(open, () => ({
+    minecraftUsername: player.minecraftUsername,
+    discordId: player.discordId,
+    reason: "",
+    errors: {},
+    confirming: false,
+  }));
+  const { minecraftUsername, discordId, reason, errors } = draft;
+  const setErrors = (next: FieldErrors) => update({ errors: next });
+
   const updatePlayer = useMutation(
     trpc.admin.players.players.update.mutationOptions(
       useMutationToast({
+        success: "Player updated",
         error: (err) => err.message || "Failed to update player",
-        onSuccess: () =>
-          void queryClient.invalidateQueries(trpc.admin.players.pathFilter()),
+        onSuccess: () => {
+          void queryClient.invalidateQueries(trpc.admin.players.pathFilter());
+          onClose();
+        },
       }),
     ),
   );
 
-  const [minecraftUsername, setMinecraftUsername] = useState(
-    player.minecraftUsername,
-  );
-  const [discordId, setDiscordId] = useState(player.discordId);
-  const [reason, setReason] = useState("");
-  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-  const [errors, setErrors] = useState<{
-    minecraftUsername?: string;
-    discordId?: string;
-    reason?: string;
-  }>({});
-
   const validateForm = (): boolean => {
-    const newErrors: typeof errors = {};
+    const newErrors: FieldErrors = {};
 
     const hasChanges =
       minecraftUsername.trim() !== player.minecraftUsername ||
@@ -66,8 +83,6 @@ export function EditPlayerModal({
 
     if (minecraftUsername.trim().length === 0) {
       newErrors.minecraftUsername = "Minecraft username is required";
-    } else if (minecraftUsername.trim().length < 3) {
-      newErrors.minecraftUsername = "Username must be at least 3 characters";
     } else if (minecraftUsername.trim().length > 16) {
       newErrors.minecraftUsername = "Username must not exceed 16 characters";
     } else if (!/^[a-zA-Z0-9_]+$/.test(minecraftUsername.trim())) {
@@ -77,7 +92,7 @@ export function EditPlayerModal({
 
     if (discordId.trim().length === 0) {
       newErrors.discordId = "Discord ID is required";
-    } else if (!/^\d{17,20}$/.test(discordId.trim())) {
+    } else if (!isDiscordId(discordId.trim())) {
       newErrors.discordId = "Discord ID must be 17-20 digits";
     }
 
@@ -93,17 +108,12 @@ export function EditPlayerModal({
 
   const handleReviewChanges = () => {
     if (validateForm()) {
-      setShowConfirmDialog(true);
+      update({ confirming: true });
     }
   };
 
   const handleConfirmSubmit = async () => {
-    const input: {
-      id: string;
-      reason: string;
-      minecraftUsername?: string;
-      discordId?: string;
-    } = {
+    const input: RouterInput["admin"]["players"]["players"]["update"] = {
       id: player.minecraftUuid,
       reason: reason.trim(),
     };
@@ -115,24 +125,7 @@ export function EditPlayerModal({
       input.discordId = discordId.trim();
     }
 
-    if (!input.minecraftUsername && !input.discordId) {
-      toast.error("No changes to save");
-      return;
-    }
-
     await updatePlayer.mutateAsync(input);
-
-    toast.success("Player updated");
-    setReason("");
-    onClose();
-  };
-
-  const handleCancel = () => {
-    setMinecraftUsername(player.minecraftUsername);
-    setDiscordId(player.discordId);
-    setReason("");
-    setErrors({});
-    onClose();
   };
 
   const getChangesSummary = () => {
@@ -152,7 +145,7 @@ export function EditPlayerModal({
     <>
       <FormDialog
         open={open}
-        onClose={handleCancel}
+        onClose={onClose}
         title="Edit Player"
         description="Update player information. All changes require a reason and will be logged in the audit trail."
         onConfirm={handleReviewChanges}
@@ -170,16 +163,16 @@ export function EditPlayerModal({
             placeholder="Enter Minecraft username"
             value={minecraftUsername}
             onChange={(e) => {
-              setMinecraftUsername(e.target.value);
-              if (errors.minecraftUsername) {
-                setErrors({ ...errors, minecraftUsername: undefined });
-              }
+              update({
+                minecraftUsername: e.target.value,
+                errors: { ...errors, minecraftUsername: undefined },
+              });
             }}
             aria-invalid={!!errors.minecraftUsername}
             disabled={updatePlayer.isPending}
           />
           <FieldDescription>
-            3-16 characters, letters, numbers, and underscores only
+            1-16 characters, letters, numbers, and underscores only
           </FieldDescription>
           {errors.minecraftUsername && (
             <FieldError>{errors.minecraftUsername}</FieldError>
@@ -194,10 +187,10 @@ export function EditPlayerModal({
             placeholder="Enter Discord ID"
             value={discordId}
             onChange={(e) => {
-              setDiscordId(e.target.value);
-              if (errors.discordId) {
-                setErrors({ ...errors, discordId: undefined });
-              }
+              update({
+                discordId: e.target.value,
+                errors: { ...errors, discordId: undefined },
+              });
             }}
             aria-invalid={!!errors.discordId}
             disabled={updatePlayer.isPending}
@@ -214,10 +207,10 @@ export function EditPlayerModal({
             value={reason}
             maxLength={ADMIN_REASON_MAX_LENGTH}
             onChange={(e) => {
-              setReason(e.target.value);
-              if (errors.reason) {
-                setErrors({ ...errors, reason: undefined });
-              }
+              update({
+                reason: e.target.value,
+                errors: { ...errors, reason: undefined },
+              });
             }}
             rows={3}
             aria-invalid={!!errors.reason}
@@ -252,8 +245,8 @@ export function EditPlayerModal({
       </FormDialog>
 
       <ConfirmDialog
-        open={showConfirmDialog}
-        onOpenChange={setShowConfirmDialog}
+        open={draft.confirming}
+        onOpenChange={(confirming) => update({ confirming })}
         title="Confirm Player Update"
         description={
           <>

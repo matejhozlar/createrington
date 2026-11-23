@@ -3,14 +3,11 @@ import { redisService } from "@/services/redis";
 const DEFAULT_MAX_ENTRIES = 5000;
 const SWEEP_SHARE_OF_CAPACITY = 0.1;
 
-/** A store of short-lived string values by key. Every value is written with a time limit. */
 export interface KeyValueStore {
-  /** The value under the key, or `null` when there is none or its time is up. */
   get(key: string): Promise<string | null>;
-  /** The values under the keys in the order asked, `null` where there is none or its time is up. */
   getMany(keys: string[]): Promise<Array<string | null>>;
-  /** Writes the value under the key for `ttlMs` milliseconds, replacing what was there. */
   set(key: string, value: string, ttlMs: number): Promise<void>;
+  delete(keys: string[]): Promise<void>;
 }
 
 /**
@@ -52,6 +49,12 @@ export class MemoryKeyValueStore implements KeyValueStore {
     this.entries.delete(key);
     if (this.entries.size >= this.maxEntries) this.makeRoom();
     this.entries.set(key, { value, expiresAt: Date.now() + ttlMs });
+    return Promise.resolve();
+  }
+
+  /** Drops the values under the keys; a key that holds nothing is skipped. */
+  delete(keys: string[]): Promise<void> {
+    for (const key of keys) this.entries.delete(key);
     return Promise.resolve();
   }
 
@@ -106,6 +109,12 @@ export class RedisKeyValueStore implements KeyValueStore {
     const milliseconds = Math.max(1, Math.ceil(ttlMs));
     await this.redis.sendCommand(["SET", key, value, "PX", `${milliseconds}`]);
   }
+
+  /** Drops the values under the keys in one DEL. */
+  async delete(keys: string[]): Promise<void> {
+    if (keys.length === 0) return;
+    await this.redis.sendCommand(["DEL", ...keys]);
+  }
 }
 
 /**
@@ -157,6 +166,21 @@ export class FallbackKeyValueStore implements KeyValueStore {
       }
     }
     await this.fallback.set(key, value, ttlMs);
+  }
+
+  /** Drops the values under the keys from both stores, so neither answers with one the caller meant to forget. */
+  async delete(keys: string[]): Promise<void> {
+    if (this.isPrimaryUp()) {
+      try {
+        await this.primary.delete(keys);
+      } catch (error) {
+        logger.warn(
+          `Key-value store could not delete ${keys.length} keys from the primary, they stay there until their time is up:`,
+          error,
+        );
+      }
+    }
+    await this.fallback.delete(keys);
   }
 }
 
@@ -235,6 +259,18 @@ export async function writeStored(
     await store.set(key, JSON.stringify(value), ttlMs);
   } catch (error) {
     logger.warn(`Key-value store could not write ${key}:`, error);
+  }
+}
+
+/** Drops the values under the keys. A store that fails is logged and the values stay until their time is up. */
+export async function forgetStored(
+  store: KeyValueStore,
+  keys: string[],
+): Promise<void> {
+  try {
+    await store.delete(keys);
+  } catch (error) {
+    logger.warn(`Key-value store could not delete ${keys.length} keys:`, error);
   }
 }
 

@@ -1,33 +1,12 @@
 import config from "@/config";
 import type { NextFunction, Request, Response } from "express";
-import { ForbiddenError } from "./error-handler";
+import { ForbiddenError } from "@/errors";
 
-/**
- * Allowed Minecraft server IPs
- */
 const ALLOWED_IPS = {
-  development: () => ["127.0.0.1", "::1", "localhost"],
+  development: () => ["127.0.0.1", "::1"],
   production: () => [config.servers.rails.ip],
 };
 
-/**
- * Extract the true client IP for the mod-API allowlist.
- *
- * When the immediate TCP peer is localhost we are terminating behind our own
- * nginx, which unconditionally overwrites `X-Real-IP` with `$remote_addr`.
- * Combined with `real_ip_header CF-Connecting-IP` + the Cloudflare subnet
- * allowlist in nginx, `$remote_addr` has already been rewritten to the true
- * originating client IP before it reaches this header, so `X-Real-IP` on
- * a loopback request is safe to trust.
- *
- * We deliberately ignore `X-Forwarded-For`: nginx uses
- * `$proxy_add_x_forwarded_for` which APPENDS to any XFF the client sent,
- * leaving the leftmost entries attacker-controlled.
- *
- * When the peer is NOT localhost, something other than our nginx is talking
- * to the Node process (e.g. a direct connection from the Minecraft host).
- * In that case we trust only the raw socket peer and ignore all headers.
- */
 function getClientIp(req: Request): string {
   const peer = req.socket.remoteAddress ?? "";
   const normalizedPeer = normalizeIp(peer);
@@ -42,32 +21,14 @@ function getClientIp(req: Request): string {
   return peer || "unknown";
 }
 
-/**
- * Normalize an IP address for comparison, stripping IPv6-mapped IPv4 prefixes
- *
- * @param ip - Raw IP address string
- * @returns Normalized IP address suitable for allowlist comparison
- */
 function normalizeIp(ip: string): string {
   if (ip.startsWith("::ffff:")) {
     return ip.substring(7);
   }
 
-  if (ip === ":1") {
-    return "127.0.0.1";
-  }
-
   return ip;
 }
 
-/**
- * Verify request is from an allowed Minecraft server IP
- *
- * Checks request IP against environment-specific whitelist
- * Supports both development and production environments
- *
- * @throws {ForbiddenError} If IP is not in the allowed list
- */
 export const verifyServerIP = (
   req: Request,
   res: Response,
@@ -110,29 +71,15 @@ export const verifyServerIP = (
 
 function inspectPeer(req: Request) {
   const peer = normalizeIp(req.socket.remoteAddress ?? "");
-  // Reject anything that traversed a reverse proxy: nginx always shows as
-  // 127.0.0.1 to Node, so the X-Forwarded-For header is the only signal
-  // that distinguishes a public hit from an in-process loopback caller.
   const proxied = req.headers["x-forwarded-for"] !== undefined;
   const isLoopback = (peer === "127.0.0.1" || peer === "::1") && !proxied;
   return { peer, proxied, isLoopback };
 }
 
-/**
- * True when the request comes from an in-process caller (PuppeteerService)
- * over loopback, not through the reverse proxy. Ignores forwarded-for
- * headers on purpose.
- */
 export function isLoopbackRequest(req: Request): boolean {
   return inspectPeer(req).isLoopback;
 }
 
-/**
- * Reject any request whose TCP peer is not a loopback address. Used by
- * in-process internal routes (e.g. /api/render/*) whose only legitimate
- * caller runs in the same Node process, so off-host traffic should never
- * reach them even if the shared secret leaks.
- */
 export const requireLoopback = (
   req: Request,
   _res: Response,

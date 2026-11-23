@@ -1,17 +1,12 @@
 import { Q } from "@/db";
-import type {
-  CurseforgeProject,
-  CurseforgeProjectCreate,
-} from "@createrington/shared/db";
+import type { CurseforgeProjectCreate } from "@createrington/shared/db";
 import {
   classEnvironmentHint,
-  getMod,
   getMods,
   type CurseForgeEnvironmentHint,
   type CurseForgeProjectData,
 } from "./mods";
 
-// CurseForge reports int64 counters; the column is int4
 const INT4_MAX = 2_147_483_647;
 
 function environmentHintFor(
@@ -118,22 +113,16 @@ async function applyEnvironmentHints(
   }
 }
 
-/**
- * Fetch a project from CurseForge and upsert its snapshot into the cache.
- * Returns both the stored entity and the live API data (for validation that
- * needs file indexes).
- */
-export async function ingestProject(
-  projectId: number,
-): Promise<{ entity: CurseforgeProject; data: CurseForgeProjectData }> {
-  const data = await getMod(projectId);
-  const entity = await Q.curseforge.project.upsert(
-    toCreate(data),
-    "id",
-    UPDATE_FIELDS,
-  );
-  await applyEnvironmentHints([data]);
-  return { entity, data };
+async function cacheProjects(
+  projectIds: number[],
+  accept: (project: CurseForgeProjectData) => boolean = () => true,
+): Promise<CurseForgeProjectData[]> {
+  if (projectIds.length === 0) return [];
+
+  const projects = (await getMods(projectIds)).filter(accept);
+  await upsertSnapshots(projects);
+  await applyEnvironmentHints(projects);
+  return projects;
 }
 
 /**
@@ -143,11 +132,7 @@ export async function ingestProject(
 export async function ingestProjects(
   projectIds: number[],
 ): Promise<Map<number, CurseForgeProjectData>> {
-  if (projectIds.length === 0) return new Map();
-
-  const projects = await getMods(projectIds);
-  await upsertSnapshots(projects);
-  await applyEnvironmentHints(projects);
+  const projects = await cacheProjects(projectIds);
   return new Map(projects.map((data) => [data.id, data]));
 }
 
@@ -156,12 +141,7 @@ export async function ingestProjects(
  * refresh of the projects in active workshops.
  */
 export async function refreshProjects(projectIds: number[]): Promise<number> {
-  if (projectIds.length === 0) return 0;
-
-  const projects = await getMods(projectIds);
-  await upsertSnapshots(projects);
-  await applyEnvironmentHints(projects);
-  return projects.length;
+  return (await cacheProjects(projectIds)).length;
 }
 
 /**
@@ -173,10 +153,5 @@ export async function ingestProjectsWhere(
   projectIds: number[],
   accept: (project: CurseForgeProjectData) => boolean,
 ): Promise<number> {
-  if (projectIds.length === 0) return 0;
-
-  const projects = (await getMods(projectIds)).filter(accept);
-  await upsertSnapshots(projects);
-  await applyEnvironmentHints(projects);
-  return projects.length;
+  return (await cacheProjects(projectIds, accept)).length;
 }

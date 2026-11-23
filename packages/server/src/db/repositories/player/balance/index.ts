@@ -1,4 +1,5 @@
-import { Q, balanceRepo } from "@/db";
+import { Q } from "@/db/pool";
+import type { BalanceRepository } from "../../balance";
 import { BasePlayerRepository } from "../base";
 
 /**
@@ -8,7 +9,7 @@ import { BasePlayerRepository } from "../base";
  * BalanceRepository directly.
  */
 export class PlayerBalanceRepository extends BasePlayerRepository {
-  constructor() {
+  constructor(private readonly balance: BalanceRepository) {
     super();
   }
 
@@ -49,14 +50,14 @@ export class PlayerBalanceRepository extends BasePlayerRepository {
       try {
         const newBalance =
           amount >= 0
-            ? await balanceRepo.adminGrant(
+            ? await this.balance.adminGrant(
                 uuid,
                 amount,
                 adminDiscordId,
                 adminUsername,
                 reason,
               )
-            : await balanceRepo.adminDeduct(
+            : await this.balance.adminDeduct(
                 uuid,
                 Math.abs(amount),
                 adminDiscordId,

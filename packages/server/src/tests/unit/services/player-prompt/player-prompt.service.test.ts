@@ -21,7 +21,7 @@ let upsertCalls: Array<{ responseText: string }>;
 let raceOnAppend: StoredEntry | null;
 let promptDeleteCalls: number[];
 let messageDeleteCalls: Array<{ channelId: string; messageId: string }>;
-let messageDeleteResult: { success: boolean; error?: string };
+let messageDeleteFailure: Error | null;
 let promptFindCalls: number;
 let promptUpdateCalls: Array<{ id: number } & Partial<PlayerPrompt>>;
 let activePrompts: PlayerPrompt[];
@@ -86,7 +86,7 @@ vi.mock("@/db", () => {
             promptFindCalls += 1;
             return prompt;
           },
-          findAllActive: async () => activePrompts,
+          getActive: async () => activePrompts,
           update: async (
             identifier: { id: number },
             data: Partial<PlayerPrompt>,
@@ -108,17 +108,18 @@ vi.mock("@/db", () => {
 
 import { PlayerPromptService } from "@/services/player-prompt/player-prompt.service";
 import type { DiscordMessageService } from "@/services/discord/message/message.service";
+import { MessageGoneError } from "@/services/discord/message/errors";
 
 function makeService(messageService: Partial<DiscordMessageService> = {}) {
   return new PlayerPromptService(messageService as DiscordMessageService);
 }
 
-/** Records every message delete and replies with `messageDeleteResult`. */
+/** Records every message delete and fails with `messageDeleteFailure` when set. */
 function recordingMessageService(): Partial<DiscordMessageService> {
   return {
     delete: async (options: { channelId: string; messageId: string }) => {
       messageDeleteCalls.push(options);
-      return messageDeleteResult;
+      if (messageDeleteFailure) throw messageDeleteFailure;
     },
   };
 }
@@ -163,7 +164,7 @@ beforeEach(() => {
   raceOnAppend = null;
   promptDeleteCalls = [];
   messageDeleteCalls = [];
-  messageDeleteResult = { success: true };
+  messageDeleteFailure = null;
   promptFindCalls = 0;
   promptUpdateCalls = [];
   activePrompts = [];
@@ -305,8 +306,9 @@ describe("PlayerPromptService.submitResponse", () => {
       responseText: "last one",
     });
 
-    expect(message).toContain("That was your last entry");
-    expect(message).not.toContain("entries left");
+    expect(message).toBe(
+      "Entry #2 recorded. That was your last entry on this prompt.",
+    );
   });
 
   it("points at the next allowed time when a cooldown is configured", async () => {
@@ -426,7 +428,7 @@ describe("PlayerPromptService.deletePrompt", () => {
 
   it("still drops the row when the Discord message can't be removed", async () => {
     setPrompt();
-    messageDeleteResult = { success: false, error: "Message not found" };
+    messageDeleteFailure = new MessageGoneError("channel-1", "message-1");
 
     const deleted = await makeService(recordingMessageService()).deletePrompt(
       1,

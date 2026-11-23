@@ -4,16 +4,14 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { FormDialog } from "@/components/form-dialog";
 import { useToastActions } from "@/hooks/use-toast";
-import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { trpc, queryClient } from "@/lib/trpc";
-import type { RemoveTarget } from "../types";
+import type {
+  RemoveTarget,
+  StructurePackMod,
+} from "@/features/admin/structure-packs/structure-pack-detail/types";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Spinner } from "@/components/ui/spinner";
-
-interface PackMod {
-  id: number;
-  curseforgeModId: number;
-}
+import { pluralize } from "@/lib/format";
 
 export function RemoveModDialog({
   target,
@@ -21,11 +19,10 @@ export function RemoveModDialog({
   packId,
   packMods,
 }: {
-  /** The mod to remove, or null to keep the dialog closed */
   target: RemoveTarget | null;
   onOpenChange: (open: boolean) => void;
   packId: number;
-  packMods: PackMod[];
+  packMods: Pick<StructurePackMod, "id" | "curseforgeModId" | "modName">[];
 }) {
   const toast = useToastActions();
 
@@ -34,7 +31,7 @@ export function RemoveModDialog({
   const [removingBatch, setRemovingBatch] = useState(false);
 
   const checkRemoveDepsQuery = useQuery(
-    trpc.admin.structurePacks.checkRemoveDeps.queryOptions(
+    trpc.admin.structurePacks.mods.checkDeleteDeps.queryOptions(
       { packId, modId: target?.modId ?? 0 },
       { enabled: target !== null },
     ),
@@ -51,18 +48,16 @@ export function RemoveModDialog({
   const selectedRemoveDeps = removeDepOverrides ?? defaultRemoveSelection;
 
   const removeModMutation = useMutation(
-    trpc.admin.structurePacks.removeMod.mutationOptions(
-      useMutationToast({
-        onSuccess: () => {
-          void queryClient.invalidateQueries(
-            trpc.admin.structurePacks.get.queryFilter({ id: packId }),
-          );
-          void queryClient.invalidateQueries(
-            trpc.admin.structurePacks.list.pathFilter(),
-          );
-        },
-      }),
-    ),
+    trpc.admin.structurePacks.mods.delete.mutationOptions({
+      onSuccess: () => {
+        void queryClient.invalidateQueries(
+          trpc.admin.structurePacks.get.queryFilter({ id: packId }),
+        );
+        void queryClient.invalidateQueries(
+          trpc.admin.structurePacks.list.pathFilter(),
+        );
+      },
+    }),
   );
 
   const handleClose = () => {
@@ -71,36 +66,45 @@ export function RemoveModDialog({
     onOpenChange(false);
   };
 
-  /**
-   * Removes the targeted mod and any checked safe dependencies from the pack.
-   *
-   * Dependencies are removed first so the target mod's removal doesn't cause
-   * constraint issues. Failures on individual dep removals are swallowed.
-   */
   const handleBatchRemove = async () => {
     if (!target) return;
     setRemovingBatch(true);
     try {
-      for (const depModId of selectedRemoveDeps) {
-        const packMod = packMods.find((m) => m.curseforgeModId === depModId);
-        if (!packMod) continue;
+      const deps = packMods.filter((m) =>
+        selectedRemoveDeps.has(m.curseforgeModId),
+      );
+      const failures: string[] = [];
+      for (const dep of deps) {
         try {
-          await removeModMutation.mutateAsync({
-            packId,
-            modId: packMod.id,
-          });
-        } catch {
-          // Swallow individual dep failures so other removals still run
+          await removeModMutation.mutateAsync({ packId, modId: dep.id });
+        } catch (error) {
+          failures.push(
+            `${dep.modName}: ${error instanceof Error ? error.message : "Failed to remove mod"}`,
+          );
         }
       }
 
-      await removeModMutation.mutateAsync({
-        packId,
-        modId: target.modId,
-      });
+      try {
+        await removeModMutation.mutateAsync({ packId, modId: target.modId });
+      } catch (error) {
+        failures.push(
+          `${target.modName}: ${error instanceof Error ? error.message : "Failed to remove mod"}`,
+        );
+      }
 
-      const count = 1 + selectedRemoveDeps.size;
-      toast.success(`Removed ${count} mod${count !== 1 ? "s" : ""} from pack`);
+      const total = 1 + deps.length;
+      const removed = total - failures.length;
+      if (failures.length === 0) {
+        toast.success(`Removed ${pluralize(total, "mod")} from pack`);
+      } else if (removed === 0) {
+        toast.error(failures.join("; "));
+        return;
+      } else {
+        toast.warning(
+          failures.join("; "),
+          `Removed ${removed} of ${total} mods`,
+        );
+      }
       setRemoveDepOverrides(null);
       onOpenChange(false);
     } finally {
@@ -130,7 +134,6 @@ export function RemoveModDialog({
       contentClassName="sm:max-w-lg"
     >
       <div className="max-h-80 space-y-2 overflow-y-auto">
-        {/* Target mod, always removed */}
         <div className="flex items-center gap-3 rounded-md border border-destructive/50 bg-destructive/5 p-3 text-sm">
           <Trash2 className="size-4 shrink-0 text-destructive" />
           <div className="min-w-0 flex-1">
@@ -141,7 +144,6 @@ export function RemoveModDialog({
           </div>
         </div>
 
-        {/* Dependents warning: other pack mods that need this mod */}
         {checkRemoveDepsQuery.data &&
           checkRemoveDepsQuery.data.dependents.length > 0 && (
             <div className="flex items-start gap-3 rounded-md border border-yellow-500/50 bg-yellow-500/5 p-3 text-sm">

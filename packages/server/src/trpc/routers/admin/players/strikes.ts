@@ -3,11 +3,11 @@ import {
   ADMIN_REASON_MAX_LENGTH,
   STRIKE_DESCRIPTION_MAX_LENGTH,
 } from "@createrington/shared/admin-reason";
+import { STRIKE_CLASSIFICATIONS } from "@createrington/shared/strike";
 import { router, adminProcedure } from "@/trpc/trpc";
-import { playerService } from "@/services/player";
-import { parsePlayerId } from "@/trpc/utils";
+import { playerStrikeRepo } from "@/db";
+import { id, playerId } from "@/trpc/utils";
 
-/** Admin strikes router: list, issue, and remove player strikes. */
 export const strikesRouter = router({
   list: adminProcedure
     .meta({
@@ -16,16 +16,16 @@ export const strikesRouter = router({
     })
     .input(
       z.object({
-        id: z.string().min(1),
+        id: playerId(),
         activeOnly: z.boolean().optional(),
       }),
     )
     .query(async ({ input }) => {
-      const identifier = parsePlayerId(input.id);
-
       const [strikes, statistics] = await Promise.all([
-        playerService.strikes.get(identifier, input.activeOnly),
-        playerService.strikes.getStatistics(identifier),
+        playerStrikeRepo.getHistory(input.id, {
+          includeRemoved: !input.activeOnly,
+        }),
+        playerStrikeRepo.getStatistics(input.id),
       ]);
 
       return { strikes, statistics };
@@ -35,18 +35,8 @@ export const strikesRouter = router({
     .meta({ description: "Issue a strike to a player" })
     .input(
       z.object({
-        id: z.string().min(1),
-        classification: z.enum([
-          "pvp",
-          "theft",
-          "griefing",
-          "laggy_machines",
-          "inappropriate_chat",
-          "harassment",
-          "exploiting",
-          "rule_violation",
-          "other",
-        ]),
+        id: playerId(),
+        classification: z.enum(STRIKE_CLASSIFICATIONS),
         description: z
           .string()
           .min(1, "Description is required")
@@ -58,7 +48,7 @@ export const strikesRouter = router({
           z.literal(4),
           z.literal(5),
         ]),
-        serverId: z.number().int().positive().optional(),
+        serverId: id().optional(),
         metadata: z
           .record(
             z.string(),
@@ -68,10 +58,8 @@ export const strikesRouter = router({
       }),
     )
     .mutation(async ({ input, ctx }) => {
-      const identifier = parsePlayerId(input.id);
-
-      const strike = await playerService.strikes.issue(
-        identifier,
+      const strike = await playerStrikeRepo.issue(
+        input.id,
         {
           classification: input.classification,
           description: input.description,
@@ -86,12 +74,12 @@ export const strikesRouter = router({
       return { strike };
     }),
 
-  remove: adminProcedure
+  delete: adminProcedure
     .meta({ description: "Remove/pardon a strike from a player" })
     .input(
       z.object({
         id: z.string().min(1),
-        strikeId: z.number().int().positive(),
+        strikeId: id(),
         reason: z
           .string()
           .min(1, "Reason is required")
@@ -99,7 +87,7 @@ export const strikesRouter = router({
       }),
     )
     .mutation(async ({ input, ctx }) => {
-      const strike = await playerService.strikes.remove(
+      const strike = await playerStrikeRepo.remove(
         input.strikeId,
         ctx.user.discordId,
         ctx.user.minecraftUsername,

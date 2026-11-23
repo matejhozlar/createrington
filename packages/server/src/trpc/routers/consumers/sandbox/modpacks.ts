@@ -5,7 +5,7 @@ import {
   sandboxServiceProcedure,
   launcherAvailable,
 } from "@/trpc/trpc";
-import { id, rethrowTrpc } from "@/trpc/utils";
+import { id } from "@/trpc/utils";
 import { modpackService } from "@/services/modpack/modpack.service";
 import { modpackPublishService } from "@/services/modpack/publish.service";
 import type { ModpackModListItem } from "@/services/modpack/modpack.service";
@@ -97,7 +97,6 @@ function toSandboxPackMod(item: ModpackModListItem): SandboxPackMod {
   };
 }
 
-/** Sandbox consumer modpacks router: what main says is in the published pack. */
 export const sandboxModpacksRouter = router({
   listMods: adminProcedure
     .meta({
@@ -106,14 +105,10 @@ export const sandboxModpacksRouter = router({
     })
     .input(z.object({ modpackId: id() }))
     .query(async ({ input }) => {
-      try {
-        const items = await modpackService.getPackMods(input.modpackId, {
-          liveOnly: true,
-        });
-        return { mods: items.map(toSandboxPackMod) };
-      } catch (error) {
-        rethrowTrpc(error);
-      }
+      const items = await modpackService.getPackMods(input.modpackId, {
+        liveOnly: true,
+      });
+      return { mods: items.map(toSandboxPackMod) };
     }),
 
   recordPublish: sandboxServiceProcedure
@@ -130,16 +125,12 @@ export const sandboxModpacksRouter = router({
       }),
     )
     .mutation(async ({ input }) => {
-      try {
-        const result = await modpackPublishService.recordPublish(input);
-        return {
-          ingested: result.ingested,
-          error: result.error,
-          publish: toSandboxModpackPublish(result.publish),
-        };
-      } catch (error) {
-        rethrowTrpc(error);
-      }
+      const result = await modpackPublishService.recordPublish(input);
+      return {
+        ingested: result.ingested,
+        error: result.error,
+        publish: toSandboxModpackPublish(result.publish),
+      };
     }),
 
   recordSnapshot: sandboxServiceProcedure
@@ -177,20 +168,16 @@ export const sandboxModpacksRouter = router({
       }),
     )
     .mutation(async ({ input }) => {
-      try {
-        const result = await modpackPublishService.recordSnapshot(input);
-        return {
-          ready: result.ready,
-          error: result.error,
-          release: {
-            id: result.release.id,
-            snapshotId: result.release.curseforgeFileId,
-            version: result.release.version,
-            readyAt: result.release.launcherReadyAt?.toISOString() ?? null,
-          },
-        };
-      } catch (error) {
-        rethrowTrpc(error);
-      }
+      const result = await modpackPublishService.recordSnapshot(input);
+      return {
+        ready: result.ready,
+        error: result.error,
+        release: {
+          id: result.release.id,
+          snapshotId: result.release.curseforgeFileId,
+          version: result.release.version,
+          readyAt: result.release.launcherReadyAt?.toISOString() ?? null,
+        },
+      };
     }),
 });

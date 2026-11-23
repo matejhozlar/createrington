@@ -17,6 +17,10 @@ import {
   ChatInputCommandInteraction,
   SlashCommandBuilder,
 } from "discord.js";
+import type {
+  CommandCooldown,
+  CommandModule,
+} from "@/discord/bots/common/loaders/command-loader";
 
 const CATEGORY_CHOICES = [
   { name: "Mined (blocks)", value: "minecraft:mined" },
@@ -30,11 +34,7 @@ const CATEGORY_CHOICES = [
   { name: "Custom (misc stats)", value: "minecraft:custom" },
 ];
 
-/**
- * Slash command definition for the top command
- * Shows top 3 players for a given Minecraft stat
- */
-export const data = new SlashCommandBuilder()
+const data = new SlashCommandBuilder()
   .setName("top")
   .setDescription("Show top 3 players for a Minecraft stat")
   .addStringOption((opt) =>
@@ -52,23 +52,19 @@ export const data = new SlashCommandBuilder()
       .setAutocomplete(true),
   );
 
-export const cooldown = {
+const cooldown: CommandCooldown = {
   duration: 5,
   type: CooldownType.USER,
   message: "Please wait before checking stats again!",
 };
 
-/**
- * Handles autocomplete for the item option
- * Searches stat items that have data in the chosen category
- */
-export async function autocomplete(
+async function autocomplete(
   interaction: AutocompleteInteraction,
 ): Promise<void> {
   const category = CATEGORY_CHOICES.find(
     (choice) => choice.value === interaction.options.getString("category"),
   )?.value;
-  const results = await Q.player.minecraft.stat.key.searchItems(
+  const results = await Q.player.minecraft.stat.key.getMatchingItems(
     interaction.options.getFocused(),
     { category, limit: 25 },
   );
@@ -81,87 +77,80 @@ export async function autocomplete(
   );
 }
 
-/**
- * Executes the top command to generate a leaderboard card
- */
-export async function execute(
+async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
   const category = interaction.options.getString("category", true);
   let item = interaction.options.getString("item", true).trim().toLowerCase();
 
-  // Normalize: add minecraft: prefix if missing and no namespace present
   if (!item.includes(":")) {
     item = `minecraft:${item.replace(/\s+/g, "_")}`;
   }
 
   await interaction.deferReply();
 
-  try {
-    // Verify the stat actually has data
-    const results = await Q.player.minecraft.stat.total.compareItem(
-      item,
-      [category],
-      { limit: 3 },
-    );
+  const results = await Q.player.minecraft.stat.total.getItemComparison(
+    item,
+    [category],
+    { limit: 3 },
+  );
 
-    if (results.length === 0) {
-      await replyError(
-        interaction,
-        "No Data",
-        `No players found with stats for **${item}** in **${category}**.`,
-      );
-      return;
-    }
-
-    const screenshotBuffer = await renderScreenshot("top", { category, item });
-
-    const itemName = formatStatItem(category, item);
-    const links = new ActionRowBuilder<ButtonBuilder>().addComponents(
-      ButtonPresets.links.leaderboard({ category, item }),
-    );
-
-    if (screenshotBuffer) {
-      const safeName = item.replace(/[^a-zA-Z0-9]/g, "_");
-      const attachment = new AttachmentBuilder(screenshotBuffer, {
-        name: `top_${safeName}.png`,
-      });
-
-      const embed = EmbedPresets.info(`Top ${itemName}`).image(
-        `attachment://top_${safeName}.png`,
-      );
-
-      await interaction.editReply({
-        embeds: [embed.build()],
-        files: [attachment],
-        components: [links],
-      });
-    } else {
-      // Text fallback
-      const medals = ["🥇", "🥈", "🥉"];
-      const leaderboard = results
-        .map(
-          (r, i) =>
-            `${medals[i]} **${r.minecraftUsername}** - ${formatStatValue(category, item, r.values[0])}`,
-        )
-        .join("\n");
-
-      const embed = EmbedPresets.info(`Top ${itemName}`).field(
-        formatStatCategory(category),
-        leaderboard,
-        false,
-      );
-
-      await interaction.editReply({
-        embeds: [embed.build()],
-        components: [links],
-      });
-    }
-  } catch {
+  if (results.length === 0) {
     await replyError(
       interaction,
-      "Leaderboard Error",
-      "Could not fetch stat data.",
+      "No Data",
+      `No players found with stats for **${item}** in **${category}**.`,
     );
+    return;
+  }
+
+  const screenshotBuffer = await renderScreenshot("top", { category, item });
+
+  const itemName = formatStatItem(category, item);
+  const links = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    ButtonPresets.links.leaderboard({ category, item }),
+  );
+
+  if (screenshotBuffer) {
+    const safeName = item.replace(/[^a-zA-Z0-9]/g, "_");
+    const attachment = new AttachmentBuilder(screenshotBuffer, {
+      name: `top_${safeName}.png`,
+    });
+
+    const embed = EmbedPresets.info(`Top ${itemName}`).image(
+      `attachment://top_${safeName}.png`,
+    );
+
+    await interaction.editReply({
+      embeds: [embed.build()],
+      files: [attachment],
+      components: [links],
+    });
+  } else {
+    const medals = ["🥇", "🥈", "🥉"];
+    const leaderboard = results
+      .map(
+        (r, i) =>
+          `${medals[i]} **${r.minecraftUsername}** - ${formatStatValue(category, item, r.values[0])}`,
+      )
+      .join("\n");
+
+    const embed = EmbedPresets.info(`Top ${itemName}`).field(
+      formatStatCategory(category),
+      leaderboard,
+      false,
+    );
+
+    await interaction.editReply({
+      embeds: [embed.build()],
+      components: [links],
+    });
   }
 }
+
+export default {
+  data,
+  cooldown,
+  autocomplete,
+  execute,
+} satisfies CommandModule;

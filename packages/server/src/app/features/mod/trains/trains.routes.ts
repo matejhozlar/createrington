@@ -1,20 +1,24 @@
-import { customRoute, verifyModJWT, verifyServerIP } from "@/app/middleware";
+import {
+  route,
+  validate,
+  verifyModJWT,
+  verifyServerIP,
+} from "@/app/middleware";
 import { Router } from "express";
 import { TrainsController } from "./trains.controller";
+import { TrainCrashBodySchema } from "./trains.schemas";
 
 const router = Router();
 
-/**
- * Train routes
- * Base path: /api/trains
- *
- * These endpoints are called by the Minecraft mod to report train events.
- */
-
-// POST /api/trains/crash: report a train crash
 router.post(
   "/crash",
-  ...customRoute([verifyServerIP, verifyModJWT], TrainsController.reportCrash),
+  ...route(
+    "public",
+    verifyServerIP,
+    verifyModJWT,
+    validate({ body: TrainCrashBodySchema }),
+    TrainsController.reportCrash,
+  ),
 );
 
 export default router;

@@ -16,7 +16,7 @@ vi.mock("@/services/mc-server/file-ops", () => ({
 }));
 vi.mock("@/db", () => ({ Q: { player: { getWhitelistEntries } } }));
 vi.mock("@/utils/rcon", () => ({
-  MinecraftRconManager: { getInstance: () => rcon },
+  minecraftRcon: rcon,
   WhitelistAction: { RELOAD: "reload" },
 }));
 

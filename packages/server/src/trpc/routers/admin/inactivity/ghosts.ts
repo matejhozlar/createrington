@@ -4,25 +4,16 @@ import { Q } from "@/db";
 import {
   buildPagination,
   paginationInput,
-  rethrowTrpc,
   trpcError,
   auditActor,
 } from "@/trpc/utils";
 import config from "@/config";
 import { discordId } from "@/utils/zod-schemas";
-import { getService, getServiceSync, Services } from "@/services";
+import { getService, Services } from "@/services";
 import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
-import { DiscordMessageService } from "@/services/discord/message/message.service";
 import type { GhostMemberService } from "@/services/discord/cleanup/ghost/ghost-member.service";
 
-/**
- * True when the inactivity cleanup service is registered and safe to
- * mutate against, i.e. we're running on the real production deployment.
- *
- * Mirrors the gate used by the inactivity removeManual procedure so the
- * ghost-removal action has the same destructive-action policy.
- */
 function isManualActionsEnabled(): boolean {
   return config.envMode.isProductionDeployment;
 }
@@ -35,13 +26,6 @@ async function getGhostService(): Promise<GhostMemberService> {
   }
 }
 
-/**
- * Admin sub-router for the "Members Missing from Discord" tool.
- *
- * The list is an in-memory cache populated only by explicit refresh
- * (no auto-runs, no persistence). The destructive remove action is
- * gated to the real prod deployment, matching the inactivity tool.
- */
 export const ghostsRouter = router({
   capabilities: adminProcedure
     .meta({
@@ -111,7 +95,7 @@ export const ghostsRouter = router({
       return service.verify(input.discordId);
     }),
 
-  remove: adminProcedure
+  delete: adminProcedure
     .meta({
       description:
         "Remove a ghost member: re-verify, RCON whitelist remove on all servers, delete player record",
@@ -126,16 +110,11 @@ export const ghostsRouter = router({
 
       const service = await getGhostService();
 
-      let result: { minecraftUuid: string; minecraftUsername: string };
-      try {
-        result = await service.remove(input.discordId, {
-          type: "admin",
-          discordId: ctx.user.discordId,
-          username: ctx.user.minecraftUsername,
-        });
-      } catch (error) {
-        rethrowTrpc(error);
-      }
+      const result = await service.remove(input.discordId, {
+        type: "admin",
+        discordId: ctx.user.discordId,
+        username: ctx.user.minecraftUsername,
+      });
 
       try {
         const embed = EmbedPresets.ghost.adminRemoval({
@@ -150,10 +129,7 @@ export const ghostsRouter = router({
           removedAt: new Date(),
         });
 
-        const mainBot = getServiceSync(Services.DISCORD_MAIN_BOT);
-        const messageService = DiscordMessageService.getInstance(mainBot);
-
-        await messageService.send({
+        await Discord.Messages.send({
           channelId: Discord.Channels.administration.NOTIFICATIONS,
           embeds: embed.build(),
         });
@@ -171,7 +147,5 @@ export const ghostsRouter = router({
         targetPlayerUuid: result.minecraftUuid,
         targetPlayerName: result.minecraftUsername,
       });
-
-      return { message: "Ghost member removed" };
     }),
 });

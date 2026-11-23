@@ -8,61 +8,30 @@ import {
   vi,
 } from "vitest";
 
-vi.mock("@/services/workshop/discord", () => ({
-  discordThreadUrl: vi.fn(
-    (threadId: string) => `https://discord.com/channels/0/${threadId}`,
-  ),
-  listForumChannels: vi.fn(async () => []),
-  assertForumChannel: vi.fn(async () => undefined),
-  announceSuggestion: vi.fn(async () => undefined),
-  announceReview: vi.fn(async () => undefined),
-  announcePulledDependencies: vi.fn(async () => undefined),
-  announceRemoval: vi.fn(async () => undefined),
-  healThreads: vi.fn(async () => undefined),
-}));
-
-vi.mock("@/services/curseforge/mods", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("@/services/curseforge/mods")>();
-  return {
-    ...actual,
-    getMod: vi.fn(async () => {
-      throw new Error("getMod must not be called in this suite");
-    }),
-    getMods: vi.fn(async () => []),
-    searchMods: vi.fn(async () => []),
-  };
-});
-vi.mock("@/services/curseforge/files", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("@/services/curseforge/files")>();
-  return {
-    ...actual,
-    getFilesDependencies: vi.fn(async () => []),
-    getFilesDetails: vi.fn(async () => []),
-  };
-});
-vi.mock("@/services/curseforge/modpack-manifest", async (importOriginal) => {
-  const actual =
-    await importOriginal<
-      typeof import("@/services/curseforge/modpack-manifest")
-    >();
-  return {
-    ...actual,
-    getModpackModIds: vi.fn(async () => new Set<number>()),
-  };
-});
-
-vi.mock("@/services/curseforge/ingest", () => ({
-  ingestProject: vi.fn(),
-  ingestProjects: vi.fn(),
-  refreshProjects: vi.fn(async () => 0),
-}));
+vi.mock("@/services/workshop/discord", async () =>
+  (
+    await import("@/tests/helpers/mocks/workshop-discord")
+  ).workshopDiscordMock(),
+);
+vi.mock("@/services/curseforge/mods", async () =>
+  (await import("@/tests/helpers/mocks/curseforge")).curseforgeMocks.mods(),
+);
+vi.mock("@/services/curseforge/files", async () =>
+  (await import("@/tests/helpers/mocks/curseforge")).curseforgeMocks.files(),
+);
+vi.mock("@/services/modpack/manifest", async () =>
+  (
+    await import("@/tests/helpers/mocks/curseforge")
+  ).curseforgeMocks.modpackManifest(),
+);
+vi.mock("@/services/curseforge/ingest", async () =>
+  (await import("@/tests/helpers/mocks/curseforge")).curseforgeMocks.ingest(),
+);
 
 import pool, { Q } from "@/db";
-import { BadRequestError, ConflictError } from "@/app/middleware/error-handler";
+import { BadRequestError, ConflictError } from "@/errors";
 import { workshopAdminService } from "@/services/workshop/admin.service";
-import { ingestProject, ingestProjects } from "@/services/curseforge/ingest";
+import { ingestProjects } from "@/services/curseforge/ingest";
 import {
   createWorkshopTestContext,
   cleanupWorkshopTestContext,
@@ -82,10 +51,6 @@ const ctx = createWorkshopTestContext(990_000_000);
 
 beforeAll(async () => {
   await pool.query("SELECT 1");
-  vi.mocked(ingestProject).mockImplementation(async (projectId: number) => ({
-    entity: await Q.curseforge.project.get({ id: projectId }),
-    data: makeProjectData(projectId),
-  }));
   vi.mocked(ingestProjects).mockImplementation(
     async (projectIds: number[]) =>
       new Map(projectIds.map((id) => [id, makeProjectData(id)])),

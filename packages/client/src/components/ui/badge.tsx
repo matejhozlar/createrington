@@ -124,4 +124,11 @@ function IconBadge({
   );
 }
 
-export { Badge, badgeVariants, type BadgeTone, IconBadge, iconBadgeVariants };
+export {
+  Badge,
+  badgeVariants,
+  badgeToneVariants,
+  type BadgeTone,
+  IconBadge,
+  iconBadgeVariants,
+};

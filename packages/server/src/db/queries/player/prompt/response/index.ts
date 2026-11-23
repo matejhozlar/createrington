@@ -1,7 +1,10 @@
 import type { Pool, PoolClient } from "pg";
 import { PlayerPromptResponseBaseQueries } from "@/generated/db/player_prompt_response.queries";
 import { UniqueViolationError, translateDbError } from "@/db/utils/errors";
-import type { PlayerPromptResponse } from "@createrington/shared/db/player_prompt_response.types";
+import type {
+  PlayerPromptResponse,
+  PlayerPromptResponseRow,
+} from "@createrington/shared/db/player_prompt_response.types";
 
 /**
  * Response joined with the responder's player row (when linked). The
@@ -69,12 +72,11 @@ export class PlayerPromptResponseQueries extends PlayerPromptResponseBaseQueries
         updated_at = NOW()
       RETURNING *`;
 
-    const result = await this.runQuery("upsert prompt response", query, [
-      data.promptId,
-      data.discordId,
-      data.minecraftUuid,
-      data.responseText,
-    ]);
+    const result = await this.runQuery<PlayerPromptResponseRow>(
+      "upsert prompt response",
+      query,
+      [data.promptId, data.discordId, data.minecraftUuid, data.responseText],
+    );
     return this.mapRowToEntity(result.rows[0]);
   }
 
@@ -126,7 +128,10 @@ export class PlayerPromptResponseQueries extends PlayerPromptResponseBaseQueries
 
     for (let attempt = 1; ; attempt++) {
       try {
-        const result = await this.db.query(query, params);
+        const result = await this.db.query<PlayerPromptResponseRow>(
+          query,
+          params,
+        );
         return result.rows.length ? this.mapRowToEntity(result.rows[0]) : null;
       } catch (error) {
         const translated = translateDbError(error);
@@ -145,7 +150,7 @@ export class PlayerPromptResponseQueries extends PlayerPromptResponseBaseQueries
    * All responses for a prompt with the responder's Minecraft username
    * attached when linked. Ordered newest-first for the admin detail view.
    */
-  async findByPromptIdWithPlayer(
+  async getByPromptIdWithPlayer(
     promptId: number,
   ): Promise<PlayerPromptResponseWithPlayer[]> {
     // Order by whichever of submitted_at / updated_at is newer so a
@@ -160,12 +165,11 @@ export class PlayerPromptResponseQueries extends PlayerPromptResponseBaseQueries
       ORDER BY GREATEST(r.submitted_at, r.updated_at) DESC`;
 
     const result = await this.runQuery<
-      Record<string, unknown> & { minecraft_username: string | null }
+      PlayerPromptResponseRow & { minecraft_username: string | null }
     >("find responses with player", query, [promptId]);
-    return result.rows.map((row) => ({
-      ...this.mapRowToEntity(row as never),
-      minecraftUsername: row.minecraft_username,
-    }));
+    return this.mapRowsToEntities<
+      PlayerPromptResponseRow & { minecraft_username: string | null }
+    >(result.rows);
   }
 
   /**
@@ -182,7 +186,7 @@ export class PlayerPromptResponseQueries extends PlayerPromptResponseBaseQueries
       WHERE prompt_id = $1 AND discord_id = $2
       ORDER BY entry_number DESC
       LIMIT 1`;
-    const result = await this.runQuery(
+    const result = await this.runQuery<PlayerPromptResponseRow>(
       "find latest response by prompt+discord",
       query,
       [promptId, discordId],
@@ -209,12 +213,7 @@ export class PlayerPromptResponseQueries extends PlayerPromptResponseBaseQueries
       last_submitted_at: Date | null;
     }>("get prompt entry stats", query, [promptId, discordId]);
 
-    const row = result.rows[0];
-    return {
-      entryCount: row.entry_count,
-      lastEntryNumber: row.last_entry_number,
-      lastSubmittedAt: row.last_submitted_at,
-    };
+    return this.mapRowToEntity(result.rows[0]);
   }
 
   /** Total entries and distinct responders for a prompt. */
@@ -231,9 +230,6 @@ export class PlayerPromptResponseQueries extends PlayerPromptResponseBaseQueries
       responder_count: number;
     }>("count prompt responses", query, [promptId]);
 
-    return {
-      entryCount: result.rows[0].entry_count,
-      responderCount: result.rows[0].responder_count,
-    };
+    return this.mapRowToEntity(result.rows[0]);
   }
 }

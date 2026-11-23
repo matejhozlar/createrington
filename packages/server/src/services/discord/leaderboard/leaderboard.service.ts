@@ -4,18 +4,7 @@ import { type LeaderboardRefreshResult, LeaderboardType } from "./types";
 import { Discord } from "@/discord/constants";
 import { type Client } from "discord.js";
 import { LeaderboardComponentPresets } from "@/discord/components/presets/leaderboard";
-
-const MESSAGE_NOT_FOUND_PATTERNS = [
-  "Unknown Message",
-  "Unknown Channel",
-  "Message not found",
-  "Channel not found",
-];
-
-function isMessageNotFoundError(error?: string): boolean {
-  if (!error) return false;
-  return MESSAGE_NOT_FOUND_PATTERNS.some((p) => error.includes(p));
-}
+import { isMessageGone } from "@/services/discord/message/errors";
 
 /**
  * Owns the persistent leaderboard messages posted to Discord. On `initialize`
@@ -82,15 +71,15 @@ export class LeaderboardService {
     });
 
     if (existing) {
-      const editResult = await Discord.Messages.edit({
-        channelId: existing.channelId,
-        messageId: existing.messageId,
-        embeds: null,
-        components,
-        flags,
-      });
+      try {
+        await Discord.Messages.edit({
+          channelId: existing.channelId,
+          messageId: existing.messageId,
+          embeds: null,
+          components,
+          flags,
+        });
 
-      if (editResult.success) {
         await Q.leaderboard.message.update(
           { id: existing.id },
           { lastRefreshed: new Date() },
@@ -104,40 +93,31 @@ export class LeaderboardService {
           messageId: existing.messageId,
           channelId: existing.channelId,
         };
-      }
-
-      if (isMessageNotFoundError(editResult.error)) {
+      } catch (error) {
+        if (!isMessageGone(error)) throw error;
         logger.warn(
           `Leaderboard message ${existing.messageId} no longer exists, removing stale record`,
         );
         await Q.leaderboard.message.delete({ id: existing.id });
-      } else {
-        throw new Error(
-          `Failed to update ${type} leaderboard: ${editResult.error}`,
-        );
       }
     }
 
-    const result = await Discord.Messages.send({
+    const message = await Discord.Messages.send({
       channelId: config.channelId,
       components,
       flags,
     });
 
-    if (!result.success || !result.messageId) {
-      throw new Error(`Failed to create ${type} leaderboard message`);
-    }
-
     await Q.leaderboard.message.create({
       leaderboardType: type,
       channelId: config.channelId,
-      messageId: result.messageId,
+      messageId: message.id,
     });
 
-    logger.info(`Created ${type} leaderboard message ${result.messageId}`);
+    logger.info(`Created ${type} leaderboard message ${message.id}`);
 
     return {
-      messageId: result.messageId,
+      messageId: message.id,
       channelId: config.channelId,
     };
   }
@@ -183,28 +163,21 @@ export class LeaderboardService {
         new Date(),
       );
 
-      const editResult = await Discord.Messages.edit({
-        channelId: existing.channelId,
-        messageId: existing.messageId,
-        embeds: null,
-        components,
-        flags,
-      });
-
-      if (!editResult.success) {
-        if (isMessageNotFoundError(editResult.error)) {
-          logger.warn(
-            `Leaderboard message ${existing.messageId} no longer exists, removing stale record`,
-          );
-          await Q.leaderboard.message.delete({ id: existing.id });
-        }
-
-        return {
-          success: false,
-          type,
-          entries: [],
-          error: editResult.error ?? "Failed to edit leaderboard message",
-        };
+      try {
+        await Discord.Messages.edit({
+          channelId: existing.channelId,
+          messageId: existing.messageId,
+          embeds: null,
+          components,
+          flags,
+        });
+      } catch (error) {
+        if (!isMessageGone(error)) throw error;
+        logger.warn(
+          `Leaderboard message ${existing.messageId} no longer exists, removing stale record`,
+        );
+        await Q.leaderboard.message.delete({ id: existing.id });
+        return { success: false, type, entries: [], error: error.message };
       }
 
       const updates: {

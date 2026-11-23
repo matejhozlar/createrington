@@ -1,8 +1,12 @@
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
-import { UserMinus } from "lucide-react";
+import { Search, UserMinus, Users } from "lucide-react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { LoadingState } from "@/components/query-states";
+import {
+  EmptyState,
+  ErrorState,
+  LoadingState,
+} from "@/components/query-states";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -11,7 +15,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
+import { AdminPage } from "@/features/admin/components/AdminPage";
 import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { FilterBar } from "@/features/admin/components/FilterBar";
 import { formatRelativeDateSafe } from "@/features/admin/format";
@@ -27,8 +31,8 @@ import {
   type PartySortKey,
 } from "./components/PartiesTable";
 import { useMutation, useQuery } from "@tanstack/react-query";
-
-const SERVER_ID = 1;
+import { MAIN_SERVER_ID } from "@/lib/minecraft";
+import { plural } from "@/lib/format";
 
 const PAGE_COPY = {
   title: "Parties",
@@ -54,7 +58,7 @@ function purgeMessage({ removed, failed }: PurgeResult): string {
   const removedText =
     removed.length === 0
       ? "No departed members to remove."
-      : `Removed ${removed.length} departed member${removed.length === 1 ? "" : "s"} from their parties.`;
+      : `Removed ${removed.length} departed ${plural(removed.length, "member")} from their parties.`;
   return failed === 0
     ? removedText
     : `${removedText} ${failed} could not be removed, see the server log.`;
@@ -117,10 +121,10 @@ export function AdminParties() {
   );
 
   const statsQuery = useQuery(
-    trpc.admin.parties.stats.queryOptions({ serverId: SERVER_ID }),
+    trpc.admin.parties.stats.queryOptions({ serverId: MAIN_SERVER_ID }),
   );
   const listQuery = useQuery(
-    trpc.admin.parties.list.queryOptions({ serverId: SERVER_ID }),
+    trpc.admin.parties.list.queryOptions({ serverId: MAIN_SERVER_ID }),
   );
   const parties = listQuery.data ?? NO_PARTIES;
 
@@ -143,101 +147,109 @@ export function AdminParties() {
   const claimsSyncedAt = statsQuery.data?.claimsSyncedAt ?? null;
 
   return (
-    <div className="flex flex-1 flex-col gap-4">
-      <AdminPageHeader
-        trail={[
-          { label: "Admin", href: "/admin/dashboard" },
-          { label: "Tools", href: "/admin/tools" },
-          { label: PAGE_COPY.title },
-        ]}
+    <AdminPage
+      trail={[
+        { label: "Admin", href: "/admin/dashboard" },
+        { label: "Tools", href: "/admin/tools" },
+        { label: PAGE_COPY.title },
+      ]}
+    >
+      <AdminPageTitle
+        title={PAGE_COPY.title}
+        actions={
+          <Button variant="outline" onClick={() => setPurgeOpen(true)}>
+            <UserMinus className="mr-2 size-4" />
+            {PURGE_COPY.button}
+          </Button>
+        }
+        description={
+          <>
+            <p>{PAGE_COPY.description}</p>
+            {lastSyncedAt && (
+              <p className="text-xs">
+                Last synced {formatRelativeDateSafe(lastSyncedAt)}
+                {claimsSyncedAt &&
+                  ` · Claims synced ${formatRelativeDateSafe(claimsSyncedAt)}`}
+              </p>
+            )}
+          </>
+        }
       />
 
-      <div className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-4 px-4 pb-4">
-        <AdminPageTitle
-          title={PAGE_COPY.title}
-          actions={
-            <Button variant="outline" onClick={() => setPurgeOpen(true)}>
-              <UserMinus className="mr-2 size-4" />
-              {PURGE_COPY.button}
-            </Button>
-          }
-          description={
-            <>
-              <p>{PAGE_COPY.description}</p>
-              {lastSyncedAt && (
-                <p className="text-xs">
-                  Last synced {formatRelativeDateSafe(lastSyncedAt)}
-                  {claimsSyncedAt &&
-                    ` · Claims synced ${formatRelativeDateSafe(claimsSyncedAt)}`}
-                </p>
-              )}
-            </>
-          }
+      {statsQuery.isLoading ? (
+        <LoadingState
+          text="Loading party totals..."
+          className="flex-none p-0"
         />
-
-        {statsQuery.isLoading ? (
-          <LoadingState
-            text="Loading party totals..."
-            className="flex-none p-0"
-          />
-        ) : statsQuery.data ? (
-          <PartiesStatsCards
-            stats={statsQuery.data}
-            onBrowseClaims={() => setClaimsDialog({ partyId: null })}
-          />
-        ) : null}
-
-        <FilterBar
-          search={search}
-          onSearchChange={setSearch}
-          placeholder={PAGE_COPY.search}
-          activeCount={search ? 1 : 0}
+      ) : statsQuery.isError ? (
+        <ErrorState
+          message={`Failed to load the party totals: ${statsQuery.error.message}`}
+          onRetry={() => statsQuery.refetch()}
+          className="flex-none py-8"
         />
+      ) : statsQuery.data ? (
+        <PartiesStatsCards
+          stats={statsQuery.data}
+          onBrowseClaims={() => setClaimsDialog({ partyId: null })}
+        />
+      ) : null}
 
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              {PAGE_COPY.title}
-              {!listQuery.isLoading && ` (${shown.length})`}
-            </CardTitle>
-            <CardDescription>{PAGE_COPY.table}</CardDescription>
-          </CardHeader>
-          <CardContent className="p-0">
-            {listQuery.isError ? (
-              <p className="py-8 text-center text-destructive">
-                Failed to load the parties: {listQuery.error.message}
-              </p>
-            ) : !listQuery.isLoading && parties.length === 0 ? (
-              <p className="px-6 py-8 text-center text-muted-foreground">
-                {PAGE_COPY.empty}
-              </p>
-            ) : !listQuery.isLoading && shown.length === 0 ? (
-              <p className="px-6 py-8 text-center text-muted-foreground">
-                {PAGE_COPY.noMatch}
-              </p>
-            ) : (
-              <PartiesTable
-                parties={shown}
-                loading={listQuery.isLoading}
-                sort={sort}
-                onSort={toggleSort}
-                expandedId={expandedId}
-                onToggle={(id) =>
-                  setExpandedId((prev) => (prev === id ? null : id))
-                }
-                onShowClaims={(partyId) => setClaimsDialog({ partyId })}
-              />
-            )}
-          </CardContent>
-        </Card>
-      </div>
+      <FilterBar
+        search={search}
+        onSearchChange={setSearch}
+        placeholder={PAGE_COPY.search}
+        activeCount={search ? 1 : 0}
+      />
+
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            {PAGE_COPY.title}
+            {!listQuery.isLoading && ` (${shown.length})`}
+          </CardTitle>
+          <CardDescription>{PAGE_COPY.table}</CardDescription>
+        </CardHeader>
+        <CardContent className="p-0">
+          {listQuery.isError ? (
+            <ErrorState
+              message={`Failed to load the parties: ${listQuery.error.message}`}
+              onRetry={() => listQuery.refetch()}
+              compact
+            />
+          ) : !listQuery.isLoading && parties.length === 0 ? (
+            <EmptyState
+              icon={Users}
+              message={PAGE_COPY.empty}
+              className="py-8"
+            />
+          ) : !listQuery.isLoading && shown.length === 0 ? (
+            <EmptyState
+              icon={Search}
+              message={PAGE_COPY.noMatch}
+              className="py-8"
+            />
+          ) : (
+            <PartiesTable
+              parties={shown}
+              loading={listQuery.isLoading}
+              sort={sort}
+              onSort={toggleSort}
+              expandedId={expandedId}
+              onToggle={(id) =>
+                setExpandedId((prev) => (prev === id ? null : id))
+              }
+              onShowClaims={(partyId) => setClaimsDialog({ partyId })}
+            />
+          )}
+        </CardContent>
+      </Card>
 
       <ClaimsDialog
         open={claimsDialog !== null}
         onOpenChange={(open) => {
           if (!open) setClaimsDialog(null);
         }}
-        serverId={SERVER_ID}
+        serverId={MAIN_SERVER_ID}
         initialPartyId={claimsDialog?.partyId ?? null}
       />
 
@@ -248,8 +260,10 @@ export function AdminParties() {
         description={PURGE_COPY.description}
         confirmLabel={PURGE_COPY.confirm}
         variant="destructive"
-        onConfirm={() => purgeMutation.mutateAsync({ serverId: SERVER_ID })}
+        onConfirm={() =>
+          purgeMutation.mutateAsync({ serverId: MAIN_SERVER_ID })
+        }
       />
-    </div>
+    </AdminPage>
   );
 }

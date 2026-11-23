@@ -1,9 +1,5 @@
 import { db, Q } from "@/db";
-import {
-  BadRequestError,
-  ConflictError,
-  NotFoundError,
-} from "@/app/middleware/error-handler";
+import { BadRequestError, ConflictError, NotFoundError } from "@/errors";
 import type {
   CurseforgeProject,
   ModEnvironment,
@@ -41,6 +37,24 @@ import { workshopModService, type WorkshopModListItem } from "./mods.service";
 import { workshopService } from "./workshop.service";
 
 export type WorkshopReviewAction = WorkshopModReviewAction;
+
+type NextUpdateChoice = "required" | "file";
+
+const NEXT_UPDATE_CHOICE_REFUSALS: Record<
+  NextUpdateChoice,
+  { notWaiting: string; archived: string }
+> = {
+  required: {
+    notWaiting:
+      "Only mods waiting for the next update can be enabled or disabled",
+    archived: "Cannot enable or disable mods in an archived workshop",
+  },
+  file: {
+    notWaiting:
+      "Only mods waiting for the next update can have their file chosen",
+    archived: "Cannot choose files in an archived workshop",
+  },
+};
 
 /**
  * Admin curation of suggestions: moving a mod through the review pipeline,
@@ -112,8 +126,6 @@ export class WorkshopReviewService {
       );
     }
 
-    // Keyed on the action, not the target: send_back from next_update also
-    // lands on testing and must stay open as an escape hatch
     if (action === "start_testing") {
       await this.assertNoRuledOutRequiredDependency(workshop, mod);
     }
@@ -171,8 +183,6 @@ export class WorkshopReviewService {
     });
     void announceReview(updated, target);
     if (target === "rejected") await pruneStaleDependencyEdges(workshop);
-    // Rejecting pruned this mod's own edges; un-rejecting has to bring them
-    // back itself, since the daily sweep skips closed workshops
     if (mod.status === "rejected" && target !== "rejected") {
       void tryResolveProjectDependencies(workshop, [updated]);
     }
@@ -187,8 +197,6 @@ export class WorkshopReviewService {
       workshopId: workshop.id,
       curseforgeProjectId: mod.curseforgeProjectId,
     });
-    // An empty cache can mean resolution silently failed, so re-resolve
-    // before trusting it; mods without a chosen file have nothing to resolve
     if (edges.length === 0 && mod.fileId !== null) {
       try {
         await resolveProjectDependencies(workshop, [mod]);
@@ -327,30 +335,9 @@ export class WorkshopReviewService {
     workshopModId: number,
     required: boolean,
   ): Promise<{ mod: WorkshopMod; changed: boolean }> {
-    const mod = await Q.workshop.mod.find({ id: workshopModId });
-    if (!mod)
-      throw new NotFoundError(`Workshop mod #${workshopModId} not found`);
-    if (mod.status !== "next_update") {
-      throw new BadRequestError(
-        "Only mods waiting for the next update can be enabled or disabled",
-      );
-    }
-    const workshop = await workshopService.getWorkshop(mod.workshopId);
-    if (workshop.status === "archived") {
-      throw new BadRequestError(
-        "Cannot enable or disable mods in an archived workshop",
-      );
-    }
+    const { mod } = await this.loadNextUpdateMod(workshopModId, "required");
     if (mod.required === required) return { mod, changed: false };
-    const claimed = await Q.workshop.mod.updateAll(
-      { required },
-      { id: workshopModId, status: "next_update" },
-    );
-    if (claimed === 0) {
-      throw new ConflictError(
-        "This mod left the next update while it was being changed",
-      );
-    }
+    await this.claimNextUpdate(workshopModId, { required });
     return { mod: { ...mod, required }, changed: true };
   }
 
@@ -372,45 +359,16 @@ export class WorkshopReviewService {
     workshopModId: number,
     fileId: number | null,
   ): Promise<{ mod: WorkshopMod; changed: boolean }> {
-    const mod = await Q.workshop.mod.find({ id: workshopModId });
-    if (!mod)
-      throw new NotFoundError(`Workshop mod #${workshopModId} not found`);
-    if (mod.status !== "next_update") {
-      throw new BadRequestError(
-        "Only mods waiting for the next update can have their file chosen",
-      );
-    }
-    const workshop = await workshopService.getWorkshop(mod.workshopId);
-    if (workshop.status === "archived") {
-      throw new BadRequestError("Cannot choose files in an archived workshop");
-    }
+    const { mod, workshop } = await this.loadNextUpdateMod(
+      workshopModId,
+      "file",
+    );
 
-    if (fileId === null) {
-      if (!mod.fileChosen) return { mod, changed: false };
-      const claimed = await Q.workshop.mod.updateAll(
-        { fileChosen: false },
-        { id: workshopModId, status: "next_update" },
-      );
-      if (claimed === 0) {
-        throw new ConflictError(
-          "This mod left the next update while it was being changed",
-        );
-      }
-      return { mod: { ...mod, fileChosen: false }, changed: true };
-    }
-
-    if (mod.fileId === fileId) {
-      if (mod.fileChosen) return { mod, changed: false };
-      const claimed = await Q.workshop.mod.updateAll(
-        { fileChosen: true },
-        { id: workshopModId, status: "next_update" },
-      );
-      if (claimed === 0) {
-        throw new ConflictError(
-          "This mod left the next update while it was being changed",
-        );
-      }
-      return { mod: { ...mod, fileChosen: true }, changed: true };
+    if (fileId === null || mod.fileId === fileId) {
+      const fileChosen = fileId !== null;
+      if (mod.fileChosen === fileChosen) return { mod, changed: false };
+      await this.claimNextUpdate(workshopModId, { fileChosen });
+      return { mod: { ...mod, fileChosen }, changed: true };
     }
 
     let details: CurseForgeFileDetail[];
@@ -435,7 +393,42 @@ export class WorkshopReviewService {
       fileReleaseType: detail.releaseType,
       fileChosen: true,
     };
-    const claimed = await Q.workshop.mod.updateAll(update, {
+    await this.claimNextUpdate(workshopModId, update);
+    await tryResolveProjectDependencies(workshop, [
+      { curseforgeProjectId: mod.curseforgeProjectId, fileId: detail.fileId },
+    ]);
+    return { mod: { ...mod, ...update }, changed: true };
+  }
+
+  private async loadNextUpdateMod(
+    workshopModId: number,
+    choice: NextUpdateChoice,
+  ): Promise<{ mod: WorkshopMod; workshop: Workshop }> {
+    const mod = await Q.workshop.mod.find({ id: workshopModId });
+    if (!mod) {
+      throw new NotFoundError(`Workshop mod #${workshopModId} not found`);
+    }
+    const refusal = NEXT_UPDATE_CHOICE_REFUSALS[choice];
+    if (mod.status !== "next_update") {
+      throw new BadRequestError(refusal.notWaiting);
+    }
+    const workshop = await workshopService.getWorkshop(mod.workshopId);
+    if (workshop.status === "archived") {
+      throw new BadRequestError(refusal.archived);
+    }
+    return { mod, workshop };
+  }
+
+  private async claimNextUpdate(
+    workshopModId: number,
+    patch: Partial<
+      Pick<
+        WorkshopMod,
+        "required" | "fileId" | "fileName" | "fileReleaseType" | "fileChosen"
+      >
+    >,
+  ): Promise<void> {
+    const claimed = await Q.workshop.mod.updateAll(patch, {
       id: workshopModId,
       status: "next_update",
     });
@@ -444,10 +437,6 @@ export class WorkshopReviewService {
         "This mod left the next update while it was being changed",
       );
     }
-    await tryResolveProjectDependencies(workshop, [
-      { curseforgeProjectId: mod.curseforgeProjectId, fileId: detail.fileId },
-    ]);
-    return { mod: { ...mod, ...update }, changed: true };
   }
 }
 

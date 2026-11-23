@@ -1,6 +1,11 @@
 import { Q, db } from "@/db";
 import { UniqueViolationError } from "@/db/utils/errors";
-import type { Modpack, ModpackRelease } from "@createrington/shared/db";
+import type { DatabaseQueries } from "@/generated/db";
+import type {
+  Modpack,
+  ModpackRelease,
+  ModpackReleaseCreate,
+} from "@createrington/shared/db";
 import type { ReleaseModInsert } from "@/db/queries/modpack/release/mod";
 import { getFilesDetails } from "@/services/curseforge/files";
 import type { ModpackManifest } from "@/services/curseforge/modpack";
@@ -21,6 +26,23 @@ function firstPerProject<T extends { curseforgeProjectId: number }>(
   return [...held.values()];
 }
 
+function distinctProjectCount(rows: ReleaseModInsert[]): number {
+  return new Set(rows.map((row) => row.curseforgeProjectId)).size;
+}
+
+export async function createReleaseWithMods(
+  tx: DatabaseQueries,
+  release: Omit<ModpackReleaseCreate, "modCount">,
+  rows: ReleaseModInsert[],
+): Promise<ModpackRelease> {
+  const created = await tx.modpack.release.createAndReturn({
+    ...release,
+    modCount: distinctProjectCount(rows),
+  });
+  await tx.modpack.release.mod.insertMany(created.id, rows);
+  return created;
+}
+
 /**
  * Freeze what a published pack file shipped. CurseForge stops serving files
  * once they are archived, so every column a diff needs is copied in here and
@@ -31,8 +53,6 @@ export async function recordRelease(
   manifest: ModpackManifest,
 ): Promise<void> {
   if (manifest.entries.length === 0) return;
-  // Releases read before the server pack was fetched alongside the client
-  // file are keyed by the server pack id, so a re-read must match either
   const [recorded] = await Q.modpack.release.findAll(
     {
       modpackId: modpack.id,
@@ -65,25 +85,25 @@ export async function recordRelease(
   const rows = await buildReleaseRows(manifest);
   if (rows.length === 0) return;
 
-  // A half-written release would be permanent: the guard above sees the
-  // release row and never repairs the missing membership
   let releaseId: number;
   try {
     releaseId = await db.inTransaction(async (tx) => {
-      const release = await tx.modpack.release.createAndReturn({
-        modpackId: modpack.id,
-        curseforgeFileId: manifest.fileId,
-        serverPackFileId: manifest.serverPackFileId,
-        version: manifest.version,
-        displayName: manifest.displayName,
-        minecraftVersion: manifest.minecraftVersion,
-        modLoader: manifest.modLoader,
-        modCount: new Set(rows.map((row) => row.curseforgeProjectId)).size,
-        publishedAt: manifest.publishedAt
-          ? new Date(manifest.publishedAt)
-          : null,
-      });
-      await tx.modpack.release.mod.insertMany(release.id, rows);
+      const release = await createReleaseWithMods(
+        tx,
+        {
+          modpackId: modpack.id,
+          curseforgeFileId: manifest.fileId,
+          serverPackFileId: manifest.serverPackFileId,
+          version: manifest.version,
+          displayName: manifest.displayName,
+          minecraftVersion: manifest.minecraftVersion,
+          modLoader: manifest.modLoader,
+          publishedAt: manifest.publishedAt
+            ? new Date(manifest.publishedAt)
+            : null,
+        },
+        rows,
+      );
       await tx.modpack.mod.applyManifestFiles(
         modpack.id,
         firstPerProject(rows),
@@ -120,7 +140,7 @@ async function upgradeRelease(
     await tx.modpack.release.updateAll(
       {
         serverPackFileId: manifest.serverPackFileId,
-        modCount: new Set(rows.map((row) => row.curseforgeProjectId)).size,
+        modCount: distinctProjectCount(rows),
       },
       { id: release.id },
     );
@@ -146,8 +166,6 @@ export async function buildReleaseRows(
       )
     ).map((project) => project.id),
   );
-  // A manifest can repeat a (project, file) pair, which the unique index
-  // would reject and take the whole release down with it
   const seen = new Set<string>();
   const entries = manifest.entries.filter((entry) => {
     if (!cached.has(entry.projectId)) return false;

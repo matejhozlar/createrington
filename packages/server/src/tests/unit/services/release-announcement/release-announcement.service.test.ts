@@ -78,7 +78,7 @@ vi.mock("@/services/app-changelog", async (importOriginal) => ({
 
 import type { SendMessageOptions } from "@/services/discord/message/types";
 import { Discord } from "@/discord/constants";
-import { releaseAnnouncementService } from "@/services/release-announcement";
+import { releaseAnnouncementService } from "@/services/release-announcement/release-announcement.service";
 
 const CHANGELOG = [
   "## v1.66.0 (2026-10-10)",
@@ -94,9 +94,7 @@ const CHANGELOG = [
 ].join("\n");
 
 const sent: SendMessageOptions[] = [];
-const send = {
-  result: { success: true } as { success: boolean; error?: string },
-};
+const send = { failure: null as Error | null };
 
 interface SentNode {
   type: number;
@@ -125,7 +123,7 @@ function lastMessage() {
 
 beforeEach(() => {
   sent.length = 0;
-  send.result = { success: true };
+  send.failure = null;
   state.isProd = true;
   state.isDevDeployment = false;
   state.version = "1.66.0";
@@ -137,7 +135,8 @@ beforeEach(() => {
   Discord._setMessageService({
     send: async (options: SendMessageOptions) => {
       sent.push(options);
-      return send.result;
+      if (send.failure) throw send.failure;
+      return { id: "message-1" };
     },
   } as unknown as Parameters<typeof Discord._setMessageService>[0]);
 });
@@ -235,12 +234,12 @@ describe("ReleaseAnnouncementService.announceIfNew", () => {
   });
 
   it("keeps the stored version when the post fails, so the next start retries", async () => {
-    send.result = { success: false, error: "Missing Access" };
+    send.failure = new Error("Missing Access");
 
     await releaseAnnouncementService.announceIfNew();
     expect(state.announced).toBe("1.65.3");
 
-    send.result = { success: true };
+    send.failure = null;
     await releaseAnnouncementService.announceIfNew();
     expect(sent).toHaveLength(2);
     expect(state.announced).toBe("1.66.0");

@@ -1,4 +1,5 @@
 import { EmbedPresets } from "@/discord/embeds";
+import { pluralize } from "@/utils/format";
 import { replyError } from "@/discord/utils/interaction-reply";
 import {
   type ChatInputCommandInteraction,
@@ -6,12 +7,12 @@ import {
   PermissionFlagsBits,
   SlashCommandBuilder,
 } from "discord.js";
+import type {
+  CommandModule,
+  CommandPermissions,
+} from "@/discord/bots/common/loaders/command-loader";
 
-/**
- * Slash command definition for the purge command
- * Admin utility command to bulk purge recent messages from a channel
- */
-export const data = new SlashCommandBuilder()
+const data = new SlashCommandBuilder()
   .setName("purge")
   .setDescription("Purge up to 100 recent messages")
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
@@ -30,21 +31,11 @@ export const data = new SlashCommandBuilder()
       .setRequired(false),
   );
 
-/**
- * Permission configuration for the purge command
- * Requires admin privileges to execute
- */
-export const permissions = {
+const permissions: CommandPermissions = {
   requireAdmin: true,
 };
 
-/**
- * Executes the purge command to bulk delete messages from a channel
- *
- * @param interaction - The chat input command interaction
- * @returns Promise resolving when the command execution is completed
- */
-export async function execute(
+async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
   const count = interaction.options.getInteger("count", true);
@@ -59,44 +50,38 @@ export async function execute(
     return;
   }
 
-  try {
-    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-    let deletedMessages;
+  let deletedMessages;
 
-    if (targetUser) {
-      const fetched = await interaction.channel.messages.fetch({
-        limit: count,
-      });
-      const filtered = fetched.filter((m) => m.author.id === targetUser.id);
-      deletedMessages = await interaction.channel.bulkDelete(filtered, true);
-    } else {
-      deletedMessages = await interaction.channel.bulkDelete(count, true);
-    }
-
-    const userSuffix = targetUser ? ` from ${targetUser.tag}` : "";
-
-    const embed = EmbedPresets.success(
-      "Messages purged",
-      `Successfully purged **${deletedMessages.size}** message${
-        deletedMessages.size === 1 ? "" : "s"
-      }${userSuffix}.`,
-    );
-
-    await interaction.editReply({
-      embeds: [embed.build()],
+  if (targetUser) {
+    const fetched = await interaction.channel.messages.fetch({
+      limit: count,
     });
-
-    logger.info(
-      `${interaction.user.tag} purged ${deletedMessages.size} messages${userSuffix} in ${interaction.channel.name}`,
-    );
-  } catch (error) {
-    logger.error("/purge failed:", error);
-
-    await replyError(
-      interaction,
-      "Purge Failed",
-      "Failed to purge messages. Make sure they are not older than 14 days.",
-    );
+    const filtered = fetched.filter((m) => m.author.id === targetUser.id);
+    deletedMessages = await interaction.channel.bulkDelete(filtered, true);
+  } else {
+    deletedMessages = await interaction.channel.bulkDelete(count, true);
   }
+
+  const userSuffix = targetUser ? ` from ${targetUser.tag}` : "";
+
+  const embed = EmbedPresets.success(
+    "Messages purged",
+    `Successfully purged **${deletedMessages.size}** ${pluralize(deletedMessages.size, "message")}${userSuffix}.`,
+  );
+
+  await interaction.editReply({
+    embeds: [embed.build()],
+  });
+
+  logger.info(
+    `${interaction.user.tag} purged ${deletedMessages.size} messages${userSuffix} in ${interaction.channel.name}`,
+  );
 }
+
+export default {
+  data,
+  permissions,
+  execute,
+} satisfies CommandModule;

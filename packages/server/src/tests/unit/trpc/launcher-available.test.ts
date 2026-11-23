@@ -18,11 +18,11 @@ vi.mock("@/services/auth/admin-status/admin-status.service", () => ({
 }));
 
 import { launcherAvailable, publicProcedure, router } from "@/trpc/trpc";
-import type { Context } from "@/trpc/context";
+import { testContext } from "@/tests/helpers/trpc";
 
 const caller = router({
   ping: publicProcedure.use(launcherAvailable).query(() => "pong"),
-}).createCaller({} as Context);
+}).createCaller(testContext());
 
 describe("launcherAvailable", () => {
   beforeEach(() => {

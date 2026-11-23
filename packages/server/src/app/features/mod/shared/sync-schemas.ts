@@ -10,3 +10,18 @@ export const dimensionId = z.string().min(1).max(MAX_SYNC_NAME_LENGTH);
 export function syncList<T extends z.ZodType>(item: T, max = MAX_SYNC_ENTRIES) {
   return z.array(item).max(max);
 }
+
+export const optionalServerId = z
+  .union(
+    [
+      z.int(),
+      z
+        .string()
+        .regex(/^-?\d+$/)
+        .transform(Number),
+    ],
+    {
+      error: "Invalid serverId format",
+    },
+  )
+  .nullish();

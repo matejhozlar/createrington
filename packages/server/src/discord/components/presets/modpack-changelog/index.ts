@@ -3,15 +3,14 @@ import {
   actionRow,
   container,
   linkButton,
-  measureComponentsV2,
   mediaGallery,
   section,
   separator,
   fullWidthSpacer,
   text,
   thumbnail,
-} from "../../component-builder";
-import { ComponentColors } from "../../colors";
+} from "@/discord/components/component-builder";
+import { EmbedColors } from "@/discord/embeds/colors";
 import { discordTimestamp, pluralize } from "@/utils/format";
 import {
   CURSEFORGE_CLASSES,
@@ -20,6 +19,7 @@ import {
 import {
   COMPONENTS_V2_MAX_COMPONENTS,
   COMPONENTS_V2_MAX_TEXT,
+  measureComponentsV2,
   type ComponentContainer,
   type ComponentTextDisplay,
   type ComponentsData,
@@ -258,16 +258,7 @@ function pack(input: ChangelogInput, lead: ComponentTextDisplay[]): Child[][] {
   return parts;
 }
 
-/** Components V2 renderings of a modpack release changelog for the changelog channel. */
 export const ModpackChangelogComponentPresets = {
-  /**
-   * One message per chunk of the diff, each within Discord's component and
-   * text ceilings. Only the first opens with the release header; the others
-   * open with a transparent full-width image, without which Discord would
-   * shrink them to their content instead of matching the first one's width.
-   * With `mentionRoleId`, the first message leads with a spoilered role
-   * mention above the container; it only pings when the send allows that role.
-   */
   release(
     input: ChangelogInput,
     options: ChangelogReleaseOptions = {},
@@ -285,7 +276,7 @@ export const ModpackChangelogComponentPresets = {
               ...children,
               ...(last ? footer(input.release) : []),
             ],
-            { accentColor: ComponentColors.Info },
+            { accentColor: EmbedColors.Info },
           ),
         ],
       };

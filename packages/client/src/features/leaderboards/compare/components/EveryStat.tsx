@@ -1,3 +1,4 @@
+import { Skeleton } from "@/components/ui/skeleton";
 import { useState } from "react";
 import {
   formatStatCategory,
@@ -9,6 +10,7 @@ import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { Button } from "@/components/ui/button";
+import { ErrorState } from "@/components/query-states";
 import { SearchInput } from "@/components/search-input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TugRow } from "./TugRow";
@@ -32,7 +34,7 @@ function RowsSkeleton() {
   return (
     <div className="space-y-4 py-3">
       {Array.from({ length: 6 }, (_, index) => (
-        <div key={index} className="h-9 animate-pulse rounded bg-muted/30" />
+        <Skeleton key={index} className="h-9 rounded bg-muted/30" />
       ))}
     </div>
   );
@@ -58,7 +60,7 @@ export function EveryStat({
       { staleTime: 60 * 1000, placeholderData: (previous) => previous },
     ),
   );
-  const rows = statsQuery.data?.rows ?? [];
+  const rows = statsQuery.data?.items ?? [];
   const total = statsQuery.data?.pagination.total ?? 0;
   const canShowMore = rows.length < total && limit < MAX_ROWS;
 
@@ -92,6 +94,12 @@ export function EveryStat({
       <div className="rounded-xl border bg-card px-4 py-1 md:px-5">
         {statsQuery.isLoading ? (
           <RowsSkeleton />
+        ) : statsQuery.isError && !statsQuery.data ? (
+          <ErrorState
+            compact
+            message="Couldn't load the stats."
+            onRetry={() => void statsQuery.refetch()}
+          />
         ) : rows.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted-foreground">
             {debounced

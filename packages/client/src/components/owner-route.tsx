@@ -1,4 +1,5 @@
 import type React from "react";
+import { Outlet } from "react-router";
 import { useAuth } from "@/contexts/auth/";
 import { LoadingScreen } from "@/components/query-states";
 import { NotFound } from "@/components/not-found";
@@ -6,15 +7,9 @@ import { trpc } from "@/lib/trpc";
 import { useQuery } from "@tanstack/react-query";
 
 interface OwnerRouteProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
 }
 
-/**
- * Route guard for the `/owner/*` scope. Requires the authenticated user's
- * Discord ID to match the server-configured owner. The owner flag is
- * fetched via `user.account.me` so there's no dependency on adding it to
- * the JWT.
- */
 export function OwnerRoute({ children }: OwnerRouteProps) {
   const { user, loading: authLoading } = useAuth();
   const accountQuery = useQuery(
@@ -31,5 +26,5 @@ export function OwnerRoute({ children }: OwnerRouteProps) {
     return <NotFound />;
   }
 
-  return <>{children}</>;
+  return children ?? <Outlet />;
 }

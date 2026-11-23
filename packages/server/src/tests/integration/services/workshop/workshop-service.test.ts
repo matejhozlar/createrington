@@ -8,63 +8,32 @@ import {
   vi,
 } from "vitest";
 
-vi.mock("@/services/workshop/discord", () => ({
-  discordThreadUrl: vi.fn(
-    (threadId: string) => `https://discord.com/channels/0/${threadId}`,
-  ),
-  listForumChannels: vi.fn(async () => []),
-  assertForumChannel: vi.fn(async () => undefined),
-  announceSuggestion: vi.fn(async () => undefined),
-  announceReview: vi.fn(async () => undefined),
-  announcePulledDependencies: vi.fn(async () => undefined),
-  announceRemoval: vi.fn(async () => undefined),
-  healThreads: vi.fn(async () => undefined),
-}));
-
-vi.mock("@/services/curseforge/mods", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("@/services/curseforge/mods")>();
-  return {
-    ...actual,
-    getMod: vi.fn(async () => {
-      throw new Error("getMod must not be called in this suite");
-    }),
-    getMods: vi.fn(async () => []),
-    searchMods: vi.fn(async () => []),
-  };
-});
-vi.mock("@/services/curseforge/files", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("@/services/curseforge/files")>();
-  return {
-    ...actual,
-    getFilesDependencies: vi.fn(async () => []),
-    getFilesDetails: vi.fn(async () => []),
-  };
-});
-vi.mock("@/services/curseforge/modpack-manifest", async (importOriginal) => {
-  const actual =
-    await importOriginal<
-      typeof import("@/services/curseforge/modpack-manifest")
-    >();
-  return {
-    ...actual,
-    getModpackModIds: vi.fn(async () => new Set<number>()),
-  };
-});
-
-vi.mock("@/services/curseforge/ingest", () => ({
-  ingestProject: vi.fn(),
-  ingestProjects: vi.fn(),
-  refreshProjects: vi.fn(async () => 0),
-}));
+vi.mock("@/services/workshop/discord", async () =>
+  (
+    await import("@/tests/helpers/mocks/workshop-discord")
+  ).workshopDiscordMock(),
+);
+vi.mock("@/services/curseforge/mods", async () =>
+  (await import("@/tests/helpers/mocks/curseforge")).curseforgeMocks.mods(),
+);
+vi.mock("@/services/curseforge/files", async () =>
+  (await import("@/tests/helpers/mocks/curseforge")).curseforgeMocks.files(),
+);
+vi.mock("@/services/modpack/manifest", async () =>
+  (
+    await import("@/tests/helpers/mocks/curseforge")
+  ).curseforgeMocks.modpackManifest(),
+);
+vi.mock("@/services/curseforge/ingest", async () =>
+  (await import("@/tests/helpers/mocks/curseforge")).curseforgeMocks.ingest(),
+);
 
 import pool, { Q } from "@/db";
-import { NotFoundError } from "@/app/middleware/error-handler";
+import { NotFoundError } from "@/errors";
 import { workshopService } from "@/services/workshop/workshop.service";
 import { workshopSuggestionService } from "@/services/workshop/suggestion.service";
 import { workshopReviewService } from "@/services/workshop/review.service";
-import { ingestProject, ingestProjects } from "@/services/curseforge/ingest";
+import { ingestProjects } from "@/services/curseforge/ingest";
 import {
   createWorkshopTestContext,
   cleanupWorkshopTestContext,
@@ -85,10 +54,6 @@ const ctx = createWorkshopTestContext(990_000_000);
 
 beforeAll(async () => {
   await pool.query("SELECT 1");
-  vi.mocked(ingestProject).mockImplementation(async (projectId: number) => ({
-    entity: await Q.curseforge.project.get({ id: projectId }),
-    data: makeProjectData(projectId),
-  }));
   vi.mocked(ingestProjects).mockImplementation(
     async (projectIds: number[]) =>
       new Map(projectIds.map((id) => [id, makeProjectData(id)])),
@@ -297,7 +262,7 @@ describe("WorkshopService.getWorkshopEvents", () => {
       expect(await modEvents(item.id)).toHaveLength(2);
     });
 
-    const { events, total } = await workshopService.getWorkshopEvents(
+    const { rows: events, total } = await workshopService.getWorkshopEvents(
       workshop.id,
       { limit: 10, offset: 0 },
     );
@@ -354,7 +319,7 @@ describe("WorkshopService.getWorkshopEvents", () => {
       offset: 0,
     });
     expect(approved.total).toBe(1);
-    expect(approved.events[0]?.project.name).toBe("Alpha Tools");
+    expect(approved.rows[0]?.project.name).toBe("Alpha Tools");
 
     const byMod = await workshopService.getWorkshopEvents(workshop.id, {
       search: "beta",
@@ -362,7 +327,7 @@ describe("WorkshopService.getWorkshopEvents", () => {
       offset: 0,
     });
     expect(byMod.total).toBe(1);
-    expect(byMod.events[0]?.workshopModId).toBe(beta.id);
+    expect(byMod.rows[0]?.workshopModId).toBe(beta.id);
 
     const byPlayer = await workshopService.getWorkshopEvents(workshop.id, {
       search: "vitest_act",
@@ -370,7 +335,7 @@ describe("WorkshopService.getWorkshopEvents", () => {
       offset: 0,
     });
     expect(byPlayer.total).toBe(1);
-    expect(byPlayer.events[0]).toMatchObject({
+    expect(byPlayer.rows[0]).toMatchObject({
       eventType: "suggested",
       workshopModId: alpha.id,
     });
@@ -380,7 +345,7 @@ describe("WorkshopService.getWorkshopEvents", () => {
       offset: 2,
     });
     expect(secondPage.total).toBe(3);
-    expect(secondPage.events).toHaveLength(1);
+    expect(secondPage.rows).toHaveLength(1);
   });
 
   it("keeps withdrawn suggestions in the timeline without a live row", async () => {
@@ -398,10 +363,13 @@ describe("WorkshopService.getWorkshopEvents", () => {
       expect(await modEvents(item.id)).toHaveLength(2);
     });
 
-    const { events } = await workshopService.getWorkshopEvents(workshop.id, {
-      limit: 10,
-      offset: 0,
-    });
+    const { rows: events } = await workshopService.getWorkshopEvents(
+      workshop.id,
+      {
+        limit: 10,
+        offset: 0,
+      },
+    );
     expect(events.map((event) => event.eventType)).toEqual([
       "withdrawn",
       "suggested",

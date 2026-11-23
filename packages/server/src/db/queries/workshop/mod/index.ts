@@ -16,13 +16,6 @@ export interface WorkshopProjectStanding {
   inPack: boolean;
 }
 
-/**
- * Custom queries for workshop_mod table
- *
- * Extends the auto-generated base class with custom methods.
- * This file is scaffolded once and never overwritten - add your custom
- * query methods here while inheriting all generated CRUD operations.
- */
 export class WorkshopModQueries extends WorkshopModBaseQueries {
   constructor(db: Pool | PoolClient) {
     super(db);
@@ -50,13 +43,7 @@ export class WorkshopModQueries extends WorkshopModBaseQueries {
       thumbnail_url: string | null;
       upvote_count: number;
     }>("top pending workshop mods by upvotes", query, [workshopId, limit]);
-    return result.rows.map((row) => ({
-      workshopModId: row.workshop_mod_id,
-      name: row.name,
-      primaryAuthor: row.primary_author,
-      upvoteCount: row.upvote_count,
-      thumbnailUrl: row.thumbnail_url,
-    }));
+    return this.mapRowsToEntities(result.rows);
   }
 
   /**
@@ -97,10 +84,6 @@ export class WorkshopModQueries extends WorkshopModBaseQueries {
       modpackId,
       projectIds ?? null,
     ]);
-    return result.rows.map((row) => ({
-      curseforgeProjectId: row.curseforge_project_id,
-      status: row.status,
-      inPack: row.in_pack,
-    }));
+    return this.mapRowsToEntities(result.rows);
   }
 }

@@ -90,8 +90,8 @@ async function resolveSandboxWorkshops(
   const modpackIds = [...new Set(workshops.map((w) => w.modpackId))];
   const [modpacks, releases, publishes] = await Promise.all([
     Q.modpack.findAll({ id: { $in: modpackIds } }),
-    Q.modpack.release.latestPerModpack(modpackIds),
-    Q.modpack.publish.latestPerModpack(modpackIds),
+    Q.modpack.release.getLatestPerModpack(modpackIds),
+    Q.modpack.publish.getLatestPerModpack(modpackIds),
   ]);
   const modpackById = new Map(modpacks.map((m) => [m.id, m]));
   const releaseByModpackId = new Map(releases.map((r) => [r.modpackId, r]));
@@ -113,7 +113,6 @@ async function resolveSandboxWorkshops(
   });
 }
 
-/** Sandbox consumer workshops router: the workshops a sandbox instance can attach itself to, each with its modpack. */
 export const sandboxWorkshopsRouter = router({
   list: adminProcedure
     .meta({

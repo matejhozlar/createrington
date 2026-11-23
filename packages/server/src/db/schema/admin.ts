@@ -20,8 +20,10 @@ export const admin = pgTable("admin", {
       onUpdate: "cascade",
       onDelete: "cascade",
     }),
-  createdAt: timestamp("created_at", { withTimezone: false }).defaultNow(),
-  vanished: boolean("vanished").default(false),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  vanished: boolean("vanished").notNull().default(false),
 });
 
 // --- admin_log_action ---

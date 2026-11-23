@@ -1,3 +1,4 @@
+import { userMention } from "discord.js";
 import { EmbedColors } from "../../colors";
 import { createEmbed } from "../../embed-builder";
 import { discordTimestamp } from "@/utils/format";
@@ -11,9 +12,6 @@ export interface DepartedMemberInfo {
 }
 
 export const DepartedEmbedPresets = {
-  /**
-   * Admin notification when a registered member leaves
-   */
   departedMember(info: DepartedMemberInfo) {
     const autoDeleteDate = new Date(
       info.departedAt.getTime() + 30 * 24 * 60 * 60 * 1000,
@@ -34,15 +32,12 @@ export const DepartedEmbedPresets = {
       .timestamp();
   },
 
-  /**
-   * Updated embed after manual deletion
-   */
   deleted(info: {
     minecraftUsername: string;
     deletedBy: { discordId: string; username: string | null };
     deletedAt: Date;
   }) {
-    const deletedByLine = `<@${info.deletedBy.discordId}>${info.deletedBy.username ? ` (\`${info.deletedBy.username}\`)` : ""}`;
+    const deletedByLine = `${userMention(info.deletedBy.discordId)}${info.deletedBy.username ? ` (\`${info.deletedBy.username}\`)` : ""}`;
 
     return createEmbed()
       .title("✅ Member Deleted")
@@ -56,9 +51,6 @@ export const DepartedEmbedPresets = {
       .timestamp();
   },
 
-  /**
-   * Updated embed when a departed member returns to the server
-   */
   returned(info: {
     minecraftUsername: string;
     departedAt: Date;
@@ -76,9 +68,6 @@ export const DepartedEmbedPresets = {
       .timestamp();
   },
 
-  /**
-   * Updated embed after automatic deletion (30 days)
-   */
   autoDeleted(info: {
     minecraftUsername: string;
     departedAt: Date;

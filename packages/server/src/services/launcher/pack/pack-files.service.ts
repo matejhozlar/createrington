@@ -1,4 +1,4 @@
-import type { AppError } from "@/app/middleware/error-handler";
+import type { AppError } from "@/errors";
 import { Q } from "@/db";
 import type { CurseforgeFileWithProject } from "@/db/queries/curseforge/file";
 import { CURSEFORGE_MINECRAFT_GAME_ID } from "@createrington/content-gateway-client";
@@ -16,7 +16,7 @@ import {
   type LauncherPackFileSource,
   type LauncherPackFilesData,
 } from "@createrington/shared/launcher";
-import { packError } from "./pack-error";
+import { launcherError } from "@/services/launcher/launcher-error";
 import { packFolderForClass, pickFileSource } from "./pack-rules";
 import {
   findSandboxFileUrls,
@@ -41,7 +41,7 @@ const RECHECK_BATCH_SIZE = 50;
 export const NOTICE_MAX_FILES = 15;
 
 function fileNotFound(): AppError {
-  return packError(
+  return launcherError(
     LauncherPackErrorCode.FILE_NOT_FOUND,
     404,
     "No pack file is served under this id",
@@ -103,7 +103,7 @@ export class LauncherPackFileService {
       stored = await this.ensureResolved(ids, { recheckStored: false });
     } catch (error) {
       logger.warn("Launcher pack file resolution failed:", error);
-      throw packError(
+      throw launcherError(
         LauncherPackErrorCode.FILE_SOURCES_UNAVAILABLE,
         503,
         "Pack files cannot be resolved right now",
@@ -195,7 +195,7 @@ export class LauncherPackFileService {
       if (signal.aborted) throw error;
       if (error instanceof SandboxUnavailableError) {
         logger.warn(`Storage file ${path} cannot be served: ${error.message}`);
-        throw packError(
+        throw launcherError(
           LauncherPackErrorCode.FILE_UNAVAILABLE,
           502,
           "The file cannot be served right now",

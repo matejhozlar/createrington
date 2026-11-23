@@ -1,19 +1,16 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
-import { playerService } from "@/services/player";
-import { parsePlayerId } from "@/trpc/utils";
+import { playerRepo } from "@/db";
+import { playerId } from "@/trpc/utils";
 
-/** Admin playtime router: per-player playtime statistics across all servers. */
 export const playtimeRouter = router({
   get: adminProcedure
     .meta({
       description: "Get playtime statistics for a player across all servers.",
     })
-    .input(z.object({ id: z.string().min(1) }))
+    .input(z.object({ id: playerId() }))
     .query(async ({ input }) => {
-      const identifier = parsePlayerId(input.id);
-
-      const playerData = await playerService.core.getDetailed(identifier);
+      const playerData = await playerRepo.getDetailed(input.id);
 
       return {
         summary: playerData.playtime.summary.map((s) => ({

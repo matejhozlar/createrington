@@ -1,103 +1,49 @@
 import { EmbedPresets } from "@/discord/embeds";
 import { replyError } from "@/discord/utils/interaction-reply";
 import { CooldownType } from "@/discord/utils/cooldown";
-import { rewardService } from "@/services/reward";
+import { dailyRewardService } from "@/services/reward/daily-reward.service";
 import { discordTimestamp } from "@/utils/format";
+import { formatMoney } from "@createrington/shared/format";
 import {
   type ChatInputCommandInteraction,
   MessageFlags,
   SlashCommandBuilder,
 } from "discord.js";
+import type {
+  CommandCooldown,
+  CommandModule,
+} from "@/discord/bots/common/loaders/command-loader";
 
-/**
- * Slash command definition for the daily reward command
- * Allows users to claim their daily currency reward
- */
-export const data = new SlashCommandBuilder()
+const data = new SlashCommandBuilder()
   .setName("daily")
   .setDescription("Claim your daily reward");
 
-/**
- * Cooldown configuration for the daily command
- *
- * - duration: 10 seconds
- * - type: "user" - Each user has their own cooldown
- * - message: Custom message shown when user is on cooldown
- */
-export const cooldown = {
+const cooldown: CommandCooldown = {
   duration: 10,
   type: CooldownType.USER,
   message: "Please wait before trying to claim your daily reward again!",
 };
 
-/**
- * Executes the daily reward command to claim daily currency
- *
- * Process:
- * 1. Extract Discord user ID from the interaction
- * 2. Check eligibility for daily reward via reward service
- * 3. If not eligible, display when they can claim next
- * 4. If eligible, attempt to claim the reward
- * 5. Display success message with amount claimed and new balance
- * 6. Handle and report any errors that occur during the process
- *
- * @param interaction - The chat input command interaction
- * @returns Promise resolving when the command execution is completed
- */
-export async function execute(
+async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
   const discordId = interaction.user.id;
 
-  try {
-    const eligibility = await rewardService.daily.checkEligibility({
-      discordId,
-    });
+  const eligibility = await dailyRewardService.checkEligibility({
+    discordId,
+  });
 
-    if (!eligibility.eligible) {
-      const embed = EmbedPresets.error(
-        "Already Claimed",
-        "You have already claimed your daily reward. Please try again later.",
-      );
+  if (!eligibility.eligible) {
+    const embed = EmbedPresets.error(
+      "Already Claimed",
+      "You have already claimed your daily reward. Please try again later.",
+    );
 
-      if (eligibility.nextClaimTime) {
-        embed.field(
-          "Next Claim",
-          `${discordTimestamp(eligibility.nextClaimTime, "F")} (${discordTimestamp(eligibility.nextClaimTime, "R")})`,
-          false,
-        );
-      }
-
-      await interaction.reply({
-        embeds: [embed.build()],
-        flags: MessageFlags.Ephemeral,
-      });
-      return;
-    }
-
-    const result = await rewardService.daily.claim({ discordId });
-
-    if (!result.success) {
-      await replyError(
-        interaction,
-        "Claim Failed",
-        "Failed to claim your daily reward. Please try again.",
-      );
-      return;
-    }
-
-    const embed = EmbedPresets.success(
-      "💰 Daily Reward Claimed!",
-      `You received **$${result.amount}**`,
-    )
-      .field("New Balance", `$${result.newBalance}`, true)
-      .timestamp();
-
-    if (result.nextClaimTime) {
+    if (eligibility.nextClaimTime) {
       embed.field(
         "Next Claim",
-        discordTimestamp(result.nextClaimTime, "R"),
-        true,
+        `${discordTimestamp(eligibility.nextClaimTime, "F")} (${discordTimestamp(eligibility.nextClaimTime, "R")})`,
+        false,
       );
     }
 
@@ -105,17 +51,47 @@ export async function execute(
       embeds: [embed.build()],
       flags: MessageFlags.Ephemeral,
     });
+    return;
+  }
 
-    logger.info(
-      `User ${interaction.user.tag} (${discordId}) claimd daily reward: ${result.amount}`,
-    );
-  } catch (error) {
-    logger.error("/daily failed:", error);
+  const result = await dailyRewardService.claim({ discordId });
 
+  if (!result.success) {
     await replyError(
       interaction,
-      "Daily Reward Error",
-      "Something went wrong while claiming your reward. Please try again later.",
+      "Claim Failed",
+      "Failed to claim your daily reward. Please try again.",
+    );
+    return;
+  }
+
+  const embed = EmbedPresets.success(
+    "💰 Daily Reward Claimed!",
+    `You received **${formatMoney(result.amount ?? 0)}**`,
+  )
+    .field("New Balance", formatMoney(result.newBalance ?? 0), true)
+    .timestamp();
+
+  if (result.nextClaimTime) {
+    embed.field(
+      "Next Claim",
+      discordTimestamp(result.nextClaimTime, "R"),
+      true,
     );
   }
+
+  await interaction.reply({
+    embeds: [embed.build()],
+    flags: MessageFlags.Ephemeral,
+  });
+
+  logger.info(
+    `User ${interaction.user.tag} (${discordId}) claimd daily reward: ${result.amount}`,
+  );
 }
+
+export default {
+  data,
+  cooldown,
+  execute,
+} satisfies CommandModule;

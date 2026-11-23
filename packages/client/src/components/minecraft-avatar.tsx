@@ -1,7 +1,5 @@
-"use client";
-
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { playerAvatarUrl } from "@/lib/player-images";
+import { playerAvatarUrl } from "@/lib/playerImages";
 
 interface MinecraftAvatarProps {
   username: string;

@@ -1,13 +1,14 @@
 import { z } from "zod";
 import { router, userProcedure } from "@/trpc/trpc";
-import { findOrThrow, trpcError } from "@/trpc/utils";
+import { findOrThrow, trpcError, id } from "@/trpc/utils";
 import { createRateLimit } from "@/trpc/middleware/rate-limit";
 import { Q } from "@/db";
-import { BalanceUtils } from "@/db/repositories/balance/utils";
-import { playerDeletionService } from "@/services/player/deletion";
-import { getService, Services } from "@/services";
+import { BalanceUtils } from "@/db/utils/balance";
+import {
+  playerAccountService,
+  toSessionView,
+} from "@/services/player/account/account.service";
 import config from "@/config";
-import type { AuthSessionRow } from "@createrington/shared/db/auth_session.types";
 
 const exportLimit = createRateLimit({
   name: "user.account.exportData",
@@ -16,18 +17,6 @@ const exportLimit = createRateLimit({
   key: (ctx) => ctx.user?.discordId ?? "anonymous",
 });
 
-function toSessionView(session: AuthSessionRow) {
-  return {
-    id: session.id,
-    ipAddress: session.ip_address,
-    userAgent: session.user_agent,
-    createdAt: session.created_at.toISOString(),
-    lastUsedAt: session.last_used_at.toISOString(),
-    expiresAt: session.expires_at.toISOString(),
-  };
-}
-
-/** User account router: profile info, session management, data export, and account deletion. */
 export const accountRouter = router({
   me: userProcedure
     .meta({
@@ -81,7 +70,7 @@ export const accountRouter = router({
       description:
         "Revoke a specific session by ID. Only sessions belonging to the authenticated user can be revoked",
     })
-    .input(z.object({ id: z.number() }))
+    .input(z.object({ id: id() }))
     .mutation(async ({ ctx, input }) => {
       const revoked = await Q.auth.session.revokeOwnedById(
         input.id,
@@ -90,8 +79,6 @@ export const accountRouter = router({
       if (!revoked) {
         throw trpcError.notFound("Session not found");
       }
-
-      return { success: true };
     }),
 
   exportData: userProcedure
@@ -100,106 +87,7 @@ export const accountRouter = router({
       description:
         "Export all personal data as a single JSON object, covering playtime, balance, moderation history, and more",
     })
-    .query(async ({ ctx }) => {
-      const { discordId, minecraftUuid } = ctx.user;
-      const mcFilter = { playerMinecraftUuid: minecraftUuid };
-      const mcFilterAlt = { minecraftUuid };
-
-      const playerData = await Q.player.find({ discordId });
-      const sessions = await Q.auth.session.getActiveSessions(discordId);
-      const balance = await Q.player.balance
-        .find(mcFilterAlt)
-        .catch(() => null);
-      const balanceTransactions = await Q.player.balance.transaction.findAll(
-        mcFilter,
-        { orderBy: "createdAt", orderDirection: "desc" },
-      );
-      const gameSessions = await Q.player.session.findAll(mcFilter, {
-        orderBy: "sessionStart",
-        orderDirection: "desc",
-      });
-      const playtimeDaily = await Q.player.playtime.daily.findAll(mcFilter, {
-        orderBy: "playDate",
-        orderDirection: "desc",
-      });
-      const playtimeHourly = await Q.player.playtime.hourly.findAll(mcFilter, {
-        orderBy: "playHour",
-        orderDirection: "desc",
-      });
-      const playtimeSummary = await Q.player.playtime.summary.findAll(mcFilter);
-      const minecraftStats =
-        await Q.player.minecraft.stats.findAll(mcFilterAlt);
-      const bans = await Q.player.ban.findAll(mcFilter, {
-        orderBy: "bannedAt",
-        orderDirection: "desc",
-      });
-      const strikes = await Q.player.strike.findAll(mcFilter, {
-        orderBy: "issuedAt",
-        orderDirection: "desc",
-      });
-      const rewardClaims = await Q.reward.claim.findAll(mcFilter, {
-        orderBy: "claimedAt",
-        orderDirection: "desc",
-      });
-      const tickets = await Q.ticket.findAll(
-        { creatorDiscordId: discordId },
-        { orderBy: "createdAt", orderDirection: "desc" },
-      );
-
-      const data = {
-        exportedAt: new Date().toISOString(),
-        player: playerData ?? null,
-        sessions: sessions.map(toSessionView),
-        balance,
-        balanceTransactions: balanceTransactions.map(
-          ({ metadata: _metadata, ...transaction }) => transaction,
-        ),
-        gameSessions,
-        playtime: {
-          daily: playtimeDaily,
-          hourly: playtimeHourly,
-          summary: playtimeSummary,
-        },
-        minecraftStats,
-        moderation: {
-          bans: bans.map(
-            ({
-              bannedByDiscordId: _bannedByDiscordId,
-              bannedByUsername: _bannedByUsername,
-              unbannedByDiscordId: _unbannedByDiscordId,
-              unbannedByUsername: _unbannedByUsername,
-              metadata: _metadata,
-              ...ban
-            }) => ban,
-          ),
-          strikes: strikes.map(
-            ({
-              issuedByDiscordId: _issuedByDiscordId,
-              issuedByUsername: _issuedByUsername,
-              removedByDiscordId: _removedByDiscordId,
-              removedByUsername: _removedByUsername,
-              metadata: _metadata,
-              ...strike
-            }) => strike,
-          ),
-        },
-        rewardClaims,
-        tickets: tickets.map(
-          ({
-            closedByDiscordId: _closedByDiscordId,
-            metadata: _metadata,
-            ...ticket
-          }) => ticket,
-        ),
-      };
-
-      // BigInt values can't be JSON-serialized, convert them to strings
-      return JSON.parse(
-        JSON.stringify(data, (_key, value: unknown) =>
-          typeof value === "bigint" ? value.toString() : value,
-        ),
-      ) as Record<string, unknown>;
-    }),
+    .query(({ ctx }) => playerAccountService.exportData(ctx.user)),
 
   deleteAccount: userProcedure
     .meta({
@@ -213,49 +101,7 @@ export const accountRouter = router({
         }),
       }),
     )
-    .mutation(async ({ ctx }) => {
-      const { discordId } = ctx.user;
-
-      const player = await findOrThrow(
-        Q.player.find({ discordId }),
-        "Player not found",
-      );
-
-      await playerDeletionService.delete(
-        { discordId },
-        {
-          actor: {
-            type: "user",
-            discordId,
-            username: player.minecraftUsername,
-          },
-          reason: "Account deleted by user",
-          beforeDelete: async (tx) => {
-            await tx.ticket.deleteAll({ creatorDiscordId: discordId });
-          },
-        },
-      );
-
-      // Kick from Discord after successful deletion
-      try {
-        const mainBot = await getService(Services.DISCORD_MAIN_BOT);
-        const guild = mainBot.guilds.cache.first();
-        if (guild) {
-          const member = await guild.members.fetch(discordId).catch(() => null);
-          if (member) {
-            await member.kick("Account deleted by user");
-            logger.info(
-              `Kicked ${player.minecraftUsername} from Discord after account deletion`,
-            );
-          }
-        }
-      } catch (error) {
-        logger.warn(
-          `Failed to kick ${player.minecraftUsername} from Discord after account deletion:`,
-          error,
-        );
-      }
-
-      return { success: true };
-    }),
+    .mutation(({ ctx }) =>
+      playerAccountService.deleteAccount(ctx.user.discordId),
+    ),
 });

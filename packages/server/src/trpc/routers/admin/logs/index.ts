@@ -1,9 +1,13 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
-import { paginationInput, buildPagination, sortDirection } from "@/trpc/utils";
+import {
+  paginationInput,
+  buildPagination,
+  sortDirection,
+  pageOffset,
+} from "@/trpc/utils";
 
-/** Admin audit logs router: filterable, paginated admin action history. */
 export const logsRouter = router({
   admins: adminProcedure
     .meta({ description: "Get distinct admin usernames for filter dropdown" })
@@ -29,18 +33,18 @@ export const logsRouter = router({
       }),
     )
     .query(async ({ input }) => {
-      const { actions, total } = await Q.admin.log.action.search({
+      const { rows, total } = await Q.admin.log.action.getPage({
         search: input.search,
         actionType: input.actionType,
         adminUsername: input.adminUsername,
         orderBy: input.orderBy,
         orderDirection: input.orderDirection,
         limit: input.limit,
-        offset: input.page * input.limit,
+        offset: pageOffset(input),
       });
 
       return {
-        actions,
+        items: rows,
         pagination: buildPagination(input.page, input.limit, total),
       };
     }),

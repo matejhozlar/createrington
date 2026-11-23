@@ -4,10 +4,6 @@ import type {
 } from "@createrington/shared/api";
 import { api } from "../client";
 
-/**
- * Message API endpoints
- * Endpoints for sending messages to Minecraft servers via Discord
- */
 export const messagesApi = {
   async send(
     body: SendMessageBody,
@@ -24,10 +20,11 @@ export const messagesApi = {
       formData.append("image", image);
     }
 
-    const data = await api
-      .getClient()
-      .post("api/messages", { body: formData })
-      .json<SendMessageResponse>();
+    const data = await api.post<SendMessageResponse>(
+      "api/messages",
+      undefined,
+      { body: formData },
+    );
 
     return data.data;
   },

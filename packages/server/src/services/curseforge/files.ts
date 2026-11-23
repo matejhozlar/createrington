@@ -1,45 +1,45 @@
 import { curseforgeFileSchema } from "@createrington/content-gateway-client";
-import { isDependency, postIds, sha1Of, type RawFile } from "./client";
+import { postIds, toCurseForgeFile, type CurseForgeFile } from "./client";
 
-export interface CurseForgeFileDetail {
-  fileId: number;
-  projectId: number;
-  displayName: string | null;
-  fileName: string | null;
-  fileDate: string | null;
-  releaseType: number | null;
-  gameId: number | null;
-  /** Null when the author opted out of third-party distribution. */
-  downloadUrl: string | null;
-  fileLength: number | null;
-  sha1: string | null;
-}
+export type CurseForgeFileDetail = { fileId: number } & Pick<
+  CurseForgeFile,
+  | "projectId"
+  | "displayName"
+  | "fileName"
+  | "fileDate"
+  | "releaseType"
+  | "gameId"
+  | "downloadUrl"
+  | "fileLength"
+  | "sha1"
+>;
 
-async function fetchFiles(fileIds: number[]): Promise<RawFile[]> {
-  return postIds({
+/** Files by id, in one request. Unknown ids are simply absent. */
+export async function getFiles(fileIds: number[]): Promise<CurseForgeFile[]> {
+  const files = await postIds({
     of: "files",
     ids: fileIds,
     row: curseforgeFileSchema,
-    endpoint: "getFilesDetails",
-    failure: "Failed to fetch file details",
+    endpoint: "getFiles",
   });
+  return files.map(toCurseForgeFile);
 }
 
 /** Identity and download facts of specific mod files, in one request. Unknown ids are simply absent. */
 export async function getFilesDetails(
   fileIds: number[],
 ): Promise<CurseForgeFileDetail[]> {
-  return (await fetchFiles(fileIds)).map((f) => ({
-    fileId: f.id,
-    projectId: f.modId,
-    displayName: f.displayName ?? null,
-    fileName: f.fileName ?? null,
-    fileDate: f.fileDate ?? null,
-    releaseType: f.releaseType ?? null,
-    gameId: f.gameId ?? null,
-    downloadUrl: f.downloadUrl || null,
-    fileLength: f.fileLength ?? null,
-    sha1: sha1Of(f.hashes),
+  return (await getFiles(fileIds)).map((file) => ({
+    fileId: file.id,
+    projectId: file.projectId,
+    displayName: file.displayName,
+    fileName: file.fileName,
+    fileDate: file.fileDate,
+    releaseType: file.releaseType,
+    gameId: file.gameId,
+    downloadUrl: file.downloadUrl,
+    fileLength: file.fileLength,
+    sha1: file.sha1,
   }));
 }
 
@@ -53,17 +53,13 @@ export async function getServedFileIds(
   fileIds: number[],
 ): Promise<Set<number>> {
   return new Set(
-    (await fetchFiles(fileIds))
-      .filter((f) => f.isAvailable !== false)
-      .map((f) => f.id),
+    (await getFiles(fileIds))
+      .filter((file) => file.isAvailable)
+      .map((file) => file.id),
   );
 }
 
-/**
- * Fetch per-file dependency info for multiple mod files in one request
- *
- * Only optional (relationType 2) and required (relationType 3) dependencies are returned.
- */
+/** The optional and required dependencies of multiple mod files, in one request. */
 export async function getFilesDependencies(fileIds: number[]): Promise<
   Array<{
     fileId: number;
@@ -71,18 +67,12 @@ export async function getFilesDependencies(fileIds: number[]): Promise<
     dependencies: Array<{ modId: number; relationType: number }>;
   }>
 > {
-  const files = await postIds({
-    of: "files",
-    ids: fileIds,
-    row: curseforgeFileSchema,
-    endpoint: "getFilesDependencies",
-    failure: "Failed to fetch file dependencies",
-  });
-  return files.map((f) => ({
-    fileId: f.id,
-    modId: f.modId,
-    dependencies: (f.dependencies ?? [])
-      .filter(isDependency)
-      .map((d) => ({ modId: d.modId, relationType: d.relationType })),
+  return (await getFiles(fileIds)).map((file) => ({
+    fileId: file.id,
+    modId: file.projectId,
+    dependencies: file.dependencies.map((dependency) => ({
+      modId: dependency.projectId,
+      relationType: dependency.relationType,
+    })),
   }));
 }

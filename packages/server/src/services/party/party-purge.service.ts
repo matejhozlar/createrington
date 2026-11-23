@@ -1,8 +1,9 @@
 import config from "@/config";
+import { SYSTEM_AUDIT_ACTOR } from "@/db/queries/admin/log/action";
 import { Q } from "@/db";
 import { DatabaseTable } from "@/generated/db";
-import { AppError, ConflictError } from "@/app/middleware/error-handler";
-import { waitForPartySync } from "@/app/features/mod/parties/parties.service";
+import { ConflictError, ServiceUnavailableError, errorMessage } from "@/errors";
+import { waitForPartySync } from "@/services/party/party-state";
 import {
   PartyMembersClient,
   type PartyRemoval,
@@ -12,7 +13,6 @@ import {
   type DeletedPlayer,
   type DeletionActor,
 } from "@/services/player/deletion";
-import { AdminEdit } from "@/types";
 import { minecraftRcon } from "@/utils/rcon";
 
 const SYNC_TIMEOUT_MS = 15_000;
@@ -86,7 +86,7 @@ export class PartyPurgeService {
   ): Promise<void> {
     for (const serverId of minecraftRcon.getServerIds()) {
       try {
-        const membership = await Q.server.party.getForMember(
+        const membership = await Q.server.party.findForMember(
           serverId,
           player.minecraftUuid,
         );
@@ -186,15 +186,13 @@ export class PartyPurgeService {
     try {
       await this.client.sync(serverId);
     } catch (error) {
-      throw new AppError(
-        `Could not ask the Minecraft server for its parties: ${error instanceof Error ? error.message : String(error)}`,
-        503,
+      throw new ServiceUnavailableError(
+        `Could not ask the Minecraft server for its parties: ${errorMessage(error)}`,
       );
     }
     if (!(await synced)) {
-      throw new AppError(
+      throw new ServiceUnavailableError(
         `The Minecraft server did not send its parties within ${SYNC_TIMEOUT_MS / 1000} seconds, nothing was removed`,
-        503,
       );
     }
   }
@@ -218,9 +216,9 @@ export class PartyPurgeService {
     );
     try {
       await Q.admin.log.action.create({
-        adminDiscordId: actor?.discordId ?? "system",
-        adminUsername: actor?.username ?? "System",
-        actionType: AdminEdit.REMOVE_PARTY_MEMBER,
+        adminDiscordId: (actor ?? SYSTEM_AUDIT_ACTOR).discordId,
+        adminUsername: (actor ?? SYSTEM_AUDIT_ACTOR).username,
+        actionType: "remove_party_member",
         targetPlayerUuid: minecraftUuid,
         targetPlayerName: removal.playerName,
         tableName: DatabaseTable.SERVER_PARTY_MEMBER.TABLE,

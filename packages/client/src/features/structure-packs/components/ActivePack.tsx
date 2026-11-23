@@ -1,11 +1,13 @@
-import { useEffect, useState } from "react";
 import { ArrowRight, ExternalLink, Package } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useCountdown } from "@/hooks/use-countdown";
+import { useNow } from "@/hooks/use-now";
+import { pluralize } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ErrorState } from "@/components/query-states";
 import { cn } from "@/lib/utils";
-import { CURSEFORGE_MODPACK_URL } from "@/lib/external-urls";
+import { CURSEFORGE_MODPACK_URL } from "@/lib/externalUrls";
 import { FloatingDust } from "./FloatingDust";
 import { useQuery } from "@tanstack/react-query";
 
@@ -31,15 +33,6 @@ const VIGNETTE_STYLE: React.CSSProperties = {
     "radial-gradient(ellipse at 70% 50%, transparent 30%, oklch(0.13 0.005 285 / .92) 80%)",
 };
 
-function useMinuteTick(): number {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 60_000);
-    return () => clearInterval(id);
-  }, []);
-  return now;
-}
-
 function formatRotatedIn(ms: number): string {
   if (ms <= 0) return "just now";
   const totalSec = Math.floor(ms / 1000);
@@ -57,19 +50,35 @@ interface ActivePackProps {
 }
 
 export function ActivePack({ onOpenPortal }: ActivePackProps) {
-  const { data: activePack, isLoading } = useQuery(
-    trpc.public.structurePacks.current.queryOptions(),
-  );
+  const {
+    data: activePack,
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery(trpc.public.structurePacks.current.queryOptions());
 
   const { data: rotationInfo } = useQuery(
     trpc.public.structurePacks.rotationInfo.queryOptions(),
   );
 
   const countdown = useCountdown(rotationInfo?.nextRotationAt ?? null);
-  const now = useMinuteTick();
+  const now = useNow();
 
   if (isLoading) {
     return <ActivePackLoading />;
+  }
+
+  if (isError && !activePack) {
+    return (
+      <>
+        <h2 className={HEADING_CLASSES}>Active Dimension</h2>
+        <ErrorState
+          bordered
+          message="Couldn't load the active dimension."
+          onRetry={() => void refetch()}
+        />
+      </>
+    );
   }
 
   if (!activePack) {
@@ -173,7 +182,7 @@ export function ActivePack({ onOpenPortal }: ActivePackProps) {
                     Loaded mods
                   </div>
                   <span className="font-mono text-xs tabular-nums text-white/70">
-                    {modCount} {modCount === 1 ? "item" : "items"}
+                    {pluralize(modCount, "item")}
                   </span>
                 </div>
                 {modCount === 0 ? (

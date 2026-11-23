@@ -3,7 +3,7 @@ import { trpc } from "@/lib/trpc";
 import { PageHeader } from "@/components/page-header";
 import { Paginator } from "@/components/paginator";
 import { NotFound } from "@/components/not-found";
-import { LoadingScreen } from "@/components/query-states";
+import { ErrorState, LoadingScreen } from "@/components/query-states";
 import { GalleryTile } from "./components/GalleryTile";
 import { GalleryLightbox } from "./components/GalleryLightbox";
 import { GalleryGridSkeleton } from "./components/GalleryGridSkeleton";
@@ -67,9 +67,10 @@ export function Gallery() {
           {listQuery.isPending ? (
             <GalleryGridSkeleton />
           ) : listQuery.isError ? (
-            <p className="text-destructive">
-              Failed to load the gallery. Please try again later.
-            </p>
+            <ErrorState
+              message="Failed to load the gallery."
+              onRetry={() => void listQuery.refetch()}
+            />
           ) : items.length === 0 ? (
             <GalleryEmpty
               onBackToStart={strandedPage ? () => changePage(0) : undefined}

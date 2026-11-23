@@ -1,9 +1,8 @@
 import { z } from "zod";
 import { ADMIN_REASON_MAX_LENGTH } from "@createrington/shared/admin-reason";
 import { router, adminProcedure } from "@/trpc/trpc";
-import { playerService } from "@/services/player";
-import { balanceRepo } from "@/db";
-import { parsePlayerId, rethrowTrpc, trpcError } from "@/trpc/utils";
+import { balanceRepo, playerBalanceRepo, playerRepo } from "@/db";
+import { trpcError, playerId } from "@/trpc/utils";
 
 const BALANCE_ADJUST_MODES = ["add", "remove", "set"] as const;
 const MAX_ADJUSTMENT = 1_000_000_000;
@@ -11,7 +10,6 @@ const MAX_ADJUSTMENT = 1_000_000_000;
 const hasAtMostCents = (value: number) =>
   Math.abs(value * 100 - Math.round(value * 100)) < 1e-6;
 
-/** Admin balance router: view balance info, adjust individual or bulk balances. */
 export const balanceRouter = router({
   get: adminProcedure
     .meta({
@@ -19,15 +17,13 @@ export const balanceRouter = router({
     })
     .input(
       z.object({
-        id: z.string().min(1),
+        id: playerId(),
         limit: z.number().int().min(1).max(100).default(10),
       }),
     )
     .query(async ({ input }) => {
-      const identifier = parsePlayerId(input.id);
-
-      const balanceInfo = await playerService.core.getBalanceInfo(
-        identifier,
+      const balanceInfo = await playerRepo.getBalanceInfo(
+        input.id,
         input.limit,
       );
 
@@ -53,7 +49,7 @@ export const balanceRouter = router({
     })
     .input(
       z.object({
-        id: z.string().min(1),
+        id: playerId(),
         mode: z.enum(BALANCE_ADJUST_MODES),
         amount: z
           .number()
@@ -68,7 +64,6 @@ export const balanceRouter = router({
       }),
     )
     .mutation(async ({ input, ctx }) => {
-      const identifier = parsePlayerId(input.id);
       const { discordId, minecraftUsername } = ctx.user;
 
       if (input.mode !== "set" && input.amount === 0) {
@@ -77,7 +72,7 @@ export const balanceRouter = router({
 
       try {
         const args = [
-          identifier,
+          input.id,
           input.amount,
           discordId,
           minecraftUsername,
@@ -101,7 +96,7 @@ export const balanceRouter = router({
             "The player doesn't have enough balance to remove that much",
           );
         }
-        rethrowTrpc(err);
+        throw err;
       }
     }),
 
@@ -128,7 +123,7 @@ export const balanceRouter = router({
         throw trpcError.badRequest("Amount cannot be zero");
       }
 
-      const results = await playerService.balance.bulkAdjust(
+      const results = await playerBalanceRepo.bulkAdjust(
         input.playerUuids,
         input.amount,
         ctx.user.discordId,

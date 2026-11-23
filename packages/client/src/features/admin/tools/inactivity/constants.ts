@@ -38,11 +38,12 @@ export interface StatWindows {
   retentionDays: number;
 }
 
-type StatText = string | ((windows: StatWindows) => string);
+export const DEFAULT_STAT_WINDOWS: StatWindows = {
+  graceDays: 14,
+  retentionDays: 30,
+};
 
-export function resolveStatText(text: StatText, windows: StatWindows): string {
-  return typeof text === "function" ? text(windows) : text;
-}
+export type StatText = string | ((windows: StatWindows) => string);
 
 export const STAT_CARDS: {
   key: "active" | "expired" | "resolvedInRetention" | "removedInRetention";
@@ -80,40 +81,3 @@ export const STAT_CARDS: {
     tone: "muted",
   },
 ];
-
-/**
- * Derives the display status of a warning from its timestamps.
- * Matches the backend status semantics in the query layer.
- *
- * @param warning - Warning row with timestamps
- * @param graceDays - Grace window in days (should come from the
- *   `capabilities` query so the UI tracks the server-side constant)
- */
-export function deriveWarningStatus(
-  warning: {
-    warnedAt: string | Date;
-    resolvedAt: string | Date | null;
-    removedAt: string | Date | null;
-  },
-  graceDays = 14,
-): DerivedStatus {
-  if (warning.removedAt) return "removed";
-  if (warning.resolvedAt) return "resolved";
-
-  const warnedAtMs = new Date(warning.warnedAt).getTime();
-  const graceMs = graceDays * 24 * 60 * 60 * 1000;
-  return Date.now() - warnedAtMs < graceMs ? "active" : "expired";
-}
-
-/**
- * Returns the number of days remaining in the grace period (negative if
- * already expired). Used for the "X days left" display on active rows.
- */
-export function daysUntilDeadline(
-  warnedAt: string | Date,
-  graceDays = 14,
-): number {
-  const warnedAtMs = new Date(warnedAt).getTime();
-  const deadlineMs = warnedAtMs + graceDays * 24 * 60 * 60 * 1000;
-  return Math.ceil((deadlineMs - Date.now()) / (24 * 60 * 60 * 1000));
-}

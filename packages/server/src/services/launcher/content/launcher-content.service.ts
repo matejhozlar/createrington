@@ -1,13 +1,16 @@
-import { AppError } from "@/app/middleware/error-handler";
+import type { AppError } from "@/errors";
 import {
   CURSEFORGE_MINECRAFT_GAME_ID,
   ContentGatewayError,
 } from "@createrington/content-gateway-client";
 import { ContentGatewayPool, inContentPool } from "@/services/content-gateway";
-import { CurseForgeLoader } from "@/services/curseforge/client";
-import { LOADERLESS_CLASSES, getMods } from "@/services/curseforge/mods";
+import { getFiles } from "@/services/curseforge/files";
 import {
-  getContentFiles,
+  CurseForgeLoader,
+  LOADERLESS_CLASSES,
+} from "@/services/curseforge/loader";
+import { getMods } from "@/services/curseforge/mods";
+import {
   getFileChangelog,
   getProjectDescription,
   listCategories,
@@ -46,6 +49,7 @@ import {
   toLauncherProjectDetails,
   toLauncherProjectLatestFiles,
 } from "./curseforge-content";
+import { launcherError } from "@/services/launcher/launcher-error";
 
 const DOWNLOAD_LOOKUP_TIMEOUT_MS = 15_000;
 
@@ -64,17 +68,8 @@ export interface ContentTarget {
   loader?: LauncherContentLoader;
 }
 
-function contentError(
-  code: LauncherContentErrorCode,
-  statusCode: number,
-  message: string,
-  headers?: Record<string, string>,
-): AppError {
-  return new AppError(message, statusCode, true, undefined, { code, headers });
-}
-
 function projectNotFound(): AppError {
-  return contentError(
+  return launcherError(
     LauncherContentErrorCode.PROJECT_NOT_FOUND,
     404,
     "CurseForge has no such mod, resource pack, shader or modpack",
@@ -82,7 +77,7 @@ function projectNotFound(): AppError {
 }
 
 function fileNotFound(): AppError {
-  return contentError(
+  return launcherError(
     LauncherContentErrorCode.FILE_NOT_FOUND,
     404,
     "CurseForge has no such file of a mod, resource pack, shader or modpack",
@@ -125,18 +120,8 @@ function loaderTypeFor(
  * Throws `CONTENT_UNAVAILABLE` (503) when CurseForge cannot be asked, with a
  * `Retry-After` header when the gateway refused the call because the budget
  * of the minute is spent or CurseForge is holding the key off after a 429.
- * Singleton.
  */
 class LauncherContentService {
-  private static instance: LauncherContentService;
-
-  static getInstance(): LauncherContentService {
-    if (!LauncherContentService.instance) {
-      LauncherContentService.instance = new LauncherContentService();
-    }
-    return LauncherContentService.instance;
-  }
-
   /** One page of the projects of a kind that match the text, in `categoryIds` when given, most popular first unless `sort` says otherwise. `page` counts from 0; `total` never exceeds what CurseForge lets a search page through. */
   async search(
     params: { query: string; kind: LauncherProjectKind } & ContentTarget &
@@ -328,7 +313,7 @@ class LauncherContentService {
   private async loadFiles(
     fileIds: number[],
   ): Promise<Map<number, LauncherContentFileDetails | null>> {
-    const fetched = await this.ask("file", () => getContentFiles(fileIds));
+    const fetched = await this.ask("file", () => getFiles(fileIds));
     const byId = new Map(
       fetched
         .filter((file) => file.gameId === CURSEFORGE_MINECRAFT_GAME_ID)
@@ -427,7 +412,7 @@ class LauncherContentService {
       return await inContentPool(ContentGatewayPool.launcher, call);
     } catch (error) {
       if (error instanceof ContentGatewayError && error.retryAfterMs !== null) {
-        throw contentError(
+        throw launcherError(
           LauncherContentErrorCode.CONTENT_UNAVAILABLE,
           503,
           error.message,
@@ -440,7 +425,7 @@ class LauncherContentService {
         `Launcher content ${what} lookup on CurseForge failed:`,
         error,
       );
-      throw contentError(
+      throw launcherError(
         LauncherContentErrorCode.CONTENT_UNAVAILABLE,
         503,
         "CurseForge cannot be asked right now",
@@ -449,4 +434,4 @@ class LauncherContentService {
   }
 }
 
-export const launcherContentService = LauncherContentService.getInstance();
+export const launcherContentService = new LauncherContentService();

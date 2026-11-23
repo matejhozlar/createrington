@@ -1,5 +1,7 @@
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { downloadCapped } from "@/utils/http";
+import { Semaphore } from "@/utils/semaphore";
 import {
   createCanvas,
   GlobalFonts,
@@ -18,7 +20,6 @@ import type {
 
 export interface ChangelogRowImage {
   png: Buffer;
-  /** False when the icon could not be fetched and a placeholder stands in */
   complete: boolean;
 }
 
@@ -72,8 +73,7 @@ const rendered = new Map<
   { image: ChangelogRowImage; expiresAt: number }
 >();
 const rendering = new Map<string, Promise<ChangelogRowImage>>();
-const waitingFetches: Array<() => void> = [];
-let activeFetches = 0;
+const iconFetches = new Semaphore(ICON_FETCH_CONCURRENCY);
 let fontsRegistered = false;
 
 function registerFonts(): void {
@@ -171,58 +171,16 @@ function iconSource(url: string | null): string | null {
   return url.replace(FORGECDN_THUMBNAIL_RE, `$1${ICON_SIZE}/${ICON_SIZE}/`);
 }
 
-async function withFetchSlot<T>(task: () => Promise<T>): Promise<T> {
-  if (activeFetches < ICON_FETCH_CONCURRENCY) {
-    activeFetches++;
-  } else {
-    await new Promise<void>((resolve) => waitingFetches.push(resolve));
-  }
-  try {
-    return await task();
-  } finally {
-    const next = waitingFetches.shift();
-    if (next) next();
-    else activeFetches--;
-  }
-}
-
-async function readCapped(response: Response): Promise<Buffer | null> {
-  if (Number(response.headers.get("content-length")) > ICON_MAX_BYTES) {
-    return null;
-  }
-  const reader = response.body?.getReader();
-  if (!reader) return null;
-  const chunks: Uint8Array[] = [];
-  let size = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    size += value.byteLength;
-    if (size > ICON_MAX_BYTES) {
-      await reader.cancel();
-      return null;
-    }
-    chunks.push(value);
-  }
-  return Buffer.concat(chunks);
-}
-
 async function fetchIcon(url: string): Promise<Image | null> {
   try {
-    return await withFetchSlot(async () => {
-      const response = await fetch(url, {
+    return await iconFetches.run(async () => {
+      const body = await downloadCapped(url, {
+        timeoutMs: ICON_TIMEOUT_MS,
+        maxBytes: ICON_MAX_BYTES,
         redirect: "error",
-        signal: AbortSignal.timeout(ICON_TIMEOUT_MS),
       });
-      if (!response.ok) {
-        logger.debug(`Changelog row icon ${url} answered ${response.status}`);
-        return null;
-      }
-      const body = await readCapped(response);
-      if (!body) {
-        logger.debug(
-          `Changelog row icon ${url} is empty or over ${ICON_MAX_BYTES} bytes`,
-        );
+      if (body.length === 0) {
+        logger.debug(`Changelog row icon ${url} is empty`);
         return null;
       }
       return await loadImage(body);
@@ -317,7 +275,8 @@ function remember(key: string, image: ChangelogRowImage): void {
       : Date.now() + CHANGELOG_ROW_RETRY_MS,
   });
   if (rendered.size > CACHE_MAX) {
-    rendered.delete(rendered.keys().next().value as string);
+    const oldest = rendered.keys().next();
+    if (!oldest.done) rendered.delete(oldest.value);
   }
 }
 

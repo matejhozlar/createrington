@@ -1,4 +1,5 @@
-import { Q, playtimeRepo } from "@/db";
+import { Q } from "@/db";
+import { getPlayerActivity } from "@/services/playtime/activity";
 import type { Player } from "@/generated/db";
 import {
   LEADERBOARD_BOARDS,
@@ -82,7 +83,7 @@ export class LeaderboardCompareService {
       Q.player.playtime.summary.findAll({
         playerMinecraftUuid: player.minecraftUuid,
       }),
-      playtimeRepo.getPlayerActivity(player),
+      getPlayerActivity(player),
     ]);
     const entry = (board: LeaderboardBoard) =>
       boards

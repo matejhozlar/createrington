@@ -1,3 +1,5 @@
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { useLocation } from "react-router";
 import { ChevronDown } from "lucide-react";
@@ -8,6 +10,7 @@ import {
   statModName,
 } from "@createrington/shared/minecraft-stats";
 import { trpc, type RouterOutput } from "@/lib/trpc";
+import { ErrorState } from "@/components/query-states";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/auth";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
@@ -24,14 +27,17 @@ import {
   heldFor,
   topRoleStyle,
   type TopRoleMetric,
-} from "../top-roles";
-import { useBoardParams, type Board } from "../hooks/use-board-params";
+} from "@/features/leaderboards/top-roles";
+import {
+  useBoardParams,
+  type Board,
+} from "@/features/leaderboards/hooks/use-board-params";
 import { StatPicker, type Stat } from "./StatPicker";
 import { RowDetails, type DetailTab } from "./RowDetails";
 import { useSuspenseQuery, useQuery } from "@tanstack/react-query";
 
 type BoardPage = RouterOutput["public"]["leaderboards"]["list"];
-type BoardRow = BoardPage["rows"][number];
+type BoardRow = BoardPage["items"][number];
 type BoardFocus = NonNullable<BoardPage["focus"]>;
 type TopRole = RouterOutput["public"]["leaderboards"]["hero"][number];
 type BoardEntry = (typeof BOARDS)[number];
@@ -200,9 +206,12 @@ function BoardRowItem({
             {row.minecraftUsername}
           </span>
           {isYou && (
-            <span className="shrink-0 rounded-full bg-primary/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary">
+            <Badge
+              tone="primary"
+              className="px-1.5 text-[10px] font-bold tracking-wider uppercase"
+            >
               You
-            </span>
+            </Badge>
           )}
         </span>
         {note && (
@@ -255,10 +264,10 @@ function RowsSkeleton() {
     <ul className="space-y-1">
       {Array.from({ length: 10 }, (_, i) => (
         <li key={i} className="flex items-center gap-3 px-3 py-2">
-          <div className="h-4 w-8 animate-pulse rounded bg-muted/40" />
-          <div className="size-7 animate-pulse rounded-xs bg-muted/40" />
-          <div className="h-4 flex-1 animate-pulse rounded bg-muted/40" />
-          <div className="h-4 w-20 animate-pulse rounded bg-muted/40" />
+          <Skeleton className="h-4 w-8 rounded bg-muted/40" />
+          <Skeleton className="size-7 rounded-xs bg-muted/40" />
+          <Skeleton className="h-4 flex-1 rounded bg-muted/40" />
+          <Skeleton className="h-4 w-20 rounded bg-muted/40" />
         </li>
       ))}
     </ul>
@@ -349,7 +358,7 @@ export function LeaderboardTable() {
     ),
   );
   const listQuery = activeStat ? statQuery : boardQuery;
-  const rows = listQuery.data?.rows ?? [];
+  const rows = listQuery.data?.items ?? [];
   const pagination = listQuery.data?.pagination;
   const topValue = listQuery.data?.topValue ?? 0;
   const contestedKeys = boardQuery.data?.contestedKeys ?? 0;
@@ -436,6 +445,12 @@ export function LeaderboardTable() {
 
         {listQuery.isLoading ? (
           <RowsSkeleton />
+        ) : listQuery.isError && !listQuery.data ? (
+          <ErrorState
+            compact
+            message="Couldn't load the leaderboard."
+            onRetry={() => void listQuery.refetch()}
+          />
         ) : rows.length === 0 ? (
           <p className="px-3 py-10 text-center text-sm text-muted-foreground">
             {debouncedSearch

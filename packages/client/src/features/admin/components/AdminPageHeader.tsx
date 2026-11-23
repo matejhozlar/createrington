@@ -10,15 +10,8 @@ import {
   BreadcrumbPage,
 } from "@/components/ui/breadcrumb";
 
-type Crumb = { label: string; href?: string };
+export type Crumb = { label: string; href?: string };
 
-/**
- * Standard admin page header: the shared sidebar/border bar with a breadcrumb
- * trail. Sticky on desktop; on small screens it scrolls away with the page
- * and the trail collapses to a back link to the nearest linked ancestor. The
- * last crumb (or any crumb without an `href`) renders as the current page.
- * Optional `children` render at the end of the bar for page-level actions.
- */
 export function AdminPageHeader({
   trail,
   children,

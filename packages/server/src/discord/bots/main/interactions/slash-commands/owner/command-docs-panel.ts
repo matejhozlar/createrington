@@ -1,8 +1,12 @@
+import type {
+  DiscordCommandDoc,
+  DiscordCommandsDocument,
+} from "@createrington/shared/discord-commands";
 import { createEmbed, EmbedColors, EmbedPresets } from "@/discord/embeds";
 import { isSendableChannel } from "@/discord/utils/channel-guard";
 import { replyError } from "@/discord/utils/interaction-reply";
 import { COMMAND_GROUPS, GROUP_ORDER } from "@/config/command-groups";
-import config from "@/config";
+import { siteUrl } from "@/config/site-url";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -15,6 +19,10 @@ import {
   PermissionFlagsBits,
   SlashCommandBuilder,
 } from "discord.js";
+import type {
+  CommandModule,
+  CommandPermissions,
+} from "@/discord/bots/common/loaders/command-loader";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const JSON_PATH = path.join(
@@ -29,23 +37,7 @@ const JSON_PATH = path.join(
   "discord-commands.json",
 );
 
-interface RawCommand {
-  name: string;
-  description: string;
-  category: string;
-  options: Array<{
-    type: number;
-    name: string;
-    description?: string;
-    options?: unknown[];
-  }>;
-}
-
-interface CommandsFile {
-  commands: RawCommand[];
-}
-
-function formatCommand(cmd: RawCommand): string {
+function formatCommand(cmd: DiscordCommandDoc): string {
   const subs = cmd.options.filter((o) => o.type === 1 || o.type === 2);
 
   if (subs.length > 0) {
@@ -57,7 +49,7 @@ function formatCommand(cmd: RawCommand): string {
   return `</${cmd.name}:0> - ${cmd.description}`;
 }
 
-export const data = new SlashCommandBuilder()
+const data = new SlashCommandBuilder()
   .setName("command-docs-panel")
   .setDescription("Create or update the command docs panel")
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
@@ -70,133 +62,129 @@ export const data = new SlashCommandBuilder()
       .setRequired(false),
   );
 
-export const permissions = {
+const permissions: CommandPermissions = {
   requireOwner: true,
 };
 
-export async function execute(
+async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
-  try {
-    if (!isSendableChannel(interaction.channel)) {
-      await replyError(
-        interaction,
-        "Invalid Channel",
-        "This command can only be used in text channels.",
-      );
-      return;
-    }
-
-    if (!fs.existsSync(JSON_PATH)) {
-      await replyError(
-        interaction,
-        "No Command Data",
-        "discord-commands.json not found. Run `pnpm generate-command-docs:json` first.",
-      );
-      return;
-    }
-
-    const file = JSON.parse(
-      fs.readFileSync(JSON_PATH, "utf-8"),
-    ) as CommandsFile;
-
-    const playerCommands = file.commands.filter(
-      (cmd) => cmd.category === "user" || cmd.category === "public",
-    );
-
-    const grouped = new Map<string, RawCommand[]>();
-    for (const cmd of playerCommands) {
-      const group = COMMAND_GROUPS[cmd.name] ?? "Other";
-      const list = grouped.get(group) ?? [];
-      list.push(cmd);
-      grouped.set(group, list);
-    }
-
-    const guideUrl = `${config.meta.links.website}/guides/discord-commands`;
-
-    const embed = createEmbed()
-      .title("Discord Commands")
-      .description(
-        `All available player commands. For full details, options, and usage examples visit the [command guide](${guideUrl}).`,
-      )
-      .color(EmbedColors.Info)
-      .timestamp();
-
-    for (const groupName of GROUP_ORDER) {
-      const cmds = grouped.get(groupName);
-      if (!cmds || cmds.length === 0) continue;
-
-      const fieldValue = cmds.map((cmd) => formatCommand(cmd)).join("\n");
-      embed.field(groupName, fieldValue, false);
-    }
-
-    const other = grouped.get("Other");
-    if (other && other.length > 0) {
-      const fieldValue = other.map((cmd) => formatCommand(cmd)).join("\n");
-      embed.field("Other", fieldValue, false);
-    }
-
-    embed.footer(`${playerCommands.length} commands available`);
-
-    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder()
-        .setLabel("Full Command Guide")
-        .setStyle(ButtonStyle.Link)
-        .setURL(guideUrl),
-    );
-
-    const messageId = interaction.options.getString("message_id");
-    const payload = { embeds: [embed.build()], components: [row] };
-
-    if (messageId) {
-      const existing = await interaction.channel.messages
-        .fetch(messageId)
-        .catch(() => null);
-
-      if (!existing) {
-        await replyError(
-          interaction,
-          "Message Not Found",
-          `Could not find message with ID \`${messageId}\` in this channel.`,
-        );
-        return;
-      }
-
-      await existing.edit(payload);
-
-      const successEmbed = EmbedPresets.success(
-        "Panel Updated",
-        `Command docs panel updated with ${playerCommands.length} commands.`,
-      );
-      await interaction.reply({
-        embeds: [successEmbed.build()],
-        flags: MessageFlags.Ephemeral,
-      });
-
-      logger.info(
-        `${interaction.user.tag} updated command docs panel (${messageId})`,
-      );
-    } else {
-      await interaction.channel.send(payload);
-
-      const successEmbed = EmbedPresets.success(
-        "Panel Created",
-        `Command docs panel created with ${playerCommands.length} commands.`,
-      );
-      await interaction.reply({
-        embeds: [successEmbed.build()],
-        flags: MessageFlags.Ephemeral,
-      });
-
-      logger.info(`${interaction.user.tag} created command docs panel`);
-    }
-  } catch (error) {
-    logger.error("/command-docs-panel failed:", error);
-
+  if (!isSendableChannel(interaction.channel)) {
     await replyError(
       interaction,
-      "Panel Error",
-      "Failed to create or update the command docs panel.",
+      "Invalid Channel",
+      "This command can only be used in text channels.",
     );
+    return;
+  }
+
+  if (!fs.existsSync(JSON_PATH)) {
+    await replyError(
+      interaction,
+      "No Command Data",
+      "discord-commands.json not found. Run `pnpm generate-command-docs:json` first.",
+    );
+    return;
+  }
+
+  const file = JSON.parse(
+    fs.readFileSync(JSON_PATH, "utf-8"),
+  ) as DiscordCommandsDocument;
+
+  const playerCommands = file.commands.filter(
+    (cmd) => cmd.category === "user" || cmd.category === "public",
+  );
+
+  const grouped = new Map<string, DiscordCommandDoc[]>();
+  for (const cmd of playerCommands) {
+    const group = COMMAND_GROUPS[cmd.name] ?? "Other";
+    const list = grouped.get(group) ?? [];
+    list.push(cmd);
+    grouped.set(group, list);
+  }
+
+  const guideUrl = siteUrl("/guides/discord-commands");
+
+  const embed = createEmbed()
+    .title("Discord Commands")
+    .description(
+      `All available player commands. For full details, options, and usage examples visit the [command guide](${guideUrl}).`,
+    )
+    .color(EmbedColors.Info)
+    .timestamp();
+
+  for (const groupName of GROUP_ORDER) {
+    const cmds = grouped.get(groupName);
+    if (!cmds || cmds.length === 0) continue;
+
+    const fieldValue = cmds.map((cmd) => formatCommand(cmd)).join("\n");
+    embed.field(groupName, fieldValue, false);
+  }
+
+  const other = grouped.get("Other");
+  if (other && other.length > 0) {
+    const fieldValue = other.map((cmd) => formatCommand(cmd)).join("\n");
+    embed.field("Other", fieldValue, false);
+  }
+
+  embed.footer(`${playerCommands.length} commands available`);
+
+  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setLabel("Full Command Guide")
+      .setStyle(ButtonStyle.Link)
+      .setURL(guideUrl),
+  );
+
+  const messageId = interaction.options.getString("message_id");
+  const payload = { embeds: [embed.build()], components: [row] };
+
+  if (messageId) {
+    const existing = await interaction.channel.messages
+      .fetch(messageId)
+      .catch(() => null);
+
+    if (!existing) {
+      await replyError(
+        interaction,
+        "Message Not Found",
+        `Could not find message with ID \`${messageId}\` in this channel.`,
+      );
+      return;
+    }
+
+    await existing.edit(payload);
+
+    const successEmbed = EmbedPresets.success(
+      "Panel Updated",
+      `Command docs panel updated with ${playerCommands.length} commands.`,
+    );
+    await interaction.reply({
+      embeds: [successEmbed.build()],
+      flags: MessageFlags.Ephemeral,
+    });
+
+    logger.info(
+      `${interaction.user.tag} updated command docs panel (${messageId})`,
+    );
+  } else {
+    await interaction.channel.send(payload);
+
+    const successEmbed = EmbedPresets.success(
+      "Panel Created",
+      `Command docs panel created with ${playerCommands.length} commands.`,
+    );
+    await interaction.reply({
+      embeds: [successEmbed.build()],
+      flags: MessageFlags.Ephemeral,
+    });
+
+    logger.info(`${interaction.user.tag} created command docs panel`);
   }
 }
+
+export default {
+  data,
+  permissions,
+  execute,
+} satisfies CommandModule;

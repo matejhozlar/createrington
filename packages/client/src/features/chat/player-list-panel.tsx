@@ -1,6 +1,7 @@
+import { Badge } from "@/components/ui/badge";
 import { useEffect, useMemo } from "react";
 import { Users, X } from "lucide-react";
-import { playerAvatarUrl } from "@/lib/player-images";
+import { playerAvatarUrl } from "@/lib/playerImages";
 import { usePlayerData } from "@/contexts/player-data";
 import { useSidebar } from "@/components/ui/sidebar";
 import {
@@ -10,13 +11,9 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { Avatar } from "./avatar";
-import { useRelativeTick } from "./hooks";
+import { useNow } from "@/hooks/use-now";
 import { formatCompactDuration } from "@createrington/shared/format";
 
-/**
- * A single row in the player list panel.
- * Re-renders every tick so the session duration stays live.
- */
 function PlayerRow({
   uuid,
   username,
@@ -26,17 +23,11 @@ function PlayerRow({
 }: {
   uuid: string;
   username: string;
-  sessionStart: Date | string;
-  /** Current timestamp snapshot from the parent's tick: pure state, no Date.now() here */
+  sessionStart: Date;
   now: number;
-  /** True when the sidebar is in icon-collapsed mode */
   isCollapsed: boolean;
 }) {
-  const start =
-    sessionStart instanceof Date
-      ? sessionStart.getTime()
-      : new Date(sessionStart).getTime();
-  const sessionMs = now - start;
+  const sessionMs = now - sessionStart.getTime();
 
   return (
     <div
@@ -45,13 +36,6 @@ function PlayerRow({
         isCollapsed ? "justify-center px-0 py-2" : "gap-3 px-4 py-2.5",
       )}
     >
-      {/*
-       * Avatar: when collapsed we wrap it in the same Tooltip pattern that
-       * SidebarMenuButton uses: Tooltip > TooltipTrigger asChild > element,
-       * with TooltipContent hidden={!isCollapsed} so it's mounted but suppressed
-       * in expanded mode.  The TooltipProvider (delayDuration={0}) is already
-       * on the tree courtesy of SidebarProvider.
-       */}
       <Tooltip>
         <TooltipTrigger asChild>
           <div className="shrink-0">
@@ -63,7 +47,6 @@ function PlayerRow({
         </TooltipContent>
       </Tooltip>
 
-      {/* Info: hidden when collapsed */}
       {!isCollapsed && (
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium text-foreground">
@@ -81,15 +64,6 @@ function PlayerRow({
   );
 }
 
-/**
- * The slide-over panel itself.  It is rendered as a fixed-position layer that
- * occupies exactly the same space as the sidebar (left: 0, width matches
- * --sidebar-width).  It slides in/out via a CSS translate on the X axis so the
- * transition is GPU-accelerated and buttery.
- *
- * - `open`  : controls the slide state
- * - `onClose`: called when the user clicks the X or presses Escape
- */
 export function PlayerListPanel({
   open,
   onClose,
@@ -102,8 +76,7 @@ export function PlayerListPanel({
   const { getServerPlayers } = usePlayerData();
   const { state: sidebarState } = useSidebar();
   const isCollapsed = sidebarState === "collapsed";
-  // Tick every 60s so session durations update without remounting
-  const now = useRelativeTick(60_000);
+  const now = useNow();
 
   const players = useMemo(
     () => getServerPlayers(serverId),
@@ -131,7 +104,6 @@ export function PlayerListPanel({
         !open && "pointer-events-none",
       )}
     >
-      {/* Header row */}
       <div
         className={cn(
           "flex min-h-20 items-center border-b border-border",
@@ -146,9 +118,9 @@ export function PlayerListPanel({
             <h2 className="text-sm font-semibold text-foreground">
               Online Players
             </h2>
-            <span className="inline-flex items-center justify-center rounded-full bg-green-500/20 px-2 py-0.5 text-[11px] font-semibold text-green-500">
+            <Badge tone="success" className="px-2 text-[11px] font-semibold">
               {players.length}
-            </span>
+            </Badge>
           </div>
         )}
 
@@ -161,7 +133,6 @@ export function PlayerListPanel({
         </button>
       </div>
 
-      {/* Scrollable player list */}
       <div className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-sidebar-border hover:[&::-webkit-scrollbar-thumb]:bg-muted-foreground/50">
         {players.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center px-6 py-12 text-center">

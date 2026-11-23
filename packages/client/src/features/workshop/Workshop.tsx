@@ -4,18 +4,19 @@ import { trpc, type RouterOutput } from "@/lib/trpc";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { LoadingState } from "@/components/query-states";
+import { ErrorState, LoadingState } from "@/components/query-states";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
 import { PackStrip } from "./components/PackStrip";
 import { ProjectThumb } from "./components/ProjectThumb";
-import { QueryErrorState } from "./components/QueryErrorState";
 import {
   WorkshopDisabledState,
   WorkshopEmptyState,
 } from "./components/WorkshopEmptyState";
 import { WorkshopHero } from "./components/WorkshopHero";
-import { WORKSHOP_STATUS_STYLES, formatDate, loaderName } from "./format";
+import { WORKSHOP_STATUS_STYLES, loaderName } from "./format";
+import { formatDate } from "@createrington/shared/format";
 import { useQuery } from "@tanstack/react-query";
+import { plural, pluralize } from "@/lib/format";
 
 const STAT_LABEL_CLASS =
   "text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground";
@@ -63,7 +64,8 @@ export function Workshop() {
             ) : workshopsQuery.error?.data?.code === "FORBIDDEN" ? (
               <WorkshopDisabledState />
             ) : workshopsQuery.error ? (
-              <QueryErrorState
+              <ErrorState
+                bordered
                 message={workshopsQuery.error.message}
                 onRetry={() => workshopsQuery.refetch()}
               />
@@ -121,14 +123,12 @@ function ActiveWorkshopCard({ workshop }: { workshop: WorkshopListItem }) {
             <WorkshopStat
               label="In the pack"
               value={summary.packModCount}
-              unit={summary.packModCount === 1 ? "mod" : "mods"}
+              unit={plural(summary.packModCount, "mod")}
             />
             <WorkshopStat
               label="Awaiting review"
               value={summary.pendingModCount}
-              unit={
-                summary.pendingModCount === 1 ? "suggestion" : "suggestions"
-              }
+              unit={plural(summary.pendingModCount, "suggestion")}
             />
             <div>
               <div className={STAT_LABEL_CLASS}>Participants</div>
@@ -217,8 +217,7 @@ function ActiveWorkshopCard({ workshop }: { workshop: WorkshopListItem }) {
           to={`/workshop/${workshop.slug}`}
           className="mt-auto inline-flex items-center gap-1 text-[13px] font-medium text-primary transition hover:brightness-110"
         >
-          See all {suggestionCount}{" "}
-          {suggestionCount === 1 ? "suggestion" : "suggestions"}
+          See all {pluralize(suggestionCount, "suggestion")}
           <ChevronRight className="size-3.5" />
         </Link>
       </div>

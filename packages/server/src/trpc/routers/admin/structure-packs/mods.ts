@@ -1,33 +1,37 @@
 import { z } from "zod";
-import { adminProcedure } from "@/trpc/trpc";
+import { adminProcedure, router } from "@/trpc/trpc";
 import { Q } from "@/db";
 import { httpUrlSchema } from "@createrington/shared/api/embed";
-import { structurePackService } from "@/services/structure-pack";
+import { structurePackService } from "@/services/structure-pack/structure-pack.service";
 import {
-  searchMods,
-  getModFiles,
-  resolveDependencies,
-} from "@/services/curseforge/mods";
-import { getFilesDependencies } from "@/services/curseforge/files";
-import { auditActor } from "@/trpc/utils";
-import { modFileName, getRotationService } from "./helpers";
+  DEFAULT_GAME_VERSION,
+  MODPACK_PROJECT_ID,
+  NEOFORGE_LOADER_TYPE,
+} from "@/services/curseforge/client";
+import { listProjectFiles } from "@/services/curseforge/content";
+import { resolveDependencies, searchMods } from "@/services/curseforge/mods";
+import { findModpackModIds } from "@/services/modpack/manifest";
+import { auditActor, id } from "@/trpc/utils";
+import { getRotationService } from "./helpers";
+import { structurePackModFileName } from "@createrington/shared/structure-pack";
 
-export const structurePackModProcedures = {
-  addMod: adminProcedure
+const MOD_FILES_PAGE_SIZE = 50;
+
+export const structurePackModsRouter = router({
+  create: adminProcedure
     .meta({ description: "Add a CurseForge mod to a structure pack" })
     .input(
       z.object({
         packId: z.coerce.number().int().positive(),
         curseforgeModId: z.number().int().positive(),
         curseforgeFileId: z.number().int().positive(),
-        fileName: modFileName,
+        fileName: structurePackModFileName,
         modName: z.string().min(1),
         modUrl: httpUrlSchema.optional(),
         thumbnailUrl: z.string().url().optional(),
       }),
     )
     .mutation(async ({ input, ctx }) => {
-      // Validate the download URL is resolvable before persisting
       const rotationService = await getRotationService();
       await rotationService.validateModDownloadable(
         input.curseforgeModId,
@@ -44,7 +48,7 @@ export const structurePackModProcedures = {
       return mod;
     }),
 
-  removeMod: adminProcedure
+  delete: adminProcedure
     .meta({ description: "Remove a mod from a structure pack" })
     .input(
       z.object({
@@ -59,21 +63,32 @@ export const structurePackModProcedures = {
         actionType: "structure_pack_remove_mod",
         description: `Removed mod #${input.modId} from pack #${input.packId}`,
       });
-      return { removed: true };
     }),
 
-  searchMods: adminProcedure
+  search: adminProcedure
     .meta({ description: "Search CurseForge for mods" })
     .input(z.object({ query: z.string().min(1).max(100) }))
     .query(async ({ input }) => {
-      return searchMods(input.query);
+      return searchMods(input.query, undefined, {
+        packModIds: () => findModpackModIds(MODPACK_PROJECT_ID),
+      });
     }),
 
-  getModFiles: adminProcedure
+  files: adminProcedure
     .meta({ description: "Get available files for a CurseForge mod" })
-    .input(z.object({ modId: z.number().int().positive() }))
+    .input(z.object({ modId: id() }))
     .query(async ({ input }) => {
-      return getModFiles(input.modId);
+      const { files } = await listProjectFiles(input.modId, {
+        gameVersion: DEFAULT_GAME_VERSION,
+        modLoaderType: NEOFORGE_LOADER_TYPE,
+        index: 0,
+        pageSize: MOD_FILES_PAGE_SIZE,
+      });
+      return files.flatMap(({ fileName, displayName, ...file }) =>
+        fileName
+          ? [{ ...file, fileName, displayName: displayName || fileName }]
+          : [],
+      );
     }),
 
   resolveDeps: adminProcedure
@@ -84,7 +99,7 @@ export const structurePackModProcedures = {
     .input(
       z.object({
         packId: z.coerce.number().int().positive(),
-        modIds: z.array(z.number().int().positive()).min(1),
+        modIds: z.array(id()).min(1),
       }),
     )
     .query(async ({ input }) => {
@@ -93,7 +108,7 @@ export const structurePackModProcedures = {
       return resolveDependencies(input.modIds, packModIds);
     }),
 
-  checkRemoveDeps: adminProcedure
+  checkDeleteDeps: adminProcedure
     .meta({
       description:
         "Check which dependencies are safe to remove alongside a mod",
@@ -104,88 +119,7 @@ export const structurePackModProcedures = {
         modId: z.coerce.number().int().positive(),
       }),
     )
-    .query(async ({ input }) => {
-      const pack = await structurePackService.getPack(input.packId);
-      const targetMod = pack.mods.find((m) => m.id === input.modId);
-      if (!targetMod) return { deps: [], dependents: [] };
-
-      // Fetch dependency info for all pack mods
-      const fileIds = pack.mods.map((m) => m.curseforgeFileId);
-      const allFileDeps = await getFilesDependencies(fileIds);
-
-      // Find which other pack mods depend on the target mod
-      const dependents: Array<{ modName: string; relationType: number }> = [];
-      for (const fileDep of allFileDeps) {
-        if (fileDep.modId === targetMod.curseforgeModId) continue;
-        for (const dep of fileDep.dependencies) {
-          if (dep.modId === targetMod.curseforgeModId) {
-            const packMod = pack.mods.find(
-              (m) => m.curseforgeModId === fileDep.modId,
-            );
-            if (packMod) {
-              dependents.push({
-                modName: packMod.modName,
-                relationType: dep.relationType,
-              });
-            }
-          }
-        }
-      }
-
-      // Find target mod's own dependencies
-      const targetFileDeps = allFileDeps.find(
-        (f) => f.fileId === targetMod.curseforgeFileId,
-      );
-      const targetDepModIds = new Set(
-        (targetFileDeps?.dependencies ?? []).map((d) => d.modId),
-      );
-
-      if (targetDepModIds.size === 0) return { deps: [], dependents };
-
-      // Build reverse dep map: depModId → set of pack curseforgeModIds that need it
-      const reverseDeps = new Map<number, Set<number>>();
-      for (const fileDep of allFileDeps) {
-        for (const dep of fileDep.dependencies) {
-          if (!targetDepModIds.has(dep.modId)) continue;
-          if (!reverseDeps.has(dep.modId))
-            reverseDeps.set(dep.modId, new Set());
-          reverseDeps.get(dep.modId)!.add(fileDep.modId);
-        }
-      }
-
-      // Filter to deps that are actually in the pack
-      const packModIdSet = new Set(pack.mods.map((m) => m.curseforgeModId));
-      const inPackDepIds = [...targetDepModIds].filter((id) =>
-        packModIdSet.has(id),
-      );
-
-      if (inPackDepIds.length === 0) return { deps: [], dependents };
-
-      // Resolve names for the deps
-      const resolved = await resolveDependencies(inPackDepIds, packModIdSet);
-
-      // Determine safety: a dep is safe to remove if no OTHER pack mod needs it
-      return {
-        dependents,
-        deps: resolved.map((dep) => {
-          const neededByModIds = reverseDeps.get(dep.modId) ?? new Set();
-          const externalNeeders = [...neededByModIds].filter(
-            (id) => id !== targetMod.curseforgeModId,
-          );
-          const neededByNames = externalNeeders
-            .map(
-              (id) =>
-                pack.mods.find((m) => m.curseforgeModId === id)?.modName ?? "",
-            )
-            .filter(Boolean);
-
-          return {
-            modId: dep.modId,
-            modName: dep.modName,
-            safe: externalNeeders.length === 0,
-            neededBy: neededByNames,
-          };
-        }),
-      };
-    }),
-};
+    .query(({ input }) =>
+      structurePackService.checkDeleteDependencies(input.packId, input.modId),
+    ),
+});

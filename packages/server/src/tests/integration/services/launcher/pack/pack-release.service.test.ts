@@ -1,39 +1,29 @@
 import { describe, it, expect, vi } from "vitest";
 
-vi.mock("@/services/curseforge/files", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("@/services/curseforge/files")>();
-  return {
-    ...actual,
-    getFilesDetails: vi.fn(async () => []),
-    getServedFileIds: vi.fn(async (fileIds: number[]) => new Set(fileIds)),
-  };
-});
-vi.mock("@/services/curseforge/modpack", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("@/services/curseforge/modpack")>();
-  return { ...actual, getModpackFile: vi.fn(async () => null) };
-});
-vi.mock("@/services/curseforge/downloads", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("@/services/curseforge/downloads")>();
-  return { ...actual, resolveFileDownloads: vi.fn(async () => new Map()) };
-});
-vi.mock("@/services/curseforge/ingest", () => ({
-  ingestProjectsWhere: vi.fn(async () => 0),
-  refreshProjects: vi.fn(async () => 0),
-}));
-vi.mock("@/services/launcher/pack/sandbox-files", async (importOriginal) => ({
-  ...(await importOriginal<
-    typeof import("@/services/launcher/pack/sandbox-files")
-  >()),
-  findSandboxFileUrls: vi.fn(async () => new Map()),
-  findSandboxSnapshotUrl: vi.fn(async () => null),
-  openSandboxFile: vi.fn(async () => null),
-}));
-vi.mock("@/services/content-gateway/minecraft", () => ({
-  getMinecraftJavaMajorVersion: vi.fn(async () => 21),
-}));
+vi.mock("@/services/curseforge/files", async () =>
+  (await import("@/tests/helpers/mocks/curseforge")).curseforgeMocks.files(),
+);
+vi.mock("@/services/curseforge/modpack", async () =>
+  (await import("@/tests/helpers/mocks/curseforge")).curseforgeMocks.modpack(),
+);
+vi.mock("@/services/curseforge/downloads", async () =>
+  (
+    await import("@/tests/helpers/mocks/curseforge")
+  ).curseforgeMocks.downloads(),
+);
+vi.mock("@/services/curseforge/ingest", async () =>
+  (await import("@/tests/helpers/mocks/curseforge")).curseforgeMocks.ingest(),
+);
+vi.mock("@/services/launcher/pack/sandbox-files", async () =>
+  (
+    await import("@/tests/helpers/mocks/launcher-pack")
+  ).launcherPackMocks.sandboxFiles(),
+);
+vi.mock("@/services/content-gateway/minecraft", async () =>
+  (
+    await import("@/tests/helpers/mocks/launcher-pack")
+  ).launcherPackMocks.minecraft(),
+);
 
 import config from "@/config";
 import { Q } from "@/db";
@@ -267,15 +257,15 @@ describe("LauncherPackReleaseService.prepareRelease", () => {
       Discord.Channels.administration.NOTIFICATIONS,
     );
     expect(notice.content).toBe(`<@${config.app.auth.owner.discordId}>`);
-    expect(notice.embeds.data.description).toContain("Vitest Pack 1.0.0");
-    expect(notice.embeds.data.description).toContain(
-      `mod-${manual.fileId}.jar`,
-    );
-    expect(notice.embeds.data.description).toContain(
-      `\`mod-${disabled.fileId}.jar\` (ships disabled)`,
-    );
-    expect(notice.embeds.data.description).not.toContain(
-      `mod-${served.fileId}.jar`,
+    const listed = (file: typeof manual) =>
+      `- [Vitest Mod ${file.projectId}](https://www.curseforge.com/minecraft/mc-mods/vitest-${file.fileId}/files/${file.fileId}) \`mod-${file.fileId}.jar\``;
+    expect(notice.embeds.data.description).toBe(
+      [
+        "**Pack**: Vitest Pack 1.0.0",
+        "CurseForge gives no download link for these client files, Modrinth has no identical copy, their built address on CurseForge's CDN is switched off or does not answer, and the sandbox keeps none, so launcher players are asked to download them in the browser:",
+        listed(manual),
+        `${listed(disabled)} (ships disabled)`,
+      ].join("\n"),
     );
 
     const resolved = await launcherPackFileService.resolveFiles([
@@ -614,6 +604,34 @@ describe("LauncherPackReleaseService.prepareRelease", () => {
     expect(sendMock.mock.calls[0][0].embeds.data.description).toContain(
       "server pack",
     );
+  });
+
+  it("posts a release-not-offered notice again on the next attempt when the first post failed", async () => {
+    const modpack = await seedPack();
+    const file = await seedFile();
+    serveFromCurseForge([file]);
+    const { release, manifest } = await seedRelease(modpack, "1.0.0", [file]);
+    const clientRead = { ...manifest, fileId: manifest.fileId + 100_000 };
+    sendMock.mockRejectedValueOnce(new Error("Missing Access"));
+    vi.spyOn(logger, "error").mockImplementation(() => logger);
+
+    await launcherPackReleaseService.prepareRelease(
+      modpack,
+      release.id,
+      clientRead,
+    );
+    await launcherPackReleaseService.prepareRelease(
+      modpack,
+      release.id,
+      clientRead,
+    );
+    await launcherPackReleaseService.prepareRelease(
+      modpack,
+      release.id,
+      clientRead,
+    );
+
+    expect(sendMock).toHaveBeenCalledTimes(2);
   });
 
   it.each([

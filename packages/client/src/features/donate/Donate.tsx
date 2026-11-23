@@ -10,11 +10,13 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { trpc, queryClient } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { formatDate } from "@createrington/shared/format";
 
 const DONATION_TIERS = [
   { amountCents: 300, label: "€3" },
@@ -23,6 +25,13 @@ const DONATION_TIERS = [
   { amountCents: 1500, label: "€15" },
   { amountCents: 2000, label: "€20" },
   { amountCents: 5000, label: "€50" },
+] as const;
+
+type DonationType = "one_time" | "monthly";
+
+const DONATION_TYPES = [
+  { value: "one_time", label: "One-time", icon: Zap },
+  { value: "monthly", label: "Monthly", icon: Repeat },
 ] as const;
 
 const PERKS = [
@@ -77,7 +86,7 @@ const FAQ = [
 export function Donate() {
   const toast = useToastActions();
 
-  const [type, setType] = useState<"one_time" | "monthly">("one_time");
+  const [type, setType] = useState<DonationType>("one_time");
   const [selectedCents, setSelectedCents] = useState<number>(500);
   const [isCustom, setIsCustom] = useState(false);
   const [customValue, setCustomValue] = useState("");
@@ -173,7 +182,6 @@ export function Donate() {
       />
 
       <div className="max-w-2xl mx-auto px-5 pb-16 space-y-10">
-        {/* Active subscription banner */}
         {subscription.data && (
           <div className="rounded-xl border border-border bg-card p-5 space-y-3">
             <div className="flex items-start justify-between gap-4">
@@ -184,8 +192,8 @@ export function Donate() {
                 <p className="text-sm text-muted-foreground">
                   €{(subscription.data.amountCents / 100).toFixed(2)}/mo
                   {subscription.data.cancelAtPeriodEnd
-                    ? ` — cancels on ${new Date(subscription.data.currentPeriodEnd).toLocaleDateString()}`
-                    : ` — renews on ${new Date(subscription.data.currentPeriodEnd).toLocaleDateString()}`}
+                    ? ` — cancels on ${formatDate(subscription.data.currentPeriodEnd)}`
+                    : ` — renews on ${formatDate(subscription.data.currentPeriodEnd)}`}
                 </p>
               </div>
               {subscription.data.cancelAtPeriodEnd ? (
@@ -213,7 +221,22 @@ export function Donate() {
           </div>
         )}
 
-        {/* Supporter thank you */}
+        {subscription.isError && (
+          <div className="flex items-center justify-between gap-4 rounded-xl border border-border bg-card p-5">
+            <p className="text-sm text-muted-foreground">
+              Couldn't check your monthly subscription right now.
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void subscription.refetch()}
+              loading={subscription.isFetching}
+            >
+              Try again
+            </Button>
+          </div>
+        )}
+
         {isSupporter && (
           <div className="rounded-xl border border-primary/20 bg-primary/5 p-5">
             <div className="flex items-center gap-3">
@@ -225,37 +248,20 @@ export function Donate() {
           </div>
         )}
 
-        {/* Donation type toggle */}
-        <div className="flex gap-2 p-1 bg-muted rounded-lg w-fit">
-          <button
-            type="button"
-            onClick={() => setType("one_time")}
-            className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors",
-              type === "one_time"
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            <Zap className="size-4" />
-            One-time
-          </button>
-          <button
-            type="button"
-            onClick={() => setType("monthly")}
-            className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors",
-              type === "monthly"
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            <Repeat className="size-4" />
-            Monthly
-          </button>
-        </div>
+        <Tabs
+          value={type}
+          onValueChange={(value) => setType(value as DonationType)}
+        >
+          <TabsList>
+            {DONATION_TYPES.map(({ value, label, icon: Icon }) => (
+              <TabsTrigger key={value} value={value}>
+                <Icon />
+                {label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
 
-        {/* Amount tiers */}
         <div className="grid grid-cols-3 gap-3">
           {DONATION_TIERS.map((tier) => {
             const isSelected = !isCustom && selectedCents === tier.amountCents;
@@ -320,7 +326,6 @@ export function Donate() {
 
         <Separator />
 
-        {/* Perks */}
         <div className="space-y-3">
           <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
             What you get
@@ -351,7 +356,6 @@ export function Donate() {
           on our servers.
         </p>
 
-        {/* Donation history */}
         {history.data && history.data.length > 0 && (
           <>
             <Separator />
@@ -378,7 +382,7 @@ export function Donate() {
                           {d.type === "monthly" ? "/mo" : ""}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {new Date(d.createdAt).toLocaleDateString()}
+                          {formatDate(d.createdAt)}
                         </p>
                       </div>
                     </div>
@@ -406,7 +410,6 @@ export function Donate() {
 
         <Separator />
 
-        {/* FAQ */}
         <div className="space-y-3">
           <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
             Frequently asked questions

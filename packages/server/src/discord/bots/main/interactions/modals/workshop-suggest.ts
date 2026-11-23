@@ -7,11 +7,12 @@ import {
   TextInputBuilder,
   TextInputStyle,
   type ModalSubmitInteraction,
+  channelMention,
 } from "discord.js";
 import type { Workshop } from "@createrington/shared/db";
-import config from "@/config";
-import { player, Q } from "@/db";
-import { AppError } from "@/app/middleware/error-handler";
+import { siteUrl } from "@/config/site-url";
+import { Q } from "@/db";
+import { AppError } from "@/errors";
 import { EmbedPresets } from "@/discord/embeds";
 import { replyError } from "@/discord/utils/interaction-reply";
 import { findModBySlug } from "@/services/curseforge/mods";
@@ -23,8 +24,9 @@ import { featureFlagService, FeatureFlags } from "@/services/feature-flag";
 import { workshopSuggestionService } from "@/services/workshop/suggestion.service";
 import { banNotice, findSuggestBan } from "@/services/workshop/bans";
 import { discordTimestamp } from "@/utils/format";
+import type { ModalModule } from "@/discord/bots/common/loaders/component-loader";
+import { CustomIds } from "@/discord/custom-ids";
 
-const MODAL_ID_PREFIX = "workshop-suggest";
 const PICKER_SUFFIX = "pick";
 const WORKSHOP_SELECT_ID = "workshop";
 const LINK_INPUT_ID = "link";
@@ -38,8 +40,6 @@ const LINK_ERRORS: Record<ModUrlErrorReason, string> = {
   "missing-slug":
     "Could not find a mod in that link. Paste the mod's full page URL.",
 };
-
-export const customId = `${MODAL_ID_PREFIX}:*`;
 
 function linkField(): LabelBuilder {
   return new LabelBuilder()
@@ -73,13 +73,12 @@ function noteField(): LabelBuilder {
     );
 }
 
-/** Builds the suggestion modal for a specific workshop. */
 export function buildWorkshopSuggestModal(
   workshop: Workshop,
   slotsUsed: number,
 ): ModalBuilder {
   return new ModalBuilder()
-    .setCustomId(`${MODAL_ID_PREFIX}:${workshop.id}`)
+    .setCustomId(CustomIds.workshopSuggest.build({ target: workshop.id }))
     .setTitle("Suggest a mod")
     .addTextDisplayComponents(
       new TextDisplayBuilder().setContent(
@@ -89,7 +88,6 @@ export function buildWorkshopSuggestModal(
     .addLabelComponents(linkField(), noteField());
 }
 
-/** Builds the suggestion modal with a required workshop picker on top. */
 export function buildWorkshopPickerSuggestModal(
   workshops: Workshop[],
 ): ModalBuilder {
@@ -108,17 +106,15 @@ export function buildWorkshopPickerSuggestModal(
     );
 
   return new ModalBuilder()
-    .setCustomId(`${MODAL_ID_PREFIX}:${PICKER_SUFFIX}`)
+    .setCustomId(CustomIds.workshopSuggest.build({ target: PICKER_SUFFIX }))
     .setTitle("Suggest a mod")
     .addLabelComponents(workshopField, linkField(), noteField());
 }
 
-export async function execute(
-  interaction: ModalSubmitInteraction,
-): Promise<void> {
+async function execute(interaction: ModalSubmitInteraction): Promise<void> {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-  const suffix = interaction.customId.split(":")[1];
+  const suffix = CustomIds.workshopSuggest.parse(interaction.customId)?.target;
   const workshopId =
     suffix === PICKER_SUFFIX
       ? Number(interaction.fields.getStringSelectValues(WORKSHOP_SELECT_ID)[0])
@@ -137,7 +133,7 @@ export async function execute(
     return;
   }
 
-  const suggester = await player.find({ discordId: interaction.user.id });
+  const suggester = await Q.player.find({ discordId: interaction.user.id });
   if (!suggester) {
     await replyError(
       interaction,
@@ -208,7 +204,7 @@ export async function execute(
 
   if (!project) {
     const query = encodeURIComponent(parsed.slug.replace(/-/g, " "));
-    const suggestUrl = `${config.meta.links.website}/workshop/${workshop.slug}/suggest?q=${query}`;
+    const suggestUrl = `${siteUrl(`/workshop/${workshop.slug}/suggest`)}?q=${query}`;
     await replyError(
       interaction,
       "Mod Not Found",
@@ -228,7 +224,7 @@ export async function execute(
     );
 
     const forumLine = workshop.discordForumChannelId
-      ? `\nA discussion thread will appear in <#${workshop.discordForumChannelId}> shortly.`
+      ? `\nA discussion thread will appear in ${channelMention(workshop.discordForumChannelId)} shortly.`
       : "";
 
     const embed = EmbedPresets.success(
@@ -255,3 +251,8 @@ export async function execute(
     );
   }
 }
+
+export default {
+  customId: CustomIds.workshopSuggest,
+  execute,
+} satisfies ModalModule;

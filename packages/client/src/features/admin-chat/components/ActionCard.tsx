@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { Check, RotateCcw, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToastActions } from "@/hooks/use-toast";
+import { sessionStore } from "@/lib/storage";
 import { cn } from "@/lib/utils";
 import {
   PENDING_EMBED_KEY,
@@ -9,19 +10,21 @@ import {
   PENDING_COMPONENTS_KEY,
   INSERT_COMPONENTS_EVENT,
   describeAction,
+  isPlanAction,
   type AdminChatAction,
   type HighlightAction,
-  type InsertEmbedAction,
-  type InsertComponentsAction,
-} from "../actions";
+} from "@/features/admin-chat/actions";
+import {
+  readActionState,
+  saveActionState,
+  type ActionState,
+} from "@/features/admin-chat/actionState";
+import { usePlanAction } from "@/features/admin-chat/hooks/use-plan-action";
 import { EmbedActionPreview } from "./EmbedActionPreview";
+import { PlanActionPreview } from "./PlanActionPreview";
 import { ComponentsActionPreview } from "./ComponentsActionPreview";
+import "@/features/admin-chat/admin-chat.css";
 
-/**
- * Apply a highlight action to the current document. Scrolls the element
- * into view and flashes an outline via .ac-highlighted for ttlMs (default
- * 3s). Returns true if the selector matched an element.
- */
 function applyHighlight(action: HighlightAction): boolean {
   try {
     const el = document.querySelector(action.selector);
@@ -36,65 +39,41 @@ function applyHighlight(action: HighlightAction): boolean {
   }
 }
 
-/**
- * Apply an insert_embed action. If the user is already on the embed
- * builder, dispatches INSERT_EMBED_EVENT so it can apply immediately.
- * Otherwise stashes the embed in sessionStorage under PENDING_EMBED_KEY
- * and navigates there: the builder picks it up on mount.
- */
-function applyInsertEmbed(
-  action: InsertEmbedAction,
-  navigate: (to: string) => void,
-): void {
-  const serialized = JSON.stringify(action.embed);
-  const onBuilderPage = window.location.pathname.startsWith(
-    "/admin/tools/embed-builder",
-  );
-  if (onBuilderPage) {
-    window.dispatchEvent(
-      new CustomEvent(INSERT_EMBED_EVENT, { detail: action.embed }),
-    );
-    return;
-  }
-  try {
-    sessionStorage.setItem(PENDING_EMBED_KEY, serialized);
-  } catch {
-    // Best-effort: if storage is unavailable, navigation alone still lets
-    // the admin reapply from chat history.
-  }
-  navigate("/admin/tools/embed-builder");
-}
+const EMBED_BUILDER_PATH = "/admin/tools/embed-builder";
 
-/**
- * Apply an insert_components action. Same dispatch/stash pattern as
- * applyInsertEmbed, keyed for Components V2 so the builder switches into
- * components mode and loads the tree.
- */
-function applyInsertComponents(
-  action: InsertComponentsAction,
+const BUILDER_TARGETS = {
+  insert_embed: { event: INSERT_EMBED_EVENT, storageKey: PENDING_EMBED_KEY },
+  insert_components: {
+    event: INSERT_COMPONENTS_EVENT,
+    storageKey: PENDING_COMPONENTS_KEY,
+  },
+} as const;
+
+const TYPE_LABELS: Record<AdminChatAction["type"], string> = {
+  highlight: "Highlight",
+  navigate: "Navigate",
+  insert_embed: "Insert embed",
+  insert_components: "Insert components",
+  plan_create: "New plan",
+  plan_update: "Edit plan",
+};
+
+function sendToEmbedBuilder(
+  target: keyof typeof BUILDER_TARGETS,
+  payload: unknown,
   navigate: (to: string) => void,
 ): void {
-  const serialized = JSON.stringify(action.components);
-  const onBuilderPage = window.location.pathname.startsWith(
-    "/admin/tools/embed-builder",
-  );
-  if (onBuilderPage) {
-    window.dispatchEvent(
-      new CustomEvent(INSERT_COMPONENTS_EVENT, { detail: action.components }),
-    );
+  const { event, storageKey } = BUILDER_TARGETS[target];
+  if (window.location.pathname.startsWith(EMBED_BUILDER_PATH)) {
+    window.dispatchEvent(new CustomEvent(event, { detail: payload }));
     return;
   }
-  try {
-    sessionStorage.setItem(PENDING_COMPONENTS_KEY, serialized);
-  } catch {
-    // Best-effort: navigation alone still lets the admin reapply from history.
-  }
-  navigate("/admin/tools/embed-builder");
+  sessionStore.setJson(storageKey, payload);
+  navigate(EMBED_BUILDER_PATH);
 }
 
 interface ActionCardProps {
   action: AdminChatAction;
-  /** Unique-per-session key for persisting applied state across polls. */
   storageKey: string;
   navigate: (to: string) => void;
 }
@@ -105,30 +84,19 @@ export function ActionCard({
   navigate,
 }: ActionCardProps): React.JSX.Element {
   const toast = useToastActions();
-  const persistKey = `admin-chat-action:${storageKey}`;
-  const [state, setState] = useState<"pending" | "applied" | "dismissed">(
-    () => {
-      try {
-        const v = sessionStorage.getItem(persistKey);
-        if (v === "applied" || v === "dismissed") return v;
-      } catch {
-        // ignore
-      }
-      return "pending";
-    },
+  const [state, setState] = useState<ActionState>(() =>
+    readActionState(action, storageKey),
   );
 
   const setPersistent = useCallback(
     (next: "applied" | "dismissed") => {
       setState(next);
-      try {
-        sessionStorage.setItem(persistKey, next);
-      } catch {
-        // ignore
-      }
+      saveActionState(action, storageKey, next);
     },
-    [persistKey],
+    [action, storageKey],
   );
+
+  const plan = usePlanAction();
 
   const onApply = (): void => {
     if (action.type === "highlight") {
@@ -144,23 +112,26 @@ export function ActionCard({
       setPersistent("applied");
       return;
     }
-    if (action.type === "insert_components") {
-      applyInsertComponents(action, navigate);
-      setPersistent("applied");
+    if (isPlanAction(action)) {
+      void plan.apply(action).then(
+        (id) => {
+          setPersistent("applied");
+          navigate(`/admin/planning/${id}`);
+        },
+        (error: unknown) =>
+          toast.error(
+            error instanceof Error ? error.message : "Could not save the plan",
+          ),
+      );
       return;
     }
-    applyInsertEmbed(action, navigate);
+    sendToEmbedBuilder(
+      action.type,
+      action.type === "insert_embed" ? action.embed : action.components,
+      navigate,
+    );
     setPersistent("applied");
   };
-
-  const typeLabel =
-    action.type === "highlight"
-      ? "Highlight"
-      : action.type === "navigate"
-        ? "Navigate"
-        : action.type === "insert_components"
-          ? "Insert components"
-          : "Insert embed";
 
   return (
     <div
@@ -173,7 +144,7 @@ export function ActionCard({
       <div className="flex items-center gap-1.5 text-muted-foreground">
         <Sparkles size={12} className="shrink-0 text-primary" />
         <span className="text-[0.625rem] font-semibold tracking-wider text-foreground uppercase">
-          {typeLabel}
+          {TYPE_LABELS[action.type]}
         </span>
         <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
           {describeAction(action)}
@@ -185,10 +156,16 @@ export function ActionCard({
       {action.type === "insert_components" && (
         <ComponentsActionPreview components={action.components} />
       )}
+      {isPlanAction(action) && <PlanActionPreview action={action} />}
       <div className="flex items-center gap-1.5">
         {state === "pending" && (
           <>
-            <Button size="xs" onClick={onApply} type="button">
+            <Button
+              size="xs"
+              onClick={onApply}
+              type="button"
+              loading={plan.pending}
+            >
               <Check size={12} />
               Apply
             </Button>
@@ -207,10 +184,12 @@ export function ActionCard({
             <span className="text-[0.6875rem] italic text-muted-foreground">
               Applied
             </span>
-            <Button size="xs" variant="ghost" onClick={onApply} type="button">
-              <RotateCcw size={12} />
-              Re-apply
-            </Button>
+            {!isPlanAction(action) && (
+              <Button size="xs" variant="ghost" onClick={onApply} type="button">
+                <RotateCcw size={12} />
+                Re-apply
+              </Button>
+            )}
           </>
         )}
         {state === "dismissed" && (

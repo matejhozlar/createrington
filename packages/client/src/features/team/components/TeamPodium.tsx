@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type RefObject } from "react";
+import { useEffect } from "react";
+import { useElementSize } from "@/hooks/use-element-size";
 import { cn } from "@/lib/utils";
 import { TeamMemberCard } from "./TeamMemberCard";
 import { PODIUM } from "../data";
@@ -55,27 +56,9 @@ function layoutFor(width: number): PodiumLayout {
   return width >= STACKED_MIN_WIDTH ? "stacked" : "compact";
 }
 
-function usePodiumLayout(
-  ref: RefObject<HTMLDivElement | null>,
-): PodiumLayout | null {
-  const [layout, setLayout] = useState<PodiumLayout | null>(null);
-
-  useEffect(() => {
-    const element = ref.current;
-    if (!element) return;
-    const observer = new ResizeObserver(([entry]) => {
-      if (entry) setLayout(layoutFor(entry.contentRect.width));
-    });
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, [ref]);
-
-  return layout;
-}
-
 export function TeamPodium() {
-  const stageRef = useRef<HTMLDivElement>(null);
-  const layout = usePodiumLayout(stageRef);
+  const { ref: stageRef, size } = useElementSize<HTMLDivElement>();
+  const layout = size ? layoutFor(size.width) : null;
 
   useEffect(() => {
     stage.root = stageRef.current;
@@ -85,7 +68,7 @@ export function TeamPodium() {
       stage.reset();
       fx.clear();
     };
-  }, []);
+  }, [stageRef]);
 
   return (
     <div ref={stageRef}>

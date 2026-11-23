@@ -7,31 +7,14 @@ import {
   TextInputBuilder,
   TextInputStyle,
 } from "discord.js";
+import type { ButtonModule } from "@/discord/bots/common/loaders/component-loader";
+import { CustomIds } from "@/discord/custom-ids";
 
-/**
- * Button handler for player-prompt "Respond" / "Add entry" buttons.
- *
- * Pattern: `prompt:respond:<promptId>`. PlayerPromptService decides whether
- * the click earns a modal and what it should hold: single-entry prompts
- * prefill the existing answer so submitting overwrites it, multi-entry
- * prompts open blank unless the cap or cooldown blocks them. The actual
- * write happens in the modal handler at interactions/modals/prompt-submit.ts.
- */
-export const pattern = "prompt:respond:*";
-
-export const prodOnly = false;
-
-function parseCustomId(customId: string): { promptId: number } | null {
-  const [, , rawId] = customId.split(":");
-  if (!rawId) return null;
-  const promptId = parseInt(rawId, 10);
-  if (!Number.isFinite(promptId)) return null;
-  return { promptId };
-}
-
-export async function execute(interaction: ButtonInteraction): Promise<void> {
-  const parsed = parseCustomId(interaction.customId);
-  if (!parsed) {
+async function execute(interaction: ButtonInteraction): Promise<void> {
+  const promptId = Number(
+    CustomIds.promptRespond.parse(interaction.customId)?.promptId,
+  );
+  if (!Number.isInteger(promptId)) {
     await interaction.reply({
       content: "Invalid button format.",
       flags: MessageFlags.Ephemeral,
@@ -40,10 +23,7 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
   }
 
   const service = getServiceSync(Services.PLAYER_PROMPT_SERVICE);
-  const decision = await service.prepareEntry(
-    parsed.promptId,
-    interaction.user.id,
-  );
+  const decision = await service.prepareEntry(promptId, interaction.user.id);
 
   if (!decision.allowed) {
     await interaction.reply({
@@ -69,7 +49,7 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
   }
 
   const modal = new ModalBuilder()
-    .setCustomId(`prompt:submit:${prompt.id}`)
+    .setCustomId(CustomIds.promptSubmit.build({ promptId: prompt.id }))
     .setTitle(prompt.question.slice(0, 45))
     .addComponents(
       new ActionRowBuilder<TextInputBuilder>().addComponents(input),
@@ -77,3 +57,8 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
 
   await interaction.showModal(modal);
 }
+
+export default {
+  customId: CustomIds.promptRespond,
+  execute,
+} satisfies ButtonModule;

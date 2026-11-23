@@ -1,14 +1,10 @@
 import { LoadingScreen } from "@/components/query-states";
-import { PodiumCard, type PodiumPlayer } from "./components/PodiumCard";
+import { PodiumCard } from "./components/PodiumCard";
 import { RenderUnavailable } from "./components/RenderUnavailable";
 import { usePodiumSkins } from "./hooks/use-podium-skins";
 import { useRenderData } from "./hooks/use-render-data";
 import { useRenderPlatesReady } from "./hooks/use-render-plates";
-
-interface RecordsData {
-  contestedKeys: number;
-  players: PodiumPlayer[];
-}
+import { pluralize } from "@/lib/format";
 
 const BANNER = {
   src: "/assets/render/player-records.webp",
@@ -17,11 +13,11 @@ const BANNER = {
 const TITLE = "Most #1 Placements";
 
 function formatValue(value: number): string {
-  return `${value.toLocaleString()} ${value === 1 ? "record" : "records"}`;
+  return pluralize(value, "record");
 }
 
 export function RecordsRender() {
-  const { data, unavailable } = useRenderData<RecordsData>("records");
+  const { data, unavailable } = useRenderData("records");
   const skins = usePodiumSkins(data?.players ?? null);
   const platesReady = useRenderPlatesReady();
 

@@ -1,7 +1,7 @@
 import Stripe from "stripe";
 import type { Client } from "discord.js";
 import config from "@/config";
-import { donationRepo } from "@/db";
+import { Q } from "@/db";
 import { UniqueViolationError } from "@/db/utils";
 import { DiscordRolesNamespace as DiscordRoles } from "@/discord/constants/roles";
 import { RoleManager } from "@/discord/utils/roles/role-manager";
@@ -73,14 +73,14 @@ export class DonationService {
     return { sessionId: session.id, url: session.url! };
   }
 
-  /** Active monthly subscription details fetched live from Stripe, or null if there is none. */
+  /** Active monthly subscription details fetched live from Stripe, or null if there is none; throws when Stripe cannot be reached. */
   async getActiveSubscription(discordId: string): Promise<{
     subscriptionId: string;
     amountCents: number;
     currentPeriodEnd: Date;
     cancelAtPeriodEnd: boolean;
   } | null> {
-    const donation = await donationRepo.findActiveSubscription(discordId);
+    const donation = await Q.donation.findActiveSubscription(discordId);
     if (!donation?.stripeSubscriptionId) return null;
 
     try {
@@ -99,8 +99,18 @@ export class DonationService {
         currentPeriodEnd: periodEnd,
         cancelAtPeriodEnd: sub.cancel_at_period_end,
       };
-    } catch {
-      return null;
+    } catch (error) {
+      if (
+        error instanceof Stripe.errors.StripeError &&
+        error.code === "resource_missing"
+      ) {
+        return null;
+      }
+      logger.error(
+        `Failed to look up Stripe subscription ${donation.stripeSubscriptionId} for discord ${discordId}:`,
+        error,
+      );
+      throw error;
     }
   }
 
@@ -108,7 +118,7 @@ export class DonationService {
   async cancelSubscription(
     discordId: string,
   ): Promise<{ cancelAt: Date } | null> {
-    const donation = await donationRepo.findActiveSubscription(discordId);
+    const donation = await Q.donation.findActiveSubscription(discordId);
     if (!donation?.stripeSubscriptionId) return null;
 
     const sub = await this.stripe.subscriptions.update(
@@ -129,7 +139,7 @@ export class DonationService {
 
   /** Clears `cancel_at_period_end` on a still-active subscription. Returns false if already ended. */
   async reactivateSubscription(discordId: string): Promise<boolean> {
-    const donation = await donationRepo.findActiveSubscription(discordId);
+    const donation = await Q.donation.findActiveSubscription(discordId);
     if (!donation?.stripeSubscriptionId) return false;
 
     const sub = await this.stripe.subscriptions.retrieve(
@@ -153,7 +163,7 @@ export class DonationService {
     cancellingCount: number;
     mrrCents: number;
   }> {
-    const subscriptions = await donationRepo.findLatestPerSubscription();
+    const subscriptions = await Q.donation.getLatestPerSubscription();
     const amountBySubscription = new Map(
       subscriptions.map((d) => [d.stripeSubscriptionId!, d.amountCents]),
     );
@@ -191,7 +201,6 @@ export class DonationService {
       return new Date(invoice.period_end * 1000);
     }
 
-    // Fallback: approximate from billing cycle anchor
     const anchor = new Date(sub.billing_cycle_anchor * 1000);
     const now = new Date();
     while (anchor <= now) {
@@ -213,7 +222,7 @@ export class DonationService {
       return;
     }
 
-    const existing = await donationRepo.findBySessionId(session.id);
+    const existing = await Q.donation.find({ stripeSessionId: session.id });
     if (existing) {
       logger.info(
         `Stripe webhook replay for session ${session.id}, already processed, skipping`,
@@ -223,7 +232,7 @@ export class DonationService {
 
     let donation: Donation;
     try {
-      donation = await donationRepo.create({
+      donation = await Q.donation.createAndReturn({
         playerDiscordId: discordId,
         type,
         amountCents,
@@ -232,7 +241,6 @@ export class DonationService {
         stripeSubscriptionId: (session.subscription as string) ?? undefined,
         status: "completed",
         completedAt: new Date(),
-        supporterRoleGranted: true,
       });
     } catch (error) {
       if (
@@ -251,7 +259,12 @@ export class DonationService {
       `Donation completed: ${session.id}, €${(donation.amountCents / 100).toFixed(2)} from discord ${discordId}`,
     );
 
-    await this.grantSupporterRole(discordId);
+    if (await this.grantSupporterRole(discordId)) {
+      await Q.donation.update(
+        { id: donation.id },
+        { supporterRoleGranted: true },
+      );
+    }
   }
 
   /** Webhook: logs `cancel_at_period_end` transitions for audit; no state mutation. */
@@ -273,10 +286,10 @@ export class DonationService {
     );
   }
 
-  private async grantSupporterRole(discordId: string): Promise<void> {
+  private async grantSupporterRole(discordId: string): Promise<boolean> {
     if (!DiscordRoles.SUPPORTER) {
       logger.warn("No 'SUPPORTER' role configured, skipping role assignment");
-      return;
+      return false;
     }
 
     try {
@@ -285,7 +298,7 @@ export class DonationService {
       );
       if (!guild) {
         logger.warn("Guild not in cache, cannot assign supporter role");
-        return;
+        return false;
       }
 
       const member = await guild.members.fetch(discordId).catch(() => null);
@@ -293,16 +306,17 @@ export class DonationService {
         logger.warn(
           `Member ${discordId} not in guild, cannot assign supporter role`,
         );
-        return;
+        return false;
       }
 
-      await RoleManager.assign(
+      return await RoleManager.assign(
         member,
         DiscordRoles.SUPPORTER,
         "Donation supporter",
       );
     } catch (error) {
       logger.error(`Failed to grant supporter role to ${discordId}:`, error);
+      return false;
     }
   }
 

@@ -1,18 +1,17 @@
-import { player } from "@/db";
+import { Q } from "@/db";
 import { EmbedPresets } from "@/discord/embeds";
-import { replyError } from "@/discord/utils/interaction-reply";
 import {
   type ChatInputCommandInteraction,
   MessageFlags,
   PermissionFlagsBits,
   SlashCommandBuilder,
 } from "discord.js";
+import type {
+  CommandModule,
+  CommandPermissions,
+} from "@/discord/bots/common/loaders/command-loader";
 
-/**
- * Slash command definition for the username command
- * Checks and returns Minecraft username of the user
- */
-export const data = new SlashCommandBuilder()
+const data = new SlashCommandBuilder()
   .setName("username")
   .setDescription("Retrieve user's Minecraft username")
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
@@ -23,47 +22,31 @@ export const data = new SlashCommandBuilder()
       .setRequired(true),
   );
 
-/**
- * Permission configuration for the username command
- * Requires admin privileges to execute
- */
-export const permissions = {
+const permissions: CommandPermissions = {
   requireAdmin: true,
 };
 
-/**
- * Executes the username command to retrieve and display user's Minecraft username
- *
- * Process:
- * 1. Extract the user from the interaction options
- * 2. Retrieves username from the database
- * 3. Display the username in an embed
- */
-export async function execute(
+async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
   const user = interaction.options.getUser("user", true);
 
-  try {
-    const username = await player.select.minecraftUsername({
-      discordId: user.id,
-    });
+  const username = await Q.player.select.minecraftUsername({
+    discordId: user.id,
+  });
 
-    const embed = EmbedPresets.plain({
-      description: `${username}`,
-    });
+  const embed = EmbedPresets.plain({
+    description: `${username}`,
+  });
 
-    await interaction.reply({
-      embeds: [embed.build()],
-      flags: MessageFlags.Ephemeral,
-    });
-  } catch (error) {
-    logger.error("/username failed:", error);
-
-    await replyError(
-      interaction,
-      "Username Error",
-      "Something went wrong while fetching username. Please try again.",
-    );
-  }
+  await interaction.reply({
+    embeds: [embed.build()],
+    flags: MessageFlags.Ephemeral,
+  });
 }
+
+export default {
+  data,
+  permissions,
+  execute,
+} satisfies CommandModule;

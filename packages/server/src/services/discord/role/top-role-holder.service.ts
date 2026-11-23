@@ -1,11 +1,11 @@
 import { createCanvas, loadImage, type Image } from "@napi-rs/canvas";
 import { db, Q } from "@/db";
-import { objectStorage } from "@/services/storage";
+import { objectStorage } from "@/services/storage/object-storage.service";
+import { getSkinApiClient } from "@/services/skin-api/client";
 import {
-  getSkinApiClient,
   MAX_QUALITY_RENDER,
   POSE_RENDER_STYLE,
-} from "@/services/skin-api";
+} from "@/services/skin-api/quality";
 import { getTopRoleRules } from "./config";
 import { outlineOffset, type RgbaImage } from "./figure-outline";
 import { RoleConditionType } from "./types";

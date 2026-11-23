@@ -1,3 +1,4 @@
+import { WORKSHOP_MOD_REJECT_REASON_LABELS } from "@createrington/shared/workshop";
 import {
   Fragment,
   useEffect,
@@ -13,16 +14,15 @@ import { cn } from "@/lib/utils";
 import { formatRelativeDate } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { PlayerLabel } from "@/components/player-label";
-import { ProjectThumb } from "../../components/ProjectThumb";
-import { SocialLinks } from "../../components/SocialLinks";
+import { ProjectThumb } from "@/features/workshop/components/ProjectThumb";
+import { SocialLinks } from "@/features/workshop/components/SocialLinks";
 import {
   MOD_STATUS_STYLES,
   liveTitle,
   COMPACT_BADGE_CLASS,
   projectCategories,
   projectKindLabel,
-  REJECT_REASON_LABELS,
-} from "../../format";
+} from "@/features/workshop/format";
 
 export type RaceMod = RouterOutput["user"]["workshops"]["get"]["mods"][number];
 
@@ -63,12 +63,10 @@ export function Leaderboard({
   const previousCountsRef = useRef<Map<number, number> | null>(null);
   const disableTimerRef = useRef<number | undefined>(undefined);
 
-  // enableAnimations is a no-op until the controller lands; the dep re-runs this
   useLayoutEffect(() => {
     enableAnimations(false);
   }, [enableAnimations]);
 
-  // Only vote changes animate; disable() has side effects, so call it rarely
   useLayoutEffect(() => {
     const counts = new Map(allMods.map((mod) => [mod.id, mod.upvoteCount]));
     const previous = previousCountsRef.current;
@@ -321,7 +319,7 @@ function HeartOrBadge({
         className="relative shrink-0"
       >
         {mod.rejectReason
-          ? REJECT_REASON_LABELS[mod.rejectReason]
+          ? WORKSHOP_MOD_REJECT_REASON_LABELS[mod.rejectReason]
           : MOD_STATUS_STYLES.rejected.label}
       </Badge>
     );

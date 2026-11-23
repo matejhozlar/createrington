@@ -2,11 +2,10 @@ import { useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { useAuth } from "@/contexts/auth";
 import { useAdminChat } from "@/contexts/admin-chat";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/hooks/use-is-mobile";
 import { ChatPanel } from "./components/ChatPanel";
 import { ChatToggle } from "./components/ChatToggle";
 import { useAdminChatSession } from "./hooks/use-admin-chat-session";
-import { useModelSelection } from "./hooks/use-model-selection";
 import { useUnreadTracker } from "./hooks/use-unread-tracker";
 
 export function AdminChat(): React.JSX.Element | null {
@@ -27,9 +26,6 @@ export function AdminChat(): React.JSX.Element | null {
   const [draft, setDraft] = useState("");
   const isAdmin = Boolean(user?.isAdmin);
   const session = useAdminChatSession({ isAdmin, open: drawerOpen });
-  const { selectedModel, setSelectedModel } = useModelSelection(
-    user?.minecraftUsername,
-  );
   const unread = useUnreadTracker(session.messages, drawerOpen);
 
   if (!enabled) return null;
@@ -52,14 +48,10 @@ export function AdminChat(): React.JSX.Element | null {
           sessionId={session.sessionId}
           sessionActive={session.sessionActive}
           activeModel={session.activeModel}
-          selectedModel={selectedModel}
-          onSelectModel={setSelectedModel}
           starting={session.starting}
           sending={session.sending}
           awaitingReply={session.awaitingReply}
-          onStart={(prefillMessage) =>
-            void session.start(prefillMessage, selectedModel)
-          }
+          onStart={(prefillMessage) => void session.start(prefillMessage)}
           onSend={(message) => void session.send(message)}
           onEnd={() => void session.end()}
           onClose={closeDrawer}

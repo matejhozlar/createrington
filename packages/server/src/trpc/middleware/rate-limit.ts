@@ -1,3 +1,5 @@
+import { MemoryStore, type Options, type Store } from "express-rate-limit";
+import { createRateLimitStore } from "@/services/rate-limit";
 import { middleware } from "@/trpc/trpc";
 import { trpcError } from "@/trpc/utils";
 import type { Context } from "@/trpc/context";
@@ -10,36 +12,19 @@ interface RateLimitOptions {
 }
 
 export function createRateLimit(opts: RateLimitOptions) {
-  const buckets = new Map<string, { count: number; resetAt: number }>();
+  const store: Store =
+    createRateLimitStore(`trpc:${opts.name}`) ?? new MemoryStore();
+  void store.init?.({ windowMs: opts.windowMs } as Options);
 
   return middleware(async ({ ctx, next }) => {
-    const now = Date.now();
     const key = opts.key(ctx);
+    const { totalHits, resetTime } = await store.increment(key);
 
-    let bucket = buckets.get(key);
-    if (!bucket || bucket.resetAt <= now) {
-      bucket = { count: 0, resetAt: now + opts.windowMs };
-      buckets.set(key, bucket);
-    }
-
-    bucket.count++;
-
-    // Prune before the limit check so cleanup happens on every request,
-    // not just non-rate-limited ones. Without this, a sustained attack
-    // from many unique IPs would never trigger pruning.
-    if (buckets.size > opts.limit * 4) {
-      for (const [k, b] of buckets) {
-        if (b.resetAt <= now) {
-          buckets.delete(k);
-          break;
-        }
-      }
-    }
-
-    if (bucket.count > opts.limit) {
-      const retryInSec = Math.ceil((bucket.resetAt - now) / 1000);
+    if (totalHits > opts.limit) {
+      const resetAt = resetTime?.getTime() ?? Date.now() + opts.windowMs;
+      const retryInSec = Math.ceil((resetAt - Date.now()) / 1000);
       logger.warn(
-        `[trpc rate-limit] ${opts.name} exceeded by ${key} (${bucket.count}/${opts.limit})`,
+        `[trpc rate-limit] ${opts.name} exceeded by ${key} (${totalHits}/${opts.limit})`,
       );
       throw trpcError.tooManyRequests(
         `Rate limit exceeded. Try again in ${retryInSec}s.`,

@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useToastActions } from "@/hooks/use-toast";
+import { moveItem } from "@/lib/moveItem";
+import { localStore } from "@/lib/storage";
 import {
   createLayer,
   DEFAULT_OUTPUT,
@@ -39,10 +41,13 @@ function wordmarkProject(): Project {
 
 function loadProject(): Project {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return wordmarkProject();
-    const stored = JSON.parse(raw) as Partial<Project> & { version?: number };
-    if (stored.version !== STORAGE_VERSION || !stored.layers?.length) {
+    const stored = localStore.getJson(STORAGE_KEY) as
+      (Partial<Project> & { version?: number }) | null;
+    if (
+      !stored ||
+      stored.version !== STORAGE_VERSION ||
+      !stored.layers?.length
+    ) {
       return wordmarkProject();
     }
     const layers = stored.layers.map((layer) => createLayer(layer));
@@ -85,16 +90,14 @@ export function useTitleProject() {
       customTexture: null,
       customOverlay: null,
     }));
-    try {
-      localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({ ...project, layers, version: STORAGE_VERSION }),
-      );
-    } catch {
-      if (warnedRef.current) return;
-      warnedRef.current = true;
-      toast.warning("Changes to this title can't be saved in this browser");
-    }
+    const saved = localStore.setJson(STORAGE_KEY, {
+      ...project,
+      layers,
+      version: STORAGE_VERSION,
+    });
+    if (saved || warnedRef.current) return;
+    warnedRef.current = true;
+    toast.warning("Changes to this title can't be saved in this browser");
   }, [project, toast]);
 
   const updateLayer = useCallback((id: string, update: LayerUpdate) => {
@@ -110,11 +113,11 @@ export function useTitleProject() {
     }));
   }, []);
 
-  const selectLayer = useCallback((id: string) => {
+  const selectLayer = (id: string) => {
     setProject((current) => ({ ...current, selectedId: id }));
-  }, []);
+  };
 
-  const addLayer = useCallback((type: TextType) => {
+  const addLayer = (type: TextType) => {
     setProject((current) => {
       const rows = current.layers
         .filter((layer) => layer.type === type)
@@ -127,9 +130,9 @@ export function useTitleProject() {
         selectedId: layer.id,
       };
     });
-  }, []);
+  };
 
-  const duplicateLayer = useCallback((id: string) => {
+  const duplicateLayer = (id: string) => {
     setProject((current) => {
       const index = current.layers.findIndex((layer) => layer.id === id);
       if (index === -1) return current;
@@ -138,9 +141,9 @@ export function useTitleProject() {
       layers.splice(index + 1, 0, copy);
       return { ...current, layers, selectedId: copy.id };
     });
-  }, []);
+  };
 
-  const removeLayer = useCallback((id: string) => {
+  const removeLayer = (id: string) => {
     setProject((current) => {
       if (current.layers.length <= 1) return current;
       const index = current.layers.findIndex((layer) => layer.id === id);
@@ -151,39 +154,37 @@ export function useTitleProject() {
           : current.selectedId;
       return { ...current, layers, selectedId };
     });
-  }, []);
+  };
 
-  const moveLayer = useCallback((id: string, direction: -1 | 1) => {
+  const moveLayer = (id: string, direction: -1 | 1) => {
     setProject((current) => {
       const index = current.layers.findIndex((layer) => layer.id === id);
-      const target = index + direction;
-      if (index === -1 || target < 0 || target >= current.layers.length) {
-        return current;
-      }
-      const layers = [...current.layers];
-      [layers[index], layers[target]] = [layers[target], layers[index]];
-      return { ...current, layers };
+      const layers =
+        index === -1
+          ? current.layers
+          : moveItem(current.layers, index, direction);
+      return layers === current.layers ? current : { ...current, layers };
     });
-  }, []);
+  };
 
-  const setRender = useCallback((patch: Partial<RenderSettings>) => {
+  const setRender = (patch: Partial<RenderSettings>) => {
     setProject((current) => ({
       ...current,
       render: { ...current.render, ...patch },
     }));
-  }, []);
+  };
 
-  const setOutput = useCallback((patch: Partial<OutputSettings>) => {
+  const setOutput = (patch: Partial<OutputSettings>) => {
     setProject((current) => ({
       ...current,
       output: { ...current.output, ...patch },
     }));
-  }, []);
+  };
 
-  const resetProject = useCallback(() => {
+  const resetProject = () => {
     setProject(wordmarkProject());
     setRevision((current) => current + 1);
-  }, []);
+  };
 
   return {
     ...project,

@@ -1,23 +1,13 @@
-import { useCallback, useState } from "react";
-import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardFooter,
-} from "@/components/ui/card";
-import { Paginator } from "@/components/paginator";
-import { EmptyState, ErrorState } from "@/components/query-states";
-import { SearchInput } from "@/components/search-input";
-import { Button } from "@/components/ui/button";
+import { useState } from "react";
+import { AdminPage } from "@/features/admin/components/AdminPage";
+import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
+import { FilterBar } from "@/features/admin/components/FilterBar";
+import { TableCard } from "@/components/paged-table";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CellDate, CellText } from "@/components/cell-text";
 import {
   BadgeCellSkeleton,
-  DataTable,
-  loadingRowCount,
   type DataTableColumn,
 } from "@/components/data-table";
 import {
@@ -35,20 +25,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Filter, FileText, Info } from "lucide-react";
+import { FileText, Info } from "lucide-react";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { trpc } from "@/lib/trpc";
+import { usePagedQuery } from "@/hooks/use-paged-query";
+import { useTableSort } from "@/hooks/use-table-sort";
+import { useQuery } from "@tanstack/react-query";
+import { trpc, type RouterOutput } from "@/lib/trpc";
 
 type SortField = "performedAt" | "actionType" | "adminUsername";
 
-/** Build a human-readable description for an audit log entry */
-function getDescription(action: {
-  description: string | null;
-  targetPlayerName: string | null;
-  tableName: string | null;
-  fieldName: string | null;
-}): string {
+type LogAction = RouterOutput["admin"]["logs"]["list"]["items"][number];
+
+function getDescription(action: LogAction): string {
   if (action.description) return action.description;
   const parts: string[] = [];
   if (action.tableName && action.fieldName) {
@@ -63,85 +51,39 @@ function getDescription(action: {
 }
 
 export function AdminLogs() {
-  const [page, setPage] = useState(0);
-  const [limit] = useState(20);
-
   const [searchQuery, setSearchQuery] = useState("");
   const [adminFilter, setAdminFilter] = useState<string | undefined>(undefined);
 
-  const [metadataAction, setMetadataAction] = useState<
-    (typeof actions)[number] | null
-  >(null);
+  const [metadataAction, setMetadataAction] = useState<LogAction | null>(null);
 
-  const [orderBy, setOrderBy] = useState<SortField>("performedAt");
-  const [orderDirection, setOrderDirection] = useState<"asc" | "desc">("desc");
-
+  const sort = useTableSort<SortField>("performedAt");
   const debouncedSearch = useDebouncedValue(searchQuery);
 
   const adminsQuery = useQuery(trpc.admin.logs.admins.queryOptions());
   const adminList = adminsQuery.data ?? [];
 
-  const logsQuery = useQuery(
-    trpc.admin.logs.list.queryOptions(
-      {
-        page,
-        limit,
-        orderBy,
-        orderDirection,
-        search: debouncedSearch.trim() || undefined,
-        adminUsername: adminFilter,
-      },
-      { placeholderData: keepPreviousData },
-    ),
-  );
-
-  const actions = logsQuery.data?.actions ?? [];
-  const total = logsQuery.data?.pagination.total ?? 0;
-  const totalPages = logsQuery.data?.pagination.totalPages ?? 0;
-  const loading = logsQuery.isLoading || logsQuery.isPlaceholderData;
-  const loadingRows = loadingRowCount(page, limit, total);
-  const error = logsQuery.error?.message ?? null;
-
-  const handleSearch = useCallback((e: React.FormEvent) => {
-    e.preventDefault();
-    setPage(0);
-  }, []);
-
-  const handleSearchChange = useCallback((value: string) => {
-    setSearchQuery(value);
-    setPage(0);
-  }, []);
-
-  const handleSort = useCallback(
-    (field: SortField) => {
-      if (orderBy === field) {
-        setOrderDirection((prev) => (prev === "asc" ? "desc" : "asc"));
-      } else {
-        setOrderBy(field);
-        setOrderDirection("asc");
-      }
-      setPage(0);
+  const logs = usePagedQuery(
+    {
+      ...sort.order,
+      search: debouncedSearch.trim() || undefined,
+      adminUsername: adminFilter,
     },
-    [orderBy],
+    (input) => trpc.admin.logs.list.queryOptions(input),
   );
-
-  type LogAction = (typeof actions)[number];
 
   const columns: DataTableColumn<LogAction>[] = [
     {
       key: "date",
       header: "Date",
       width: 115,
-      sorted: orderBy === "performedAt" ? orderDirection : false,
-      onSort: () => handleSort("performedAt"),
+      ...sort.column("performedAt"),
       render: (action) => <CellDate value={action.performedAt} />,
     },
     {
       key: "admin",
       header: "Admin",
       minWidth: 130,
-      sorted: orderBy === "adminUsername" ? orderDirection : false,
-      onSort: () => handleSort("adminUsername"),
+      ...sort.column("adminUsername"),
       render: (action) => (
         <CellText value={action.adminUsername} className="text-sm" />
       ),
@@ -150,8 +92,7 @@ export function AdminLogs() {
       key: "action",
       header: "Action",
       width: 200,
-      sorted: orderBy === "actionType" ? orderDirection : false,
-      onSort: () => handleSort("actionType"),
+      ...sort.column("actionType"),
       skeleton: () => <BadgeCellSkeleton />,
       render: (action) => (
         <Badge variant="outline" className="max-w-full">
@@ -206,118 +147,57 @@ export function AdminLogs() {
   ];
 
   return (
-    <div className="flex flex-1 flex-col gap-4">
-      {/* Header */}
-      <AdminPageHeader
-        trail={[
-          { label: "Admin", href: "/admin/dashboard" },
-          { label: "Logs" },
-        ]}
+    <AdminPage
+      trail={[{ label: "Admin", href: "/admin/dashboard" }, { label: "Logs" }]}
+    >
+      <AdminPageTitle title="Logs" />
+      <FilterBar
+        search={searchQuery}
+        onSearchChange={setSearchQuery}
+        placeholder="Search logs..."
+        activeCount={
+          (searchQuery ? 1 : 0) + (adminFilter !== undefined ? 1 : 0)
+        }
+      >
+        <Select
+          value={adminFilter ?? "all"}
+          onValueChange={(v) => setAdminFilter(v === "all" ? undefined : v)}
+        >
+          <SelectTrigger className="min-w-[150px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Admins</SelectItem>
+            {adminList.map((name) => (
+              <SelectItem key={name} value={name}>
+                {name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </FilterBar>
+
+      <TableCard
+        title="Audit Logs"
+        paged={logs}
+        empty={{ icon: FileText, message: "No log entries found" }}
+        itemLabel="entry"
+        columns={columns}
+        rowKey={(action) => action.id}
+        actions={(action) =>
+          action.metadata != null
+            ? [
+                {
+                  label: "View metadata",
+                  icon: Info,
+                  onClick: () => setMetadataAction(action),
+                },
+              ]
+            : []
+        }
+        actionSlots={1}
       />
 
-      <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
-        {/* Filters & Search */}
-        <Card className="gap-2">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Filter className="size-4 text-muted-foreground" />
-              Filters
-              {(searchQuery || adminFilter !== undefined) && (
-                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                  {(searchQuery ? 1 : 0) + (adminFilter !== undefined ? 1 : 0)}
-                </Badge>
-              )}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSearch} className="flex flex-wrap gap-2">
-              <SearchInput
-                className="min-w-48 flex-1"
-                placeholder="Search logs..."
-                value={searchQuery}
-                onValueChange={handleSearchChange}
-              />
-
-              <Select
-                value={adminFilter ?? "all"}
-                onValueChange={(v) => {
-                  setAdminFilter(v === "all" ? undefined : v);
-                  setPage(0);
-                }}
-              >
-                <SelectTrigger className="min-w-[150px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Admins</SelectItem>
-                  {adminList.map((name) => (
-                    <SelectItem key={name} value={name}>
-                      {name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Button type="submit" className="min-w-[85px]">
-                Search
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-
-        {/* Logs Table */}
-        <Card className="gap-0">
-          <CardHeader className="border-b gap-0">
-            <CardTitle>Audit Logs ({total.toLocaleString()})</CardTitle>
-          </CardHeader>
-
-          {error ? (
-            <ErrorState message={error} onRetry={() => logsQuery.refetch()} />
-          ) : !loading && actions.length === 0 ? (
-            <EmptyState icon={FileText} message="No log entries found" />
-          ) : (
-            <>
-              <CardContent className="px-0">
-                <DataTable
-                  columns={columns}
-                  rows={actions}
-                  loading={loading}
-                  loadingRows={loadingRows}
-                  rowKey={(action) => action.id}
-                  actions={(action) =>
-                    action.metadata != null
-                      ? [
-                          {
-                            label: "View metadata",
-                            icon: Info,
-                            onClick: () => setMetadataAction(action),
-                          },
-                        ]
-                      : []
-                  }
-                  actionSlots={1}
-                />
-              </CardContent>
-
-              {total > 0 && (
-                <CardFooter className="border-t">
-                  <Paginator
-                    page={page}
-                    limit={limit}
-                    total={total}
-                    totalPages={totalPages}
-                    onPageChange={setPage}
-                    itemLabel="entry"
-                    className="w-full"
-                  />
-                </CardFooter>
-              )}
-            </>
-          )}
-        </Card>
-      </div>
-
-      {/* Metadata Dialog */}
       <Dialog
         open={metadataAction !== null}
         onOpenChange={(open) => {
@@ -328,14 +208,7 @@ export function AdminLogs() {
           <DialogHeader>
             <DialogTitle>Entry Metadata</DialogTitle>
             <DialogDescription>
-              {getDescription(
-                metadataAction ?? {
-                  description: null,
-                  targetPlayerName: null,
-                  tableName: null,
-                  fieldName: null,
-                },
-              ) || "—"}
+              {(metadataAction && getDescription(metadataAction)) || "—"}
             </DialogDescription>
           </DialogHeader>
           <pre className="max-h-[400px] overflow-auto rounded-md bg-muted p-4 text-xs">
@@ -344,6 +217,6 @@ export function AdminLogs() {
           <DialogFooter showCloseButton />
         </DialogContent>
       </Dialog>
-    </div>
+    </AdminPage>
   );
 }

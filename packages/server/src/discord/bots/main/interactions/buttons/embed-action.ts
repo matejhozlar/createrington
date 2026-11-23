@@ -1,34 +1,17 @@
 import { Q } from "@/db";
-import { ChannelType, type ButtonInteraction, MessageFlags } from "discord.js";
+import {
+  ChannelType,
+  type ButtonInteraction,
+  MessageFlags,
+  channelMention,
+  userMention,
+} from "discord.js";
 import type { EmbedActionButton } from "@createrington/shared/api/embed";
+import type { ButtonModule } from "@/discord/bots/common/loaders/component-loader";
+import { CustomIds } from "@/discord/custom-ids";
 
-/**
- * Handles embed action buttons (e.g. "Create Thread")
- * Pattern: embed-action:*
- *
- * Custom ID format: embed-action:<presetId>:<buttonIndex>
- */
-export const pattern = "embed-action:*";
-
-export const prodOnly = false;
-
-// Per-user cooldown: userId -> last click timestamp
 const cooldowns = new Map<string, number>();
-const COOLDOWN_MS = 10_000; // 10 seconds between thread creations per user
-
-function parseCustomId(customId: string): {
-  presetId: number;
-  buttonIndex: number;
-} | null {
-  const parts = customId.split(":");
-  if (parts.length !== 3) return null;
-
-  const presetId = parseInt(parts[1], 10);
-  const buttonIndex = parseInt(parts[2], 10);
-
-  if (isNaN(presetId) || isNaN(buttonIndex)) return null;
-  return { presetId, buttonIndex };
-}
+const COOLDOWN_MS = 10_000;
 
 function applyTemplate(
   template: string,
@@ -36,7 +19,7 @@ function applyTemplate(
   username: string,
 ): string {
   return template
-    .replace(/\{user\}/g, `<@${userId}>`)
+    .replace(/\{user\}/g, userMention(userId))
     .replace(/\{username\}/g, username)
     .replace(
       /\{date\}/g,
@@ -48,18 +31,18 @@ function applyTemplate(
     );
 }
 
-export async function execute(interaction: ButtonInteraction): Promise<void> {
-  const parsed = parseCustomId(interaction.customId);
+async function execute(interaction: ButtonInteraction): Promise<void> {
+  const parsed = CustomIds.embedAction.parse(interaction.customId);
+  const presetId = Number(parsed?.presetId);
+  const buttonIndex = Number(parsed?.buttonIndex);
 
-  if (!parsed) {
+  if (!Number.isInteger(presetId) || !Number.isInteger(buttonIndex)) {
     await interaction.reply({
       content: "Invalid button.",
       flags: MessageFlags.Ephemeral,
     });
     return;
   }
-
-  const { presetId, buttonIndex } = parsed;
 
   const preset = await Q.discord.embed.preset.find({ id: presetId });
   if (!preset) {
@@ -81,7 +64,6 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
     return;
   }
 
-  // Rate limit per user
   const now = Date.now();
   const lastUsed = cooldowns.get(interaction.user.id);
   if (lastUsed && now - lastUsed < COOLDOWN_MS) {
@@ -105,80 +87,76 @@ async function handleCreateThread(
 ): Promise<void> {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-  try {
-    const guild = interaction.guild;
-    if (!guild) {
-      await interaction.editReply({
-        content: "This button only works in a server.",
-      });
-      return;
-    }
-
-    const targetChannel = await guild.channels
-      .fetch(config.channelId)
-      .catch(() => null);
-
-    if (!targetChannel) {
-      await interaction.editReply({
-        content: "The target channel for this action no longer exists.",
-      });
-      return;
-    }
-
-    const userId = interaction.user.id;
-    const member = interaction.member as { displayName?: string } | null;
-    const username = member?.displayName ?? interaction.user.displayName;
-
-    // Truncate to 100 chars (Discord thread name limit) after template substitution
-    const threadName = applyTemplate(config.threadName, userId, username).slice(
-      0,
-      100,
-    );
-    const threadMessage = applyTemplate(config.threadMessage, userId, username);
-
-    if (
-      targetChannel.type === ChannelType.GuildText ||
-      targetChannel.type === ChannelType.GuildAnnouncement
-    ) {
-      const textChannel = targetChannel;
-      const thread = await textChannel.threads.create({
-        name: threadName,
-        reason: `Created by embed action button (user: ${interaction.user.tag})`,
-      });
-
-      await thread.send(threadMessage);
-
-      await interaction.editReply({
-        content: `Thread created: <#${thread.id}>`,
-      });
-
-      logger.info(
-        `Embed action: created thread "${threadName}" in #${textChannel.name} for ${interaction.user.tag}`,
-      );
-    } else if (targetChannel.type === ChannelType.GuildForum) {
-      const thread = await targetChannel.threads.create({
-        name: threadName,
-        message: { content: threadMessage },
-        reason: `Created by embed action button (user: ${interaction.user.tag})`,
-      });
-
-      await interaction.editReply({
-        content: `Post created: <#${thread.id}>`,
-      });
-
-      logger.info(
-        `Embed action: created forum post "${threadName}" in #${targetChannel.name} for ${interaction.user.tag}`,
-      );
-    } else {
-      await interaction.editReply({
-        content: "The target channel doesn't support threads.",
-      });
-    }
-  } catch (error) {
-    logger.error("Failed to handle create_thread action:", error);
+  const guild = interaction.guild;
+  if (!guild) {
     await interaction.editReply({
-      content:
-        "Something went wrong while creating the thread. Please try again.",
+      content: "This button only works in a server.",
+    });
+    return;
+  }
+
+  const targetChannel = await guild.channels
+    .fetch(config.channelId)
+    .catch(() => null);
+
+  if (!targetChannel) {
+    await interaction.editReply({
+      content: "The target channel for this action no longer exists.",
+    });
+    return;
+  }
+
+  const userId = interaction.user.id;
+  const member = interaction.member as { displayName?: string } | null;
+  const username = member?.displayName ?? interaction.user.displayName;
+
+  const threadName = applyTemplate(config.threadName, userId, username).slice(
+    0,
+    100,
+  );
+  const threadMessage = applyTemplate(config.threadMessage, userId, username);
+
+  if (
+    targetChannel.type === ChannelType.GuildText ||
+    targetChannel.type === ChannelType.GuildAnnouncement
+  ) {
+    const textChannel = targetChannel;
+    const thread = await textChannel.threads.create({
+      name: threadName,
+      reason: `Created by embed action button (user: ${interaction.user.tag})`,
+    });
+
+    await thread.send(threadMessage);
+
+    await interaction.editReply({
+      content: `Thread created: ${channelMention(thread.id)}`,
+    });
+
+    logger.info(
+      `Embed action: created thread "${threadName}" in #${textChannel.name} for ${interaction.user.tag}`,
+    );
+  } else if (targetChannel.type === ChannelType.GuildForum) {
+    const thread = await targetChannel.threads.create({
+      name: threadName,
+      message: { content: threadMessage },
+      reason: `Created by embed action button (user: ${interaction.user.tag})`,
+    });
+
+    await interaction.editReply({
+      content: `Post created: ${channelMention(thread.id)}`,
+    });
+
+    logger.info(
+      `Embed action: created forum post "${threadName}" in #${targetChannel.name} for ${interaction.user.tag}`,
+    );
+  } else {
+    await interaction.editReply({
+      content: "The target channel doesn't support threads.",
     });
   }
 }
+
+export default {
+  customId: CustomIds.embedAction,
+  execute,
+} satisfies ButtonModule;

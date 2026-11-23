@@ -1,9 +1,11 @@
-import { Q, waitlistRepo } from "@/db";
-import { BadRequestError } from "@/app/middleware/error-handler";
+import { Q } from "@/db";
+import { updateProgressEmbed } from "./progress-embed";
+import { waitlistCapacityService } from "./capacity.service";
+import { BadRequestError } from "@/errors";
 import { UniqueViolationError } from "@/db/utils/errors";
 import type { WaitlistEntry } from "@createrington/shared/db";
 import { lookupChannel } from "./discord-lookup";
-import { expireEntry, notifyAdmins } from "./entries";
+import { expireEntry, notifyAdmins, requeueEntry } from "./entries";
 import { withSlotLock } from "./slot-lock";
 import { waitlistPromotionService } from "./promotion.service";
 
@@ -65,25 +67,16 @@ export class WaitlistService {
         !(await Q.player.exists({ discordId: params.discordId })));
 
     if (canRejoin) {
-      await Q.waitlist.entry.update(
-        { id: existing.id },
-        {
-          status: "queued",
-          queuedAt: new Date(),
-          promotedAt: null,
-          promotedBy: null,
-          expiredAt: null,
-          discordUsername: params.discordUsername,
-          verifyChannelId: params.verifyChannelId,
-          waitingMessageId: params.waitingMessageId,
-        },
-      );
+      await requeueEntry(existing.id, {
+        expiredAt: null,
+        discordUsername: params.discordUsername,
+        verifyChannelId: params.verifyChannelId,
+        waitingMessageId: params.waitingMessageId,
+      });
 
       logger.info(
         `${params.discordUsername} rejoined the waitlist (entry #${existing.id})`,
       );
-
-      await waitlistRepo.updateProgressEmbed(existing.id);
       return Q.waitlist.entry.get({ id: existing.id });
     }
 
@@ -218,7 +211,7 @@ export class WaitlistService {
         if (settled) return settled;
       }
 
-      if ((await waitlistRepo.getFreeSlots()) <= 0) return null;
+      if ((await waitlistCapacityService.getFreeSlots()) <= 0) return null;
 
       if (!existing) {
         try {
@@ -265,7 +258,7 @@ export class WaitlistService {
       logger.info(
         `Reserved a slot for ${discordUsername} (${discordId}) registering directly on waitlist entry #${result.entry.id}`,
       );
-      await waitlistRepo.updateProgressEmbed(result.entry.id);
+      await updateProgressEmbed(result.entry.id);
     }
 
     return { entry: result.entry, reserved: result.reserved };

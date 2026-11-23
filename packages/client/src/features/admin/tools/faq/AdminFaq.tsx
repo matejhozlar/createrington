@@ -1,22 +1,13 @@
-import { useCallback, useState } from "react";
-import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
+import { useState } from "react";
+import { AdminPage } from "@/features/admin/components/AdminPage";
 import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Paginator } from "@/components/paginator";
-import { SearchInput } from "@/components/search-input";
+import { FilterBar } from "@/features/admin/components/FilterBar";
+import { TableCard } from "@/components/paged-table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CellDate, CellText } from "@/components/cell-text";
 import {
   BadgeCellSkeleton,
-  DataTable,
-  loadingRowCount,
   type DataTableAction,
   type DataTableColumn,
 } from "@/components/data-table";
@@ -28,7 +19,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Filter,
   MessageCircleQuestion,
   Plus,
   Pencil,
@@ -37,96 +27,64 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { keepPreviousData, useMutation, useQuery } from "@tanstack/react-query";
-import { CreateFaqModal } from "./components/modals/CreateFaqModal";
-import { EditFaqModal } from "./components/modals/EditFaqModal";
+import { usePagedQuery } from "@/hooks/use-paged-query";
+import { useTableSort } from "@/hooks/use-table-sort";
+import { useMutation } from "@tanstack/react-query";
+import { EnabledBadge } from "@/features/admin/components/EnabledBadge";
+import { FaqEntryDialog } from "./components/modals/FaqEntryDialog";
 import { DeleteFaqModal } from "./components/modals/DeleteFaqModal";
 import { trpc, type RouterOutput } from "@/lib/trpc";
-import { useToastActions } from "@/hooks/use-toast";
-import { EmptyState, ErrorState } from "@/components/query-states";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 
-type FaqEntry = RouterOutput["admin"]["faq"]["list"]["entries"][number];
+type FaqEntry = RouterOutput["admin"]["faq"]["list"]["items"][number];
 
 type SortField = "priority" | "title" | "createdAt";
 type EnabledFilter = "all" | "enabled" | "disabled";
 
+const ENABLED_FILTER_OPTIONS: { value: EnabledFilter; label: string }[] = [
+  { value: "all", label: "All Entries" },
+  { value: "enabled", label: "Enabled" },
+  { value: "disabled", label: "Disabled" },
+];
+
 export function AdminFaq() {
-  const toast = useToastActions();
-
-  const [page, setPage] = useState(0);
-  const [limit] = useState(10);
-
   const [searchQuery, setSearchQuery] = useState("");
   const [enabledFilter, setEnabledFilter] = useState<EnabledFilter>("all");
 
-  const [orderBy, setOrderBy] = useState<SortField>("priority");
-  const [orderDirection, setOrderDirection] = useState<"asc" | "desc">("desc");
+  const sort = useTableSort<SortField>("priority", {
+    newFieldDirection: "desc",
+  });
 
-  const [createModal, setCreateModal] = useState(false);
-  const [editModal, setEditModal] = useState<{
-    open: boolean;
+  const [entryTarget, setEntryTarget] = useState<{
     entry: FaqEntry | null;
-  }>({ open: false, entry: null });
+  } | null>(null);
+  const openCreate = () => setEntryTarget({ entry: null });
   const [deleteTarget, setDeleteTarget] = useState<FaqEntry | null>(null);
 
   const debouncedSearch = useDebouncedValue(searchQuery);
 
   const repostWelcome = useMutation(
-    trpc.admin.faq.repostWelcome.mutationOptions(),
-  );
-
-  const entriesQuery = useQuery(
-    trpc.admin.faq.list.queryOptions(
-      {
-        page,
-        limit,
-        orderBy,
-        orderDirection,
-        search: debouncedSearch.trim() || undefined,
-        enabled:
-          enabledFilter === "enabled"
-            ? true
-            : enabledFilter === "disabled"
-              ? false
-              : undefined,
-      },
-      { placeholderData: keepPreviousData },
+    trpc.admin.faq.repostWelcome.mutationOptions(
+      useMutationToast({ success: "Welcome message reposted" }),
     ),
   );
 
-  const entries = entriesQuery.data?.entries ?? [];
-  const total = entriesQuery.data?.pagination.total ?? 0;
-  const totalPages = entriesQuery.data?.pagination.totalPages ?? 0;
-  const loading = entriesQuery.isLoading || entriesQuery.isPlaceholderData;
-  const loadingRows = loadingRowCount(page, limit, total);
-  const error = entriesQuery.error?.message ?? null;
-
-  const handleSearch = useCallback((e: React.FormEvent) => {
-    e.preventDefault();
-    setPage(0);
-  }, []);
-
-  const handleSort = useCallback(
-    (field: SortField) => {
-      if (orderBy === field) {
-        setOrderDirection((prev) => (prev === "asc" ? "desc" : "asc"));
-      } else {
-        setOrderBy(field);
-        setOrderDirection("desc");
-      }
-      setPage(0);
+  const entries = usePagedQuery(
+    {
+      ...sort.order,
+      search: debouncedSearch.trim() || undefined,
+      enabled:
+        enabledFilter === "enabled"
+          ? true
+          : enabledFilter === "disabled"
+            ? false
+            : undefined,
     },
-    [orderBy],
+    (input) => trpc.admin.faq.list.queryOptions(input),
+    10,
   );
 
-  const handleRepostWelcome = useCallback(async () => {
-    try {
-      await repostWelcome.mutateAsync();
-      toast.success("Welcome message reposted");
-    } catch {
-      toast.error("Failed to repost welcome message");
-    }
-  }, [repostWelcome, toast]);
+  const handleRepostWelcome = () => repostWelcome.mutate();
 
   const columns: DataTableColumn<FaqEntry>[] = [
     {
@@ -139,8 +97,7 @@ export function AdminFaq() {
       key: "title",
       header: "Title",
       minWidth: 200,
-      sorted: orderBy === "title" ? orderDirection : false,
-      onSort: () => handleSort("title"),
+      ...sort.column("title"),
       render: (entry) => (
         <CellText value={entry.title} className="font-medium" />
       ),
@@ -174,8 +131,7 @@ export function AdminFaq() {
       key: "priority",
       header: "Priority",
       width: 105,
-      sorted: orderBy === "priority" ? orderDirection : false,
-      onSort: () => handleSort("priority"),
+      ...sort.column("priority"),
       cellClassName: "text-sm",
       render: (entry) => entry.priority,
     },
@@ -184,25 +140,13 @@ export function AdminFaq() {
       header: "Status",
       width: 110,
       skeleton: () => <BadgeCellSkeleton />,
-      render: (entry) => (
-        <Badge
-          variant="outline"
-          className={
-            entry.enabled
-              ? "border-success bg-success/10 text-success"
-              : "border-muted-foreground bg-muted-foreground/10 text-muted-foreground"
-          }
-        >
-          {entry.enabled ? "Enabled" : "Disabled"}
-        </Badge>
-      ),
+      render: (entry) => <EnabledBadge enabled={entry.enabled} />,
     },
     {
       key: "created",
       header: "Created",
       width: 130,
-      sorted: orderBy === "createdAt" ? orderDirection : false,
-      onSort: () => handleSort("createdAt"),
+      ...sort.column("createdAt"),
       render: (entry) => <CellDate value={entry.createdAt} />,
     },
   ];
@@ -211,7 +155,7 @@ export function AdminFaq() {
     {
       label: "Edit",
       icon: Pencil,
-      onClick: () => setEditModal({ open: true, entry }),
+      onClick: () => setEntryTarget({ entry }),
     },
     {
       label: "Delete",
@@ -222,153 +166,90 @@ export function AdminFaq() {
   ];
 
   return (
-    <div className="flex flex-1 flex-col gap-4">
-      {/* Header */}
-      <AdminPageHeader
-        trail={[
-          { label: "Admin", href: "/admin/dashboard" },
-          { label: "Tools", href: "/admin/tools" },
-          { label: "FAQ" },
-        ]}
-      />
-
-      <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
-        <AdminPageTitle
-          title="FAQ Auto-Responder"
-          actions={
-            <>
-              <Button
-                variant="outline"
-                onClick={handleRepostWelcome}
-                disabled={repostWelcome.isPending}
-              >
-                <RefreshCw
-                  className={cn(
-                    "mr-2 size-4",
-                    repostWelcome.isPending && "animate-spin",
-                  )}
-                />
-                Repost Welcome
-              </Button>
-              <Button onClick={() => setCreateModal(true)}>
-                <Plus className="mr-2 size-4" />
-                New Entry
-              </Button>
-            </>
-          }
-        />
-
-        {/* Filters & Search */}
-        <Card className="gap-2">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Filter className="size-4 text-muted-foreground" />
-              Filters
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSearch} className="flex flex-wrap gap-2">
-              <SearchInput
-                className="min-w-48 flex-1"
-                placeholder="Search by title..."
-                value={searchQuery}
-                onValueChange={setSearchQuery}
-              />
-
-              <Select
-                value={enabledFilter}
-                onValueChange={(v) => {
-                  setEnabledFilter(v as EnabledFilter);
-                  setPage(0);
-                }}
-              >
-                <SelectTrigger className="min-w-[130px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Entries</SelectItem>
-                  <SelectItem value="enabled">Enabled</SelectItem>
-                  <SelectItem value="disabled">Disabled</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Button type="submit" className="min-w-[85px]">
-                Search
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-
-        {/* FAQ Table */}
-        <Card className="gap-0">
-          <CardHeader className="border-b gap-0">
-            <CardTitle>FAQ Entries ({total.toLocaleString()})</CardTitle>
-          </CardHeader>
-
-          {error ? (
-            <ErrorState
-              message={error}
-              onRetry={() => entriesQuery.refetch()}
-            />
-          ) : !loading && entries.length === 0 ? (
-            <EmptyState
-              icon={MessageCircleQuestion}
-              message="No FAQ entries found"
+    <AdminPage
+      trail={[
+        { label: "Admin", href: "/admin/dashboard" },
+        { label: "Tools", href: "/admin/tools" },
+        { label: "FAQ" },
+      ]}
+    >
+      <AdminPageTitle
+        title="FAQ Auto-Responder"
+        actions={
+          <>
+            <Button
+              variant="outline"
+              onClick={handleRepostWelcome}
+              disabled={repostWelcome.isPending}
             >
-              <Button onClick={() => setCreateModal(true)}>
-                <Plus className="mr-2 size-4" />
-                Create First Entry
-              </Button>
-            </EmptyState>
-          ) : (
-            <>
-              <CardContent className="px-0">
-                <DataTable
-                  columns={columns}
-                  rows={entries}
-                  loading={loading}
-                  loadingRows={loadingRows}
-                  rowKey={(entry) => entry.id}
-                  actions={entryActions}
-                />
-              </CardContent>
-
-              {total > 0 && (
-                <CardFooter className="border-t">
-                  <Paginator
-                    page={page}
-                    limit={limit}
-                    total={total}
-                    totalPages={totalPages}
-                    onPageChange={setPage}
-                    itemLabel="entry"
-                    className="w-full"
-                  />
-                </CardFooter>
-              )}
-            </>
-          )}
-        </Card>
-      </div>
-
-      {/* Modals */}
-      <CreateFaqModal
-        open={createModal}
-        onClose={() => setCreateModal(false)}
+              <RefreshCw
+                className={cn(
+                  "mr-2 size-4",
+                  repostWelcome.isPending && "animate-spin",
+                )}
+              />
+              Repost Welcome
+            </Button>
+            <Button onClick={openCreate}>
+              <Plus className="mr-2 size-4" />
+              New Entry
+            </Button>
+          </>
+        }
       />
 
-      {editModal.entry !== null && (
-        <EditFaqModal
-          open={editModal.open}
-          onClose={() => setEditModal({ open: false, entry: null })}
-          entry={editModal.entry}
-        />
-      )}
+      <FilterBar
+        search={searchQuery}
+        onSearchChange={setSearchQuery}
+        placeholder="Search by title..."
+        activeCount={(searchQuery ? 1 : 0) + (enabledFilter !== "all" ? 1 : 0)}
+      >
+        <Select
+          value={enabledFilter}
+          onValueChange={(v) => setEnabledFilter(v as EnabledFilter)}
+        >
+          <SelectTrigger className="min-w-[130px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {ENABLED_FILTER_OPTIONS.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </FilterBar>
+
+      <TableCard
+        title="FAQ Entries"
+        paged={entries}
+        empty={{
+          icon: MessageCircleQuestion,
+          message: "No FAQ entries found",
+          children: (
+            <Button onClick={openCreate}>
+              <Plus className="mr-2 size-4" />
+              Create First Entry
+            </Button>
+          ),
+        }}
+        itemLabel="entry"
+        columns={columns}
+        rowKey={(entry) => entry.id}
+        actions={entryActions}
+      />
+
+      <FaqEntryDialog
+        open={entryTarget !== null}
+        onClose={() => setEntryTarget(null)}
+        entry={entryTarget?.entry}
+      />
 
       <DeleteFaqModal
         entry={deleteTarget}
         onClose={() => setDeleteTarget(null)}
       />
-    </div>
+    </AdminPage>
   );
 }

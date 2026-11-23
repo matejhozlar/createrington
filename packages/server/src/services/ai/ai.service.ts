@@ -2,17 +2,11 @@ import OpenAI from "openai";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 
 export interface AiCompletionOptions {
-  /** System prompt that sets the AI's behavior */
   system?: string;
-  /** The user message / prompt */
   prompt: string;
-  /** Model to use (defaults to gpt-4o-mini) */
   model?: string;
-  /** Sampling temperature 0-2 (defaults to 0.7) */
   temperature?: number;
-  /** Max tokens in response (defaults to 1024) */
   maxTokens?: number;
-  /** Optional conversation context (prior messages) */
   context?: ChatCompletionMessageParam[];
 }
 

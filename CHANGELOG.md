@@ -1,3 +1,63 @@
+## v1.81.0 (2026-11-23)
+
+### @createrington/server (1.80.1 → 1.81.0)
+- [add] Add the planning board backend: new `planning_subcategory`, `planning_item`, `planning_item_revision`, `planning_item_comment` and `planning_item_assignee` tables with `planning_category` (modpack, website, discord, server) and `planning_item_status` (draft, open, approved, denied) enums, exposed to every admin as `admin.planning`; every save writes a full revision, a save based on a stale revision is refused, earlier revisions can be restored, plans carry comments and up to 20 assigned admins (a demoted admin is unassigned everywhere), lists filter by status, category, subcategory, assignee and search with per-status counts, and 15 subcategories are seeded
+- [add] Add the `/idea` admin command: it reads the last 1-500 channel messages (or everything since a linked message) plus an optional note, hands the transcript and the current board to a Claude automation planning session, and saves the result as a draft plan or a comment on an existing plan, attributed to the admin who ran it, linked back to the Discord message and checked against the board's own input rules
+- [add] Paginate and filter `owner.launcherReleases.list` by platform, optional status and version search, 20 per page, newest publish first
+- [fix] Fix `/money` failing with a generic "Balance Error" for unregistered users; they are now pointed to `/register`, and a registered player with no balance row sees $0
+- [fix] Fix `/pay` accepting fractional amounts: `amount` is now a whole-dollar integer of at least 1, and `/money`, `/pay`, `/daily`, `/history`, `/profile` and `/compare` all format amounts with `formatMoney`
+- [fix] Fix `/leaderboard refresh` throwing a generic interaction error for a leaderboard that was never posted or whose message was deleted; it now points to `/leaderboard create`
+- [fix] Fix the ticket Reopen button showing "This interaction failed" after a successful reopen, and make ticket close and reopen atomic: the status change and its `ticket_action` audit row are written in one transaction under a row lock, so two concurrent closes can no longer both pass
+- [fix] Fix donations being marked `supporter_role_granted` before Discord actually granted the role; a failed guild, member or role lookup now leaves the flag unset, and a Stripe subscription lookup failure is logged and surfaced instead of being read as "no subscription"
+- [fix] Fix structure pack imports leaving an empty pack behind when adding its mods failed and reporting every error as "skipped"; each import now runs in one transaction, only a name conflict counts as skipped, and other failures are returned as `failed`
+- [fix] Fix daily reward results leaking internal claim errors and server-locale times into the in-game player message
+- [fix] Fix the admin server list showing the player count as the session count; it now sums the real sessions
+- [fix] Fix an unknown server id on the admin server page answering BAD_REQUEST instead of NOT_FOUND, and a concurrent duplicate admin promote answering 500 instead of a 409 conflict
+- [security] Log a raw request body (such as the Stripe webhook payload) by its size instead of its bytes when a request fails
+- [security] Stream content downloads under a hard byte cap that holds even when the server does not declare a length, for changelog icons, modpack manifest zips and gallery attachments
+- [refactor] Fold `/notification-panel` and `/server-panel` into `/role-panel` presets (Notifications, Testing) with an optional `role1` and a preset title default; panels already posted by the old commands stop responding and must be re-posted with `/role-panel preset:<name> message_id:<id>`
+- [refactor] Move the admin chat JSON calls (enabled, sessions, messages, end, history) to `admin.chat` tRPC procedures with positive-integer session ids; REST keeps only the stream
+- [refactor] Store closed value sets as Postgres enums built from shared constants (`player_balance_transaction_type`, `reward_type`, `donation_status`, `server_maintenance_schedule_status`, `ticket_action_type`, `faq_match_mode`) and make `admin.created_at` a non-null `timestamptz` and `admin.vanished` non-null; migration `0099` deletes balance transaction, reward claim and ticket action rows whose value is outside the set
+- [refactor] Rework the query and repository layer: `find*` returns null and `get*` throws, paged reads return `{ rows, total }`, one transaction convention and one raw SQL path, `admin_log_action` inserts checked against the `AdminActionType` union, and repositories keep persistence only
+- [refactor] Give every registered service one `initialize` / `shutdown` lifecycle with capped teardown of the pg pool, HTTP server and Discord client, and move ban, admin role, account, auto-message and structure pack orchestration out of routers into services; the CurseForge and content services share one client
+- [refactor] Apply one tRPC convention (`list` / `get` / `create` / `update` / `delete`, `{ items, pagination }` for paged lists, shared inputs and helpers, one middleware mapping service errors to tRPC codes) and one Express route shape (`route()`, `validate()` with `*.schemas.ts`, typed `AppError`s, the standard error envelope)
+- [refactor] Give every Discord button and modal one custom-id definition (existing ids unchanged) with typed handler modules and a dispatcher that owns interaction errors, share one Minecraft server registry and one username rule (1-16 characters), and remove the unused bot framework, two-bot leftovers and RCON manager surface
+- [remove] Remove the unused `GET /api/auth/status` endpoint (`/api/auth/me` answers the same) and the `DISCORD_MAIN_BOT_WEBHOOK_ID`, `ASSETS_URL` and `LOCAL_SERVER_IP_ADDRESS` env vars
+- [remove] Remove the unused API docs generator and its deploy step, and the dead `migrate-users`, `import-pending-votes`, `env-gen`, `import-find` and `generate-structure` scripts
+- [chore] Strip comments from feature code, remove dead config keys and unreachable branches, add an ESLint rule that only `config/` reads env, and replace a queued dev deploy when a newer merge lands
+
+### @createrington/client (0.2.99 → 0.2.100)
+- [add] Add the admin Planning page (`/admin/planning`): plans as a grid of cards with Draft / Open / Approved / Denied tabs and counts, search, category, subcategory and assignee filters, sorting, pagination, a create dialog and subcategory management; the detail page renders the markdown body with status changes, editing, deletion, comments, assignees, the Discord source link and revision history with restore
+- [add] Let the admin chat propose new plans and plan edits as preview cards that write nothing until the admin clicks Apply, then open the saved plan; an applied or dismissed card stays that way in other tabs
+- [add] Paginate and filter the launcher releases on the owner page: one platform tab at a time, 20 per page, with status and version search
+- [add] Count Components V2 messages against Discord's 40-component limit in the embed builder: a counter shows the total, save and send refuse an oversized message, and every add control (including nested gallery, section and button-row adds) is disabled at the limit
+- [fix] Fix public pages (home stats, gallery, leaderboards, compare, online players, settings, structure packs, workshop, apply-to-join) showing an empty or "N/A" state when a query fails; they now show an error with a retry
+- [fix] Fix unknown and bare `/admin` URLs rendering a blank page instead of the 404 page, and a crashed admin chat replacing the whole page instead of hiding itself
+- [fix] Fix inline code in site chat and admin chat messages rendering unstyled
+- [fix] Fix "log out everywhere" clearing the local session even when the server request failed; it now waits for confirmation and shows an error otherwise
+- [fix] Fix the embed builder send and "update all" dialogs closing when the request fails
+- [fix] Fix admin FAQ and waitlist searches not resetting to page 1 while typing, and drop the redundant Search buttons on admin lists
+- [fix] Fix the admin player edit form rejecting 1- and 2-character Minecraft usernames
+- [fix] Fix structure pack mod removal silently swallowing failed dependency removals; add, remove and import now name each mod or pack that failed, and import JSON is validated before sending
+- [fix] Fix admin chat history failures going unreported, and a newly started admin chat being overwritten by an in-flight session refetch
+- [fix] Fix the FAQ response counter measuring against 2000 characters instead of Discord's 4096-character embed description limit
+- [fix] Fix the changelog page's dead RSS and JSON links (removed) and missing load error state
+- [fix] Fix strike classifications showing raw enum values instead of labels
+- [fix] Fix the donate page hiding a failed subscription lookup; it now shows a retry notice
+- [fix] Fix the privacy policy describing email deletion requests; it now points to Settings for data export and account deletion and says deletion also removes you from the Discord server
+- [refactor] Rebuild the app shell on layout routes with one nav section component and one shared status page behind the 404, error, login and unauthorized views
+- [refactor] Put every admin and owner page on one shell (`AdminPage` header and breadcrumbs, one paged-table scaffold and filter bar, shared error and empty states, `useMutationToast` for mutation feedback) and load admin chat state through tRPC with `useQuery`
+- [refactor] Rebuild the embed builder on one reducer with one lenient payload parse and shared Discord preview pieces, share a `DiscordTextarea` with auto-messages and FAQ, and keep the other mode's draft when switching modes
+- [refactor] Split the home page, guides, changelog, skin runner, portal zoom overlay, in-pack tab, workshop and launcher releases pages into focused components and hooks
+- [refactor] Register the extra design tokens, move feature CSS out of `index.css`, route status and badge colours through tones, and share public page frames and helpers (images, safe storage, time, plurals); site chat now scrolls like the admin chat
+- [refactor] Send login through the API client, schedule the silent refresh from the token's own lifetime instead of a fixed 13 minutes, read API error codes from `error.code`, and never refresh on the OAuth endpoints; `VITE_API_URL` is removed and every call is same-origin
+- [chore] Strip comments from feature code and remove dead code and the unused `RouterInput` type
+
+### @createrington/shared (1.18.1 → 1.19.0)
+- [add] Add `@createrington/shared/planning` with the planning categories, statuses (draft, open, approved, denied), length limits and title, body and comment schemas used by the board, `/idea` and the admin chat
+- [add] Add shared value arrays and unions for balance transaction types, reward types, donation statuses, maintenance statuses, ticket actions, FAQ match modes and `AdminActionType`, plus `structurePackImportSchema` and admin chat types
+- [refactor] Rename `RefreshResponse` to `AuthSession`, add `DiscordAuthUrl`, share the embed and Discord message payload types, and drop the unused logout type
+
 ## v1.80.1 (2026-11-11)
 
 ### @createrington/server (1.80.0 → 1.80.1)

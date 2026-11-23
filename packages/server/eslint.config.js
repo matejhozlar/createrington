@@ -35,6 +35,7 @@ export default defineConfig([
         },
       ],
       "no-console": "error",
+      "no-empty": ["error", { allowEmptyCatch: true }],
       "@typescript-eslint/restrict-template-expressions": "off",
       "@typescript-eslint/unbound-method": "off",
     },
@@ -43,6 +44,23 @@ export default defineConfig([
     files: ["src/config/env/env.config.ts", "src/config/index.ts"],
     rules: {
       "no-console": "off",
+    },
+  },
+  {
+    files: ["src/**/*.ts"],
+    ignores: ["src/config/**"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@/config/env/*", "**/config/env/*"],
+              message: "Read environment values through config (@/config).",
+            },
+          ],
+        },
+      ],
     },
   },
   {

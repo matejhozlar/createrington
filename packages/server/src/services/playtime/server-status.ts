@@ -1,8 +1,8 @@
 import { maintenanceService } from "@/services/maintenance";
+import { SERVERS, type McServer } from "@/services/mc-server/servers";
 import type { PlaytimeService } from "./playtime.service";
 import { ServerState, type ActiveSession } from "./types";
 
-/** Basic player information included in server status responses. */
 export interface PlayerInfo {
   uuid: string;
   username: string;
@@ -16,7 +16,6 @@ export interface PlayerInfo {
   };
 }
 
-/** Online state, maintenance flag and player count of a server, without the player list. */
 export interface ServerStatusSummary {
   serverId: number;
   serverName: string;
@@ -27,7 +26,6 @@ export interface ServerStatusSummary {
   playerCount: number;
 }
 
-/** Server status with connection info, online state, and current player list. */
 export interface ServerStatus extends ServerStatusSummary {
   ip: string;
   port: number;
@@ -35,7 +33,6 @@ export interface ServerStatus extends ServerStatusSummary {
   lastChecked: Date;
 }
 
-/** Server config fields a status snapshot is built from. */
 export interface ServerStatusConfig {
   name: string;
   slug: string;
@@ -112,5 +109,30 @@ export function buildServerStatus(
     port: serverConfig.port,
     players,
     lastChecked: new Date(),
+  };
+}
+
+/** One status per configured server (or per entry of `servers`), ordered by server id. A missing manager reports every server as "unknown". */
+export function buildServerStatuses<T extends ServerStatusSummary>(
+  manager: { getService(id: number): PlaytimeService | undefined } | undefined,
+  build: (
+    id: number,
+    serverConfig: ServerStatusConfig,
+    service: PlaytimeService | undefined,
+  ) => T,
+  servers: readonly McServer[] = SERVERS,
+): T[] {
+  return servers
+    .map((server) => build(server.id, server, manager?.getService(server.id)))
+    .sort((a, b) => a.serverId - b.serverId);
+}
+
+/** Server count, online server count and total players across `statuses`. */
+export function summarizeServerStatuses(statuses: ServerStatusSummary[]) {
+  return {
+    totalServers: statuses.length,
+    onlineServers: statuses.filter((status) => status.status === "online")
+      .length,
+    totalPlayers: statuses.reduce((sum, status) => sum + status.playerCount, 0),
   };
 }

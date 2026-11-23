@@ -1,245 +1,105 @@
-import type { StructurePackRotationConfig } from "@createrington/shared/db";
 import { dateInTimezone, periodIntervalMs } from "./timezone";
-import type { RotationPeriod } from "./types";
+import type { RotationConfig } from "./types";
 
-/**
- * Returns the next UTC instant at which a rotation should fire for the given config.
- *
- * All wall-clock comparisons are performed in the configured IANA timezone so that
- * DST transitions do not shift the scheduled time.
- *
- * @param cfg - The current rotation configuration
- * @returns UTC Date of the next scheduled rotation
- */
-export function computeNextRotationTime(
-  cfg: StructurePackRotationConfig,
-): Date {
-  const [hours, minutes] = cfg.time.split(":").map(Number);
-  const now = new Date();
-  const period = cfg.period as RotationPeriod;
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 
-  // Get today's date components in the target timezone
-  const todayParts = new Intl.DateTimeFormat("en-US", {
-    timeZone: cfg.timezone,
+export type OccurrenceDirection = "next" | "previous";
+
+function wallClockDate(timezone: string, now: Date) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
     year: "numeric",
     month: "numeric",
     day: "numeric",
     weekday: "short",
   }).formatToParts(now);
-
-  const get = (type: string) =>
-    Number(todayParts.find((p) => p.type === type)?.value ?? 0);
-
-  const todayYear = get("year");
-  const todayMonth = get("month") - 1;
-  const todayDay = get("day");
-
-  if (period === "daily") {
-    // Next occurrence is today at the configured time, or tomorrow
-    const target = dateInTimezone(
-      todayYear,
-      todayMonth,
-      todayDay,
-      hours,
-      minutes,
-      cfg.timezone,
-    );
-    if (target.getTime() <= now.getTime()) {
-      return dateInTimezone(
-        todayYear,
-        todayMonth,
-        todayDay + 1,
-        hours,
-        minutes,
-        cfg.timezone,
-      );
-    }
-    return target;
-  }
-
-  if (period === "monthly") {
-    // Next occurrence is on dayOfMonth this month or next month
-    const target = dateInTimezone(
-      todayYear,
-      todayMonth,
-      cfg.dayOfMonth,
-      hours,
-      minutes,
-      cfg.timezone,
-    );
-    if (target.getTime() <= now.getTime()) {
-      return dateInTimezone(
-        todayYear,
-        todayMonth + 1,
-        cfg.dayOfMonth,
-        hours,
-        minutes,
-        cfg.timezone,
-      );
-    }
-    return target;
-  }
-
-  // Weekly (default)
-  const weekdayStr = todayParts.find((p) => p.type === "weekday")?.value ?? "";
-  const dayMap: Record<string, number> = {
-    Sun: 0,
-    Mon: 1,
-    Tue: 2,
-    Wed: 3,
-    Thu: 4,
-    Fri: 5,
-    Sat: 6,
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((p) => p.type === type)?.value;
+  const weekday = WEEKDAYS.indexOf(
+    part("weekday") as (typeof WEEKDAYS)[number],
+  );
+  return {
+    year: Number(part("year") ?? 0),
+    month: Number(part("month") ?? 0) - 1,
+    day: Number(part("day") ?? 0),
+    weekday: weekday === -1 ? now.getDay() : weekday,
   };
-  const currentDay = dayMap[weekdayStr] ?? now.getDay();
+}
 
-  let daysUntil = cfg.dayOfWeek - currentDay;
-  if (daysUntil < 0) daysUntil += 7;
-
-  const targetDate = new Date(
-    Date.UTC(todayYear, todayMonth, todayDay + daysUntil),
-  );
-  const target = dateInTimezone(
-    targetDate.getUTCFullYear(),
-    targetDate.getUTCMonth(),
-    targetDate.getUTCDate(),
-    hours,
-    minutes,
-    cfg.timezone,
-  );
-
-  if (target.getTime() <= now.getTime()) {
-    const nextWeek = new Date(targetDate.getTime() + 7 * 24 * 60 * 60 * 1000);
-    return dateInTimezone(
-      nextWeek.getUTCFullYear(),
-      nextWeek.getUTCMonth(),
-      nextWeek.getUTCDate(),
-      hours,
-      minutes,
-      cfg.timezone,
-    );
-  }
-
-  return target;
+function wrapWeek(days: number): number {
+  return ((days % 7) + 7) % 7;
 }
 
 /**
- * Returns the UTC start timestamp of the current rotation cycle.
+ * Returns the configured rotation time nearest to `now` in the given
+ * direction: the next one strictly after `now`, or the previous one at or
+ * before it (the start of the current cycle, which scopes boost purchases).
  *
- * The cycle start is the most recent past occurrence of the configured
- * rotation time (daily, weekly, or monthly). Boost purchases are scoped
- * to this timestamp so they expire automatically after a rotation fires.
- *
- * @param cfg - The current rotation configuration
- * @returns UTC Date representing the start of the active cycle
+ * Wall-clock dates are taken in the configured IANA timezone so that DST
+ * transitions do not shift the scheduled time.
  */
-export function computeCycleStart(cfg: StructurePackRotationConfig): Date {
+export function occurrence(
+  cfg: RotationConfig,
+  now: Date,
+  direction: OccurrenceDirection,
+): Date {
   const [hours, minutes] = cfg.time.split(":").map(Number);
-  const now = new Date();
-  const period = cfg.period as RotationPeriod;
+  const today = wallClockDate(cfg.timezone, now);
+  const step = direction === "next" ? 1 : -1;
+  const weekOffset =
+    direction === "next"
+      ? wrapWeek(cfg.dayOfWeek - today.weekday)
+      : -wrapWeek(today.weekday - cfg.dayOfWeek);
 
-  const todayParts = new Intl.DateTimeFormat("en-US", {
-    timeZone: cfg.timezone,
-    year: "numeric",
-    month: "numeric",
-    day: "numeric",
-    weekday: "short",
-  }).formatToParts(now);
-
-  const get = (type: string) =>
-    Number(todayParts.find((p) => p.type === type)?.value ?? 0);
-
-  const todayYear = get("year");
-  const todayMonth = get("month") - 1;
-  const todayDay = get("day");
-
-  if (period === "daily") {
-    // Cycle started today at the configured time, or yesterday if time hasn't passed
-    const cycleStart = dateInTimezone(
-      todayYear,
-      todayMonth,
-      todayDay,
-      hours,
-      minutes,
-      cfg.timezone,
-    );
-    if (cycleStart.getTime() > now.getTime()) {
-      return dateInTimezone(
-        todayYear,
-        todayMonth,
-        todayDay - 1,
-        hours,
-        minutes,
-        cfg.timezone,
-      );
+  const at = (periods: number): Date => {
+    switch (cfg.period) {
+      case "daily":
+        return dateInTimezone(
+          today.year,
+          today.month,
+          today.day + periods,
+          hours,
+          minutes,
+          cfg.timezone,
+        );
+      case "monthly":
+        return dateInTimezone(
+          today.year,
+          today.month + periods,
+          cfg.dayOfMonth,
+          hours,
+          minutes,
+          cfg.timezone,
+        );
+      case "weekly":
+        return dateInTimezone(
+          today.year,
+          today.month,
+          today.day + weekOffset + 7 * periods,
+          hours,
+          minutes,
+          cfg.timezone,
+        );
     }
-    return cycleStart;
-  }
-
-  if (period === "monthly") {
-    // Cycle started on dayOfMonth this month, or last month
-    const cycleStart = dateInTimezone(
-      todayYear,
-      todayMonth,
-      cfg.dayOfMonth,
-      hours,
-      minutes,
-      cfg.timezone,
-    );
-    if (cycleStart.getTime() > now.getTime()) {
-      return dateInTimezone(
-        todayYear,
-        todayMonth - 1,
-        cfg.dayOfMonth,
-        hours,
-        minutes,
-        cfg.timezone,
-      );
-    }
-    return cycleStart;
-  }
-
-  // Weekly (default)
-  const dayMap: Record<string, number> = {
-    Sun: 0,
-    Mon: 1,
-    Tue: 2,
-    Wed: 3,
-    Thu: 4,
-    Fri: 5,
-    Sat: 6,
   };
-  const weekdayStr = todayParts.find((p) => p.type === "weekday")?.value ?? "";
-  const currentDay = dayMap[weekdayStr] ?? now.getDay();
 
-  let daysDiff = currentDay - cfg.dayOfWeek;
-  if (daysDiff < 0) daysDiff += 7;
+  const candidate = at(0);
+  const onWrongSide =
+    direction === "next"
+      ? candidate.getTime() <= now.getTime()
+      : candidate.getTime() > now.getTime();
+  return onWrongSide ? at(step) : candidate;
+}
 
-  const baseDate = new Date(
-    Date.UTC(todayYear, todayMonth, todayDay - daysDiff),
-  );
-  const cycleStart = dateInTimezone(
-    baseDate.getUTCFullYear(),
-    baseDate.getUTCMonth(),
-    baseDate.getUTCDate(),
-    hours,
-    minutes,
-    cfg.timezone,
-  );
-
-  if (cycleStart.getTime() > now.getTime()) {
-    const prevWeek = new Date(baseDate.getTime() - 7 * 24 * 60 * 60 * 1000);
-    return dateInTimezone(
-      prevWeek.getUTCFullYear(),
-      prevWeek.getUTCMonth(),
-      prevWeek.getUTCDate(),
-      hours,
-      minutes,
-      cfg.timezone,
-    );
+export function describeSchedule(cfg: RotationConfig): string {
+  switch (cfg.period) {
+    case "daily":
+      return `daily at ${cfg.time}`;
+    case "monthly":
+      return `monthly on day ${cfg.dayOfMonth} at ${cfg.time}`;
+    case "weekly":
+      return `weekly on ${WEEKDAYS[cfg.dayOfWeek]} at ${cfg.time}`;
   }
-
-  return cycleStart;
 }
 
 /**
@@ -247,19 +107,12 @@ export function computeCycleStart(cfg: StructurePackRotationConfig): Date {
  *
  * A rotation is considered missed when the elapsed time since `lastRotatedAt`
  * exceeds one full period plus the configured grace period.
- *
- * @param cfg - The current rotation configuration
- * @param lastRotatedAt - Timestamp of the most recent recorded rotation
- * @returns Whether a rotation should have fired and was missed
  */
 export function checkMissedRotation(
-  cfg: StructurePackRotationConfig,
+  cfg: RotationConfig,
   lastRotatedAt: Date,
 ): boolean {
-  const now = Date.now();
-  const expectedInterval = periodIntervalMs(cfg.period as RotationPeriod);
+  const expectedInterval = periodIntervalMs(cfg.period);
   const gracePeriod = cfg.gracePeriodMinutes * 60 * 1000;
-  const timeSinceLastRotation = now - lastRotatedAt.getTime();
-
-  return timeSinceLastRotation > expectedInterval + gracePeriod;
+  return Date.now() - lastRotatedAt.getTime() > expectedInterval + gracePeriod;
 }

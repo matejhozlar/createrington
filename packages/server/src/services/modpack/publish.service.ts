@@ -1,5 +1,5 @@
 import { Q, db } from "@/db";
-import { BadRequestError, NotFoundError } from "@/app/middleware/error-handler";
+import { BadRequestError, NotFoundError, errorMessage } from "@/errors";
 import { UniqueViolationError } from "@/db/utils/errors";
 import type {
   Modpack,
@@ -11,11 +11,11 @@ import {
   manifestDisabledModIds,
   type ModpackManifestEntry,
 } from "@/services/curseforge/modpack";
-import { getModpackManifest } from "@/services/curseforge/modpack-manifest";
+import { getModpackManifest } from "@/services/modpack/manifest";
 import { launcherPackReleaseService } from "@/services/launcher/pack/pack-release.service";
 import { findSandboxSnapshotUrl } from "@/services/launcher/pack/sandbox-files";
 import { modpackService } from "./modpack.service";
-import { buildReleaseRows } from "./release-record";
+import { buildReleaseRows, createReleaseWithMods } from "./release-record";
 import { modpackSyncService } from "./sync.service";
 
 export interface ModpackPublishReport {
@@ -46,6 +46,10 @@ export interface ModpackPublishResult {
   publish: ModpackPublish;
   ingested: boolean;
   error: string | null;
+}
+
+function normalizeNotes(notes: string | undefined): string | null | undefined {
+  return notes === undefined ? undefined : notes.trim() || null;
 }
 
 /**
@@ -102,7 +106,7 @@ export class ModpackPublishService {
       modpack.id,
       client.id,
       server.id,
-      report.notes === undefined ? undefined : report.notes.trim() || null,
+      normalizeNotes(report.notes),
     );
     if (!modpack.shipsServerPack) {
       await Q.modpack.updateAll(
@@ -119,7 +123,7 @@ export class ModpackPublishService {
         error = `CurseForge lists file ${read.fileId} as newer than ${client.id}, so the main app read that release instead; the report is kept for when ${client.id} is read`;
       }
     } catch (caught) {
-      error = caught instanceof Error ? caught.message : String(caught);
+      error = errorMessage(caught);
       logger.warn(
         `Modpack #${modpack.id} reconcile after publish report ${client.id}/${server.id} failed:`,
         caught,
@@ -157,8 +161,7 @@ export class ModpackPublishService {
       );
     }
     const modpack = await modpackService.getModpack(pack.modpackId);
-    const notes =
-      report.notes === undefined ? undefined : report.notes.trim() || null;
+    const notes = normalizeNotes(report.notes);
 
     const recorded = await Q.modpack.release.find({
       modpackId: modpack.id,
@@ -171,10 +174,9 @@ export class ModpackPublishService {
       return this.snapshotAnswer(recorded, null);
     }
 
-    const [newest] = await Q.modpack.release.findAll(
-      { modpackId: modpack.id, launcherReadyAt: { $ne: null } },
-      { orderBy: "id", orderDirection: "desc", limit: 1 },
-    );
+    const newest = await Q.modpack.release.findLatest(modpack.id, {
+      readyOnly: true,
+    });
     if (newest && newest.curseforgeFileId > report.snapshotId) {
       const error = `Snapshot ${newest.curseforgeFileId} is newer and already offered, so snapshot ${report.snapshotId} will not be`;
       if (recorded) {
@@ -226,7 +228,7 @@ export class ModpackPublishService {
       }
       if (outcome.status === "blocked") error = outcome.reason;
     } catch (caught) {
-      error = caught instanceof Error ? caught.message : String(caught);
+      error = errorMessage(caught);
       logger.warn(
         `Modpack #${modpack.id} snapshot ${report.snapshotId} could not be prepared for the launcher:`,
         caught,
@@ -289,21 +291,22 @@ export class ModpackPublishService {
 
     await this.upsertPublish(modpack.id, report.snapshotId, null, notes);
     try {
-      return await db.inTransaction(async (tx) => {
-        const release = await tx.modpack.release.createAndReturn({
-          modpackId: modpack.id,
-          curseforgeFileId: report.snapshotId,
-          serverPackFileId: null,
-          version: report.version,
-          displayName: null,
-          minecraftVersion: report.minecraftVersion,
-          modLoader: report.modLoader,
-          modCount: new Set(rows.map((row) => row.curseforgeProjectId)).size,
-          publishedAt: new Date(),
-        });
-        await tx.modpack.release.mod.insertMany(release.id, rows);
-        return release;
-      });
+      return await db.inTransaction((tx) =>
+        createReleaseWithMods(
+          tx,
+          {
+            modpackId: modpack.id,
+            curseforgeFileId: report.snapshotId,
+            serverPackFileId: null,
+            version: report.version,
+            displayName: null,
+            minecraftVersion: report.minecraftVersion,
+            modLoader: report.modLoader,
+            publishedAt: new Date(),
+          },
+          rows,
+        ),
+      );
     } catch (error) {
       if (error instanceof UniqueViolationError) {
         return Q.modpack.release.get({

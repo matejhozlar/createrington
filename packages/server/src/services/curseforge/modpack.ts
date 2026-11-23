@@ -3,9 +3,9 @@ import {
   curseforgeFileSchema,
   curseforgeList,
 } from "@createrington/content-gateway-client";
-import { cfFetch, parseCfResponse, sha1Of, type RawFile } from "./client";
+import { z } from "zod";
+import { cfRead, toCurseForgeFile, type CurseForgeFile } from "./client";
 
-/** Which of a release's manifests listed an entry. */
 export type ModpackManifestSides = "client" | "server" | "both";
 
 export interface ModpackManifestEntry {
@@ -16,9 +16,7 @@ export interface ModpackManifestEntry {
 }
 
 export interface ModpackManifest {
-  /** The client pack file; identity of the release. */
   fileId: number;
-  /** The server pack read alongside the client file, null when the release ships none. */
   serverPackFileId: number | null;
   displayName: string | null;
   version: string | null;
@@ -27,7 +25,6 @@ export interface ModpackManifest {
   publishedAt: string | null;
   entries: ModpackManifestEntry[];
   modIds: Set<number>;
-  /** Projects the manifest ships only as not-required entries, i.e. disabled in the pack. */
   disabledModIds: Set<number>;
 }
 
@@ -82,60 +79,20 @@ export function mergeManifestFiles<T extends { projectId: number }>(
   ];
 }
 
-/** One file of a modpack project as CurseForge describes it, server packs and additional files included. */
-export interface ModpackFile {
-  id: number;
-  projectId: number;
-  displayName: string | null;
-  fileName: string | null;
-  fileDate: string | null;
-  downloadUrl: string | null;
-  fileLength: number | null;
-  sha1: string | null;
-  fileStatus: number | null;
-  isAvailable: boolean;
-  serverPackFileId: number | null;
-  alternateFileId: number | null;
-  parentProjectFileId: number | null;
-  isServerPack: boolean;
-}
-
-/** A release the sandbox reported after publishing it: the client file and the server pack it uploaded. */
 export interface ModpackPublishHint {
   clientFileId: number;
   serverPackFileId: number | null;
 }
 
-/** What the database knows about a pack that shapes how its newest release is read. */
 export interface ModpackReadContext {
   shipsServerPack: boolean;
   publishes: ModpackPublishHint[];
 }
 
 export interface ModpackReleaseResolution {
-  file: ModpackFile;
+  file: CurseForgeFile;
   serverPackFileId: number | null;
-  /** False when the pack ships a server pack and this read found none. */
   complete: boolean;
-}
-
-function toModpackFile(raw: RawFile): ModpackFile {
-  return {
-    id: raw.id,
-    projectId: raw.modId,
-    displayName: raw.displayName ?? null,
-    fileName: raw.fileName ?? null,
-    fileDate: raw.fileDate ?? null,
-    downloadUrl: raw.downloadUrl || null,
-    fileLength: raw.fileLength ?? null,
-    sha1: sha1Of(raw.hashes),
-    fileStatus: raw.fileStatus ?? null,
-    isAvailable: raw.isAvailable ?? true,
-    serverPackFileId: raw.serverPackFileId ?? null,
-    alternateFileId: raw.alternateFileId ?? null,
-    parentProjectFileId: raw.parentProjectFileId ?? null,
-    isServerPack: raw.isServerPack ?? false,
-  };
 }
 
 /**
@@ -148,69 +105,29 @@ export async function getModpackFile(
   packProjectId: number,
   fileId: number,
   options: { fresh?: boolean } = {},
-): Promise<ModpackFile | null> {
-  const answer = await cfFetch(`mods/${packProjectId}/files/${fileId}`, {
-    fresh: options.fresh,
-  });
-  if (answer.status === 404) return null;
-  if (!answer.ok) {
-    throw new Error(
-      `Failed to fetch modpack file ${fileId} (${answer.status})`,
-    );
-  }
-  const body = parseCfResponse(
+): Promise<CurseForgeFile | null> {
+  const body = await cfRead(
+    `mods/${packProjectId}/files/${fileId}`,
+    { fresh: options.fresh },
     curseforgeData(curseforgeFileSchema),
-    answer.body,
     "getModpackFile",
+    { notFound: "null" },
   );
-  return toModpackFile(body.data);
+  return body ? toCurseForgeFile(body.data) : null;
 }
-
-const RECENT_PUBLISHES = 5;
 
 export async function getLatestListedModpackFile(
   packProjectId: number,
   fresh: boolean,
-): Promise<ModpackFile | null> {
-  const answer = await cfFetch(`mods/${packProjectId}/files`, {
-    query: { pageSize: 1 },
-    fresh,
-  });
-  if (!answer.ok) {
-    throw new Error(`Failed to fetch modpack files (${answer.status})`);
-  }
-  const body = parseCfResponse(
+): Promise<CurseForgeFile | null> {
+  const body = await cfRead(
+    `mods/${packProjectId}/files`,
+    { query: { pageSize: 1 }, fresh },
     curseforgeList(curseforgeFileSchema),
-    answer.body,
     "getModpackFiles",
   );
   const latest = body.data[0];
-  return latest ? toModpackFile(latest) : null;
-}
-
-// Lazy so this module stays importable without a database (unit tests, scripts)
-export async function loadModpackReadContext(
-  packProjectId: number,
-): Promise<ModpackReadContext> {
-  const { Q } = await import("@/db/index.js");
-  const modpack = await Q.modpack.find({ curseforgeProjectId: packProjectId });
-  if (!modpack) return { shipsServerPack: false, publishes: [] };
-  const publishes = await Q.modpack.publish.findAll(
-    { modpackId: modpack.id },
-    {
-      select: ["clientFileId", "serverPackFileId"],
-      orderBy: "clientFileId",
-      orderDirection: "desc",
-      limit: RECENT_PUBLISHES,
-    },
-  );
-  return {
-    shipsServerPack: modpack.shipsServerPack,
-    publishes: publishes.map((publish) => ({
-      clientFileId: publish.clientFileId,
-      serverPackFileId: publish.serverPackFileId,
-    })),
-  };
+  return latest ? toCurseForgeFile(latest) : null;
 }
 
 /**
@@ -224,9 +141,9 @@ export async function loadModpackReadContext(
  * through it, so for sandbox releases the report is the usual source.
  */
 export async function resolveModpackRelease(
-  listed: ModpackFile | null,
+  listed: CurseForgeFile | null,
   context: ModpackReadContext,
-  readFile: (fileId: number) => Promise<ModpackFile | null>,
+  readFile: (fileId: number) => Promise<CurseForgeFile | null>,
 ): Promise<ModpackReleaseResolution> {
   const newest = context.publishes.reduce<ModpackPublishHint | null>(
     (held, publish) =>
@@ -266,5 +183,49 @@ export async function resolveModpackRelease(
     file,
     serverPackFileId,
     complete: !context.shipsServerPack || serverPackFileId !== null,
+  };
+}
+
+const storedModpackManifestSchema = z.object({
+  fileId: z.number(),
+  serverPackFileId: z.number().nullable(),
+  displayName: z.string().nullable(),
+  version: z.string().nullable(),
+  minecraftVersion: z.string().nullable(),
+  modLoader: z.string().nullable(),
+  publishedAt: z.string().nullable(),
+  entries: z.array(
+    z.object({
+      projectId: z.number(),
+      fileId: z.number(),
+      required: z.boolean(),
+      sides: z.enum(["client", "server", "both"]),
+    }),
+  ),
+  modIds: z.array(z.number()),
+  disabledModIds: z.array(z.number()),
+});
+
+type StoredModpackManifest = z.infer<typeof storedModpackManifestSchema>;
+
+export function toStoredModpackManifest(
+  manifest: ModpackManifest,
+): StoredModpackManifest {
+  return {
+    ...manifest,
+    modIds: [...manifest.modIds],
+    disabledModIds: [...manifest.disabledModIds],
+  };
+}
+
+export function fromStoredModpackManifest(
+  value: unknown,
+): ModpackManifest | undefined {
+  const parsed = storedModpackManifestSchema.safeParse(value);
+  if (!parsed.success) return undefined;
+  return {
+    ...parsed.data,
+    modIds: new Set(parsed.data.modIds),
+    disabledModIds: new Set(parsed.data.disabledModIds),
   };
 }

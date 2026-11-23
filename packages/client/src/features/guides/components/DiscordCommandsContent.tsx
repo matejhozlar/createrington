@@ -3,24 +3,12 @@ import { LoadingState } from "@/components/query-states";
 import { Clock } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useQuery } from "@tanstack/react-query";
+import type {
+  DiscordCommandDoc,
+  DiscordCommandOption,
+} from "@createrington/shared/discord-commands";
 
-interface CommandOption {
-  type: number;
-  name: string;
-  description: string;
-  required?: boolean;
-  choices?: { name: string; value: string | number }[];
-  options?: CommandOption[];
-}
-
-interface CommandData {
-  name: string;
-  description: string;
-  options: CommandOption[];
-  cooldown?: { duration: number; type: string; message?: string };
-}
-
-function buildSyntax(name: string, options: CommandOption[]): string {
+function buildSyntax(name: string, options: DiscordCommandOption[]): string {
   const subs = options.filter((o) => o.type === 1 || o.type === 2);
   if (subs.length > 0) return `/${name} <subcommand>`;
 
@@ -30,13 +18,12 @@ function buildSyntax(name: string, options: CommandOption[]): string {
   return params ? `/${name} ${params}` : `/${name}`;
 }
 
-function CommandEntry({ command }: { command: CommandData }) {
+function CommandEntry({ command }: { command: DiscordCommandDoc }) {
   const subs = command.options.filter((o) => o.type === 1 || o.type === 2);
   const topOpts = command.options.filter((o) => o.type !== 1 && o.type !== 2);
 
   return (
     <div className="rounded-lg border border-border bg-card/50 p-4">
-      {/* Header: syntax + cooldown */}
       <div className="flex items-center justify-between gap-3">
         <code className="text-sm font-bold text-primary">
           {buildSyntax(command.name, command.options)}
@@ -49,12 +36,10 @@ function CommandEntry({ command }: { command: CommandData }) {
         )}
       </div>
 
-      {/* Description */}
       <p className="text-sm text-muted-foreground mt-1.5">
         {command.description}
       </p>
 
-      {/* Top-level options */}
       {topOpts.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mt-3">
           {topOpts.map((o) => (
@@ -70,12 +55,10 @@ function CommandEntry({ command }: { command: CommandData }) {
         </div>
       )}
 
-      {/* Subcommands */}
       {subs.length > 0 && (
         <div className="mt-3 flex flex-col gap-1.5">
           {subs.map((sub) =>
             sub.type === 2 ? (
-              // Subcommand group
               (sub.options ?? [])
                 .filter((s) => s.type === 1)
                 .map((s) => (
@@ -107,7 +90,7 @@ function SubcommandRow({
 }: {
   parentName: string;
   groupName?: string;
-  sub: CommandOption;
+  sub: DiscordCommandOption;
 }) {
   const opts = (sub.options ?? []).filter((o) => o.type !== 1 && o.type !== 2);
   const params = opts
@@ -128,10 +111,6 @@ function SubcommandRow({
   );
 }
 
-/**
- * Renders commands for a specific group name.
- * Used as guide step content: each group becomes its own step.
- */
 export function DiscordCommandsGroup({ group }: { group: string }) {
   const { data, isLoading, isError } = useQuery(
     trpc.public.discordCommands.list.queryOptions(),
@@ -149,8 +128,7 @@ export function DiscordCommandsGroup({ group }: { group: string }) {
     );
   }
 
-  const commands = (data?.groups?.find((g) => g.name === group)?.commands ??
-    []) as CommandData[];
+  const commands = data?.groups.find((g) => g.name === group)?.commands ?? [];
 
   if (commands.length === 0) {
     return <p className="text-muted-foreground">No commands in this group.</p>;

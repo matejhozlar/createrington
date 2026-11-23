@@ -90,7 +90,7 @@ export function AddLauncherPackDialog({
   };
 
   const addMutation = useMutation(
-    trpc.owner.launcherPacks.add.mutationOptions(
+    trpc.owner.launcherPacks.create.mutationOptions(
       useMutationToast({
         success: (pack) => `Offering "${pack.slug}" to the launcher`,
         onSuccess: () => {

@@ -1,5 +1,5 @@
 import type { LevelId } from "./levels";
-import { context2d, createCanvas } from "./skin";
+import { context2d, createCanvas } from "@/lib/canvas";
 import { hash } from "./util";
 
 export type Sprite = HTMLCanvasElement;

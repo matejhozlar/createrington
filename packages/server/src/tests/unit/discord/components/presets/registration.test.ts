@@ -1,10 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { ComponentType, MessageFlags } from "discord.js";
-import {
-  REGISTER_CLOSE_BUTTON_ID,
-  RegistrationComponentPresets,
-} from "@/discord/components/presets/registration";
-import { ComponentColors } from "@/discord/components/colors";
+import { RegistrationComponentPresets } from "@/discord/components/presets/registration";
+import { CustomIds } from "@/discord/custom-ids";
+import { EmbedColors } from "@/discord/embeds/colors";
 
 type ChildView = {
   type: number;
@@ -39,7 +37,7 @@ describe("RegistrationComponentPresets.closing", () => {
     expect(result.flags).toBe(MessageFlags.IsComponentsV2);
 
     const { container, texts } = view(result);
-    expect(container.accent_color).toBe(ComponentColors.Error);
+    expect(container.accent_color).toBe(EmbedColors.Error);
     expect(texts[0]?.content).toContain("Channel Deletion");
     expect(texts[1]?.content).toContain("deleted");
   });
@@ -61,6 +59,8 @@ describe("RegistrationComponentPresets.success", () => {
 
     const { children } = view(result);
     const row = children.find((c) => c.type === ComponentType.ActionRow);
-    expect(row?.components?.[0]?.custom_id).toBe(REGISTER_CLOSE_BUTTON_ID);
+    expect(row?.components?.[0]?.custom_id).toBe(
+      CustomIds.registrationClose.build(),
+    );
   });
 });

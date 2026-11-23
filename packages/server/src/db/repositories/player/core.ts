@@ -1,4 +1,4 @@
-import { db, Q } from "@/db";
+import { db, Q } from "@/db/pool";
 import { DatabaseTable } from "@/generated/db";
 import type {
   Player,
@@ -7,8 +7,7 @@ import type {
   PlayerPlaytimeSummary,
   WaitlistEntry,
 } from "@createrington/shared/db";
-import { BalanceUtils } from "../balance/utils";
-import { AdminEdit } from "@/types";
+import { BalanceUtils } from "@/db/utils/balance";
 import { BasePlayerRepository, type PlayerIdentifier } from "./base";
 
 /**
@@ -18,10 +17,6 @@ import { BasePlayerRepository, type PlayerIdentifier } from "./base";
  * transaction. Player deletion is owned by PlayerDeletionService.
  */
 export class PlayerRepository extends BasePlayerRepository {
-  constructor() {
-    super();
-  }
-
   /** Enriched player view for the admin panel: balance, playtime, tickets, waitlist. */
   async getDetailed(identifier: PlayerIdentifier): Promise<{
     player: Player;
@@ -136,7 +131,7 @@ export class PlayerRepository extends BasePlayerRepository {
           await tx.admin.log.action.create({
             adminDiscordId,
             adminUsername,
-            actionType: AdminEdit.UPDATE_PLAYER,
+            actionType: "update_player",
             targetPlayerUuid: uuid,
             targetPlayerName: oldPlayer.minecraftUsername,
             tableName: DatabaseTable.PLAYER.TABLE,

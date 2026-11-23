@@ -1,7 +1,9 @@
-import { Q, type db } from "@/db";
-import { BadRequestError, ConflictError } from "@/app/middleware/error-handler";
+import { Q } from "@/db";
+import type { DatabaseQueries } from "@/generated/db";
+import { BadRequestError, ConflictError } from "@/errors";
 import { UniqueViolationError, DatabaseError } from "@/db/utils/errors";
 import type {
+  ModpackMod,
   Workshop,
   WorkshopMod,
   WorkshopModCreate,
@@ -10,8 +12,9 @@ import type {
 import { WORKSHOP_ADMIN_EXTRA_CLASSES } from "@createrington/shared/workshop";
 import { CurseForgeClass } from "@/services/curseforge/client";
 import type { CurseForgeProjectData } from "@/services/curseforge/mods";
-import { getModpackModIds } from "@/services/curseforge/modpack-manifest";
+import { getModpackModIds } from "@/services/modpack/manifest";
 import { ingestProjects } from "@/services/curseforge/ingest";
+import { projectLabel } from "@/services/curseforge/project";
 
 export interface WorkshopModEntry {
   projectId: number;
@@ -26,12 +29,27 @@ interface PreparedEntry {
   fileReleaseType: number | null;
 }
 
-export type TxQueries = Parameters<Parameters<typeof db.inTransaction>[0]>[0];
-
 interface CreateModOptions {
   submittedBy: string;
   status?: WorkshopModStatus;
   reviewedBy?: string;
+}
+
+export async function findProjectClaims(
+  workshop: Workshop,
+  projectIds: number[],
+): Promise<{ claims: WorkshopMod[]; packClaims: ModpackMod[] }> {
+  const [claims, packClaims] = await Promise.all([
+    Q.workshop.mod.findAll({
+      workshopId: workshop.id,
+      curseforgeProjectId: { $in: projectIds },
+    }),
+    Q.modpack.mod.findAll({
+      modpackId: workshop.modpackId,
+      curseforgeProjectId: { $in: projectIds },
+    }),
+  ]);
+  return { claims, packClaims };
 }
 
 export function addableClasses(workshop: Workshop): Set<number> {
@@ -56,16 +74,7 @@ export async function prepareEntries(
     throw new BadRequestError("The request contains duplicate mods");
   }
 
-  const [claims, packClaims] = await Promise.all([
-    Q.workshop.mod.findAll({
-      workshopId: workshop.id,
-      curseforgeProjectId: { $in: projectIds },
-    }),
-    Q.modpack.mod.findAll({
-      modpackId: workshop.modpackId,
-      curseforgeProjectId: { $in: projectIds },
-    }),
-  ]);
+  const { claims, packClaims } = await findProjectClaims(workshop, projectIds);
   const rejectedClaims = claims.filter((c) => c.status === "rejected");
   if (rejectedClaims.length > 0) {
     const labels = await projectLabels(
@@ -142,7 +151,6 @@ export async function prepareEntries(
   return prepared;
 }
 
-/** Pick the latest compatible file for the workshop's game version and loader. */
 function snapshotFile(
   workshop: Workshop,
   data: CurseForgeProjectData,
@@ -173,7 +181,7 @@ function snapshotFile(
 }
 
 export async function createMod(
-  tx: TxQueries,
+  tx: DatabaseQueries,
   workshop: Workshop,
   entry: PreparedEntry,
   options: CreateModOptions,
@@ -182,7 +190,7 @@ export async function createMod(
 }
 
 export async function createMods(
-  tx: TxQueries,
+  tx: DatabaseQueries,
   workshop: Workshop,
   entries: PreparedEntry[],
   options: CreateModOptions,
@@ -218,7 +226,7 @@ async function projectLabels(projectIds: number[]): Promise<string[]> {
     id: { $in: unique },
   });
   const byId = new Map(projects.map((p) => [p.id, p.name]));
-  return unique.map((id) => byId.get(id) ?? `#${id}`);
+  return unique.map((id) => projectLabel(byId.get(id), id));
 }
 
 export function mapConstraintError(error: unknown): never {

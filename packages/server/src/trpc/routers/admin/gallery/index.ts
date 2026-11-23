@@ -8,9 +8,9 @@ import {
   findOrThrow,
   paginateQuery,
   paginationInput,
-  rethrowTrpc,
+  id,
 } from "@/trpc/utils";
-import { container, Services } from "@/services/container";
+import { getServiceSync, Services } from "@/services";
 import { galleryImageUrls } from "@/services/gallery/urls";
 import {
   galleryRewardAmountSchema,
@@ -24,13 +24,13 @@ import {
 } from "@createrington/shared/gallery";
 
 const statusSchema = z.enum(GALLERY_SUBMISSION_STATUSES);
-const idInput = z.object({ id: z.number().int().positive() });
+const idInput = z.object({ id: id() });
 
 const MAX_NOTE_LENGTH = 500;
 const MAX_CREDITS = 10;
 
 function gallery() {
-  return container.getSync(Services.GALLERY_SERVICE);
+  return getServiceSync(Services.GALLERY_SERVICE);
 }
 
 function playerSummary(player: Player | undefined, minecraftUuid: string) {
@@ -157,7 +157,6 @@ const settingsRouter = router({
     }),
 });
 
-/** Admin gallery router: review queue, approval with reward and credits, rejection, removal, and reward settings. */
 export const adminGalleryRouter = router({
   list: adminProcedure
     .meta({
@@ -241,35 +240,31 @@ export const adminGalleryRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      try {
-        const result = await gallery().approve(
-          input.id,
-          { discordId: ctx.user.discordId },
-          {
-            caption: input.caption,
-            rewardAmount: input.rewardAmount,
-            creditPlayerUuids: input.creditPlayerUuids,
-          },
-        );
-        const item = await serializeOne(result.submission);
+      const result = await gallery().approve(
+        input.id,
+        { discordId: ctx.user.discordId },
+        {
+          caption: input.caption,
+          rewardAmount: input.rewardAmount,
+          creditPlayerUuids: input.creditPlayerUuids,
+        },
+      );
+      const item = await serializeOne(result.submission);
 
-        await Q.admin.log.action.logAction({
-          ...auditActor(ctx),
-          actionType: "gallery_submission_approve",
-          description: `Approved gallery screenshot #${input.id} (reward ${formatMoney(result.rewardPaid)}${result.capReached ? ", weekly cap reached" : ""})`,
-          targetPlayerUuid: item.author.minecraftUuid,
-          targetPlayerName: item.author.minecraftUsername,
-        });
+      await Q.admin.log.action.logAction({
+        ...auditActor(ctx),
+        actionType: "gallery_submission_approve",
+        description: `Approved gallery screenshot #${input.id} (reward ${formatMoney(result.rewardPaid)}${result.capReached ? ", weekly cap reached" : ""})`,
+        targetPlayerUuid: item.author.minecraftUuid,
+        targetPlayerName: item.author.minecraftUsername,
+      });
 
-        return {
-          item,
-          rewardPaid: result.rewardPaid,
-          capReached: result.capReached,
-          announced: result.announced,
-        };
-      } catch (error) {
-        rethrowTrpc(error);
-      }
+      return {
+        item,
+        rewardPaid: result.rewardPaid,
+        capReached: result.capReached,
+        announced: result.announced,
+      };
     }),
 
   reject: adminProcedure
@@ -279,54 +274,46 @@ export const adminGalleryRouter = router({
     })
     .input(idInput.extend({ note: z.string().max(MAX_NOTE_LENGTH).optional() }))
     .mutation(async ({ ctx, input }) => {
-      try {
-        const row = await gallery().reject(
-          input.id,
-          { discordId: ctx.user.discordId },
-          input.note,
-        );
-        const item = await serializeOne(row);
+      const row = await gallery().reject(
+        input.id,
+        { discordId: ctx.user.discordId },
+        input.note,
+      );
+      const item = await serializeOne(row);
 
-        await Q.admin.log.action.logAction({
-          ...auditActor(ctx),
-          actionType: "gallery_submission_reject",
-          description: `Rejected gallery screenshot #${input.id}`,
-          reason: input.note?.trim() || undefined,
-          targetPlayerUuid: item.author.minecraftUuid,
-          targetPlayerName: item.author.minecraftUsername,
-        });
+      await Q.admin.log.action.logAction({
+        ...auditActor(ctx),
+        actionType: "gallery_submission_reject",
+        description: `Rejected gallery screenshot #${input.id}`,
+        reason: input.note?.trim() || undefined,
+        targetPlayerUuid: item.author.minecraftUuid,
+        targetPlayerName: item.author.minecraftUsername,
+      });
 
-        return item;
-      } catch (error) {
-        rethrowTrpc(error);
-      }
+      return item;
     }),
 
-  remove: adminProcedure
+  delete: adminProcedure
     .meta({
       description:
         "Pull an approved screenshot from the gallery, deleting its published files and announcement",
     })
     .input(idInput)
     .mutation(async ({ ctx, input }) => {
-      try {
-        const row = await gallery().remove(input.id, {
-          discordId: ctx.user.discordId,
-        });
-        const item = await serializeOne(row);
+      const row = await gallery().remove(input.id, {
+        discordId: ctx.user.discordId,
+      });
+      const item = await serializeOne(row);
 
-        await Q.admin.log.action.logAction({
-          ...auditActor(ctx),
-          actionType: "gallery_submission_remove",
-          description: `Removed gallery screenshot #${input.id}`,
-          targetPlayerUuid: item.author.minecraftUuid,
-          targetPlayerName: item.author.minecraftUsername,
-        });
+      await Q.admin.log.action.logAction({
+        ...auditActor(ctx),
+        actionType: "gallery_submission_remove",
+        description: `Removed gallery screenshot #${input.id}`,
+        targetPlayerUuid: item.author.minecraftUuid,
+        targetPlayerName: item.author.minecraftUsername,
+      });
 
-        return item;
-      } catch (error) {
-        rethrowTrpc(error);
-      }
+      return item;
     }),
 
   settings: settingsRouter,

@@ -14,7 +14,6 @@
     "verbatimModuleSyntax": true,
     "paths": {
       "@/*": ["./src/*"],
-      "@createrington/shared": ["../shared/src"],
       "@createrington/shared/*": ["../shared/src/*"]
     }
   },

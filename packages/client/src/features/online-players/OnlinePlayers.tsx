@@ -1,15 +1,14 @@
-import React, { useState, useMemo, useEffect, useCallback } from "react";
+import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router";
 import { formatCompactDuration } from "@createrington/shared/format";
-import { usePlayerData } from "@/contexts/player-data";
+import { usePlayerData, type OnlinePlayer } from "@/contexts/player-data";
 import { useServerData } from "@/contexts/server-data";
 import { useAuth } from "@/contexts/auth";
 import { cn } from "@/lib/utils";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { SearchInput } from "@/components/search-input";
-import { LoadingState } from "@/components/query-states";
+import { ErrorState, LoadingState } from "@/components/query-states";
 import {
   Search,
   Users,
@@ -18,27 +17,19 @@ import {
   Radio,
   Signal,
   WifiOff,
+  type LucideIcon,
 } from "lucide-react";
-import type { PlayerData } from "@createrington/shared/socket";
+import { useNow } from "@/hooks/use-now";
+import { MAIN_SERVER_ID } from "@/lib/minecraft";
+import { plural, pluralize } from "@/lib/format";
 
-function getSessionSeconds(player: PlayerData): number {
-  const start =
-    player.sessionStart instanceof Date
-      ? player.sessionStart.getTime()
-      : new Date(player.sessionStart).getTime();
-  return Math.max(0, (Date.now() - start) / 1000);
+function getSessionSeconds(player: OnlinePlayer, now: number): number {
+  return Math.max(0, (now - player.sessionStart.getTime()) / 1000);
 }
 
-/** Live-ticking session timer for a single player */
-function SessionTimer({ player }: { player: PlayerData }) {
-  const [seconds, setSeconds] = useState(() => getSessionSeconds(player));
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setSeconds(getSessionSeconds(player));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [player]);
+function SessionTimer({ player }: { player: OnlinePlayer }) {
+  const now = useNow(1000);
+  const seconds = getSessionSeconds(player, now);
 
   return (
     <span className="tabular-nums text-muted-foreground text-sm font-mono">
@@ -47,7 +38,6 @@ function SessionTimer({ player }: { player: PlayerData }) {
   );
 }
 
-/** Stat card used in the overview strip */
 function StatBlock({
   icon,
   value,
@@ -72,13 +62,12 @@ function StatBlock({
   );
 }
 
-/** Individual player card */
 function PlayerCard({
   player,
   index,
   onClick,
 }: {
-  player: PlayerData;
+  player: OnlinePlayer;
   index: number;
   onClick?: () => void;
 }) {
@@ -96,7 +85,6 @@ function PlayerCard({
         animation: `fade-in-up 0.4s ease-out ${index * 40}ms both`,
       }}
     >
-      {/* Online pulse indicator */}
       <div className="absolute top-3 right-3">
         <span className="relative flex size-2.5">
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-60" />
@@ -104,7 +92,6 @@ function PlayerCard({
         </span>
       </div>
 
-      {/* Avatar */}
       <div className="relative shrink-0">
         <MinecraftAvatar
           username={player.username}
@@ -114,7 +101,6 @@ function PlayerCard({
         />
       </div>
 
-      {/* Info */}
       <div className="min-w-0 flex-1">
         <p className="truncate text-base font-semibold text-foreground group-hover:text-primary transition-colors duration-300">
           {player.username}
@@ -128,10 +114,25 @@ function PlayerCard({
   );
 }
 
-export function OnlinePlayers() {
-  // TODO: When converting to multiple servers, update this to use the selected server
-  const serverId = 1;
+function PlayersEmpty({
+  icon: Icon,
+  title,
+  description,
+}: {
+  icon: LucideIcon;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center py-16 text-center">
+      <Icon className="mb-4 size-12 text-muted-foreground" />
+      <p className="text-lg font-medium text-foreground">{title}</p>
+      <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+    </div>
+  );
+}
 
+export function OnlinePlayers() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const isAdmin = user?.isAdmin ?? false;
@@ -143,13 +144,13 @@ export function OnlinePlayers() {
     refresh,
   } = usePlayerData();
   const { servers } = useServerData();
-  const server = servers.find((s) => s.serverId === serverId);
+  const server = servers.find((s) => s.serverId === MAIN_SERVER_ID);
 
   const [searchQuery, setSearchQuery] = useState("");
 
   const serverPlayers = useMemo(
-    () => getServerPlayers(serverId),
-    [getServerPlayers, serverId],
+    () => getServerPlayers(MAIN_SERVER_ID),
+    [getServerPlayers],
   );
 
   const filteredPlayers = useMemo(() => {
@@ -158,39 +159,20 @@ export function OnlinePlayers() {
     return serverPlayers.filter((p) => p.username.toLowerCase().includes(q));
   }, [serverPlayers, searchQuery]);
 
-  // Sort by session duration (longest first)
   const sortedPlayers = useMemo(
     () =>
-      [...filteredPlayers].sort((a, b) => {
-        const aStart =
-          a.sessionStart instanceof Date
-            ? a.sessionStart.getTime()
-            : new Date(a.sessionStart).getTime();
-        const bStart =
-          b.sessionStart instanceof Date
-            ? b.sessionStart.getTime()
-            : new Date(b.sessionStart).getTime();
-        return aStart - bStart;
-      }),
+      [...filteredPlayers].sort(
+        (a, b) => a.sessionStart.getTime() - b.sessionStart.getTime(),
+      ),
     [filteredPlayers],
   );
 
-  // Live-updating average session time
-  const computeAvg = useCallback(() => {
-    if (serverPlayers.length === 0) return 0;
-    const total = serverPlayers.reduce(
-      (sum, p) => sum + getSessionSeconds(p),
-      0,
-    );
-    return total / serverPlayers.length;
-  }, [serverPlayers]);
-
-  const [avgSession, setAvgSession] = useState(computeAvg);
-
-  useEffect(() => {
-    const interval = setInterval(() => setAvgSession(computeAvg()), 5000);
-    return () => clearInterval(interval);
-  }, [computeAvg]);
+  const now = useNow(5000);
+  const avgSession =
+    serverPlayers.length === 0
+      ? 0
+      : serverPlayers.reduce((sum, p) => sum + getSessionSeconds(p, now), 0) /
+        serverPlayers.length;
 
   const isOnline = server?.online ?? false;
   const serverName = server?.serverName ?? "Rails 'n Sails";
@@ -201,7 +183,6 @@ export function OnlinePlayers() {
 
   return (
     <div>
-      {/* Hero header */}
       <header className="relative w-full overflow-hidden py-12 md:py-16 px-5 md:px-8">
         <div className="absolute inset-0">
           <img
@@ -242,7 +223,7 @@ export function OnlinePlayers() {
           <p className="mt-4 text-base sm:text-lg md:text-xl text-muted-foreground max-w-2xl">
             {isOnline
               ? playerCount > 0
-                ? `${playerCount} player${playerCount !== 1 ? "s" : ""} currently exploring ${serverName}`
+                ? `${pluralize(playerCount, "player")} currently exploring ${serverName}`
                 : "No one is online right now — be the first to join!"
               : "The server is currently offline. Check back soon!"}
           </p>
@@ -251,7 +232,6 @@ export function OnlinePlayers() {
 
       <section className="px-5 md:px-8 pb-16">
         <div className="max-w-7xl mx-auto space-y-8">
-          {/* Stats strip */}
           <div className="flex flex-wrap gap-x-8 gap-y-4 rounded-xl border border-border bg-card/60 backdrop-blur-sm p-5">
             <StatBlock
               icon={<Users className="size-5 text-primary" />}
@@ -270,7 +250,6 @@ export function OnlinePlayers() {
             />
           </div>
 
-          {/* Search bar */}
           {playerCount > 0 && (
             <SearchInput
               className="max-w-sm"
@@ -280,21 +259,14 @@ export function OnlinePlayers() {
             />
           )}
 
-          {/* Player grid */}
           {playersLoading ? (
             <LoadingState text="Loading players..." className="py-16" />
           ) : playersError ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <Users className="size-12 text-muted-foreground mb-4" />
-              <p className="text-destructive">{playersError.message}</p>
-              <Button
-                onClick={() => refresh()}
-                className="mt-4"
-                variant="outline"
-              >
-                Try Again
-              </Button>
-            </div>
+            <ErrorState
+              message={playersError.message}
+              onRetry={() => refresh()}
+              className="py-16"
+            />
           ) : sortedPlayers.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
               {sortedPlayers.map((player, i) => (
@@ -311,43 +283,29 @@ export function OnlinePlayers() {
               ))}
             </div>
           ) : searchQuery.trim() ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <Search className="size-12 text-muted-foreground mb-4" />
-              <p className="text-lg font-medium text-foreground">
-                No players found
-              </p>
-              <p className="text-sm text-muted-foreground mt-1">
-                No online player matches "{searchQuery}"
-              </p>
-            </div>
+            <PlayersEmpty
+              icon={Search}
+              title="No players found"
+              description={`No online player matches "${searchQuery}"`}
+            />
           ) : !isOnline ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <WifiOff className="size-12 text-muted-foreground mb-4" />
-              <p className="text-lg font-medium text-foreground">
-                Server Offline
-              </p>
-              <p className="text-sm text-muted-foreground mt-1">
-                The server is currently offline. Players will appear here when
-                it's back up.
-              </p>
-            </div>
+            <PlayersEmpty
+              icon={WifiOff}
+              title="Server Offline"
+              description="The server is currently offline. Players will appear here when it's back up."
+            />
           ) : (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <Users className="size-12 text-muted-foreground mb-4" />
-              <p className="text-lg font-medium text-foreground">
-                No one is online
-              </p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Be the first to join and start building!
-              </p>
-            </div>
+            <PlayersEmpty
+              icon={Users}
+              title="No one is online"
+              description="Be the first to join and start building!"
+            />
           )}
 
-          {/* Result count when searching */}
           {searchQuery.trim() && sortedPlayers.length > 0 && (
             <p className="text-sm text-muted-foreground">
-              Showing {sortedPlayers.length} of {playerCount} online player
-              {playerCount !== 1 ? "s" : ""}
+              Showing {sortedPlayers.length} of {playerCount} online{" "}
+              {plural(playerCount, "player")}
             </p>
           )}
         </div>

@@ -1,62 +1,49 @@
-import { useState } from "react";
 import { ADMIN_REASON_MAX_LENGTH } from "@createrington/shared/admin-reason";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { trpc, queryClient } from "@/lib/trpc";
-import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
+import { useDialogDraft } from "@/hooks/use-dialog-draft";
 import { FormDialog } from "@/components/form-dialog";
 import { useMutation } from "@tanstack/react-query";
 import { Textarea } from "@/components/ui/textarea";
 
 interface UnbanModalProps {
-  open: boolean;
+  banId: number | null;
   onClose: () => void;
-  banId: number;
 }
 
-export function UnbanModal({ open, onClose, banId }: UnbanModalProps) {
-  const toast = useToastActions();
+export function UnbanModal({ banId, onClose }: UnbanModalProps) {
+  const open = banId !== null;
+  const [{ reason }, update] = useDialogDraft(open, () => ({ reason: "" }));
+
   const unbanPlayer = useMutation(
-    trpc.admin.players.bans.unban.mutationOptions({
-      onSuccess: () =>
-        void queryClient.invalidateQueries(trpc.admin.players.pathFilter()),
-    }),
+    trpc.admin.players.bans.unban.mutationOptions(
+      useMutationToast({
+        success: "Ban lifted",
+        error: (err) => ({
+          title: "Failed to unban player",
+          description: err.message,
+        }),
+        onSuccess: () => {
+          void queryClient.invalidateQueries(trpc.admin.players.pathFilter());
+          onClose();
+        },
+      }),
+    ),
   );
 
-  const [reason, setReason] = useState("");
-
-  const handleSubmit = async () => {
-    if (!reason.trim()) {
-      toast.error("Reason is required");
-      return;
-    }
-
-    try {
-      await unbanPlayer.mutateAsync({
-        banId,
-        reason: reason.trim(),
-      });
-
-      toast.success("Ban lifted");
-
-      setReason("");
-      onClose();
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Something went wrong",
-        "Failed to unban player",
-      );
-    }
-  };
-
-  const handleClose = () => {
-    setReason("");
-    onClose();
+  const handleSubmit = () => {
+    if (banId === null) return;
+    unbanPlayer.mutate({
+      banId,
+      reason: reason.trim(),
+    });
   };
 
   return (
     <FormDialog
       open={open}
-      onClose={handleClose}
+      onClose={onClose}
       title="Unban Player"
       description="This will lift the ban and allow the player to rejoin the server."
       onConfirm={handleSubmit}
@@ -77,7 +64,7 @@ export function UnbanModal({ open, onClose, banId }: UnbanModalProps) {
           id="unban-reason"
           placeholder="Enter reason for lifting the ban..."
           value={reason}
-          onChange={(e) => setReason(e.target.value)}
+          onChange={(e) => update({ reason: e.target.value })}
           maxLength={ADMIN_REASON_MAX_LENGTH}
           rows={4}
         />

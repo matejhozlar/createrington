@@ -1,6 +1,6 @@
 import config from "@/config";
 import type { EventModule } from "@/discord/bots/common/loaders/event-loader";
-import { container, Services } from "@/services/container";
+import { getServiceSync, Services } from "@/services";
 import type { Client, Message, PartialMessage } from "discord.js";
 
 export const eventName: EventModule<"messageDelete">["eventName"] =
@@ -13,7 +13,7 @@ export async function execute(
   if (message.channelId !== config.gallery.intakeChannelId) return;
 
   try {
-    const gallery = container.getSync(Services.GALLERY_SERVICE);
+    const gallery = getServiceSync(Services.GALLERY_SERVICE);
     await gallery.withdrawByMessage(message.id);
   } catch (error) {
     logger.error("Gallery withdraw error:", error);

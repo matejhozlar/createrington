@@ -1,30 +1,15 @@
-/**
- * In-memory access token storage + silent refresh logic.
- *
- * The access token is kept in a module-scoped variable (NOT localStorage)
- * so it cannot be read by XSS scripts accessing the Storage API.
- * The refresh token lives in an httpOnly cookie managed by the server.
- */
+import type { AuthSession } from "@createrington/shared/auth";
 
 const REFRESH_PATH = "/api/auth/refresh";
+const NO_RETRY_PATHS = [REFRESH_PATH, "/api/auth/discord"];
+const REFRESH_LEAD_MS = 2 * 60 * 1000;
+const MAX_TIMER_MS = 2 ** 31 - 1;
+
+export const SESSION_EXPIRED_EVENT = "auth:session-expired";
 
 let accessToken: string | null = null;
 
-/** Shared promise to deduplicate concurrent refresh requests */
-let refreshPromise: Promise<RefreshResult | null> | null = null;
-
-interface RefreshResult {
-  accessToken: string;
-  user: {
-    discordId: string;
-    username: string;
-    avatar?: string;
-    role: string;
-    isAdmin: boolean;
-    minecraftUuid: string;
-    minecraftUsername: string;
-  };
-}
+let refreshPromise: Promise<AuthSession | null> | null = null;
 
 export function getAccessToken(): string | null {
   return accessToken;
@@ -34,13 +19,33 @@ export function setAccessToken(token: string | null): void {
   accessToken = token;
 }
 
-/**
- * Attempt to refresh the access token using the httpOnly refresh cookie.
- * Returns the new access token + user data, or null if refresh fails.
- * Uses a shared promise to deduplicate concurrent refresh calls.
- */
-export async function refreshAccessToken(): Promise<RefreshResult | null> {
-  // Deduplicate: if a refresh is already in-flight, wait for it
+export function refreshDelayMs(token: string | null): number | null {
+  const claims = token ? readClaims(token) : null;
+  if (!claims) return null;
+
+  const lifetimeMs = (claims.exp - claims.iat) * 1000;
+  return Math.min(
+    Math.max(lifetimeMs - REFRESH_LEAD_MS, lifetimeMs / 2),
+    MAX_TIMER_MS,
+  );
+}
+
+function readClaims(token: string): { iat: number; exp: number } | null {
+  try {
+    const payload = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    const { iat, exp } = JSON.parse(atob(payload)) as {
+      iat?: unknown;
+      exp?: unknown;
+    };
+    return typeof iat === "number" && typeof exp === "number" && exp > iat
+      ? { iat, exp }
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function refreshAccessToken(): Promise<AuthSession | null> {
   if (refreshPromise) {
     return refreshPromise;
   }
@@ -58,20 +63,23 @@ export async function retryAfterRefresh(
   response: Response,
   retry: (accessToken: string) => Promise<Response>,
 ): Promise<Response> {
-  if (response.status !== 401 || response.url.includes(REFRESH_PATH)) {
+  if (
+    response.status !== 401 ||
+    NO_RETRY_PATHS.some((path) => response.url.includes(path))
+  ) {
     return response;
   }
 
   const result = await refreshAccessToken();
   if (!result) {
-    window.dispatchEvent(new CustomEvent("auth:session-expired"));
+    window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT));
     return response;
   }
 
   return retry(result.accessToken);
 }
 
-async function doRefresh(): Promise<RefreshResult | null> {
+async function doRefresh(): Promise<AuthSession | null> {
   try {
     const response = await fetch(REFRESH_PATH, {
       method: "POST",
@@ -83,14 +91,14 @@ async function doRefresh(): Promise<RefreshResult | null> {
       return null;
     }
 
-    const data = await response.json();
+    const data = (await response.json()) as {
+      success?: boolean;
+      data?: AuthSession;
+    };
 
     if (data.success && data.data?.accessToken) {
       accessToken = data.data.accessToken;
-      return {
-        accessToken: data.data.accessToken,
-        user: data.data.user,
-      };
+      return data.data;
     }
 
     accessToken = null;

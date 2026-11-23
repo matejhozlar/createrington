@@ -33,7 +33,6 @@ function toPublicPlayer(player: Player) {
   };
 }
 
-/** Public players router: lookup, list, and count players without auth. */
 export const playersRouter = router({
   get: publicProcedure
     .use(playersReadLimit)
@@ -118,7 +117,7 @@ export const playersRouter = router({
         },
       );
 
-      return { players: rows.map(toPublicPlayer), pagination };
+      return { items: rows.map(toPublicPlayer), pagination };
     }),
 
   count: publicProcedure

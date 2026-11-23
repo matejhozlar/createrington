@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Coins, ExternalLink, ImageOff, Trash2 } from "lucide-react";
 import { trpc, queryClient } from "@/lib/trpc";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
-import { formatMoney, formatRelativeDate } from "@/lib/format";
+import { formatDateTime, formatRelativeDate } from "@/lib/format";
+import { formatMoney } from "@createrington/shared/format";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Paginator } from "@/components/paginator";
 import { PlayerLabel } from "@/components/player-label";
@@ -15,7 +16,7 @@ import {
   GALLERY_STATUS,
   type GalleryStatus,
   type GallerySubmissionItem,
-} from "../format";
+} from "@/features/admin/gallery/format";
 import { useQuery, useMutation } from "@tanstack/react-query";
 
 const PAGE_SIZE = 24;
@@ -46,7 +47,7 @@ export function SubmissionGrid({ status }: SubmissionGridProps) {
   );
 
   const removeMutation = useMutation(
-    trpc.admin.gallery.remove.mutationOptions(
+    trpc.admin.gallery.delete.mutationOptions(
       useMutationToast({
         success: "Screenshot removed from the gallery",
         onSuccess: () => {
@@ -208,7 +209,7 @@ function SubmissionCard({
         )}
 
         <div className="mt-auto flex items-center justify-between gap-2 pt-1 text-xs text-muted-foreground">
-          <span title={reviewedAt?.toLocaleString()}>
+          <span title={reviewedAt ? formatDateTime(reviewedAt) : undefined}>
             {reviewedAt
               ? `Reviewed ${formatRelativeDate(reviewedAt)}`
               : `Submitted ${formatRelativeDate(new Date(item.createdAt))}`}

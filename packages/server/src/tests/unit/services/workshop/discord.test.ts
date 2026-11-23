@@ -36,11 +36,8 @@ vi.mock("@/services", () => ({
   Services: { DISCORD_MAIN_BOT: "DISCORD_MAIN_BOT" },
   getService: async () => ({ channels: { fetch: state.channelFetch } }),
 }));
-vi.mock("@/app/middleware/error-handler", () => ({
+vi.mock("@/errors", () => ({
   BadRequestError: class extends Error {},
-}));
-vi.mock("@/discord/constants", () => ({
-  Discord: { Users: { mention: (id: string) => `<@${id}>` } },
 }));
 vi.mock("@/db", () => ({
   Q: {
@@ -242,6 +239,7 @@ describe("announceReview", () => {
     expect(state.calls.map(([name]) => name)).toEqual(["edit", "send"]);
     expect(warn).toHaveBeenCalledWith(
       expect.stringContaining("Could not close thread for mod #42"),
+      expect.objectContaining({ message: "Missing Permissions" }),
     );
     warn.mockRestore();
   });

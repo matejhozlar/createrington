@@ -1,18 +1,14 @@
 import type { LauncherPlayer } from "@createrington/shared/launcher";
 import config from "@/config";
-import { InvalidJwtPayloadError } from "@/services/auth/jwt/jwt.service";
+import {
+  InvalidJwtPayloadError,
+  TokenExpiredError,
+} from "@/services/auth/jwt/jwt.service";
 import jwt from "jsonwebtoken";
 
 export const JWT_AUDIENCE_LAUNCHER = "createrington.launcher";
 
 export const LAUNCHER_ACCESS_TOKEN_TTL_SECONDS = 15 * 60;
-
-export class LauncherTokenExpiredError extends Error {
-  constructor() {
-    super("Token expired");
-    this.name = "LauncherTokenExpiredError";
-  }
-}
 
 export interface LauncherTokenClaims extends LauncherPlayer {
   familyId: string;
@@ -35,19 +31,10 @@ export interface LauncherJwtPayload extends LauncherTokenClaims {
  * verifying in that state throws.
  */
 export class LauncherJwtService {
-  private static instance: LauncherJwtService;
-
   private readonly secret: string;
 
-  private constructor() {
+  constructor() {
     this.secret = config.app.auth.launcherAccessToken.secret;
-  }
-
-  public static getInstance(): LauncherJwtService {
-    if (!LauncherJwtService.instance) {
-      LauncherJwtService.instance = new LauncherJwtService();
-    }
-    return LauncherJwtService.instance;
   }
 
   /** True when `LAUNCHER_JWT_SECRET` is configured and launcher sign-in can be offered. */
@@ -74,7 +61,7 @@ export class LauncherJwtService {
 
   /**
    * Verifies signature, audience, and payload shape, returning the decoded payload.
-   * Throws `LauncherTokenExpiredError` for an expired token, otherwise `Error("Invalid token")`
+   * Throws `TokenExpiredError` for an expired token, otherwise `Error("Invalid token")`
    * or `InvalidJwtPayloadError`.
    */
   verify(token: string): LauncherJwtPayload {
@@ -87,7 +74,7 @@ export class LauncherJwtService {
       return assertLauncherJwtPayload(decoded);
     } catch (error) {
       if (error instanceof jwt.TokenExpiredError) {
-        throw new LauncherTokenExpiredError();
+        throw new TokenExpiredError();
       }
       if (error instanceof jwt.JsonWebTokenError) {
         throw new Error("Invalid token");
@@ -107,7 +94,7 @@ export class LauncherJwtService {
   }
 }
 
-export const launcherJwtService = LauncherJwtService.getInstance();
+export const launcherJwtService = new LauncherJwtService();
 
 function assertLauncherJwtPayload(value: unknown): LauncherJwtPayload {
   if (!value || typeof value !== "object") {

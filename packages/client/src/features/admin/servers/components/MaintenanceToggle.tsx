@@ -35,6 +35,7 @@ import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { useCountdown } from "@/hooks/use-countdown";
 import { MaintenanceSettingsDialog } from "./MaintenanceSettingsDialog";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { Field, FieldLabel } from "@/components/ui/field";
 
 const DEFAULT_ESTIMATED_MINUTES = 30;
 
@@ -79,7 +80,7 @@ export function MaintenanceToggle({
   };
 
   const { data: status } = useQuery(
-    trpc.admin.servers.maintenanceStatus.queryOptions(
+    trpc.admin.servers.maintenance.status.queryOptions(
       { serverId },
       { refetchInterval: 15_000 },
     ),
@@ -96,12 +97,12 @@ export function MaintenanceToggle({
     );
     void queryClient.invalidateQueries(trpc.admin.servers.list.pathFilter());
     void queryClient.invalidateQueries(
-      trpc.admin.servers.maintenanceStatus.queryFilter({ serverId }),
+      trpc.admin.servers.maintenance.status.queryFilter({ serverId }),
     );
   };
 
   const toggleMutation = useMutation(
-    trpc.admin.servers.toggleMaintenance.mutationOptions({
+    trpc.admin.servers.maintenance.toggle.mutationOptions({
       onSuccess: (data) => {
         if (!data.enabled) {
           toast.success("Maintenance mode disabled");
@@ -122,7 +123,7 @@ export function MaintenanceToggle({
   );
 
   const scheduleMutation = useMutation(
-    trpc.admin.servers.scheduleMaintenance.mutationOptions(
+    trpc.admin.servers.maintenance.schedule.mutationOptions(
       useMutationToast({
         success: "Maintenance scheduled",
         onSuccess: () => {
@@ -136,7 +137,7 @@ export function MaintenanceToggle({
   );
 
   const cancelMutation = useMutation(
-    trpc.admin.servers.cancelScheduledMaintenance.mutationOptions({
+    trpc.admin.servers.maintenance.cancelSchedule.mutationOptions({
       ...useMutationToast({ success: "Scheduled maintenance cancelled" }),
       onSettled: () => {
         invalidate();
@@ -178,7 +179,6 @@ export function MaintenanceToggle({
     />
   );
 
-  // State B: Scheduled (not yet active)
   if (schedule?.status === "scheduled") {
     return (
       <div className="flex items-center justify-between rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
@@ -229,7 +229,6 @@ export function MaintenanceToggle({
     );
   }
 
-  // State C: Active maintenance
   if (isMaintenance || status?.enabled) {
     const pending = status?.pendingApply ?? false;
     const detail = pending
@@ -297,7 +296,6 @@ export function MaintenanceToggle({
     );
   }
 
-  // State A: No maintenance, no schedule
   return (
     <div className="flex items-center justify-between rounded-lg border border-border bg-card p-4">
       <div className="flex items-center gap-3">
@@ -345,15 +343,18 @@ export function MaintenanceToggle({
               </TabsList>
 
               <TabsContent value="schedule" className="mt-4 space-y-4">
-                <div className="space-y-2">
-                  <Label>Type</Label>
+                <Field>
+                  <FieldLabel htmlFor="maintenance-type">Type</FieldLabel>
                   <Select
                     value={maintenanceType}
                     onValueChange={(v) =>
                       setMaintenanceType(v as "maintenance" | "modpack_update")
                     }
                   >
-                    <SelectTrigger className="cursor-pointer">
+                    <SelectTrigger
+                      id="maintenance-type"
+                      className="cursor-pointer"
+                    >
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -365,9 +366,11 @@ export function MaintenanceToggle({
                       </SelectItem>
                     </SelectContent>
                   </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="scheduled-at">Start Date & Time</Label>
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="scheduled-at">
+                    Start Date & Time
+                  </FieldLabel>
                   <Input
                     id="scheduled-at"
                     type="datetime-local"
@@ -375,11 +378,11 @@ export function MaintenanceToggle({
                     onChange={(e) => setScheduledAt(e.target.value)}
                     min={minDatetime}
                   />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="estimated-minutes">
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="estimated-minutes">
                     Estimated Duration (minutes)
-                  </Label>
+                  </FieldLabel>
                   <Input
                     id="estimated-minutes"
                     type="number"
@@ -393,7 +396,7 @@ export function MaintenanceToggle({
                       )
                     }
                   />
-                </div>
+                </Field>
                 <p className="text-xs text-muted-foreground">
                   Discord warnings will be sent at 1h, 30m, 15m, 10m, 5m, and 1m
                   before the scheduled time.

@@ -9,10 +9,7 @@ import {
   loadDraft,
   saveDraft,
 } from "@/features/admin/tools/embed-builder/draft";
-import {
-  DEFAULT_EMBED,
-  toExternalData,
-} from "@/features/admin/tools/embed-builder/embed-data";
+import { DEFAULT_EMBED } from "@/features/admin/tools/embed-builder/payload";
 
 function memoryStorage() {
   const values = new Map<string, string>();
@@ -25,13 +22,14 @@ function memoryStorage() {
 
 const draft: Parameters<typeof saveDraft>[0] = {
   kind: "embed",
-  data: toExternalData({ ...DEFAULT_EMBED, title: "Rules" }),
+  embed: { ...DEFAULT_EMBED, title: "Rules" },
   components: [],
   presetName: "Rules",
   bot: "main",
   channelId: "123",
   activePreset: { id: 4, name: "Rules", categoryId: null },
   selectedCategoryId: null,
+  savedSnapshot: "",
 };
 
 describe("embed builder draft", () => {
@@ -74,6 +72,31 @@ describe("embed builder draft", () => {
     );
 
     expect(loadDraft()).toBeNull();
+  });
+
+  it("fills in what an older or damaged draft is missing", () => {
+    localStorage.setItem(
+      "embed-builder-draft",
+      JSON.stringify({
+        kind: "components",
+        data: { title: "Rules" },
+        components: "not a tree",
+        bot: "someone-else",
+        activePreset: { id: "4" },
+      }),
+    );
+
+    expect(loadDraft()).toEqual({
+      kind: "components",
+      embed: { ...DEFAULT_EMBED, title: "Rules" },
+      components: [],
+      presetName: "",
+      bot: "main",
+      channelId: "",
+      activePreset: null,
+      selectedCategoryId: null,
+      savedSnapshot: "",
+    });
   });
 
   it("survives storage that throws", () => {

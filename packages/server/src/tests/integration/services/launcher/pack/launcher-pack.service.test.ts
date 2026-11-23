@@ -1,39 +1,29 @@
 import { describe, it, expect, vi } from "vitest";
 
-vi.mock("@/services/curseforge/files", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("@/services/curseforge/files")>();
-  return {
-    ...actual,
-    getFilesDetails: vi.fn(async () => []),
-    getServedFileIds: vi.fn(async (fileIds: number[]) => new Set(fileIds)),
-  };
-});
-vi.mock("@/services/curseforge/modpack", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("@/services/curseforge/modpack")>();
-  return { ...actual, getModpackFile: vi.fn(async () => null) };
-});
-vi.mock("@/services/curseforge/downloads", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("@/services/curseforge/downloads")>();
-  return { ...actual, resolveFileDownloads: vi.fn(async () => new Map()) };
-});
-vi.mock("@/services/curseforge/ingest", () => ({
-  ingestProjectsWhere: vi.fn(async () => 0),
-  refreshProjects: vi.fn(async () => 0),
-}));
-vi.mock("@/services/launcher/pack/sandbox-files", async (importOriginal) => ({
-  ...(await importOriginal<
-    typeof import("@/services/launcher/pack/sandbox-files")
-  >()),
-  findSandboxFileUrls: vi.fn(async () => new Map()),
-  findSandboxSnapshotUrl: vi.fn(async () => null),
-  openSandboxFile: vi.fn(async () => null),
-}));
-vi.mock("@/services/content-gateway/minecraft", () => ({
-  getMinecraftJavaMajorVersion: vi.fn(async () => 21),
-}));
+vi.mock("@/services/curseforge/files", async () =>
+  (await import("@/tests/helpers/mocks/curseforge")).curseforgeMocks.files(),
+);
+vi.mock("@/services/curseforge/modpack", async () =>
+  (await import("@/tests/helpers/mocks/curseforge")).curseforgeMocks.modpack(),
+);
+vi.mock("@/services/curseforge/downloads", async () =>
+  (
+    await import("@/tests/helpers/mocks/curseforge")
+  ).curseforgeMocks.downloads(),
+);
+vi.mock("@/services/curseforge/ingest", async () =>
+  (await import("@/tests/helpers/mocks/curseforge")).curseforgeMocks.ingest(),
+);
+vi.mock("@/services/launcher/pack/sandbox-files", async () =>
+  (
+    await import("@/tests/helpers/mocks/launcher-pack")
+  ).launcherPackMocks.sandboxFiles(),
+);
+vi.mock("@/services/content-gateway/minecraft", async () =>
+  (
+    await import("@/tests/helpers/mocks/launcher-pack")
+  ).launcherPackMocks.minecraft(),
+);
 
 import { Q } from "@/db";
 import { getFilesDetails, getServedFileIds } from "@/services/curseforge/files";
@@ -515,8 +505,8 @@ describe("LauncherPackService.listReleases", () => {
     for (let minor = 0; minor < fullPage.limit; minor++) {
       await seedReadyRelease(modpack, `1.${minor}.0`, [file]);
     }
-    const previousReads = vi.spyOn(Q.modpack.release, "listPreceding");
-    const modReads = vi.spyOn(Q.modpack.release.mod, "listForReleases");
+    const previousReads = vi.spyOn(Q.modpack.release, "getPreceding");
+    const modReads = vi.spyOn(Q.modpack.release.mod, "getForReleases");
 
     const first = await launcherPackService.listReleases(PACK_SLUG, fullPage);
     const readsForFirst = [

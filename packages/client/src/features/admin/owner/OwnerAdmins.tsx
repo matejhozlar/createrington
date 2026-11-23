@@ -1,36 +1,24 @@
 import { useState } from "react";
-import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { AdminPage } from "@/features/admin/components/AdminPage";
+import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CellText } from "@/components/cell-text";
+import { CellDate, CellText } from "@/components/cell-text";
+import { EmptyState, ErrorState } from "@/components/query-states";
 import {
   AvatarCellSkeleton,
   DataTable,
   type DataTableColumn,
 } from "@/components/data-table";
-import { UserMinus, UserPlus } from "lucide-react";
+import { UserCog, UserMinus, UserPlus } from "lucide-react";
 import { PlayerLabel } from "@/components/player-label";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
-import { formatFullDate } from "@/features/admin/format";
-import { formatRelativeDate } from "@/lib/format";
 import { PromoteDialog } from "./components/PromoteDialog";
 import { DemoteDialog } from "./components/DemoteDialog";
 import { AuditFeed } from "./components/AuditFeed";
+import type { AdminRow } from "./types";
 import { useQuery } from "@tanstack/react-query";
-
-type AdminRow = {
-  discordId: string;
-  minecraftUuid: string | null;
-  minecraftUsername: string | null;
-  createdAt: string | null;
-};
 
 export function OwnerAdmins() {
   const toast = useToastActions();
@@ -76,74 +64,66 @@ export function OwnerAdmins() {
       header: "Since",
       width: 140,
       cellClassName: "text-sm text-muted-foreground",
-      render: (admin) =>
-        admin.createdAt && (
-          <CellText
-            value={formatFullDate(admin.createdAt)}
-            display={formatRelativeDate(admin.createdAt)}
-          />
-        ),
+      render: (admin) => <CellDate value={admin.createdAt} relative />,
     },
   ];
 
   return (
-    <div className="flex flex-1 flex-col gap-4">
-      <AdminPageHeader
-        trail={[
-          { label: "Home", href: "/" },
-          { label: "Owner" },
-          { label: "Admins" },
-        ]}
+    <AdminPage
+      trail={[
+        { label: "Home", href: "/" },
+        { label: "Owner" },
+        { label: "Admins" },
+      ]}
+    >
+      <AdminPageTitle
+        title="Admins"
+        description="Everyone with an entry in the DB admin table."
+        actions={
+          <Button onClick={() => setPromoteOpen(true)}>
+            <UserPlus className="mr-2 size-4" />
+            Promote
+          </Button>
+        }
       />
+      <Card className="pt-0">
+        <CardContent className="p-0">
+          {adminsQuery.isError ? (
+            <ErrorState
+              message={`Failed to load admins: ${adminsQuery.error.message}`}
+              onRetry={() => adminsQuery.refetch()}
+              compact
+            />
+          ) : !adminsQuery.isLoading && admins.length === 0 ? (
+            <EmptyState
+              icon={UserCog}
+              message="No admins configured yet."
+              className="py-8"
+            />
+          ) : (
+            <DataTable
+              columns={columns}
+              rows={admins}
+              loading={adminsQuery.isLoading}
+              rowKey={(admin) => admin.discordId}
+              actions={(admin) => [
+                {
+                  label: "Demote",
+                  icon: UserMinus,
+                  variant: "destructive",
+                  onClick: () => setDemoteTarget(admin),
+                },
+              ]}
+              actionSlots={1}
+            />
+          )}
+        </CardContent>
+      </Card>
 
-      <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
-        <Card>
-          <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
-            <div>
-              <CardTitle>Current admins ({admins.length})</CardTitle>
-              <CardDescription>
-                Everyone with an entry in the DB admin table.
-              </CardDescription>
-            </div>
-            <Button onClick={() => setPromoteOpen(true)}>
-              <UserPlus className="mr-2 size-4" />
-              Promote
-            </Button>
-          </CardHeader>
-          <CardContent className="p-0">
-            {adminsQuery.isError ? (
-              <p className="py-8 text-center text-destructive">
-                Failed to load admins: {adminsQuery.error.message}
-              </p>
-            ) : !adminsQuery.isLoading && admins.length === 0 ? (
-              <p className="py-8 text-center text-muted-foreground">
-                No admins configured yet.
-              </p>
-            ) : (
-              <DataTable
-                columns={columns}
-                rows={admins}
-                loading={adminsQuery.isLoading}
-                rowKey={(admin) => admin.discordId}
-                actions={(admin) => [
-                  {
-                    label: "Demote",
-                    icon: UserMinus,
-                    variant: "destructive",
-                    onClick: () => setDemoteTarget(admin),
-                  },
-                ]}
-                actionSlots={1}
-              />
-            )}
-          </CardContent>
-        </Card>
-
-        <AuditFeed
-          entries={auditQuery.data?.entries ?? []}
-          isLoading={auditQuery.isLoading}
-        />
-      </div>
+      <AuditFeed
+        entries={auditQuery.data?.entries ?? []}
+        isLoading={auditQuery.isLoading}
+      />
 
       <PromoteDialog
         open={promoteOpen}
@@ -179,6 +159,6 @@ export function OwnerAdmins() {
           setDemoteTarget(null);
         }}
       />
-    </div>
+    </AdminPage>
   );
 }

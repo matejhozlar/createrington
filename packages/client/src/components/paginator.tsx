@@ -50,15 +50,10 @@ export interface PaginatorProps {
   total: number;
   totalPages: number;
   onPageChange: (page: number) => void;
-  /** Singular noun for the entry label, e.g. "chunk", "member", "player". Defaults to "entry". */
   itemLabel?: string;
   className?: string;
 }
 
-/**
- * Compact pagination footer: "Showing N-M of T entries" + page controls.
- * Renders as a single-line summary when there's only one page (or none).
- */
 export function Paginator({
   page,
   limit,

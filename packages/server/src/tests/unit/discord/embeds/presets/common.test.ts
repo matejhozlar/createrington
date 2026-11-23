@@ -28,22 +28,6 @@ describe("CommonEmbedPresets.error", () => {
   });
 });
 
-describe("CommonEmbedPresets.errorWithAdmin", () => {
-  it("appends the admin contact prompt when a description is provided", () => {
-    const data = CommonEmbedPresets.errorWithAdmin(
-      "Failure",
-      "Something broke",
-    ).build().data;
-    expect(data.description).toContain("Something broke");
-    expect(data.description).toContain("contact");
-  });
-
-  it("uses just the admin contact prompt when no description is provided", () => {
-    const data = CommonEmbedPresets.errorWithAdmin("Failure").build().data;
-    expect(data.description).toContain("contact");
-  });
-});
-
 describe("CommonEmbedPresets.info", () => {
   it("uses the blue Info color and an info-circle prefix", () => {
     const data = CommonEmbedPresets.info("Heads up").build().data;

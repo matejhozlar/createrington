@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { trpc, queryClient } from "@/lib/trpc";
+import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -10,22 +11,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { workshopFormError } from "../../validation";
+import { workshopFormError } from "@/features/admin/workshop/validation";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { Field, FieldLabel } from "@/components/ui/field";
 
-interface WorkshopSettings {
-  id: number;
-  name: string;
-  slug: string;
-  description: string | null;
-  modpackId: number;
-  maxModsPerUser: number;
-  maxUpvotesPerUser: number;
-  discordForumChannelId: string | null;
-  baseModpackProjectId: number | null;
-}
+type WorkshopSettings = RouterOutput["admin"]["workshops"]["list"][number];
 
 export function WorkshopSettingsDialog({
   open,
@@ -36,7 +27,7 @@ export function WorkshopSettingsDialog({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  workshop: WorkshopSettings;
+  workshop: WorkshopSettings | null;
   hasMods: boolean;
   onSlugChange?: (slug: string) => void;
 }) {
@@ -46,7 +37,7 @@ export function WorkshopSettingsDialog({
     }),
   );
   const modpack = modpacksQuery.data?.find(
-    (row) => row.id === workshop.modpackId,
+    (row) => row.id === workshop?.modpackId,
   );
 
   return (
@@ -62,13 +53,15 @@ export function WorkshopSettingsDialog({
             <Skeleton className="h-16 w-full" />
           </div>
         ) : (
-          <SettingsForm
-            workshop={workshop}
-            hasMods={hasMods}
-            publishedPackId={modpack?.curseforgeProjectId ?? null}
-            onOpenChange={onOpenChange}
-            onSlugChange={onSlugChange}
-          />
+          workshop && (
+            <SettingsForm
+              workshop={workshop}
+              hasMods={hasMods}
+              publishedPackId={modpack?.curseforgeProjectId ?? null}
+              onOpenChange={onOpenChange}
+              onSlugChange={onSlugChange}
+            />
+          )
         )}
       </DialogContent>
     </Dialog>
@@ -108,10 +101,10 @@ function SettingsForm({
   );
 
   const updateMutation = useMutation(
-    trpc.admin.workshops.update.mutationOptions(),
+    trpc.admin.workshops.update.mutationOptions(useMutationToast()),
   );
   const updateModpackMutation = useMutation(
-    trpc.admin.modpacks.update.mutationOptions(),
+    trpc.admin.modpacks.update.mutationOptions(useMutationToast()),
   );
   const pending = updateMutation.isPending || updateModpackMutation.isPending;
 
@@ -169,10 +162,7 @@ function SettingsForm({
           patch: { curseforgeProjectId: nextPublishedPackId },
         });
       }
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Could not save settings",
-      );
+    } catch {
       return;
     }
 
@@ -183,7 +173,7 @@ function SettingsForm({
       trpc.admin.workshops.listPackMods.pathFilter(),
     );
     void queryClient.invalidateQueries(
-      trpc.admin.workshops.getAttention.pathFilter(),
+      trpc.admin.workshops.attention.pathFilter(),
     );
     void queryClient.invalidateQueries(trpc.user.workshops.list.pathFilter());
     void queryClient.invalidateQueries(trpc.user.workshops.get.pathFilter());
@@ -193,17 +183,17 @@ function SettingsForm({
   return (
     <>
       <div className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="settings-name">Name</Label>
+        <Field>
+          <FieldLabel htmlFor="settings-name">Name</FieldLabel>
           <Input
             id="settings-name"
             maxLength={120}
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="settings-slug">URL Slug</Label>
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="settings-slug">URL Slug</FieldLabel>
           <Input
             id="settings-slug"
             maxLength={100}
@@ -216,19 +206,21 @@ function SettingsForm({
             The workshop's address: /workshop/{slug.trim() || "..."}. Changing
             it breaks previously shared links.
           </p>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="settings-desc">Description</Label>
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="settings-desc">Description</FieldLabel>
           <Input
             id="settings-desc"
             maxLength={2000}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
           />
-        </div>
+        </Field>
         <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="settings-max">Suggestions per Player</Label>
+          <Field>
+            <FieldLabel htmlFor="settings-max">
+              Suggestions per Player
+            </FieldLabel>
             <Input
               id="settings-max"
               type="number"
@@ -237,9 +229,11 @@ function SettingsForm({
               value={maxMods}
               onChange={(e) => setMaxMods(e.target.value)}
             />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="settings-max-upvotes">Upvotes per Player</Label>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="settings-max-upvotes">
+              Upvotes per Player
+            </FieldLabel>
             <Input
               id="settings-max-upvotes"
               type="number"
@@ -248,12 +242,12 @@ function SettingsForm({
               value={maxUpvotes}
               onChange={(e) => setMaxUpvotes(e.target.value)}
             />
-          </div>
+          </Field>
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="settings-published">
+        <Field>
+          <FieldLabel htmlFor="settings-published">
             Published Modpack Project ID (Optional)
-          </Label>
+          </FieldLabel>
           <Input
             id="settings-published"
             type="number"
@@ -265,31 +259,31 @@ function SettingsForm({
             Set this once the pack is on CurseForge. It is what "Check Published
             Pack" reads, and it applies to every workshop feeding this modpack.
           </p>
-        </div>
+        </Field>
         {!hasMods && (
-          <div className="space-y-2">
-            <Label htmlFor="settings-basepack">
+          <Field>
+            <FieldLabel htmlFor="settings-basepack">
               Base Modpack ID (Optional)
-            </Label>
+            </FieldLabel>
             <Input
               id="settings-basepack"
               type="number"
               value={basePackId}
               onChange={(e) => setBasePackId(e.target.value)}
             />
-          </div>
+          </Field>
         )}
-        <div className="space-y-2">
-          <Label htmlFor="settings-forum">
+        <Field>
+          <FieldLabel htmlFor="settings-forum">
             Discord Forum Channel ID (Optional)
-          </Label>
+          </FieldLabel>
           <Input
             id="settings-forum"
             placeholder="Forum for per-suggestion discussion threads"
             value={forumChannelId}
             onChange={(e) => setForumChannelId(e.target.value)}
           />
-        </div>
+        </Field>
       </div>
       <DialogFooter>
         <Button

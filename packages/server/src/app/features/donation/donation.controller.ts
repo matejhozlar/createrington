@@ -1,36 +1,22 @@
 import type { Request, Response } from "express";
-import config from "@/config";
-import { getService } from "@/services";
-import { Services } from "@/services/container";
+import { getOptionalService, Services } from "@/services";
+import {
+  BadRequestError,
+  InternalServerError,
+  ServiceUnavailableError,
+} from "@/errors";
 
-/**
- * Donation controller
- *
- * Handles inbound Stripe webhook events.
- * The raw request body must be preserved as a Buffer so Stripe can verify
- * the signature, do NOT use express.json() middleware on this route.
- */
 export class DonationController {
-  /**
-   * POST /api/donations/webhook
-   *
-   * Stripe sends signed webhook events here.
-   * Verifies the signature, then delegates to DonationService.
-   */
   static async handleWebhook(req: Request, res: Response): Promise<void> {
-    if (!config.stripe.enabled) {
-      res.status(503).json({ error: "Donation service not configured" });
-      return;
+    const donationService = await getOptionalService(Services.DONATION_SERVICE);
+    if (!donationService) {
+      throw new ServiceUnavailableError("Donation service not configured");
     }
 
-    const signature = req.headers["stripe-signature"] as string | undefined;
-
-    if (!signature) {
-      res.status(400).json({ error: "Missing stripe-signature header" });
-      return;
+    const signature = req.headers["stripe-signature"];
+    if (typeof signature !== "string" || !signature) {
+      throw new BadRequestError("Missing stripe-signature header");
     }
-
-    const donationService = await getService(Services.DONATION_SERVICE);
 
     let event;
     try {
@@ -42,8 +28,7 @@ export class DonationController {
       const message =
         error instanceof Error ? error.message : "Invalid signature";
       logger.warn(`Stripe webhook signature verification failed: ${message}`);
-      res.status(400).json({ error: `Webhook error: ${message}` });
-      return;
+      throw new BadRequestError(`Webhook error: ${message}`);
     }
 
     try {
@@ -67,7 +52,7 @@ export class DonationController {
       res.json({ received: true });
     } catch (error) {
       logger.error(`Error handling Stripe event ${event.type}:`, error);
-      res.status(500).json({ error: "Internal error processing webhook" });
+      throw new InternalServerError("Internal error processing webhook");
     }
   }
 }

@@ -1,5 +1,5 @@
 import { AlignJustify, LayoutGrid } from "lucide-react";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/hooks/use-is-mobile";
 import { cn } from "@/lib/utils";
 
 export type ViewMode = "list" | "grid";
@@ -54,7 +54,7 @@ function ViewButton({
       className={cn(
         "flex w-10 cursor-pointer items-center justify-center transition-colors",
         active
-          ? "bg-[var(--primary-glow)] text-primary"
+          ? "bg-primary-glow text-primary"
           : "text-muted-foreground hover:text-foreground",
       )}
     >

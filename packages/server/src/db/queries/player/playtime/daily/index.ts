@@ -1,6 +1,6 @@
 import type { Pool, PoolClient } from "pg";
 import { PlayerPlaytimeDailyBaseQueries } from "@/generated/db/player_playtime_daily.queries";
-import { splitPeriod } from "../split";
+import { creditBucketSql, splitPeriod } from "../split";
 
 type ServerActivityRow = {
   play_date: string;
@@ -55,19 +55,19 @@ export class PlayerPlaytimeDailyQueries extends PlayerPlaytimeDailyBaseQueries {
     periodEnd: Date,
     seconds: number,
   ): Promise<void> {
+    const query = creditBucketSql(this.table, "play_date");
     for (const { bucket, seconds: share } of splitPeriod(
       periodStart,
       periodEnd,
       seconds,
       "day",
     )) {
-      await this.db.query(
-        `INSERT INTO ${this.table} (player_minecraft_uuid, server_id, play_date, seconds_played)
-         VALUES ($1, $2, $3, $4)
-         ON CONFLICT (player_minecraft_uuid, server_id, play_date)
-         DO UPDATE SET seconds_played = ${this.table}.seconds_played + EXCLUDED.seconds_played`,
-        [playerMinecraftUuid, serverId, bucket, share],
-      );
+      await this.runQuery("credit daily playtime", query, [
+        playerMinecraftUuid,
+        serverId,
+        bucket,
+        share,
+      ]);
     }
   }
 
@@ -105,9 +105,7 @@ export class PlayerPlaytimeDailyQueries extends PlayerPlaytimeDailyBaseQueries {
       [serverId, startDay, endDay],
     );
 
-    return this.mapRowsToEntities<ServerActivityRow, ServerActivity>(
-      result.rows,
-    );
+    return this.mapRowsToEntities(result.rows);
   }
 
   /** One player's seconds per calendar day from `startDay` on, summed across servers. */
@@ -157,6 +155,6 @@ export class PlayerPlaytimeDailyQueries extends PlayerPlaytimeDailyBaseQueries {
       [serverId, startDay, endDay, limit],
     );
 
-    return this.mapRowsToEntities<TopPlayerRow, TopPlayerInRange>(result.rows);
+    return this.mapRowsToEntities(result.rows);
   }
 }

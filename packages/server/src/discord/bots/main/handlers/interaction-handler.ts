@@ -5,56 +5,61 @@ import type {
   Collection,
   Interaction,
   ModalSubmitInteraction,
-  Role,
+  RepliableInteraction,
 } from "discord.js";
 import { MessageFlags } from "discord.js";
 import { cooldownManager } from "@/discord/utils/cooldown";
 import { EmbedPresets } from "@/discord/embeds";
-import { replyError } from "@/discord/utils/interaction-reply";
+import { InteractionError } from "@/discord/utils/interaction-error";
 import { Q } from "@/db";
 
 import { requireAdmin, requireOwner } from "@/discord/utils/admin-guard";
 import type { CommandModule } from "../../common/loaders/command-loader";
 import {
   type ButtonModule,
-  findButtonHandler,
-} from "../../common/loaders/button-loader";
-import * as registrationModal from "../interactions/modals/registration";
-import * as promptSubmitModal from "../interactions/modals/prompt-submit";
-import * as workshopSuggestModal from "../interactions/modals/workshop-suggest";
+  findComponentHandler,
+  type ModalModule,
+} from "../../common/loaders/component-loader";
 
-type ModalHandler = {
-  /** Exact customId OR a wildcard prefix ending in `:*` (e.g. `prompt:submit:*`). */
-  customId: string;
-  execute: (interaction: ModalSubmitInteraction) => Promise<void>;
-};
-
-/** Registry of modal-submit handlers keyed by the modal's customId. */
-const MODAL_HANDLERS: ModalHandler[] = [
-  registrationModal,
-  promptSubmitModal,
-  workshopSuggestModal,
-];
-
-/**
- * True if `handler` owns the given customId. Supports wildcard suffixes
- * so dynamic customIds like `prompt:submit:123` can route to a single
- * handler declared as `prompt:submit:*`.
- */
-function modalHandlerMatches(handler: ModalHandler, customId: string): boolean {
-  if (handler.customId.endsWith(":*")) {
-    const prefix = handler.customId.slice(0, -1); // keep the trailing ":"
-    return customId.startsWith(prefix);
-  }
-  return handler.customId === customId;
+export interface InteractionHandlers {
+  commands: Collection<string, CommandModule>;
+  buttons: readonly ButtonModule[];
+  modals: readonly ModalModule[];
 }
 
-/**
- * Formats a cooldown duration in seconds into a human-readable string
- *
- * @param seconds - The cooldown duration in seconds
- * @returns Formatted string (e.g., "5.0 second(s)", "2 minute(s) and 30 second(s)", "1 hour(s)")
- */
+const FAILURE_TITLE = "Something Went Wrong";
+const FAILURE_DESCRIPTION =
+  "Please try again in a moment, and contact staff if it keeps happening.";
+
+async function reportFailure(
+  interaction: RepliableInteraction,
+  label: string,
+  error: unknown,
+): Promise<void> {
+  const specific = error instanceof InteractionError ? error : null;
+  logger.error(`${label} failed:`, specific?.cause ?? error);
+
+  const message = {
+    embeds: [
+      EmbedPresets.error(
+        specific?.title ?? FAILURE_TITLE,
+        specific?.description ?? FAILURE_DESCRIPTION,
+      ).build(),
+    ],
+    flags: MessageFlags.Ephemeral,
+  } as const;
+
+  try {
+    if (interaction.replied || interaction.deferred) {
+      await interaction.followUp(message);
+    } else {
+      await interaction.reply(message);
+    }
+  } catch (replyFailure) {
+    logger.error(`Could not report that ${label} failed:`, replyFailure);
+  }
+}
+
 function formatCooldown(seconds: number): string {
   if (seconds < 60) {
     return `${seconds.toFixed(1)} second(s)`;
@@ -77,107 +82,15 @@ function formatCooldown(seconds: number): string {
     : `${hours} hour(s)`;
 }
 
-/**
- * Checks if a usr can bypass the cooldown for a command
- *
- * Users can bypass cooldowns if:
- * - The command has no cooldown configured
- * - Their user ID is in the command's bypassUsers list
- * - They have a role that's in the command's bypassRoles list
- *
- * @param interaction - The chat input interaction
- * @param command - The command module being executed
- * @returns True if the user can bypass the cooldown, false otherwise
- */
-function canBypassCooldown(
-  interaction: ChatInputCommandInteraction,
-  command: CommandModule,
-): boolean {
-  if (!command.cooldown) return true;
-
-  if (command.cooldown.bypassUsers?.includes(interaction.user.id)) {
-    return true;
-  }
-
-  if (interaction.guild && command.cooldown.bypassRoles) {
-    const member = interaction.member;
-    if (member && "roles" in member) {
-      const memberRoles = member.roles as { cache: Collection<string, Role> };
-      const hasRole = command.cooldown.bypassRoles.some((roleId) =>
-        memberRoles.cache.has(roleId),
-      );
-      if (hasRole) return true;
-    }
-  }
-
-  return false;
-}
-
-/**
- * Checks command permissions before execution
- *
- * @param interaction - The chat input interaction
- * @param command - The command module being executed
- * @returns True if the user has permission, false otherwise (and sends error message)
- */
 async function checkPermission(
   interaction: ChatInputCommandInteraction,
   command: CommandModule,
 ): Promise<boolean> {
-  if (!command.permissions) return true;
-
-  if (command.permissions.requireOwner) {
-    const hasPermission = await requireOwner(interaction);
-    if (!hasPermission) {
-      return false;
-    }
-  } else if (command.permissions.requireAdmin) {
-    const hasPermission = await requireAdmin(interaction);
-    if (!hasPermission) {
-      return false;
-    }
-  }
-
-  if (command.permissions.customCheck) {
-    try {
-      const hasPermission = await command.permissions.customCheck(interaction);
-      if (!hasPermission) {
-        return false;
-      }
-    } catch (error) {
-      logger.error(
-        `Error in custom permission check for ${interaction.commandName}`,
-        error,
-      );
-
-      await replyError(
-        interaction,
-        "Permission Check Failed",
-        "An error ocurred while checking permissions",
-      );
-
-      return false;
-    }
-  }
-
+  if (command.permissions?.requireOwner) return requireOwner(interaction);
+  if (command.permissions?.requireAdmin) return requireAdmin(interaction);
   return true;
 }
 
-/**
- * Handles execution of slash commands with cooldown management
- *
- * Process:
- * 1. Retrieves the command handler
- * 2. Checks permissions (admin, custom checks)
- * 3. Checks if the command is on cooldown (unless user can bypass)
- * 4. Starts the cooldown before executing, so a slow command cannot be re-run while it is still running
- * 5. Executes the command
- * 6. Handles errors with ephemeral error messages
- *
- * @param interaction - The chat input command interaction
- * @param commandHandlers - Collection of registered command handlers
- * @returns Promise resolving when the command handling is completed
- */
 async function handleChatCommands(
   interaction: ChatInputCommandInteraction,
   commandHandlers: Collection<string, CommandModule>,
@@ -201,23 +114,16 @@ async function handleChatCommands(
     return;
   }
 
-  if (command.cooldown && !canBypassCooldown(interaction, command)) {
-    const cooldownContext = {
-      userId: interaction.user.id,
-      channelId: interaction.channelId,
-      guildId: interaction.guildId,
-    };
+  if (command.cooldown) {
     const cooldownRemaining = cooldownManager.check(
       interaction.commandName,
-      command.cooldown,
-      cooldownContext,
+      interaction.user.id,
     );
 
     if (cooldownRemaining !== null) {
       const expiresAt = cooldownManager.getExpiry(
         interaction.commandName,
-        command.cooldown.type,
-        cooldownContext,
+        interaction.user.id,
       );
 
       const unixExpiresAt = expiresAt ? Math.floor(expiresAt / 1000) : null;
@@ -255,8 +161,8 @@ async function handleChatCommands(
 
     cooldownManager.set(
       interaction.commandName,
-      command.cooldown,
-      cooldownContext,
+      interaction.user.id,
+      command.cooldown.duration,
     );
   }
 
@@ -265,21 +171,7 @@ async function handleChatCommands(
     await command.execute(interaction);
   } catch (error) {
     success = false;
-    logger.error(`Error executing command ${interaction.commandName}:`, error);
-
-    try {
-      const replyMethod =
-        interaction.replied || interaction.deferred
-          ? interaction.followUp
-          : interaction.reply;
-
-      await replyMethod.call(interaction, {
-        content: "❌ Command failed",
-        flags: MessageFlags.Ephemeral,
-      });
-    } catch (replyError) {
-      logger.error("Failed to send command error response:", error, replyError);
-    }
+    await reportFailure(interaction, `/${interaction.commandName}`, error);
   }
 
   Q.discord.command.usage
@@ -291,24 +183,11 @@ async function handleChatCommands(
     .catch((err) => logger.error("Failed to log command usage:", err));
 }
 
-/**
- * Handles button interactions
- *
- * Process:
- * 1. Finds matching button handler based on customId pattern
- * 2. Checks permissions if handler has permission check
- * 3. Executes the button handler
- * 4. Handles errors with ephemeral error messages
- *
- * @param interaction - The button interaction
- * @param buttonHandlers - Collection of registered button handlers
- * @returns Promise resolving when the button handling is completed
- */
 async function handleButtonInteractions(
   interaction: ButtonInteraction,
-  buttonHandlers: Collection<string, ButtonModule>,
+  buttonHandlers: readonly ButtonModule[],
 ): Promise<void> {
-  const handler = findButtonHandler(interaction.customId, buttonHandlers);
+  const handler = findComponentHandler(interaction.customId, buttonHandlers);
 
   if (!handler) {
     logger.debug(`No handler found for button: ${interaction.customId}`);
@@ -339,15 +218,11 @@ async function handleButtonInteractions(
         return;
       }
     } catch (error) {
-      logger.error(
-        `Error checking permissions for button ${interaction.customId}:`,
+      await reportFailure(
+        interaction,
+        `Permission check for button ${interaction.customId}`,
         error,
       );
-
-      await interaction.reply({
-        content: "❌ Error checking permissions",
-        flags: MessageFlags.Ephemeral,
-      });
       return;
     }
   }
@@ -355,63 +230,32 @@ async function handleButtonInteractions(
   try {
     await handler.execute(interaction);
   } catch (error) {
-    logger.error(
-      `Error executing button handler ${interaction.customId}:`,
-      error,
-    );
-
-    try {
-      const replyMethod =
-        interaction.replied || interaction.deferred
-          ? interaction.followUp
-          : interaction.reply;
-
-      await replyMethod.call(interaction, {
-        content: "❌ Something went wrong",
-        flags: MessageFlags.Ephemeral,
-      });
-    } catch (replyError) {
-      logger.error("Failed to send error response:", error, replyError);
-    }
+    await reportFailure(interaction, `Button ${interaction.customId}`, error);
   }
 }
 
-/**
- * Registers the interaction event handler for the Discord client
- *
- * Sets up a listener for the 'interactionCreate' event that routes
- * chat input commands and button interactions to appropriate handlers
- *
- * @param discordClient - The Discord client instance
- * @param commandHandlers - Collection of slash command handlers keyed by command name
- * @param buttonHandlers - Collection of button handlers with pattern matching
- */
 export function registerInteractionHandler(
   discordClient: Client,
-  commandHandlers: Collection<string, CommandModule>,
-  buttonHandlers: Collection<string, ButtonModule>,
+  handlers: InteractionHandlers,
 ): void {
   discordClient.on("interactionCreate", (interaction: Interaction) => {
-    routeInteraction(interaction, commandHandlers, buttonHandlers).catch(
-      (error: unknown) => {
-        logger.error("Unhandled error while routing an interaction:", error);
-      },
-    );
+    routeInteraction(interaction, handlers).catch((error: unknown) => {
+      logger.error("Unhandled error while routing an interaction:", error);
+    });
   });
 }
 
 async function routeInteraction(
   interaction: Interaction,
-  commandHandlers: Collection<string, CommandModule>,
-  buttonHandlers: Collection<string, ButtonModule>,
+  handlers: InteractionHandlers,
 ): Promise<void> {
   if (interaction.isChatInputCommand()) {
-    await handleChatCommands(interaction, commandHandlers);
+    await handleChatCommands(interaction, handlers.commands);
     return;
   }
 
   if (interaction.isAutocomplete()) {
-    const command = commandHandlers.get(interaction.commandName);
+    const command = handlers.commands.get(interaction.commandName);
     if (command?.autocomplete) {
       try {
         await command.autocomplete(interaction);
@@ -426,26 +270,21 @@ async function routeInteraction(
   }
 
   if (interaction.isButton()) {
-    await handleButtonInteractions(interaction, buttonHandlers);
+    await handleButtonInteractions(interaction, handlers.buttons);
     return;
   }
 
   if (interaction.isModalSubmit()) {
-    await handleModalSubmit(interaction);
+    await handleModalSubmit(interaction, handlers.modals);
     return;
   }
 }
 
-/**
- * Routes a modal-submit interaction to its matching handler by exact customId.
- * Errors are logged and surfaced to the user as an ephemeral message.
- */
 async function handleModalSubmit(
   interaction: ModalSubmitInteraction,
+  modalHandlers: readonly ModalModule[],
 ): Promise<void> {
-  const handler = MODAL_HANDLERS.find((h) =>
-    modalHandlerMatches(h, interaction.customId),
-  );
+  const handler = findComponentHandler(interaction.customId, modalHandlers);
 
   if (!handler) {
     logger.debug(`No handler for modal: ${interaction.customId}`);
@@ -459,23 +298,6 @@ async function handleModalSubmit(
   try {
     await handler.execute(interaction);
   } catch (error) {
-    logger.error(
-      `Error executing modal handler ${interaction.customId}:`,
-      error,
-    );
-
-    try {
-      const replyMethod =
-        interaction.replied || interaction.deferred
-          ? interaction.followUp
-          : interaction.reply;
-
-      await replyMethod.call(interaction, {
-        content: "❌ Something went wrong",
-        flags: MessageFlags.Ephemeral,
-      });
-    } catch (replyError) {
-      logger.error("Failed to send modal error response:", error, replyError);
-    }
+    await reportFailure(interaction, `Modal ${interaction.customId}`, error);
   }
 }

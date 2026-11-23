@@ -1,19 +1,15 @@
 import { formatCompactDuration } from "@createrington/shared/format";
 import { CellDate, CellText } from "@/components/cell-text";
 import {
-  DataTable,
-  loadingRowCount,
   TwoLineCellSkeleton,
   type DataTableColumn,
 } from "@/components/data-table";
-import { Paginator } from "@/components/paginator";
-import { useState } from "react";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
+import { PagedTable } from "@/components/paged-table";
+import { usePagedQuery } from "@/hooks/use-paged-query";
+import { TabSectionHeader } from "@/features/admin/players/components/TabSectionHeader";
 import { Badge } from "@/components/ui/badge";
 import { Clock } from "lucide-react";
 import { trpc, type RouterOutput } from "@/lib/trpc";
-import { EmptyState, ErrorState } from "@/components/query-states";
 
 interface SessionsTabProps {
   playerId: string;
@@ -21,29 +17,14 @@ interface SessionsTabProps {
 }
 
 export function SessionsTab({ playerId, getServerName }: SessionsTabProps) {
-  const [page, setPage] = useState(0);
-  const [limit] = useState(10);
-
-  const sessionsQuery = useQuery(
-    trpc.admin.players.sessions.list.queryOptions(
-      {
-        id: playerId,
-        page,
-        limit,
-      },
-      { placeholderData: keepPreviousData },
-    ),
+  const sessions = usePagedQuery(
+    { id: playerId },
+    (input) => trpc.admin.players.sessions.list.queryOptions(input),
+    10,
   );
 
-  const sessions = sessionsQuery.data?.sessions ?? [];
-  const total = sessionsQuery.data?.pagination.total ?? 0;
-  const totalPages = sessionsQuery.data?.pagination.totalPages ?? 0;
-  const loading = sessionsQuery.isLoading || sessionsQuery.isPlaceholderData;
-  const loadingRows = loadingRowCount(page, limit, total);
-  const error = sessionsQuery.error?.message ?? null;
-
   type Session =
-    RouterOutput["admin"]["players"]["sessions"]["list"]["sessions"][number];
+    RouterOutput["admin"]["players"]["sessions"]["list"]["items"][number];
 
   const columns: DataTableColumn<Session>[] = [
     {
@@ -105,50 +86,20 @@ export function SessionsTab({ playerId, getServerName }: SessionsTabProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold">Session History</h3>
-          <p className="text-sm text-muted-foreground">
-            {total.toLocaleString()} total
-          </p>
-        </div>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => sessionsQuery.refetch()}
-          loading={loading}
-        >
-          <Clock className="size-4" />
-          Refresh
-        </Button>
-      </div>
+      <TabSectionHeader
+        title="Session History"
+        description={`${sessions.total.toLocaleString()} total`}
+        onRefresh={sessions.retry}
+        refreshing={sessions.loading}
+      />
 
-      {error ? (
-        <ErrorState message={error} onRetry={() => sessionsQuery.refetch()} />
-      ) : !loading && sessions.length === 0 ? (
-        <EmptyState icon={Clock} message="No sessions found" />
-      ) : (
-        <>
-          <DataTable
-            columns={columns}
-            rows={sessions}
-            loading={loading}
-            loadingRows={loadingRows}
-            rowKey={(session) => session.id}
-          />
-
-          <Paginator
-            page={page}
-            limit={limit}
-            total={total}
-            totalPages={totalPages}
-            onPageChange={setPage}
-            itemLabel="session"
-            className="border-t border-border pt-4"
-          />
-        </>
-      )}
+      <PagedTable
+        paged={sessions}
+        empty={{ icon: Clock, message: "No sessions found" }}
+        itemLabel="session"
+        columns={columns}
+        rowKey={(session) => session.id}
+      />
     </div>
   );
 }

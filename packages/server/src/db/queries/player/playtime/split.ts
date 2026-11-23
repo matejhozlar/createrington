@@ -79,3 +79,10 @@ export function splitPeriod(
 
   return buckets;
 }
+
+export function creditBucketSql(table: string, bucketColumn: string): string {
+  return `INSERT INTO ${table} (player_minecraft_uuid, server_id, ${bucketColumn}, seconds_played)
+    VALUES ($1, $2, $3, $4)
+    ON CONFLICT (player_minecraft_uuid, server_id, ${bucketColumn})
+    DO UPDATE SET seconds_played = ${table}.seconds_played + EXCLUDED.seconds_played`;
+}

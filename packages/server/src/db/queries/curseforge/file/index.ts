@@ -32,13 +32,6 @@ export interface CurseforgeFileWithProject extends CurseforgeFileUpsert {
   project: CurseforgeFileProject;
 }
 
-/**
- * Custom queries for curseforge_file table
- *
- * Extends the auto-generated base class with custom methods.
- * This file is scaffolded once and never overwritten - add your custom
- * query methods here while inheriting all generated CRUD operations.
- */
 export class CurseforgeFileQueries extends CurseforgeFileBaseQueries {
   constructor(db: Pool | PoolClient) {
     super(db);
@@ -158,25 +151,31 @@ export class CurseforgeFileQueries extends CurseforgeFileBaseQueries {
       [fileIds],
     );
 
-    return result.rows.map((row) => ({
-      id: row.id,
-      curseforgeProjectId: row.curseforge_project_id,
-      fileName: row.file_name,
-      fileSize: row.file_size,
-      sha1: row.sha1,
-      source: row.source,
-      downloadUrl: row.download_url,
-      resolvedAt: row.resolved_at,
-      project: {
-        id: row.curseforge_project_id,
-        classId: row.class_id,
-        slug: row.slug,
-        name: row.name,
-        summary: row.summary,
-        thumbnailUrl: row.thumbnail_url,
-        websiteUrl: row.website_url,
-        primaryAuthor: row.primary_author,
-      },
-    }));
+    return result.rows.map(
+      ({
+        class_id,
+        slug,
+        name,
+        summary,
+        thumbnail_url,
+        website_url,
+        primary_author,
+        ...file
+      }) => ({
+        ...this.mapRowToEntity(file),
+        project: {
+          id: file.curseforge_project_id,
+          ...this.mapRowToEntity({
+            class_id,
+            slug,
+            name,
+            summary,
+            thumbnail_url,
+            website_url,
+            primary_author,
+          }),
+        },
+      }),
+    );
   }
 }

@@ -1,7 +1,7 @@
-import { useState } from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Textarea } from "@/components/ui/textarea";
+import { useDialogDraft } from "@/hooks/use-dialog-draft";
 
 const MAX_NOTE_LENGTH = 500;
 
@@ -18,7 +18,7 @@ export function RejectDialog({
   authorName,
   onConfirm,
 }: RejectDialogProps) {
-  const [note, setNote] = useState("");
+  const [{ note }, update] = useDialogDraft(open, { note: "" });
 
   return (
     <ConfirmDialog
@@ -38,7 +38,7 @@ export function RejectDialog({
           maxLength={MAX_NOTE_LENGTH}
           rows={3}
           placeholder="Optional reason for the audit log"
-          onChange={(e) => setNote(e.target.value)}
+          onChange={(e) => update({ note: e.target.value })}
         />
         <FieldDescription>Only visible to admins.</FieldDescription>
       </Field>

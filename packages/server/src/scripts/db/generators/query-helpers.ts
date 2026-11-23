@@ -306,16 +306,12 @@ ${properties}
  * const factory = generateCreateQueries(rootTables);
  *
  * // Application usage:
- * import { transaction } from "@/db/utils/transactions";
- * import { createQueries } from "@/generated/db/queries";
- * import pool from "@/db";
+ * import { db } from "@/db";
  *
- * await transaction(pool, async (client) => {
- *   const Q = createQueries(client);
- *
+ * await db.inTransaction(async (tx) => {
  *   // Both queries in same transaction
- *   const user = await Q.users.create({ ... });
- *   await Q.accounts.create({ userId: user.id, ... });
+ *   const user = await tx.users.create({ ... });
+ *   await tx.accounts.create({ userId: user.id, ... });
  *
  *   // Both committed together, or both rolled back on error
  * });
@@ -339,22 +335,18 @@ function generateCreateQueries(rootTables: TableStructure[]): string {
  * Use this function inside transaction callbacks to ensure all database
  * operations are part of the same atomic transaction.
  * 
- * @param client - Transaction client from pool.connect() or transaction helper
+ * @param client - Transaction client from pool.connect()
  * @returns Object containing all query instances using the transaction client
  * 
  * @example
  * \`\`\`typescript
- * import { transaction } from "@/db/utils/transactions";
- * import { createQueries } from "@/generated/db/queries";
- * import pool from "@/db";
+ * import { db } from "@/db";
  * 
- * await transaction(pool, async (client) => {
- *   const Q = createQueries(client);
- *   
+ * await db.inTransaction(async (tx) => {
  *   // All operations in same transaction
- *   await Q.player.create({ ... });
- *   await Q.player.balance.create({ ... });
- *   await Q.admin.log.actions.create({ ... });
+ *   await tx.player.create({ ... });
+ *   await tx.player.balance.create({ ... });
+ *   await tx.admin.log.actions.create({ ... });
  *   
  *   // Automatically committed if callback succeeds
  *   // Automatically rolled back if callback throws

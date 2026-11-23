@@ -4,8 +4,8 @@ import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { Settings, Save, Zap, Trash2 } from "lucide-react";
 import { HeaderActions } from "@/features/admin/components/HeaderActions";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import {
   Select,
@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { Field, FieldLabel } from "@/components/ui/field";
 
 const DAYS_OF_WEEK = [
   "Sunday",
@@ -35,16 +36,12 @@ const PERIODS = [
 
 const DAYS_OF_MONTH = Array.from({ length: 28 }, (_, i) => i + 1);
 
-/** Admin panel card for viewing and updating the structure pack rotation schedule and weighting parameters. */
 export function RotationConfig() {
   const configQuery = useQuery(
-    trpc.admin.structurePacks.rotationConfig.get.queryOptions(),
+    trpc.admin.structurePacks.rotation.config.get.queryOptions(),
   );
   const config = configQuery.data;
 
-  // Local state is null until the user edits a field; the resolved `current*`
-  // values below fall back to the server config so the form always reflects
-  // the saved state before any edits are made.
   const [enabled, setEnabled] = useState<boolean | null>(null);
   const [period, setPeriod] = useState<string | null>(null);
   const [dayOfWeek, setDayOfWeek] = useState<number | null>(null);
@@ -79,12 +76,12 @@ export function RotationConfig() {
     gracePeriodMinutes ?? config?.gracePeriodMinutes ?? 30;
 
   const updateMutation = useMutation(
-    trpc.admin.structurePacks.rotationConfig.update.mutationOptions(
+    trpc.admin.structurePacks.rotation.config.update.mutationOptions(
       useMutationToast({
         success: "Rotation config updated",
         onSuccess: () => {
           void queryClient.invalidateQueries(
-            trpc.admin.structurePacks.rotationConfig.get.pathFilter(),
+            trpc.admin.structurePacks.rotation.config.get.pathFilter(),
           );
         },
       }),
@@ -92,7 +89,7 @@ export function RotationConfig() {
   );
 
   const forceRotationMutation = useMutation(
-    trpc.admin.structurePacks.forceRotation.mutationOptions(
+    trpc.admin.structurePacks.rotation.force.mutationOptions(
       useMutationToast({
         success: "Rotation triggered",
         onSuccess: () => {
@@ -100,7 +97,7 @@ export function RotationConfig() {
             trpc.admin.structurePacks.list.pathFilter(),
           );
           void queryClient.invalidateQueries(
-            trpc.admin.structurePacks.rotationConfig.get.pathFilter(),
+            trpc.admin.structurePacks.rotation.config.get.pathFilter(),
           );
         },
       }),
@@ -108,7 +105,7 @@ export function RotationConfig() {
   );
 
   const clearRotationMutation = useMutation(
-    trpc.admin.structurePacks.clearRotation.mutationOptions(
+    trpc.admin.structurePacks.rotation.clear.mutationOptions(
       useMutationToast({
         success: "Rotation cleared — no active structure pack",
         onSuccess: () => {
@@ -116,7 +113,7 @@ export function RotationConfig() {
             trpc.admin.structurePacks.list.pathFilter(),
           );
           void queryClient.invalidateQueries(
-            trpc.admin.structurePacks.rotationConfig.get.pathFilter(),
+            trpc.admin.structurePacks.rotation.config.get.pathFilter(),
           );
         },
       }),
@@ -124,7 +121,7 @@ export function RotationConfig() {
   );
 
   return (
-    <div className="rounded-lg border border-border bg-card p-6">
+    <Card className="gap-0 p-6">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="flex items-center gap-2 font-semibold">
@@ -173,7 +170,7 @@ export function RotationConfig() {
       </div>
 
       <div className="space-y-4">
-        <label className="flex cursor-pointer items-start gap-3 rounded-md border border-border bg-card p-3 hover:border-[var(--border-strong)]">
+        <label className="flex cursor-pointer items-start gap-3 rounded-md border border-border bg-card p-3 hover:border-border-strong">
           <Switch checked={currentEnabled} onCheckedChange={setEnabled} />
           <div className="space-y-0.5">
             <div className="text-[13px] font-medium text-foreground">
@@ -187,16 +184,15 @@ export function RotationConfig() {
           </div>
         </label>
 
-        {/* Schedule section */}
         <div>
           <h3 className="mb-2 text-sm font-medium text-muted-foreground">
             Schedule
           </h3>
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Period</Label>
+            <Field>
+              <FieldLabel htmlFor="rotation-period">Period</FieldLabel>
               <Select value={currentPeriod} onValueChange={(v) => setPeriod(v)}>
-                <SelectTrigger>
+                <SelectTrigger id="rotation-period">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -207,25 +203,28 @@ export function RotationConfig() {
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Time</Label>
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="rotation-time">Time</FieldLabel>
               <Input
+                id="rotation-time"
                 type="time"
                 value={currentTime}
                 onChange={(e) => setTime(e.target.value)}
               />
-            </div>
+            </Field>
           </div>
 
           {currentPeriod === "weekly" && (
-            <div className="mt-4 space-y-2">
-              <Label>Day of Week</Label>
+            <Field className="mt-4">
+              <FieldLabel htmlFor="rotation-day-of-week">
+                Day of Week
+              </FieldLabel>
               <Select
                 value={String(currentDayOfWeek)}
                 onValueChange={(v) => setDayOfWeek(Number(v))}
               >
-                <SelectTrigger>
+                <SelectTrigger id="rotation-day-of-week">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -236,17 +235,19 @@ export function RotationConfig() {
                   ))}
                 </SelectContent>
               </Select>
-            </div>
+            </Field>
           )}
 
           {currentPeriod === "monthly" && (
-            <div className="mt-4 space-y-2">
-              <Label>Day of Month</Label>
+            <Field className="mt-4">
+              <FieldLabel htmlFor="rotation-day-of-month">
+                Day of Month
+              </FieldLabel>
               <Select
                 value={String(currentDayOfMonth)}
                 onValueChange={(v) => setDayOfMonth(Number(v))}
               >
-                <SelectTrigger>
+                <SelectTrigger id="rotation-day-of-month">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -260,21 +261,25 @@ export function RotationConfig() {
               <p className="text-xs text-muted-foreground">
                 Max 28 to avoid issues with shorter months
               </p>
-            </div>
+            </Field>
           )}
 
           <div className="mt-4 grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Timezone</Label>
+            <Field>
+              <FieldLabel htmlFor="rotation-timezone">Timezone</FieldLabel>
               <Input
+                id="rotation-timezone"
                 value={currentTimezone}
                 onChange={(e) => setTimezone(e.target.value)}
                 placeholder="UTC"
               />
-            </div>
-            <div className="space-y-2">
-              <Label>Grace Period (minutes)</Label>
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="rotation-grace-period">
+                Grace Period (minutes)
+              </FieldLabel>
               <Input
+                id="rotation-grace-period"
                 type="number"
                 min={0}
                 value={currentGracePeriodMinutes}
@@ -284,19 +289,21 @@ export function RotationConfig() {
                 Catch-up window if the server was down during a scheduled
                 rotation
               </p>
-            </div>
+            </Field>
           </div>
         </div>
 
-        {/* Weighting section */}
         <div>
           <h3 className="mb-2 text-sm font-medium text-muted-foreground">
             Weighting
           </h3>
           <div className="grid grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label>Time Weight Multiplier</Label>
+            <Field>
+              <FieldLabel htmlFor="rotation-time-weight">
+                Time Weight Multiplier
+              </FieldLabel>
               <Input
+                id="rotation-time-weight"
                 type="number"
                 min={0}
                 step={0.1}
@@ -308,10 +315,13 @@ export function RotationConfig() {
               <p className="text-xs text-muted-foreground">
                 How much "time since last used" matters
               </p>
-            </div>
-            <div className="space-y-2">
-              <Label>Boost Weight per Unit</Label>
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="rotation-boost-weight">
+                Boost Weight per Unit
+              </FieldLabel>
               <Input
+                id="rotation-boost-weight"
                 type="number"
                 min={0}
                 step={0.1}
@@ -321,10 +331,13 @@ export function RotationConfig() {
               <p className="text-xs text-muted-foreground">
                 How much weight each purchased boost unit adds
               </p>
-            </div>
-            <div className="space-y-2">
-              <Label>Boost Unit Price</Label>
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="rotation-boost-price">
+                Boost Unit Price
+              </FieldLabel>
               <Input
+                id="rotation-boost-price"
                 type="number"
                 min={1}
                 value={currentBoostUnitPrice}
@@ -333,7 +346,7 @@ export function RotationConfig() {
               <p className="text-xs text-muted-foreground">
                 Currency cost per boost unit
               </p>
-            </div>
+            </Field>
           </div>
         </div>
 
@@ -359,6 +372,6 @@ export function RotationConfig() {
           Save Config
         </Button>
       </div>
-    </div>
+    </Card>
   );
 }

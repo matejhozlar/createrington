@@ -1,6 +1,6 @@
 import { Q } from "@/db";
 import { loadAllGuildMembers } from "@/discord/utils/guild-members";
-import { ConflictError, NotFoundError } from "@/app/middleware/error-handler";
+import { ConflictError, NotFoundError } from "@/errors";
 import { getServiceSync, Services } from "@/services";
 import {
   playerDeletionService,
@@ -21,11 +21,8 @@ export interface GhostListResult {
 }
 
 export interface GhostVerifyResult {
-  /** False when the user has rejoined Discord since the last refresh. */
   stillGone: boolean;
-  /** True when this call evicted the user from the cache because they're back. */
   evicted: boolean;
-  /** The cached ghost info, present iff stillGone is true. */
   ghost: GhostMember | null;
 }
 

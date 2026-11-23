@@ -1,4 +1,6 @@
-import { db, Q, waitlistRepo } from "@/db";
+import { roleMention, userMention } from "discord.js";
+import { db, Q } from "@/db";
+import { updateProgressEmbed } from "@/services/waitlist/progress-embed";
 import { waitlistService } from "@/services/waitlist/waitlist.service";
 import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
@@ -12,8 +14,9 @@ import {
 } from "@/discord/bots/main/registration-cleanup";
 import { RoleManager } from "@/discord/utils/roles/role-manager";
 import { minecraftRcon, WhitelistAction } from "@/utils/rcon";
-import { getSkinApiClient } from "@/services/skin-api";
-import { BadRequestError } from "@/app/middleware/error-handler";
+import { getSkinApiClient } from "@/services/skin-api/client";
+import { BadRequestError, errorMessage } from "@/errors";
+import { MC_USERNAME_REGEX } from "@/utils/zod-schemas";
 import { SkinApiError, type ResolvedPlayer } from "createrington-skin-api";
 import type { GuildMember, GuildTextBasedChannel } from "discord.js";
 import type { WaitlistEntry } from "@createrington/shared/db";
@@ -23,8 +26,6 @@ import { isVerificationChannel } from "./verification-channel";
 const GENERIC_FAILURE_MESSAGE =
   "Something went wrong on our side. An admin has been notified; please try again in a few minutes.";
 
-/** Minimal shape each entry point (slash command, modal submit) supplies so the
- * core flow can render the Components V2 card without caring where it lands. */
 export type RegistrationRenderer = (
   payload: RegistrationMessage,
 ) => Promise<void>;
@@ -55,9 +56,6 @@ export interface RegistrationResult {
   errorMessage?: string;
 }
 
-/** Runs the full registration flow, calling `render` at each step to update
- * whichever anchor message the caller manages (slash-command reply or the
- * welcome channel message). */
 export async function runRegistration(params: {
   member: GuildMember;
   discordId: string;
@@ -74,20 +72,6 @@ export async function runRegistration(params: {
   const steps = STEPS.map((s) => ({ ...s }));
   let currentStep = 0;
 
-  if (
-    !member ||
-    typeof member.roles === "string" ||
-    Array.isArray(member.roles)
-  ) {
-    await render(
-      RegistrationComponentPresets.errorWithAdmin(
-        "Registration Failed",
-        "Could not verify your roles. Please try again.",
-      ),
-    );
-    return { ok: false, errorMessage: "roles unavailable" };
-  }
-
   if (!RoleManager.has(member, Discord.Roles.UNVERIFIED)) {
     await render(
       RegistrationComponentPresets.error(
@@ -102,14 +86,12 @@ export async function runRegistration(params: {
     RegistrationComponentPresets.progress(mcName, steps, currentStep),
   );
 
-  // Minecraft usernames are 3-16 chars of [a-zA-Z0-9_]. Reject anything else
-  // up-front so we don't leak arbitrary input into downstream services.
-  if (!/^[a-zA-Z0-9_]{3,16}$/.test(mcName)) {
+  if (!MC_USERNAME_REGEX.test(mcName)) {
     await render(
       RegistrationComponentPresets.idle({
-        memberMention: `<@${discordId}>`,
+        memberMention: userMention(discordId),
         errorMessage:
-          "Minecraft usernames can only contain letters, numbers, and underscores (3-16 characters).",
+          "Minecraft usernames can only contain letters, numbers, and underscores (1-16 characters).",
       }),
     );
     return { ok: false, errorMessage: "invalid mc name" };
@@ -221,7 +203,7 @@ export async function runRegistration(params: {
     });
     reservedHere = false;
 
-    await waitlistRepo.updateProgressEmbed(entryId);
+    await updateProgressEmbed(entryId);
 
     steps[currentStep].completed = true;
     currentStep++;
@@ -232,12 +214,11 @@ export async function runRegistration(params: {
 
     await randomDelay();
     await RoleManager.remove(member, Discord.Roles.UNVERIFIED);
-    await RoleManager.assign(member, [Discord.Roles.VERIFIED]);
+    await RoleManager.assign(member, Discord.Roles.VERIFIED);
 
     try {
       await member.setNickname(correctName, "Registration: sync to MC name");
     } catch (error) {
-      // Non-fatal: server owner nicknames can't be set by bots.
       logger.warn(
         `Could not set nickname for ${userTag}: ${error instanceof Error ? error.message : error}`,
       );
@@ -278,7 +259,7 @@ export async function runRegistration(params: {
 
     return { ok: true };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
+    const failure = errorMessage(error);
     const memberMessage =
       error instanceof RegistrationError || error instanceof BadRequestError
         ? error.message
@@ -301,19 +282,24 @@ export async function runRegistration(params: {
       mcName,
       userTag,
       discordId,
-      errorMessage,
+      failure,
       failedStep,
     );
 
     await Discord.Messages.send({
       channelId: Discord.Channels.administration.NOTIFICATIONS,
       embeds: adminEmbed.build(),
-      content: Discord.Roles.mention(Discord.Roles.ADMIN),
+      content: roleMention(Discord.Roles.ADMIN),
+    }).catch((error: unknown) => {
+      logger.error(
+        "Could not alert admins about the failed registration:",
+        error,
+      );
     });
 
     await render(
       RegistrationComponentPresets.idle({
-        memberMention: `<@${discordId}>`,
+        memberMention: userMention(discordId),
         errorMessage: memberMessage,
         failedStep,
       }),

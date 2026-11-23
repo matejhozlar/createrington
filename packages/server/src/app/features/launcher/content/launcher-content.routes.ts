@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { customRoute } from "@/app/middleware/compose";
+import { route } from "@/app/middleware/compose";
 import { authenticateLauncher } from "@/app/middleware/launcher-auth.middleware";
 import {
   launcherContentFileBatchLimiter,
@@ -24,69 +24,77 @@ router.use(authenticateLauncher, launcherContentLimiter);
 
 router.get(
   "/search",
-  ...customRoute(
-    [validate({ query: SearchContentQuerySchema })],
+  ...route(
+    "public",
+    validate({ query: SearchContentQuerySchema }),
     LauncherContentController.search,
   ),
 );
 router.get(
   "/categories",
-  ...customRoute(
-    [validate({ query: ListCategoriesQuerySchema })],
+  ...route(
+    "public",
+    validate({ query: ListCategoriesQuerySchema }),
     LauncherContentController.categories,
   ),
 );
 router.post(
   "/projects",
-  ...customRoute(
-    [validate({ body: GetProjectsBodySchema })],
+  ...route(
+    "public",
+    validate({ body: GetProjectsBodySchema }),
     LauncherContentController.projects,
   ),
 );
 router.get(
   "/projects/:id",
-  ...customRoute(
-    [validate({ params: ContentIdParamsSchema })],
+  ...route(
+    "public",
+    validate({ params: ContentIdParamsSchema }),
     LauncherContentController.project,
   ),
 );
 router.post(
   "/fingerprints",
-  ...customRoute(
-    [validate({ body: IdentifyFingerprintsBodySchema })],
+  ...route(
+    "public",
+    validate({ body: IdentifyFingerprintsBodySchema }),
     LauncherContentController.fingerprints,
   ),
 );
 router.get(
   "/projects/:id/files",
-  ...customRoute(
-    [validate({ params: ContentIdParamsSchema, query: ListFilesQuerySchema })],
+  ...route(
+    "public",
+    validate({ params: ContentIdParamsSchema, query: ListFilesQuerySchema }),
     LauncherContentController.files,
   ),
 );
 router.post(
   "/files",
-  ...customRoute(
-    [launcherContentFileBatchLimiter, validate({ body: GetFilesBodySchema })],
+  ...route(
+    "public",
+    launcherContentFileBatchLimiter,
+    validate({ body: GetFilesBodySchema }),
     LauncherContentController.filesById,
   ),
 );
 router.get(
   "/files/:id",
-  ...customRoute(
-    [validate({ params: ContentIdParamsSchema })],
+  ...route(
+    "public",
+    validate({ params: ContentIdParamsSchema }),
     LauncherContentController.file,
   ),
 );
 router.get(
   "/files/:id/changelog",
-  ...customRoute(
-    [
-      validate({
-        params: ContentIdParamsSchema,
-        query: FileChangelogQuerySchema,
-      }),
-    ],
+  ...route(
+    "public",
+    validate({
+      params: ContentIdParamsSchema,
+      query: FileChangelogQuerySchema,
+    }),
     LauncherContentController.fileChangelog,
   ),
 );

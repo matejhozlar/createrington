@@ -1,5 +1,10 @@
 import type { Pool, PoolClient } from "pg";
 import { TicketBaseQueries } from "@/generated/db/ticket.queries";
+import type { Ticket, TicketRow } from "@createrington/shared/db/ticket.types";
+import {
+  createNotFoundError,
+  type Granularity,
+} from "@/db/utils/query-helpers";
 
 /**
  * Custom queries for ticket table
@@ -29,13 +34,13 @@ export class TicketQueries extends TicketBaseQueries {
   }> {
     const query = `
       SELECT
-        COUNT(*)::integer AS total,
-        COUNT(*) FILTER (WHERE status = 'open')::integer AS open,
-        COUNT(*) FILTER (WHERE status = 'closed')::integer AS closed,
+        COUNT(*)::int AS total,
+        COUNT(*) FILTER (WHERE status = 'open')::int AS open,
+        COUNT(*) FILTER (WHERE status = 'closed')::int AS closed,
         COALESCE(
           AVG(EXTRACT(EPOCH FROM (closed_at - created_at))) FILTER (WHERE closed_at IS NOT NULL),
           0
-        )::float AS avg_resolution_seconds
+        )::float8 AS avg_resolution_seconds
       FROM ${this.table}`;
 
     const result = await this.runQuery<{
@@ -44,13 +49,7 @@ export class TicketQueries extends TicketBaseQueries {
       closed: number;
       avg_resolution_seconds: number;
     }>("get ticket overview", query);
-    const row = result.rows[0];
-    return {
-      total: row.total,
-      open: row.open,
-      closed: row.closed,
-      avgResolutionSeconds: row.avg_resolution_seconds,
-    };
+    return this.mapRowToEntity(result.rows[0]);
   }
 
   /**
@@ -67,13 +66,13 @@ export class TicketQueries extends TicketBaseQueries {
   async getVolumeByPeriod(
     start: Date,
     end: Date,
-    granularity: "day" | "week" | "month" = "day",
+    granularity: Granularity = "day",
   ): Promise<Array<{ period: string; opened: number; closed: number }>> {
     const query = `
       SELECT
         period,
-        COALESCE(opened, 0)::integer AS opened,
-        COALESCE(closed, 0)::integer AS closed
+        COALESCE(opened, 0)::int AS opened,
+        COALESCE(closed, 0)::int AS closed
       FROM (
         SELECT DISTINCT period FROM (
           SELECT DATE_TRUNC($3, created_at)::text AS period FROM ${this.table}
@@ -84,13 +83,13 @@ export class TicketQueries extends TicketBaseQueries {
         ) all_periods
       ) p
       LEFT JOIN (
-        SELECT DATE_TRUNC($3, created_at)::text AS period, COUNT(*)::integer AS opened
+        SELECT DATE_TRUNC($3, created_at)::text AS period, COUNT(*)::int AS opened
         FROM ${this.table}
         WHERE created_at >= $1 AND created_at < $2
         GROUP BY 1
       ) o USING (period)
       LEFT JOIN (
-        SELECT DATE_TRUNC($3, closed_at)::text AS period, COUNT(*)::integer AS closed
+        SELECT DATE_TRUNC($3, closed_at)::text AS period, COUNT(*)::int AS closed
         FROM ${this.table}
         WHERE closed_at >= $1 AND closed_at < $2
         GROUP BY 1
@@ -126,12 +125,40 @@ export class TicketQueries extends TicketBaseQueries {
    * @returns Promise resolving to the current ticket number (0 if no tickets exist)
    */
   async getCurrent(): Promise<number> {
-    const query = `SELECT COALESCE(MAX(ticket_number), 0) AS ticket_number FROM ${this.table}`;
+    const query = `SELECT COALESCE(MAX(ticket_number), 0)::int AS ticket_number FROM ${this.table}`;
 
-    const result = await this.runQuery<{ ticket_number: string }>(
+    const result = await this.runQuery<{ ticket_number: number }>(
       "get current ticket number",
       query,
     );
-    return parseInt(result.rows[0].ticket_number, 10);
+    return result.rows[0].ticket_number;
+  }
+
+  /**
+   * Reads a ticket under a row lock (SELECT ... FOR UPDATE). Must be called on
+   * a transaction-bound instance; the lock is held until the surrounding
+   * transaction ends, so a concurrent status change of the same ticket blocks
+   * here and observes the committed status rather than a stale one.
+   *
+   * @throws NotFoundError when the id does not exist
+   */
+  async getForUpdate(id: number): Promise<Ticket> {
+    const query = `
+      SELECT *
+      FROM ${this.table}
+      WHERE id = $1
+      FOR UPDATE`;
+
+    const result = await this.runQuery<TicketRow>(
+      "get ticket for update",
+      query,
+      [id],
+    );
+
+    const row = result.rows[0];
+    if (!row) {
+      throw createNotFoundError(this.table, { id });
+    }
+    return this.mapRowToEntity(row);
   }
 }

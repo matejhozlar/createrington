@@ -15,20 +15,12 @@ export class RoomManager {
     return RoomType.GLOBAL;
   }
 
-  /**
-   * Get room name for a specific server
-   *
-   * @param serverId - Minecraft server ID
-   */
+  /** Get room name for a specific server */
   static getServerRoom(serverId: number): string {
     return `${RoomType.SERVER}:${serverId}`;
   }
 
-  /**
-   * Get room name for server status subscription
-   *
-   * @param serverId - Optional server ID for server-specific status
-   */
+  /** Get room name for server status subscription */
   static getServerStatusRoom(serverId?: number): string {
     if (serverId !== undefined) {
       return `${SubscriptionType.SERVER_STATUS}:${serverId}`;
@@ -36,11 +28,7 @@ export class RoomManager {
     return SubscriptionType.SERVER_STATUS;
   }
 
-  /**
-   * Get room name for players subscription
-   *
-   * @param serverId - Optional server ID for server-specific players
-   */
+  /** Get room name for players subscription */
   static getPlayersRoom(serverId?: number): string {
     if (serverId !== undefined) {
       return `${SubscriptionType.PLAYERS}:${serverId}`;
@@ -48,11 +36,7 @@ export class RoomManager {
     return SubscriptionType.PLAYERS;
   }
 
-  /**
-   * Get room name for messages subscription
-   *
-   * @param serverId - Optional server ID for server-specific messages
-   */
+  /** Get room name for messages subscription */
   static getMessagesRoom(serverId?: number): string {
     if (serverId !== undefined) {
       return `${SubscriptionType.MESSAGES}:${serverId}`;
@@ -68,12 +52,7 @@ export class RoomManager {
     return `${RoomType.USER}:${minecraftUuid}`;
   }
 
-  /**
-   * Get appropriate room based on subscription type and server ID
-   *
-   * @param type - Subscription type
-   * @param serverId - Optional server ID
-   */
+  /** Get appropriate room based on subscription type and server ID */
   static getRoomForSubscription(
     type: SubscriptionType,
     serverId?: number,
@@ -94,11 +73,7 @@ export class RoomManager {
     }
   }
 
-  /**
-   * Parse room name to extract subscription type and server ID
-   *
-   * @param room - Room name
-   */
+  /** Parse room name to extract subscription type and server ID */
   static parseRoom(room: string): {
     type: string;
     serverId?: number;
@@ -119,11 +94,7 @@ export class RoomManager {
     };
   }
 
-  /**
-   * Check if room is server-specific
-   *
-   * @param room - Room name
-   */
+  /** Check if room is server-specific */
   static isServerSpecific(room: string): boolean {
     const parsed = this.parseRoom(room);
     return parsed.serverId !== undefined;
@@ -135,9 +106,6 @@ export class RoomManager {
    * This handles cases where subscribing to one thing might require
    * joining multiple rooms (e.g., subscribing to ALL might join
    * status, players, and messages rooms)
-   *
-   * @param type - Subscription type
-   * @param serverId - Optional server ID
    */
   static getRoomsForSubscription(
     type: SubscriptionType,

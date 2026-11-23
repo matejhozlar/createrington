@@ -3,7 +3,7 @@ import {
   type AutocompleteInteraction,
   type ChatInputCommandInteraction,
 } from "discord.js";
-import { player, Q } from "@/db";
+import { Q } from "@/db";
 import {
   buildWorkshopPickerSuggestModal,
   buildWorkshopSuggestModal,
@@ -15,8 +15,12 @@ import { featureFlagService, FeatureFlags } from "@/services/feature-flag";
 import { banNotice, findSuggestBan } from "@/services/workshop/bans";
 import { discordTimestamp } from "@/utils/format";
 import type { Workshop } from "@createrington/shared/db";
+import type {
+  CommandCooldown,
+  CommandModule,
+} from "@/discord/bots/common/loaders/command-loader";
 
-export const data = new SlashCommandBuilder()
+const data = new SlashCommandBuilder()
   .setName("suggest")
   .setDescription("Suggest a mod for the modpack workshop")
   .addStringOption((opt) =>
@@ -29,7 +33,7 @@ export const data = new SlashCommandBuilder()
       .setAutocomplete(true),
   );
 
-export const cooldown = {
+const cooldown: CommandCooldown = {
   duration: 5,
   type: CooldownType.USER,
   message: "Please wait a moment before suggesting again!",
@@ -42,7 +46,7 @@ function listOpenWorkshops(): Promise<Workshop[]> {
   );
 }
 
-export async function execute(
+async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
   if (!(await featureFlagService.isEnabled(FeatureFlags.workshop))) {
@@ -54,7 +58,7 @@ export async function execute(
     return;
   }
 
-  const suggester = await player.find({ discordId: interaction.user.id });
+  const suggester = await Q.player.find({ discordId: interaction.user.id });
   if (!suggester) {
     await replyError(
       interaction,
@@ -141,7 +145,7 @@ export async function execute(
   await interaction.showModal(buildWorkshopSuggestModal(workshop, slotsUsed));
 }
 
-export async function autocomplete(
+async function autocomplete(
   interaction: AutocompleteInteraction,
 ): Promise<void> {
   if (!(await featureFlagService.isEnabled(FeatureFlags.workshop))) {
@@ -159,3 +163,10 @@ export async function autocomplete(
       .map((w) => ({ name: w.name, value: String(w.id) })),
   );
 }
+
+export default {
+  data,
+  cooldown,
+  autocomplete,
+  execute,
+} satisfies CommandModule;

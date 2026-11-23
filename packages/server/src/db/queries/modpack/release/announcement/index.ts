@@ -1,40 +1,26 @@
 import type { Pool, PoolClient } from "pg";
 import { ModpackReleaseAnnouncementBaseQueries } from "@/generated/db/modpack_release_announcement.queries";
-import type { ModpackReleaseAnnouncement } from "@createrington/shared/db";
+import type { ModpackReleaseAnnouncementRow } from "@createrington/shared/db";
+import type { CamelCaseKeys } from "@createrington/shared/types";
 
-export interface ReleaseAnnouncementRow extends ModpackReleaseAnnouncement {
-  presetName: string | null;
+export interface ReleaseAnnouncementWithPresetRow extends ModpackReleaseAnnouncementRow {
+  preset_name: string | null;
 }
 
-/**
- * Custom queries for modpack_release_announcement table
- *
- * Extends the auto-generated base class with custom methods.
- * This file is scaffolded once and never overwritten - add your custom
- * query methods here while inheriting all generated CRUD operations.
- */
+export type ReleaseAnnouncementRow =
+  CamelCaseKeys<ReleaseAnnouncementWithPresetRow>;
+
 export class ModpackReleaseAnnouncementQueries extends ModpackReleaseAnnouncementBaseQueries {
   constructor(db: Pool | PoolClient) {
     super(db);
   }
 
   /** Announcement parts of releases with the name of the preset each one was saved as. */
-  async listForReleases(
+  async getForReleases(
     releaseIds: number[],
   ): Promise<ReleaseAnnouncementRow[]> {
     if (releaseIds.length === 0) return [];
-    const result = await this.runQuery<{
-      id: number;
-      release_id: number;
-      part: number;
-      part_count: number;
-      preset_id: number | null;
-      channel_id: string;
-      message_id: string | null;
-      created_at: Date;
-      sent_at: Date | null;
-      preset_name: string | null;
-    }>(
+    const result = await this.runQuery<ReleaseAnnouncementWithPresetRow>(
       "list release announcements",
       `SELECT a.*, p.name AS preset_name
        FROM ${this.table} a
@@ -43,17 +29,6 @@ export class ModpackReleaseAnnouncementQueries extends ModpackReleaseAnnouncemen
        ORDER BY a.release_id, a.part`,
       [releaseIds],
     );
-    return result.rows.map((row) => ({
-      id: row.id,
-      releaseId: row.release_id,
-      part: row.part,
-      partCount: row.part_count,
-      presetId: row.preset_id,
-      channelId: row.channel_id,
-      messageId: row.message_id,
-      createdAt: row.created_at,
-      sentAt: row.sent_at,
-      presetName: row.preset_name,
-    }));
+    return this.mapRowsToEntities(result.rows);
   }
 }

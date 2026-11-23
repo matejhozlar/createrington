@@ -14,7 +14,7 @@ export function WhitelistResync({ serverId }: WhitelistResyncProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
 
   const resyncMutation = useMutation(
-    trpc.admin.servers.resyncWhitelist.mutationOptions(
+    trpc.admin.servers.whitelist.resync.mutationOptions(
       useMutationToast({
         success: ({ count }) => `Whitelist resynced (${count} players)`,
         onSuccess: () => {

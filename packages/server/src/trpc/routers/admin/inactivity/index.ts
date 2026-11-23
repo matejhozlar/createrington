@@ -7,12 +7,13 @@ import {
   paginationInput,
   trpcError,
   auditActor,
+  id,
+  pageOffset,
 } from "@/trpc/utils";
 import config from "@/config";
-import { getService, getServiceSync, Services } from "@/services";
+import { getOptionalService, Services } from "@/services";
 import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
-import { DiscordMessageService } from "@/services/discord/message/message.service";
 import { removeInactiveWarning } from "@/services/discord/cleanup/inactivity/remove-warning";
 import type { InactivityCleanupService } from "@/services/discord/cleanup/inactivity/inactivity-cleanup.service";
 import {
@@ -31,15 +32,25 @@ const warningStatusSchema = z.enum([
   "removed",
 ]);
 
-/**
- * True when the inactivity cleanup service is registered and safe to
- * mutate against, i.e. we're running on the real production deployment.
- */
 function isManualActionsEnabled(): boolean {
   return config.envMode.isProductionDeployment;
 }
 
-/** Admin inactivity router: list, stats, and manual resolve/remove/trigger. */
+async function getCleanupService(
+  notConfiguredMessage: string,
+): Promise<InactivityCleanupService> {
+  let service: InactivityCleanupService | null;
+  try {
+    service = await getOptionalService(Services.INACTIVITY_CLEANUP_SERVICE);
+  } catch {
+    throw trpcError.internal("Inactivity cleanup service is not available");
+  }
+  if (!service) {
+    throw trpcError.forbidden(notConfiguredMessage);
+  }
+  return service;
+}
+
 export const inactivityRouter = router({
   ghosts: ghostsRouter,
   unlinked: unlinkedRouter,
@@ -81,17 +92,16 @@ export const inactivityRouter = router({
       }),
     )
     .query(async ({ input }) => {
-      const { warnings, total } =
-        await Q.player.inactivity.warning.listByStatus({
-          status: input.status,
-          graceDays: INACTIVITY_GRACE_DAYS,
-          search: input.search?.trim() || undefined,
-          limit: input.limit,
-          offset: input.page * input.limit,
-        });
+      const { rows, total } = await Q.player.inactivity.warning.getByStatus({
+        status: input.status,
+        graceDays: INACTIVITY_GRACE_DAYS,
+        search: input.search?.trim() || undefined,
+        limit: input.limit,
+        offset: pageOffset(input),
+      });
 
       return {
-        warnings,
+        items: rows,
         pagination: buildPagination(input.page, input.limit, total),
       };
     }),
@@ -101,7 +111,7 @@ export const inactivityRouter = router({
       description:
         "Manually resolve an inactivity warning (marks the player as returned)",
     })
-    .input(z.object({ id: z.number().int().positive() }))
+    .input(z.object({ id: id() }))
     .mutation(async ({ input, ctx }) => {
       const warning = await findOrThrow(
         Q.player.inactivity.warning.findByIdWithPlayer(input.id),
@@ -116,7 +126,10 @@ export const inactivityRouter = router({
         throw trpcError.conflict("Warning is already removed, cannot resolve");
       }
 
-      await Q.player.inactivity.warning.resolveWarning(input.id);
+      await Q.player.inactivity.warning.update(
+        { id: input.id },
+        { resolvedAt: new Date() },
+      );
 
       await Q.admin.log.action.logAction({
         ...auditActor(ctx),
@@ -125,8 +138,6 @@ export const inactivityRouter = router({
           warning.minecraftUsername ?? warning.playerMinecraftUuid
         }`,
       });
-
-      return { message: "Warning resolved" };
     }),
 
   removeManual: adminProcedure
@@ -134,7 +145,7 @@ export const inactivityRouter = router({
       description:
         "Manually run the removal sequence for an inactivity warning (kick, whitelist remove, player delete)",
     })
-    .input(z.object({ id: z.number().int().positive() }))
+    .input(z.object({ id: id() }))
     .mutation(async ({ input, ctx }) => {
       if (!isManualActionsEnabled()) {
         throw trpcError.forbidden(
@@ -179,10 +190,7 @@ export const inactivityRouter = router({
           removedAt: new Date(),
         });
 
-        const mainBot = getServiceSync(Services.DISCORD_MAIN_BOT);
-        const messageService = DiscordMessageService.getInstance(mainBot);
-
-        await messageService.send({
+        await Discord.Messages.send({
           channelId: Discord.Channels.administration.NOTIFICATIONS,
           embeds: embed.build(),
         });
@@ -198,8 +206,6 @@ export const inactivityRouter = router({
         actionType: "inactivity_remove_manual",
         description: `Manually removed inactive player ${warning.minecraftUsername}`,
       });
-
-      return { message: "Player removed" };
     }),
 
   triggerCleanup: adminProcedure
@@ -208,18 +214,9 @@ export const inactivityRouter = router({
         "Force-run the inactivity cleanup cycle now and reset the recurring schedule",
     })
     .mutation(async ({ ctx }) => {
-      if (!isManualActionsEnabled()) {
-        throw trpcError.forbidden(
-          "Triggering the cleanup cycle is only available on the production deployment",
-        );
-      }
-
-      let service: InactivityCleanupService;
-      try {
-        service = await getService(Services.INACTIVITY_CLEANUP_SERVICE);
-      } catch {
-        throw trpcError.internal("Inactivity cleanup service is not available");
-      }
+      const service = await getCleanupService(
+        "Triggering the cleanup cycle is only available on the production deployment",
+      );
 
       await service.forceRunAndResetSchedule({
         discordId: ctx.user.discordId,
@@ -231,8 +228,6 @@ export const inactivityRouter = router({
         actionType: "inactivity_trigger_cleanup",
         description: "Force-triggered inactivity cleanup cycle",
       });
-
-      return { message: "Cleanup cycle completed" };
     }),
 
   triggerResolveRemove: adminProcedure
@@ -241,18 +236,9 @@ export const inactivityRouter = router({
         "Run only the resolve + remove phases now (no new warning announcements)",
     })
     .mutation(async ({ ctx }) => {
-      if (!isManualActionsEnabled()) {
-        throw trpcError.forbidden(
-          "Processing overdue players is only available on the production deployment",
-        );
-      }
-
-      let service: InactivityCleanupService;
-      try {
-        service = await getService(Services.INACTIVITY_CLEANUP_SERVICE);
-      } catch {
-        throw trpcError.internal("Inactivity cleanup service is not available");
-      }
+      const service = await getCleanupService(
+        "Processing overdue players is only available on the production deployment",
+      );
 
       await service.triggerResolveAndRemove({
         discordId: ctx.user.discordId,
@@ -265,7 +251,5 @@ export const inactivityRouter = router({
         description:
           "Force-ran inactivity resolve+remove phases (no new warnings)",
       });
-
-      return { message: "Overdue warnings processed" };
     }),
 });

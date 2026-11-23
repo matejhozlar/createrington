@@ -24,15 +24,15 @@ import {
   requireKnownPlayer,
   verifyModJWT,
 } from "@/app/middleware/mod-jwt.middleware";
-import type { Request, Response, NextFunction } from "express";
+import type { Request, NextFunction } from "express";
+import { UnauthorizedError } from "@/errors";
+import { fakeReq, fakeRes } from "@/tests/helpers/http";
 
 const MOD_SECRET = "test-mod-secret-please-do-not-use-in-prod";
 const WEB_SECRET = "test-web-secret-please-do-not-use-in-prod";
 
 function makeReq(authHeader: string): Request {
-  return {
-    headers: { authorization: authHeader },
-  } as unknown as Request;
+  return fakeReq({ headers: { authorization: authHeader } });
 }
 
 function collectNext(): {
@@ -59,7 +59,7 @@ describe("verifyModJWT", () => {
     const req = makeReq(`Bearer ${token}`);
     const { next, errors, called } = collectNext();
 
-    verifyModJWT(req, {} as Response, next);
+    verifyModJWT(req, fakeRes(), next);
 
     expect(errors).toHaveLength(0);
     expect(called()).toBe(true);
@@ -78,7 +78,7 @@ describe("verifyModJWT", () => {
     const req = makeReq(`Bearer ${token}`);
     const { next, errors, called } = collectNext();
 
-    verifyModJWT(req, {} as Response, next);
+    verifyModJWT(req, fakeRes(), next);
 
     expect(errors).toHaveLength(0);
     expect(called()).toBe(true);
@@ -99,7 +99,7 @@ describe("verifyModJWT", () => {
     const req = makeReq(`Bearer ${token}`);
     const { next, errors, called } = collectNext();
 
-    verifyModJWT(req, {} as Response, next);
+    verifyModJWT(req, fakeRes(), next);
 
     expect(called()).toBe(false);
     expect(errors).toHaveLength(1);
@@ -127,7 +127,7 @@ describe("verifyModJWT", () => {
     const req = makeReq(`Bearer ${token}`);
     const { next, errors, called } = collectNext();
 
-    verifyModJWT(req, {} as Response, next);
+    verifyModJWT(req, fakeRes(), next);
 
     expect(called()).toBe(false);
     expect(errors).toHaveLength(1);
@@ -144,7 +144,7 @@ describe("verifyModJWT", () => {
     const req = makeReq(`Bearer ${token}`);
     const { next, errors } = collectNext();
 
-    verifyModJWT(req, {} as Response, next);
+    verifyModJWT(req, fakeRes(), next);
 
     expect(errors).toHaveLength(1);
     expect(req.modAuth).toBeUndefined();
@@ -159,7 +159,7 @@ describe("verifyModJWT", () => {
     const req = makeReq(`Bearer ${token}`);
     const { next, errors, called } = collectNext();
 
-    verifyModJWT(req, {} as Response, next);
+    verifyModJWT(req, fakeRes(), next);
 
     expect(called()).toBe(false);
     expect(errors).toHaveLength(1);
@@ -170,7 +170,7 @@ describe("verifyModJWT", () => {
     const req = { headers: {} } as unknown as Request;
     const { next, errors } = collectNext();
 
-    verifyModJWT(req, {} as Response, next);
+    verifyModJWT(req, fakeRes(), next);
 
     expect(errors).toHaveLength(1);
     expect((errors[0] as Error).message).toMatch(/authentication required/i);
@@ -227,18 +227,15 @@ describe("requireKnownPlayer", () => {
     findMock.mockResolvedValueOnce(null);
     findMock.mockResolvedValueOnce(null);
 
-    const run = async () => {
-      const { next, errors } = collectNext();
-      await (requireKnownPlayer as (...a: unknown[]) => Promise<void>)(
+    const run = () =>
+      (requireKnownPlayer as (...a: unknown[]) => Promise<void>)(
         reqWithUuid("u-missing"),
         {},
-        next,
+        collectNext().next,
       );
-      return errors;
-    };
 
-    expect(await run()).toHaveLength(1);
-    expect(await run()).toHaveLength(1);
+    await expect(run()).rejects.toBeInstanceOf(UnauthorizedError);
+    await expect(run()).rejects.toBeInstanceOf(UnauthorizedError);
 
     expect(findMock).toHaveBeenCalledTimes(2);
   });
@@ -271,15 +268,17 @@ describe("requireKnownPlayer", () => {
   });
 
   it("rejects when req.modAuth.uuid is missing", async () => {
-    const { next, errors } = collectNext();
+    const { next, called } = collectNext();
 
-    await (requireKnownPlayer as (...a: unknown[]) => Promise<void>)(
-      reqWithUuid(undefined),
-      {},
-      next,
-    );
+    await expect(
+      (requireKnownPlayer as (...a: unknown[]) => Promise<void>)(
+        reqWithUuid(undefined),
+        {},
+        next,
+      ),
+    ).rejects.toBeInstanceOf(UnauthorizedError);
 
     expect(findMock).not.toHaveBeenCalled();
-    expect(errors).toHaveLength(1);
+    expect(called()).toBe(false);
   });
 });

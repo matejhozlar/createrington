@@ -11,11 +11,11 @@ import {
 import { AttachmentBuilder } from "discord.js";
 import { randomPose } from "createrington-skin-api";
 import config from "@/config";
+import { getSkinApiClient } from "@/services/skin-api/client";
 import {
-  getSkinApiClient,
   MAX_QUALITY_RENDER,
   POSE_RENDER_STYLE,
-} from "@/services/skin-api";
+} from "@/services/skin-api/quality";
 import { mcHeadsBodyUrl } from "@/services/skin-api/urls";
 import { computeBBox, fitFontSize } from "@/utils/canvas";
 
@@ -300,11 +300,6 @@ function drawText(
   ctx.fillText("createrington.com", TEXT_X, H - 66);
 }
 
-/** Composites the post-registration welcome card: the player's skin rendered
- * in a random pose over a random server screenshot, with username and member
- * number. Background and figure fetches degrade gracefully (gradient backdrop,
- * mc-heads fallback, or no figure) so generation never throws for network
- * reasons alone. */
 export async function generateRegistrationWelcomeCard(params: {
   minecraftUuid: string;
   minecraftUsername: string;
@@ -321,10 +316,6 @@ export async function generateRegistrationWelcomeCard(params: {
   const canvas = createCanvas(W * SUPERSAMPLE, H * SUPERSAMPLE);
   const ctx = canvas.getContext("2d");
   ctx.scale(SUPERSAMPLE, SUPERSAMPLE);
-  // Set once for every resample the card paints (background screenshot,
-  // figure, wordmark), not per-painter: the figure draw is conditional, so
-  // setting it there left the wordmark's quality riding on whether a skin
-  // render succeeded. napi-rs defaults to "low".
   ctx.imageSmoothingQuality = "high";
 
   drawBackground(ctx, background);
@@ -333,8 +324,6 @@ export async function generateRegistrationWelcomeCard(params: {
 
   const out = createCanvas(W, H);
   const outCtx = out.getContext("2d");
-  // This is the supersample downsample, so it is what anti-aliases the
-  // figure's hard alphaTest edges. napi-rs defaults to "low".
   outCtx.imageSmoothingQuality = "high";
   outCtx.drawImage(canvas, 0, 0, W, H);
   return new AttachmentBuilder(out.toBuffer("image/png"), {
