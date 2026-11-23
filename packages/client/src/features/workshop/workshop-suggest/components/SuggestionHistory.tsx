@@ -1,27 +1,21 @@
 import { useState } from "react";
-import { WORKSHOP_MOD_STATUSES } from "@createrington/shared/workshop";
+import {
+  WORKSHOP_MOD_STATUSES,
+  WORKSHOP_MOD_REJECT_REASON_LABELS,
+} from "@createrington/shared/workshop";
 import type { WorkshopModStatus } from "@createrington/shared/db";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { ErrorState, LoadingState } from "@/components/query-states";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { PAGE_SIZE } from "../../constants";
-import { useViewMode } from "../../hooks/use-view-mode";
-import { ProjectThumb } from "../../components/ProjectThumb";
-import { SocialLinks } from "../../components/SocialLinks";
-import { ViewToggle } from "../../components/ViewToggle";
-import {
-  MOD_STATUS_STYLES,
-  REJECT_REASON_LABELS,
-  liveTitle,
-} from "../../format";
+import { PAGE_SIZE } from "@/features/workshop/constants";
+import { FilterSelect } from "@/features/workshop/components/FilterToolbar";
+import { ShowMoreButton } from "@/features/workshop/components/ShowMoreButton";
+import { DashedBox } from "@/features/workshop/components/WorkshopEmptyState";
+import { useViewMode } from "@/features/workshop/hooks/use-view-mode";
+import { ProjectThumb } from "@/features/workshop/components/ProjectThumb";
+import { SocialLinks } from "@/features/workshop/components/SocialLinks";
+import { ViewToggle } from "@/features/workshop/components/ViewToggle";
+import { MOD_STATUS_STYLES, liveTitle } from "@/features/workshop/format";
 import { formatDate } from "@createrington/shared/format";
 import { useQuery } from "@tanstack/react-query";
 
@@ -48,7 +42,7 @@ const SORT_OPTIONS: Array<{ value: SortMode; label: string }> = [
 function secondaryLine(mod: HistoryItem): string {
   if (mod.status === "rejected") {
     const label = mod.rejectReason
-      ? REJECT_REASON_LABELS[mod.rejectReason]
+      ? WORKSHOP_MOD_REJECT_REASON_LABELS[mod.rejectReason]
       : "Ruled out";
     return mod.rejectNote ? `${label}: ${mod.rejectNote}` : label;
   }
@@ -59,7 +53,7 @@ function StatusBadge({ mod }: { mod: HistoryItem }) {
   const style = MOD_STATUS_STYLES[mod.status];
   const label =
     mod.status === "rejected" && mod.rejectReason
-      ? REJECT_REASON_LABELS[mod.rejectReason]
+      ? WORKSHOP_MOD_REJECT_REASON_LABELS[mod.rejectReason]
       : style.label;
   return (
     <Badge tone={style.tone} title={liveTitle(mod)}>
@@ -101,42 +95,24 @@ export function SuggestionHistory() {
       <div className="flex flex-wrap items-center gap-2.5">
         <h2 className="text-2xl font-semibold">My suggestions</h2>
         <span className="flex-1" />
-        <Select
+        <FilterSelect
           value={status}
           onValueChange={(value) => {
-            setStatus(value as StatusFilter);
+            setStatus(value);
             setShownCount(PAGE_SIZE);
           }}
-        >
-          <SelectTrigger className="w-full sm:w-[150px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {STATUS_OPTIONS.map(({ value, label }) => (
-              <SelectItem key={value} value={value}>
-                {label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select
+          options={STATUS_OPTIONS}
+          className="w-full sm:w-[150px]"
+        />
+        <FilterSelect
           value={sortMode}
           onValueChange={(value) => {
-            setSortMode(value as SortMode);
+            setSortMode(value);
             setShownCount(PAGE_SIZE);
           }}
-        >
-          <SelectTrigger className="w-full sm:w-[150px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {SORT_OPTIONS.map(({ value, label }) => (
-              <SelectItem key={value} value={value}>
-                {label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          options={SORT_OPTIONS}
+          className="w-full sm:w-[150px]"
+        />
         <ViewToggle view={view} onChange={changeView} />
       </div>
       <p className="mt-1 text-sm text-muted-foreground">
@@ -155,11 +131,11 @@ export function SuggestionHistory() {
           />
         </div>
       ) : shown.length === 0 ? (
-        <div className="mt-4 rounded-xl border border-dashed border-[var(--border-strong)] px-6 py-10 text-center text-sm text-muted-foreground">
+        <DashedBox className="mt-4">
           {history.length === 0
             ? "You haven't suggested anything yet."
             : "No suggestions match this filter."}
-        </div>
+        </DashedBox>
       ) : view === "list" ? (
         <div className="mt-4 flex flex-col gap-2">
           {shown.map((mod) => {
@@ -245,16 +221,11 @@ export function SuggestionHistory() {
         </div>
       )}
 
-      {remaining > 0 && (
-        <div className="mt-4 flex justify-center">
-          <Button
-            variant="secondary"
-            onClick={() => setShownCount(shownCount + PAGE_SIZE)}
-          >
-            Show {Math.min(remaining, PAGE_SIZE)} more
-          </Button>
-        </div>
-      )}
+      <ShowMoreButton
+        remaining={remaining}
+        onClick={() => setShownCount(shownCount + PAGE_SIZE)}
+        className="mt-4"
+      />
     </section>
   );
 }

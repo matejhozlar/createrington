@@ -118,6 +118,7 @@ export const Footer = () => {
 
             <nav className="flex flex-col gap-2">
               <NavLink
+                id="footer-apply-link"
                 to="/apply-to-join"
                 className="text-sm text-muted-foreground hover:text-foreground transition-colors"
               >

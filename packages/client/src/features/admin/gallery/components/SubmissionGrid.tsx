@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Coins, ExternalLink, ImageOff, Trash2 } from "lucide-react";
 import { trpc, queryClient } from "@/lib/trpc";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
-import { formatDateTime, formatMoney, formatRelativeDate } from "@/lib/format";
+import { formatDateTime, formatRelativeDate } from "@/lib/format";
+import { formatMoney } from "@createrington/shared/format";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Paginator } from "@/components/paginator";
 import { PlayerLabel } from "@/components/player-label";
@@ -15,7 +16,7 @@ import {
   GALLERY_STATUS,
   type GalleryStatus,
   type GallerySubmissionItem,
-} from "../format";
+} from "@/features/admin/gallery/format";
 import { useQuery, useMutation } from "@tanstack/react-query";
 
 const PAGE_SIZE = 24;

@@ -1,16 +1,7 @@
-import {
-  formatMoney as formatCurrency,
-  parseDateOnly,
-} from "@createrington/shared/format";
+import { parseDateOnly } from "@createrington/shared/format";
 import { DAY_MS, HOUR_MS, MINUTE_MS } from "./time";
 
 const BYTE_UNITS = ["B", "KB", "MB", "GB"];
-
-export function formatMoney(value: number | string, fallback = "$0"): string {
-  const num = typeof value === "string" ? parseFloat(value) : value;
-  if (Number.isNaN(num)) return fallback;
-  return formatCurrency(num);
-}
 
 export function formatNumber(value: number): string {
   return value.toLocaleString("en-US");

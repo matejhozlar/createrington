@@ -7,7 +7,10 @@ import {
   User,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
-import { REQUIRED_DEPENDENCY } from "@createrington/shared/workshop";
+import {
+  REQUIRED_DEPENDENCY,
+  WORKSHOP_MOD_REJECT_REASON_LABELS,
+} from "@createrington/shared/workshop";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ErrorState } from "@/components/query-states";
@@ -27,7 +30,7 @@ import {
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PlayerLabel } from "@/components/player-label";
-import { ProjectThumb } from "../../components/ProjectThumb";
+import { ProjectThumb } from "@/features/workshop/components/ProjectThumb";
 import {
   DEPENDENCY_COVERAGE_STYLES,
   formatDownloads,
@@ -36,8 +39,7 @@ import {
   MOD_STATUS_STYLES,
   COMPACT_BADGE_CLASS,
   projectKindLabel,
-  REJECT_REASON_LABELS,
-} from "../../format";
+} from "@/features/workshop/format";
 import { formatDate } from "@createrington/shared/format";
 import { useQuery } from "@tanstack/react-query";
 
@@ -218,7 +220,7 @@ export function ModDetailDialog({
                       tone={MOD_STATUS_STYLES.rejected.tone}
                       className="text-xs"
                     >
-                      {REJECT_REASON_LABELS[adminMod.rejectReason]}
+                      {WORKSHOP_MOD_REJECT_REASON_LABELS[adminMod.rejectReason]}
                     </Badge>
                     {adminMod.rejectNote && (
                       <span className="text-xs text-muted-foreground">

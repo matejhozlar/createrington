@@ -1,3 +1,4 @@
+import { Skeleton } from "@/components/ui/skeleton";
 import { useState } from "react";
 import {
   formatStatCategory,
@@ -33,7 +34,7 @@ function RowsSkeleton() {
   return (
     <div className="space-y-4 py-3">
       {Array.from({ length: 6 }, (_, index) => (
-        <div key={index} className="h-9 animate-pulse rounded bg-muted/30" />
+        <Skeleton key={index} className="h-9 rounded bg-muted/30" />
       ))}
     </div>
   );

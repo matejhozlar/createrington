@@ -146,8 +146,14 @@ const WorkshopPack = lazyNamed(
   "WorkshopPack",
 );
 
-const ServerChat = lazyNamed(() => import("./features/chat"), "ServerChat");
-const ChatRedirect = lazyNamed(() => import("./features/chat"), "ChatRedirect");
+const ServerChat = lazyNamed(
+  () => import("./features/chat/server-chat"),
+  "ServerChat",
+);
+const ChatRedirect = lazyNamed(
+  () => import("./features/chat/chat-redirect"),
+  "ChatRedirect",
+);
 
 const AdminLogs = lazyNamed(
   () => import("./features/admin/AdminLogs"),
@@ -291,7 +297,10 @@ const OwnerAdmins = lazyNamed(
   "OwnerAdmins",
 );
 
-const AdminChat = lazyNamed(() => import("./features/admin-chat"), "AdminChat");
+const AdminChat = lazyNamed(
+  () => import("./features/admin-chat/AdminChat"),
+  "AdminChat",
+);
 const AdminChatProvider = lazyNamed(
   () => import("./contexts/admin-chat/AdminChatProvider"),
   "AdminChatProvider",

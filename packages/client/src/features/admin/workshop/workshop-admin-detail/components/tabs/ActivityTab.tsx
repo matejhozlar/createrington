@@ -38,20 +38,21 @@ import {
 import { TableCard } from "@/components/paged-table";
 import { PlayerLabel } from "@/components/player-label";
 import { FilterBar } from "@/features/admin/components/FilterBar";
-import {
-  MOD_STATUS_STYLES,
-  REJECT_REASON_LABELS,
-} from "@/features/workshop/format";
+import { MOD_STATUS_STYLES } from "@/features/workshop/format";
 import {
   WORKSHOP_MOD_EVENT_TYPES,
   WORKSHOP_MOD_EVENT_TYPE_LABELS,
+  WORKSHOP_MOD_REJECT_REASON_LABELS,
 } from "@createrington/shared/workshop";
 import type {
   WorkshopModEventType,
   WorkshopModStatus,
 } from "@createrington/shared/db";
-import { ModCell, ModCellSkeleton } from "../ModCell";
-import type { WorkshopEvent } from "../../types";
+import {
+  ModCell,
+  ModCellSkeleton,
+} from "@/features/admin/workshop/workshop-admin-detail/components/ModCell";
+import type { WorkshopEvent } from "@/features/admin/workshop/workshop-admin-detail/types";
 
 const EVENTS_PER_PAGE = 25;
 
@@ -109,7 +110,9 @@ function eventContext(event: WorkshopEvent): string | null {
     case "rejected":
       return (
         [
-          event.rejectReason ? REJECT_REASON_LABELS[event.rejectReason] : null,
+          event.rejectReason
+            ? WORKSHOP_MOD_REJECT_REASON_LABELS[event.rejectReason]
+            : null,
           event.note,
         ]
           .filter(Boolean)

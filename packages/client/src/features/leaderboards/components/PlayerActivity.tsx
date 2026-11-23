@@ -1,3 +1,4 @@
+import { Skeleton } from "@/components/ui/skeleton";
 import { useLayoutEffect, useRef, useState } from "react";
 import { formatPlaytime } from "@createrington/shared/format";
 import { trpc } from "@/lib/trpc";
@@ -54,13 +55,13 @@ function ActivitySkeleton() {
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
         {Array.from({ length: 4 }, (_, index) => (
-          <div
+          <Skeleton
             key={index}
-            className="h-[3.25rem] animate-pulse rounded-md bg-muted/30"
+            className="h-[3.25rem] rounded-md bg-muted/30"
           />
         ))}
       </div>
-      <div className="h-[118px] animate-pulse rounded-md bg-muted/30" />
+      <Skeleton className="h-[118px] rounded-md bg-muted/30" />
     </div>
   );
 }

@@ -13,8 +13,6 @@ import {
 } from "@createrington/shared/workshop";
 import type { BadgeTone } from "@/components/ui/badge";
 
-export { WORKSHOP_MOD_REJECT_REASON_LABELS as REJECT_REASON_LABELS } from "@createrington/shared/workshop";
-
 export const LOADER_NAMES: Record<number, string> = {
   1: "Forge",
   4: "Fabric",
@@ -53,6 +51,13 @@ export function projectCategories(categories: unknown): string[] {
   return categories.flatMap((category) =>
     typeof category?.name === "string" ? [category.name as string] : [],
   );
+}
+
+export function categoryOptions(categories: string[]) {
+  return [
+    { value: "all", label: "All categories" },
+    ...categories.map((name) => ({ value: name, label: name })),
+  ];
 }
 
 export function projectKindLabel(classId: number): string | null {

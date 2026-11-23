@@ -1,3 +1,4 @@
+import { Badge } from "@/components/ui/badge";
 import { useEffect, useMemo } from "react";
 import { Users, X } from "lucide-react";
 import { playerAvatarUrl } from "@/lib/playerImages";
@@ -117,9 +118,9 @@ export function PlayerListPanel({
             <h2 className="text-sm font-semibold text-foreground">
               Online Players
             </h2>
-            <span className="inline-flex items-center justify-center rounded-full bg-green-500/20 px-2 py-0.5 text-[11px] font-semibold text-green-500">
+            <Badge tone="success" className="px-2 text-[11px] font-semibold">
               {players.length}
-            </span>
+            </Badge>
           </div>
         )}
 

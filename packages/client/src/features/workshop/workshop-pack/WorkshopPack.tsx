@@ -1,32 +1,29 @@
-import { useRef } from "react";
-import { Link, useParams } from "react-router";
-import { ArrowLeft } from "lucide-react";
-import { trpc } from "@/lib/trpc";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { SearchInput } from "@/components/search-input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { ErrorState, LoadingState } from "@/components/query-states";
-import { NotFound } from "@/components/not-found";
-import { CurseForgeIcon } from "@/components/icons/curseforge";
-import { isHttpUrl, loaderName, projectCategories } from "../format";
-import { PAGE_SIZE, WORDMARK_IMAGE } from "../constants";
-import { useFilterParams } from "../hooks/use-filter-params";
-import { usePagination } from "../hooks/use-pagination";
-import { useViewMode } from "../hooks/use-view-mode";
-import { ClearButton } from "../components/ClearButton";
-import { ViewToggle } from "../components/ViewToggle";
-import { WorkshopDisabledState } from "../components/WorkshopEmptyState";
-import { WorkshopHero } from "../components/WorkshopHero";
-import { PackList } from "./components/PackList";
 import { useQuery } from "@tanstack/react-query";
+import { trpc } from "@/lib/trpc";
+import { Button } from "@/components/ui/button";
+import { ErrorState, LoadingState } from "@/components/query-states";
+import { CurseForgeIcon } from "@/components/icons/curseforge";
 import { pluralize } from "@/lib/format";
+import {
+  categoryOptions,
+  isHttpUrl,
+  projectCategories,
+} from "@/features/workshop/format";
+import { useFilterParams } from "@/features/workshop/hooks/use-filter-params";
+import { usePagination } from "@/features/workshop/hooks/use-pagination";
+import { useViewMode } from "@/features/workshop/hooks/use-view-mode";
+import { useWorkshopBySlug } from "@/features/workshop/hooks/use-workshop-by-slug";
+import {
+  FilterSelect,
+  FilterToolbar,
+} from "@/features/workshop/components/FilterToolbar";
+import { ShowMoreButton } from "@/features/workshop/components/ShowMoreButton";
+import { DashedBox } from "@/features/workshop/components/WorkshopEmptyState";
+import {
+  WorkshopPageHeader,
+  WorkshopPageShell,
+} from "@/features/workshop/components/WorkshopPageShell";
+import { PackList } from "./components/PackList";
 
 const FALLBACK_DESCRIPTION =
   "Everything running on the server right now: the base pack plus every mod players have voted in.";
@@ -40,7 +37,7 @@ const SOURCE_OPTIONS: Array<{ value: SourceFilter; label: string }> = [
 ];
 
 export function WorkshopPack() {
-  const { slug } = useParams<{ slug: string }>();
+  const { slug, workshopId, gate } = useWorkshopBySlug("Loading the pack...");
 
   const { searchParams, setParam, searchInput, setSearchInput, query } =
     useFilterParams();
@@ -51,19 +48,10 @@ export function WorkshopPack() {
   const source: SourceFilter =
     sourceParam === "voted" || sourceParam === "base" ? sourceParam : "all";
   const searching = query.length > 0;
-  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const { shownCount, showMore } = usePagination(
     `${query}:${source}:${category}`,
   );
-
-  const workshopQuery = useQuery(
-    trpc.user.workshops.get.queryOptions(
-      { slug: slug! },
-      { enabled: !!slug, retry: false },
-    ),
-  );
-  const workshopId = workshopQuery.data?.workshop.id;
 
   const packQuery = useQuery(
     trpc.user.workshops.getPack.queryOptions(
@@ -72,39 +60,10 @@ export function WorkshopPack() {
     ),
   );
 
-  if (workshopQuery.error?.data?.code === "NOT_FOUND") {
-    return <NotFound />;
-  }
+  const page = gate();
+  if (!page.data) return page.fallback;
 
-  if (workshopQuery.error) {
-    return (
-      <div className="px-5 py-10 md:px-8">
-        <div className="mx-auto max-w-6xl">
-          {workshopQuery.error.data?.code === "FORBIDDEN" ? (
-            <WorkshopDisabledState />
-          ) : (
-            <ErrorState
-              bordered
-              message={workshopQuery.error.message}
-              onRetry={() => workshopQuery.refetch()}
-            />
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  if (workshopQuery.isLoading || !workshopQuery.data) {
-    return (
-      <LoadingState
-        size="large"
-        text="Loading the pack..."
-        className="flex-none px-0 py-32"
-      />
-    );
-  }
-
-  const { workshop } = workshopQuery.data;
+  const { workshop } = page.data;
   const modpack = packQuery.data?.modpack;
   const mods = packQuery.data?.mods ?? [];
 
@@ -140,147 +99,87 @@ export function WorkshopPack() {
   const remaining = visible.length - shownCount;
 
   return (
-    <div className="relative overflow-hidden">
-      <WorkshopHero className="h-[340px]" />
+    <WorkshopPageShell
+      backTo={`/workshop/${slug}`}
+      backLabel="Back to the workshop"
+    >
+      <WorkshopPageHeader
+        title="The full pack"
+        description={modpack?.description ?? FALLBACK_DESCRIPTION}
+        workshop={workshop}
+        action={
+          modpack &&
+          isHttpUrl(modpack.curseforgeUrl) && (
+            <Button size="lg" asChild>
+              <a
+                href={modpack.curseforgeUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <CurseForgeIcon className="size-4" />
+                Get the pack on CurseForge
+              </a>
+            </Button>
+          )
+        }
+      />
 
-      <div className="relative mx-auto max-w-6xl px-5 pt-8 pb-16 md:px-8">
-        <Link
-          to={`/workshop/${slug}`}
-          className="inline-flex items-center gap-1.5 text-[13px] text-muted-foreground transition-colors hover:text-foreground"
-        >
-          <ArrowLeft className="size-[15px]" />
-          Back to the workshop
-        </Link>
-
-        <header className="mt-5 flex flex-wrap items-center justify-between gap-6">
-          <div className="max-w-[620px] min-w-0">
-            <div className="flex flex-wrap items-center gap-3.5">
-              <h1 className="text-4xl font-semibold text-shadow-[0_2px_8px_rgb(0_0_0/0.4)]">
-                The full pack
-              </h1>
-              <div className="flex gap-2">
-                <Badge variant="outline">{workshop.gameVersion}</Badge>
-                <Badge variant="outline">
-                  {loaderName(workshop.modLoaderType)}
-                </Badge>
-              </div>
-            </div>
-            <p className="mt-4 max-w-2xl text-base text-zinc-200 text-shadow-[0_1px_4px_rgb(0_0_0/0.4)]">
-              {modpack?.description ?? FALLBACK_DESCRIPTION}
-            </p>
-            {modpack && isHttpUrl(modpack.curseforgeUrl) && (
-              <div className="mt-6">
-                <Button size="lg" asChild>
-                  <a
-                    href={modpack.curseforgeUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <CurseForgeIcon className="size-4" />
-                    Get the pack on CurseForge
-                  </a>
-                </Button>
-              </div>
-            )}
-          </div>
-          <img
-            src={WORDMARK_IMAGE}
-            alt="Createrington"
-            className="hidden w-[280px] drop-shadow-[0_6px_14px_rgb(0_0_0/0.55)] md:block"
+      <main className="mt-10 flex flex-col gap-6">
+        {packQuery.isLoading ? (
+          <LoadingState text="Loading mods..." className="py-16" />
+        ) : packQuery.error ? (
+          <ErrorState
+            bordered
+            message={packQuery.error.message}
+            onRetry={() => packQuery.refetch()}
           />
-        </header>
+        ) : (
+          <>
+            <h2 className="text-2xl font-semibold">
+              {filtering
+                ? pluralize(visible.length, "mod")
+                : `All ${pluralize(mods.length, "mod")}`}
+            </h2>
 
-        <main className="mt-10 flex flex-col gap-6">
-          {packQuery.isLoading ? (
-            <LoadingState text="Loading mods..." className="py-16" />
-          ) : packQuery.error ? (
-            <ErrorState
-              bordered
-              message={packQuery.error.message}
-              onRetry={() => packQuery.refetch()}
-            />
-          ) : (
-            <>
-              <h2 className="text-2xl font-semibold">
+            <FilterToolbar
+              search={searchInput}
+              onSearchChange={setSearchInput}
+              placeholder="Search the pack..."
+              view={view}
+              onViewChange={changeView}
+            >
+              <FilterSelect
+                value={source}
+                onValueChange={(value) => setParam("source", value, "all")}
+                options={SOURCE_OPTIONS}
+                className="w-full sm:w-44"
+              />
+              <FilterSelect
+                value={category}
+                onValueChange={(value) => setParam("category", value, "all")}
+                options={categoryOptions(categories)}
+                className="w-full sm:w-[150px]"
+              />
+            </FilterToolbar>
+
+            {visible.length === 0 ? (
+              <DashedBox>
                 {filtering
-                  ? pluralize(visible.length, "mod")
-                  : `All ${pluralize(mods.length, "mod")}`}
-              </h2>
+                  ? "No mods match your search."
+                  : "Nothing in the pack yet."}
+              </DashedBox>
+            ) : (
+              <PackList mods={visible.slice(0, shownCount)} view={view} />
+            )}
 
-              <div className="-mt-2 flex flex-wrap items-center gap-2.5">
-                <SearchInput
-                  ref={searchInputRef}
-                  className="w-full min-w-0 flex-none sm:max-w-[420px] sm:min-w-[200px] sm:flex-1"
-                  value={searchInput}
-                  onValueChange={setSearchInput}
-                  placeholder="Search the pack..."
-                  iconClassName="left-2.5 size-[15px]"
-                  inputClassName="h-9 rounded-lg bg-white/[0.03] pr-8 pl-8 text-[13px]"
-                >
-                  {searchInput && (
-                    <ClearButton
-                      className="right-1"
-                      inputRef={searchInputRef}
-                      onClick={() => setSearchInput("")}
-                    />
-                  )}
-                </SearchInput>
-                <span className="hidden flex-1 sm:block" />
-                <Select
-                  value={source}
-                  onValueChange={(value) => setParam("source", value, "all")}
-                >
-                  <SelectTrigger className="w-full sm:w-44">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {SOURCE_OPTIONS.map(({ value, label }) => (
-                      <SelectItem key={value} value={value}>
-                        {label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Select
-                  value={category}
-                  onValueChange={(value) => setParam("category", value, "all")}
-                >
-                  <SelectTrigger className="w-full sm:w-[150px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All categories</SelectItem>
-                    {categories.map((name) => (
-                      <SelectItem key={name} value={name}>
-                        {name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <ViewToggle view={view} onChange={changeView} />
-              </div>
-
-              {visible.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-[var(--border-strong)] px-6 py-10 text-center text-sm text-muted-foreground">
-                  {filtering
-                    ? "No mods match your search."
-                    : "Nothing in the pack yet."}
-                </div>
-              ) : (
-                <PackList mods={visible.slice(0, shownCount)} view={view} />
-              )}
-
-              {remaining > 0 && (
-                <div className="-mt-1 flex justify-center">
-                  <Button variant="secondary" onClick={showMore}>
-                    Show {Math.min(remaining, PAGE_SIZE)} more
-                  </Button>
-                </div>
-              )}
-            </>
-          )}
-        </main>
-      </div>
-    </div>
+            <ShowMoreButton
+              remaining={remaining}
+              onClick={showMore}
+              className="-mt-1"
+            />
+          </>
+        )}
+      </main>
+    </WorkshopPageShell>
   );
 }

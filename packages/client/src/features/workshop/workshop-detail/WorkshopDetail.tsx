@@ -1,31 +1,26 @@
 import { useMemo, useRef } from "react";
-import { Link, useNavigate, useParams } from "react-router";
-import { ArrowLeft } from "lucide-react";
+import { Link, useNavigate } from "react-router";
 import { trpc, queryClient } from "@/lib/trpc";
 import { useAuth } from "@/contexts/auth";
 import { useToastActions } from "@/hooks/use-toast";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { SearchInput } from "@/components/search-input";
+import { ErrorState } from "@/components/query-states";
+import { categoryOptions, projectCategories } from "@/features/workshop/format";
+import { useFilterParams } from "@/features/workshop/hooks/use-filter-params";
+import { usePagination } from "@/features/workshop/hooks/use-pagination";
+import { useViewMode } from "@/features/workshop/hooks/use-view-mode";
+import { useWorkshopBySlug } from "@/features/workshop/hooks/use-workshop-by-slug";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { ErrorState, LoadingState } from "@/components/query-states";
-import { NotFound } from "@/components/not-found";
-import { loaderName, projectCategories } from "../format";
-import { PAGE_SIZE, WORDMARK_IMAGE } from "../constants";
-import { useFilterParams } from "../hooks/use-filter-params";
-import { usePagination } from "../hooks/use-pagination";
-import { useViewMode } from "../hooks/use-view-mode";
-import { ClearButton } from "../components/ClearButton";
-import { PackStrip } from "../components/PackStrip";
-import { WorkshopDisabledState } from "../components/WorkshopEmptyState";
-import { ViewToggle } from "../components/ViewToggle";
-import { WorkshopHero } from "../components/WorkshopHero";
+  FilterSelect,
+  FilterToolbar,
+} from "@/features/workshop/components/FilterToolbar";
+import { PackStrip } from "@/features/workshop/components/PackStrip";
+import { ShowMoreButton } from "@/features/workshop/components/ShowMoreButton";
+import { DashedBox } from "@/features/workshop/components/WorkshopEmptyState";
+import {
+  WorkshopPageHeader,
+  WorkshopPageShell,
+} from "@/features/workshop/components/WorkshopPageShell";
 import {
   Leaderboard,
   type RaceItem,
@@ -52,13 +47,12 @@ function byRace(a: RaceMod, b: RaceMod): number {
 }
 
 export function WorkshopDetail() {
-  const { slug } = useParams<{ slug: string }>();
+  const { slug, workshopId, gate } = useWorkshopBySlug("Loading workshop...");
   const { user } = useAuth();
   const toast = useToastActions();
 
   const navigate = useNavigate();
   const pushedModRef = useRef(false);
-  const searchInputRef = useRef<HTMLInputElement>(null);
   const { searchParams, setParam, searchInput, setSearchInput, query } =
     useFilterParams();
   const [view, changeView] = useViewMode("workshop-detail-view");
@@ -75,14 +69,6 @@ export function WorkshopDetail() {
   const { shownCount, showMore } = usePagination(
     `${query}:${category}:${sortMode}`,
   );
-
-  const workshopQuery = useQuery(
-    trpc.user.workshops.get.queryOptions(
-      { slug: slug! },
-      { enabled: !!slug, retry: false },
-    ),
-  );
-  const workshopId = workshopQuery.data?.workshop.id;
 
   const myUpvotesQuery = useQuery(
     trpc.user.workshops.myUpvotes.queryOptions(
@@ -190,7 +176,8 @@ export function WorkshopDetail() {
     }),
   );
 
-  const allMods = workshopQuery.data?.mods;
+  const page = gate();
+  const allMods = page.data?.mods;
   const upvotedModIds = myUpvotesQuery.data?.modIds;
   const rejectedMods = rejectedQuery.data;
   const packRows = packQuery.data?.mods;
@@ -266,39 +253,9 @@ export function WorkshopDetail() {
     );
   }, [packRows, searching, sortMode, category, query]);
 
-  if (workshopQuery.error?.data?.code === "NOT_FOUND") {
-    return <NotFound />;
-  }
+  if (!page.data) return page.fallback;
 
-  if (workshopQuery.error) {
-    return (
-      <div className="px-5 py-10 md:px-8">
-        <div className="mx-auto max-w-6xl">
-          {workshopQuery.error.data?.code === "FORBIDDEN" ? (
-            <WorkshopDisabledState />
-          ) : (
-            <ErrorState
-              bordered
-              message={workshopQuery.error.message}
-              onRetry={() => workshopQuery.refetch()}
-            />
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  if (workshopQuery.isLoading || !workshopQuery.data) {
-    return (
-      <LoadingState
-        size="large"
-        text="Loading workshop..."
-        className="flex-none px-0 py-32"
-      />
-    );
-  }
-
-  const { workshop, mods } = workshopQuery.data;
+  const { workshop, mods } = page.data;
   const isOpen = workshop.status === "open";
   const { rankById, maxRaceCount, categories } = race;
   const packMods = packRows ?? [];
@@ -332,203 +289,135 @@ export function WorkshopDetail() {
   });
 
   return (
-    <div className="relative overflow-hidden">
-      <WorkshopHero className="h-[340px]" />
+    <WorkshopPageShell backTo="/workshop" backLabel="Back">
+      <WorkshopPageHeader
+        title={workshop.name}
+        description={workshop.description}
+        workshop={workshop}
+        action={
+          isOpen ? (
+            <Button size="lg" asChild>
+              <Link to={`/workshop/${slug}/suggest`}>Suggest mods</Link>
+            </Button>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              This workshop is closed for suggestions.
+            </p>
+          )
+        }
+      />
 
-      <div className="relative mx-auto max-w-6xl px-5 pt-8 pb-16 md:px-8">
-        <Link
-          to="/workshop"
-          className="inline-flex items-center gap-1.5 text-[13px] text-muted-foreground transition-colors hover:text-foreground"
-        >
-          <ArrowLeft className="size-[15px]" />
-          Back
-        </Link>
-
-        <header className="mt-5 flex flex-wrap items-center justify-between gap-6">
-          <div className="max-w-[620px] min-w-0">
-            <div className="flex flex-wrap items-center gap-3.5">
-              <h1 className="text-4xl font-semibold text-shadow-[0_2px_8px_rgb(0_0_0/0.4)]">
-                {workshop.name}
-              </h1>
-              <div className="flex gap-2">
-                <Badge variant="outline">{workshop.gameVersion}</Badge>
-                <Badge variant="outline">
-                  {loaderName(workshop.modLoaderType)}
-                </Badge>
-              </div>
-            </div>
-            {workshop.description && (
-              <p className="mt-4 max-w-2xl text-base text-zinc-200 text-shadow-[0_1px_4px_rgb(0_0_0/0.4)]">
-                {workshop.description}
-              </p>
-            )}
-            <div className="mt-6">
-              {isOpen ? (
-                <Button size="lg" asChild>
-                  <Link to={`/workshop/${slug}/suggest`}>Suggest mods</Link>
-                </Button>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  This workshop is closed for suggestions.
-                </p>
-              )}
-            </div>
-          </div>
-          <img
-            src={WORDMARK_IMAGE}
-            alt="Createrington"
-            className="hidden w-[280px] drop-shadow-[0_6px_14px_rgb(0_0_0/0.55)] md:block"
+      <main className="mt-10 flex flex-col gap-6">
+        {packQuery.error ? (
+          <ErrorState
+            bordered
+            compact
+            message={packQuery.error.message}
+            onRetry={() => packQuery.refetch()}
           />
-        </header>
-
-        <main className="mt-10 flex flex-col gap-6">
-          {packQuery.error ? (
-            <ErrorState
-              bordered
-              compact
-              message={packQuery.error.message}
-              onRetry={() => packQuery.refetch()}
-            />
-          ) : (
-            packMods.length > 0 && (
-              <PackStrip slug={slug!} mods={packMods}>
-                <span className="text-[13px] font-semibold whitespace-nowrap">
-                  Already in the pack
-                </span>
-              </PackStrip>
-            )
-          )}
-
-          <div className="flex flex-wrap items-baseline justify-between gap-3">
-            <h2 className="text-2xl font-semibold">
-              {searching ? "Suggestions" : "Top suggested mods"}
-            </h2>
-            {isOpen && budget && votesLeft !== null && (
-              <span className="text-[13px] text-muted-foreground">
-                <span className="font-semibold text-foreground">
-                  {votesLeft}
-                </span>{" "}
-                of {budget.maxUpvotes} votes left
+        ) : (
+          packMods.length > 0 && (
+            <PackStrip slug={slug} mods={packMods}>
+              <span className="text-[13px] font-semibold whitespace-nowrap">
+                Already in the pack
               </span>
+            </PackStrip>
+          )
+        )}
+
+        <div className="flex flex-wrap items-baseline justify-between gap-3">
+          <h2 className="text-2xl font-semibold">
+            {searching ? "Suggestions" : "Top suggested mods"}
+          </h2>
+          {isOpen && budget && votesLeft !== null && (
+            <span className="text-[13px] text-muted-foreground">
+              <span className="font-semibold text-foreground">{votesLeft}</span>{" "}
+              of {budget.maxUpvotes} votes left
+            </span>
+          )}
+        </div>
+
+        <FilterToolbar
+          search={searchInput}
+          onSearchChange={setSearchInput}
+          placeholder="Search all suggestions..."
+          view={view}
+          onViewChange={changeView}
+        >
+          <FilterSelect
+            value={category}
+            onValueChange={(value) => setParam("category", value, "all")}
+            options={categoryOptions(categories)}
+            className="w-full sm:w-[150px]"
+          />
+          <FilterSelect
+            value={sortMode}
+            onValueChange={(value) => setParam("sort", value, "top")}
+            options={SORT_OPTIONS}
+            className="w-full sm:w-44"
+          />
+        </FilterToolbar>
+
+        {searching && rejectedQuery.error && (
+          <ErrorState
+            bordered
+            compact
+            message={rejectedQuery.error.message}
+            onRetry={() => rejectedQuery.refetch()}
+          />
+        )}
+
+        {items.length === 0 ? (
+          <DashedBox>
+            {filtering
+              ? "No suggestions match your search."
+              : "No suggestions yet, be the first to suggest a mod!"}
+            {searching && isOpen && (
+              <>
+                {" "}
+                <Link
+                  to={`/workshop/${slug}/suggest?q=${encodeURIComponent(searchInput.trim())}`}
+                  className="text-primary hover:underline"
+                >
+                  Suggest it yourself
+                </Link>
+              </>
             )}
-          </div>
+          </DashedBox>
+        ) : (
+          <Leaderboard
+            items={items}
+            allMods={mods}
+            view={view}
+            onOpen={(workshopModId) => {
+              pushedModRef.current = true;
+              setParam("mod", String(workshopModId), "", { replace: false });
+            }}
+            onUpvote={(item) => {
+              if (item.outOfVotes) {
+                toast.info(
+                  "You're out of votes. Remove an upvote to free one up.",
+                );
+                return;
+              }
+              upvoteMutation.mutate({ workshopModId: item.mod.id });
+            }}
+          />
+        )}
 
-          <div className="-mt-2 flex flex-wrap items-center gap-2.5">
-            <SearchInput
-              ref={searchInputRef}
-              className="w-full min-w-0 flex-none sm:max-w-[420px] sm:min-w-[200px] sm:flex-1"
-              value={searchInput}
-              onValueChange={setSearchInput}
-              placeholder="Search all suggestions..."
-              iconClassName="left-2.5 size-[15px]"
-              inputClassName="h-9 rounded-lg bg-white/[0.03] pr-8 pl-8 text-[13px]"
-            >
-              {searchInput && (
-                <ClearButton
-                  className="right-1"
-                  inputRef={searchInputRef}
-                  onClick={() => setSearchInput("")}
-                />
-              )}
-            </SearchInput>
-            <span className="hidden flex-1 sm:block" />
-            <Select
-              value={category}
-              onValueChange={(value) => setParam("category", value, "all")}
-            >
-              <SelectTrigger className="w-full sm:w-[150px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All categories</SelectItem>
-                {categories.map((name) => (
-                  <SelectItem key={name} value={name}>
-                    {name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select
-              value={sortMode}
-              onValueChange={(value) => setParam("sort", value, "top")}
-            >
-              <SelectTrigger className="w-full sm:w-44">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {SORT_OPTIONS.map(({ value, label }) => (
-                  <SelectItem key={value} value={value}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <ViewToggle view={view} onChange={changeView} />
-          </div>
+        <ShowMoreButton
+          remaining={remaining}
+          onClick={showMore}
+          className="-mt-1"
+        />
 
-          {searching && rejectedQuery.error && (
-            <ErrorState
-              bordered
-              compact
-              message={rejectedQuery.error.message}
-              onRetry={() => rejectedQuery.refetch()}
-            />
-          )}
-
-          {items.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-[var(--border-strong)] px-6 py-10 text-center text-sm text-muted-foreground">
-              {filtering
-                ? "No suggestions match your search."
-                : "No suggestions yet, be the first to suggest a mod!"}
-              {searching && isOpen && (
-                <>
-                  {" "}
-                  <Link
-                    to={`/workshop/${slug}/suggest?q=${encodeURIComponent(searchInput.trim())}`}
-                    className="text-primary hover:underline"
-                  >
-                    Suggest it yourself
-                  </Link>
-                </>
-              )}
-            </div>
-          ) : (
-            <Leaderboard
-              items={items}
-              allMods={mods}
-              view={view}
-              onOpen={(workshopModId) => {
-                pushedModRef.current = true;
-                setParam("mod", String(workshopModId), "", { replace: false });
-              }}
-              onUpvote={(item) => {
-                if (item.outOfVotes) {
-                  toast.info(
-                    "You're out of votes. Remove an upvote to free one up.",
-                  );
-                  return;
-                }
-                upvoteMutation.mutate({ workshopModId: item.mod.id });
-              }}
-            />
-          )}
-
-          {remaining > 0 && (
-            <div className="-mt-1 flex justify-center">
-              <Button variant="secondary" onClick={showMore}>
-                Show {Math.min(remaining, PAGE_SIZE)} more
-              </Button>
-            </div>
-          )}
-
-          {packMatches.length > 0 && (
-            <PackSearchResults
-              mods={packMatches}
-              paginationKey={`${query}:${category}`}
-            />
-          )}
-        </main>
-      </div>
+        {packMatches.length > 0 && (
+          <PackSearchResults
+            mods={packMatches}
+            paginationKey={`${query}:${category}`}
+          />
+        )}
+      </main>
 
       <ModDetailDialog
         workshopModId={openModId}
@@ -542,6 +431,6 @@ export function WorkshopDetail() {
           }
         }}
       />
-    </div>
+    </WorkshopPageShell>
   );
 }

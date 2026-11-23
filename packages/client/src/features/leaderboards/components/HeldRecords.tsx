@@ -1,3 +1,4 @@
+import { Skeleton } from "@/components/ui/skeleton";
 import { useState } from "react";
 import {
   formatStatCategory,
@@ -42,9 +43,9 @@ export function HeldRecords({
     return (
       <div className="grid gap-1.5 sm:grid-cols-2">
         {Array.from({ length: 4 }, (_, index) => (
-          <div
+          <Skeleton
             key={index}
-            className="h-[3.25rem] animate-pulse rounded-md bg-muted/30"
+            className="h-[3.25rem] rounded-md bg-muted/30"
           />
         ))}
       </div>

@@ -1,3 +1,4 @@
+import { Badge } from "@/components/ui/badge";
 import {
   useCallback,
   useEffect,
@@ -241,17 +242,15 @@ export function ServerChat() {
             {server.serverName}
           </h1>
           <p className="text-sm text-muted-foreground">
-            {server.online ? (
-              <>
-                <span className="mr-2 inline-block size-2 rounded-full bg-green-500"></span>
-                {server.playerCount} / {server.maxPlayers} online
-              </>
-            ) : (
-              <>
-                <span className="mr-2 inline-block size-2 rounded-full bg-destructive"></span>
-                Offline
-              </>
-            )}
+            <span
+              className={cn(
+                "mr-2 inline-block size-2 rounded-full",
+                server.online ? "bg-green-500" : "bg-destructive",
+              )}
+            />
+            {server.online
+              ? `${server.playerCount} / ${server.maxPlayers} online`
+              : "Offline"}
           </p>
         </div>
 
@@ -267,15 +266,9 @@ export function ServerChat() {
             </Button>
           )}
 
-          <div
-            className={cn(
-              "flex items-center gap-2 rounded-full px-3 py-1.5 text-sm",
-              loading
-                ? "bg-muted/40 text-muted-foreground"
-                : isConnected
-                  ? "bg-green-500/20 text-green-500"
-                  : "bg-destructive/20 text-destructive",
-            )}
+          <Badge
+            tone={loading ? "neutral" : isConnected ? "success" : "danger"}
+            className="gap-2 px-3 py-1.5 text-sm font-normal"
           >
             <span
               className={cn(
@@ -288,7 +281,7 @@ export function ServerChat() {
               : isConnected
                 ? "Connected"
                 : "Disconnected"}
-          </div>
+          </Badge>
         </div>
       </div>
 

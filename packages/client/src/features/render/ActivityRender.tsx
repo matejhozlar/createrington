@@ -1,3 +1,5 @@
+import { RenderFrame, RenderWordmark } from "./components/RenderFrame";
+import { cn } from "@/lib/utils";
 import { formatPlaytime } from "@createrington/shared/format";
 import { LoadingScreen } from "@/components/query-states";
 import { playerAvatarUrl } from "@/lib/playerImages";
@@ -63,24 +65,32 @@ export function ActivityRender() {
   const cellSpacing = (900 - 64 - 36) / NUM_WEEKS;
 
   return (
-    <div
+    <RenderFrame
       id="activity-container"
-      className="relative w-[900px] h-[500px] overflow-hidden bg-background text-foreground flex flex-col"
+      banner={{
+        src: "/assets/render/player-activity.webp",
+        alt: "Player Activity",
+      }}
+      glows={[
+        "-left-16 top-12 h-[320px] w-[320px] bg-emerald-500 opacity-20",
+        "-right-16 -bottom-8 h-[280px] w-[280px] bg-chart-3 opacity-10",
+      ]}
+      footer={
+        <div className="flex items-center justify-between px-8 pb-4 z-10">
+          <div className="flex items-center gap-2.5">
+            {LEVEL_COLORS.map((color, i) => (
+              <div key={i} className="flex items-center gap-1">
+                <div className={cn("size-4 rounded-sm", color)} />
+                <span className="text-[11px] text-muted-foreground font-medium">
+                  {HEATMAP_LEVEL_LABELS[i]}
+                </span>
+              </div>
+            ))}
+          </div>
+          <RenderWordmark />
+        </div>
+      }
     >
-      <div className="absolute inset-0 pointer-events-none render-bg-grid" />
-      <div className="absolute -left-16 top-12 w-[320px] h-[320px] rounded-full blur-[120px] opacity-20 pointer-events-none bg-emerald-500" />
-      <div className="absolute -right-16 -bottom-8 w-[280px] h-[280px] rounded-full blur-[120px] opacity-10 pointer-events-none bg-chart-3" />
-
-      <div className="flex items-center gap-4 px-8 pt-5 z-10">
-        <div className="flex-1 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
-        <img
-          src="/assets/render/player-activity.webp"
-          alt="Player Activity"
-          className="h-[44px] [image-rendering:pixelated]"
-        />
-        <div className="flex-1 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
-      </div>
-
       <div className="flex items-center gap-6 px-8 pt-5 pb-2 z-10">
         <img
           src={avatarSrc}
@@ -97,10 +107,18 @@ export function ActivityRender() {
             </div>
             <div className="flex items-center gap-1.5">
               <div
-                className={`w-2.5 h-2.5 rounded-full ${data.online ? "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.6)]" : "bg-muted-foreground/40"}`}
+                className={cn(
+                  "h-2.5 w-2.5 rounded-full",
+                  data.online
+                    ? "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.6)]"
+                    : "bg-muted-foreground/40",
+                )}
               />
               <span
-                className={`text-[12px] font-semibold tracking-wide uppercase ${data.online ? "text-emerald-400" : "text-muted-foreground/40"}`}
+                className={cn(
+                  "text-[12px] font-semibold tracking-wide uppercase",
+                  data.online ? "text-emerald-400" : "text-muted-foreground/40",
+                )}
               >
                 {data.online ? "Online" : "Offline"}
               </span>
@@ -146,11 +164,12 @@ export function ActivityRender() {
               return (
                 <div
                   key={col}
-                  className={`flex-1 aspect-square rounded-sm ${
+                  className={cn(
+                    "aspect-square flex-1 rounded-sm",
                     day.future
                       ? "opacity-0"
-                      : LEVEL_COLORS[heatmapLevel(day.seconds)]
-                  }`}
+                      : LEVEL_COLORS[heatmapLevel(day.seconds)],
+                  )}
                   title={`${day.date}: ${formatPlaytime(day.seconds)}`}
                 />
               );
@@ -158,22 +177,6 @@ export function ActivityRender() {
           </div>
         ))}
       </div>
-
-      <div className="flex items-center justify-between px-8 pb-4 z-10">
-        <div className="flex items-center gap-2.5">
-          {LEVEL_COLORS.map((color, i) => (
-            <div key={i} className="flex items-center gap-1">
-              <div className={`size-4 rounded-sm ${color}`} />
-              <span className="text-[11px] text-muted-foreground font-medium">
-                {HEATMAP_LEVEL_LABELS[i]}
-              </span>
-            </div>
-          ))}
-        </div>
-        <span className="text-[11px] font-semibold tracking-[0.3em] uppercase text-foreground/15">
-          createrington.com
-        </span>
-      </div>
-    </div>
+    </RenderFrame>
   );
 }

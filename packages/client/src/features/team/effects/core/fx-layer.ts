@@ -39,6 +39,18 @@ type Particle = {
 
 type Flash = { color: string; alpha: number; life: number; age: number };
 
+export type FxFrame = {
+  width: number;
+  height: number;
+  ratio: number;
+  now: number;
+};
+
+export type FxPainter = (
+  ctx: CanvasRenderingContext2D,
+  frame: FxFrame,
+) => boolean;
+
 const MAX_PARTICLES = 1400;
 const MAX_FRAME_DELTA = 0.05;
 const FLOOR_BOUNCE = 0.2;
@@ -74,6 +86,7 @@ class FxLayer {
   private readonly solid: Particle[] = [];
   private readonly glow: Particle[] = [];
   private readonly flashes: Flash[] = [];
+  private readonly painters = new Set<FxPainter>();
   private frameId: number | null = null;
   private lastTime = 0;
   private lastScrollX = 0;
@@ -108,7 +121,13 @@ class FxLayer {
     this.wake();
   }
 
+  paint(painter: FxPainter): void {
+    this.painters.add(painter);
+    this.wake();
+  }
+
   clear(): void {
+    this.painters.clear();
     this.solid.length = 0;
     this.glow.length = 0;
     this.flashes.length = 0;
@@ -119,7 +138,8 @@ class FxLayer {
     return (
       this.solid.length === 0 &&
       this.glow.length === 0 &&
-      this.flashes.length === 0
+      this.flashes.length === 0 &&
+      this.painters.size === 0
     );
   }
 
@@ -226,6 +246,15 @@ class FxLayer {
     this.flashes.length = kept;
   }
 
+  private runPainters(ctx: CanvasRenderingContext2D, frame: FxFrame): void {
+    for (const painter of this.painters) {
+      ctx.save();
+      const keep = painter(ctx, frame);
+      ctx.restore();
+      if (!keep) this.painters.delete(painter);
+    }
+  }
+
   private tick = (now: number): void => {
     const canvas = this.canvas;
     const ctx = this.ctx;
@@ -244,6 +273,8 @@ class FxLayer {
 
     ctx.setTransform(this.ratio, 0, 0, this.ratio, 0, 0);
     ctx.clearRect(0, 0, width, height);
+
+    this.runPainters(ctx, { width, height, ratio: this.ratio, now });
 
     stepParticles(this.solid, delta);
     stepParticles(this.glow, delta);

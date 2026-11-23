@@ -17,6 +17,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import {
   Users,
   TrendingUp,
@@ -314,11 +315,14 @@ export function Home() {
               />
 
               <Badge
-                className={`bg-zinc-900/70 text-lg px-2 sm:px-4 py-2 gap-2 shadow-md ${server?.online ? "text-green-500" : "text-destructive"}`}
-                variant={"outline"}
+                tone={server?.online ? "success" : "danger"}
+                className="gap-2 bg-zinc-900/70 px-2 py-2 text-lg shadow-md sm:px-4"
               >
                 <span
-                  className={`size-4 rounded-full ${server?.online ? "bg-green-500 animate-pulse" : "bg-destructive"}`}
+                  className={cn(
+                    "size-4 rounded-full bg-current",
+                    server?.online && "animate-pulse",
+                  )}
                 />
                 <span className="hidden sm:inline">
                   {server?.online ? "Online" : "Offline"}

@@ -1,13 +1,12 @@
 import { type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { PlayerLabel } from "@/components/player-label";
-import { MOD_STATUS_STYLES, isHttpUrl } from "../../format";
-import { PAGE_SIZE } from "../../constants";
-import { usePagination } from "../../hooks/use-pagination";
-import { ProjectThumb } from "../../components/ProjectThumb";
-import { type PackMod } from "../../workshop-pack/components/PackList";
+import { MOD_STATUS_STYLES, isHttpUrl } from "@/features/workshop/format";
+import { usePagination } from "@/features/workshop/hooks/use-pagination";
+import { ProjectThumb } from "@/features/workshop/components/ProjectThumb";
+import { ShowMoreButton } from "@/features/workshop/components/ShowMoreButton";
+import { type PackMod } from "@/features/workshop/workshop-pack/components/PackList";
 
 const ORIGIN_CREDITS: Partial<Record<PackMod["origin"], string>> = {
   dependency: "Required dependency",
@@ -105,13 +104,11 @@ export function PackSearchResults({
           </div>
         );
       })}
-      {remaining > 0 && (
-        <div className="mt-1 flex justify-center">
-          <Button variant="secondary" onClick={showMore}>
-            Show {Math.min(remaining, PAGE_SIZE)} more
-          </Button>
-        </div>
-      )}
+      <ShowMoreButton
+        remaining={remaining}
+        onClick={showMore}
+        className="mt-1"
+      />
     </div>
   );
 }

@@ -1,15 +1,9 @@
 import { PlayerAnimation, type PlayerObject } from "skinview3d";
 import { TeamEffect, type EffectContext } from "./core/effect";
+import { fx, type FxFrame } from "./core/fx-layer";
+import { clamp01, easeInOutCubic, easeOutCubic } from "./core/math";
 
 const AIM_DURATION = 0.4;
-
-function easeOutCubic(t: number): number {
-  return 1 - (1 - t) ** 3;
-}
-
-function easeInOutCubic(t: number): number {
-  return t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
-}
 
 export class FlashlightAimAnimation extends PlayerAnimation {
   protected animate(player: PlayerObject): void {
@@ -33,104 +27,70 @@ const BEAM_BLUR = 20;
 const SPOT_RADIUS = 60;
 const SCROLL_PX_PER_FRAME = 10;
 const BEAM_EXTEND_DURATION = 2000;
+const TARGET_GLOW =
+  "0 0 10px rgba(255,255,255,0.9), 0 0 25px rgba(255,255,255,0.5)";
 
-export class FlashlightEffect {
-  private canvasOverlay: HTMLCanvasElement | null = null;
-  private ctx: CanvasRenderingContext2D | null = null;
-  private sourceElement: HTMLElement;
-  private animationId: number | null = null;
-  private disposed = false;
-  private startTime = 0;
+export class FlashlightBeam {
+  private startTime: number | null = null;
+  private fadeStart: number | null = null;
 
-  constructor(sourceElement: HTMLElement) {
-    this.sourceElement = sourceElement;
+  constructor(
+    private readonly source: HTMLElement,
+    private readonly target: HTMLElement,
+  ) {}
+
+  start(): void {
+    fx.paint(this.paint);
   }
 
-  start() {
-    const overlay = document.createElement("canvas");
-    overlay.style.cssText = `
-      position: fixed;
-      inset: 0;
-      z-index: 9998;
-      pointer-events: none;
-      transition: opacity ${FADE_OUT_DURATION}ms ease-out;
-    `;
-    overlay.width = window.innerWidth;
-    overlay.height = window.innerHeight;
+  private paint = (ctx: CanvasRenderingContext2D, frame: FxFrame): boolean => {
+    const { width: w, height: h, ratio, now } = frame;
+    this.startTime ??= now;
 
-    const ctx = overlay.getContext("2d");
-    if (!ctx) return;
+    const fade =
+      this.fadeStart === null
+        ? 1
+        : (1 - clamp01((now - this.fadeStart) / FADE_OUT_DURATION)) ** 2;
+    if (fade <= 0) return false;
 
-    this.canvasOverlay = overlay;
-    this.ctx = ctx;
-    this.startTime = performance.now();
-    document.body.appendChild(overlay);
-
-    this.animationId = requestAnimationFrame(this.render);
-  }
-
-  private render = (now: number) => {
-    if (this.disposed) return;
-
-    const ctx = this.ctx!;
-    const overlay = this.canvasOverlay!;
-
-    const w = window.innerWidth;
-    const h = window.innerHeight;
-    if (overlay.width !== w || overlay.height !== h) {
-      overlay.width = w;
-      overlay.height = h;
-    }
-
-    const elapsed = now - this.startTime;
-    const extendT = Math.min(elapsed / BEAM_EXTEND_DURATION, 1);
+    const extendT = Math.min((now - this.startTime) / BEAM_EXTEND_DURATION, 1);
     const extendEased = easeInOutCubic(extendT);
 
-    const srcRect = this.sourceElement.getBoundingClientRect();
+    const srcRect = this.source.getBoundingClientRect();
     const sx = srcRect.left + srcRect.width * 0.35;
     const sy = srcRect.top + srcRect.height * 0.5;
 
-    const applyLink = document.querySelector<HTMLAnchorElement>(
-      'footer a[href="/apply-to-join"]',
-    );
-    if (!applyLink) {
-      this.animationId = requestAnimationFrame(this.render);
-      return;
-    }
-
-    const tgtRect = applyLink.getBoundingClientRect();
+    const tgtRect = this.target.getBoundingClientRect();
     const tx = tgtRect.left + tgtRect.width / 2 - 10;
     const ty = tgtRect.top + tgtRect.height / 2 + 8;
 
     const beamX = sx + (tx - sx) * extendEased;
     const beamY = sy + (ty - sy) * extendEased;
 
-    ctx.clearRect(0, 0, w, h);
-
-    ctx.globalCompositeOperation = "source-over";
-    ctx.filter = "none";
-    ctx.fillStyle = `rgba(0, 0, 0, ${OVERLAY_OPACITY})`;
+    ctx.fillStyle = `rgba(0, 0, 0, ${OVERLAY_OPACITY * fade})`;
     ctx.fillRect(0, 0, w, h);
 
-    this.drawBeamCutout(ctx, sx, sy, beamX, beamY, extendEased);
+    ctx.globalCompositeOperation = "destination-out";
+    this.drawBeamCutout(ctx, ratio, sx, sy, beamX, beamY, extendEased);
+    this.drawSpotCircle(ctx, ratio, beamX, beamY, extendEased);
 
-    this.drawSpotCircle(ctx, beamX, beamY, extendEased);
+    if (this.fadeStart !== null) return true;
 
     if (extendT < 1 && tgtRect.top > h * 0.7) {
       window.scrollBy({ top: SCROLL_PX_PER_FRAME, behavior: "instant" });
     }
 
     if (extendT > 0.95 && ty > 0 && ty < h) {
-      applyLink.style.textShadow =
-        "0 0 10px rgba(255,255,255,0.9), 0 0 25px rgba(255,255,255,0.5)";
-      applyLink.style.transition = "text-shadow 0.3s ease";
+      this.target.style.textShadow = TARGET_GLOW;
+      this.target.style.transition = "text-shadow 0.3s ease";
     }
 
-    this.animationId = requestAnimationFrame(this.render);
+    return true;
   };
 
   private drawBeamCutout(
     ctx: CanvasRenderingContext2D,
+    ratio: number,
     sx: number,
     sy: number,
     ex: number,
@@ -149,9 +109,7 @@ export class FlashlightEffect {
     const cosP = Math.cos(perp);
     const sinP = Math.sin(perp);
 
-    ctx.save();
-    ctx.globalCompositeOperation = "destination-out";
-    ctx.filter = `blur(${BEAM_BLUR}px)`;
+    ctx.filter = `blur(${BEAM_BLUR * ratio}px)`;
 
     ctx.beginPath();
     ctx.moveTo(sx + cosP * srcHalf, sy + sinP * srcHalf);
@@ -162,12 +120,11 @@ export class FlashlightEffect {
 
     ctx.fillStyle = "rgba(255,255,255,1)";
     ctx.fill();
-
-    ctx.restore();
   }
 
   private drawSpotCircle(
     ctx: CanvasRenderingContext2D,
+    ratio: number,
     x: number,
     y: number,
     progress: number,
@@ -175,9 +132,7 @@ export class FlashlightEffect {
     const radius = SPOT_RADIUS * progress;
     if (radius < 3) return;
 
-    ctx.save();
-    ctx.globalCompositeOperation = "destination-out";
-    ctx.filter = `blur(${BEAM_BLUR + 8}px)`;
+    ctx.filter = `blur(${(BEAM_BLUR + 8) * ratio}px)`;
 
     const grad = ctx.createRadialGradient(x, y, 0, x, y, radius);
     grad.addColorStop(0, "rgba(255,255,255,0.9)");
@@ -188,53 +143,23 @@ export class FlashlightEffect {
     ctx.beginPath();
     ctx.arc(x, y, radius, 0, Math.PI * 2);
     ctx.fill();
-
-    ctx.restore();
   }
 
-  dispose() {
-    this.disposed = true;
-
-    if (this.animationId !== null) {
-      cancelAnimationFrame(this.animationId);
-      this.animationId = null;
-    }
-
-    const applyLink = document.querySelector<HTMLAnchorElement>(
-      'footer a[href="/apply-to-join"]',
-    );
-    if (applyLink) {
-      applyLink.style.textShadow = "";
-      applyLink.style.transition = "";
-    }
-
-    const overlay = this.canvasOverlay;
-    if (!overlay) return;
-    this.canvasOverlay = null;
-
-    overlay.style.opacity = "0";
-
-    const controller = new AbortController();
-    const removeOverlay = () => {
-      controller.abort();
-      clearTimeout(fallbackTimer);
-      overlay.remove();
-    };
-
-    overlay.addEventListener("transitionend", removeOverlay, {
-      once: true,
-      signal: controller.signal,
-    });
-    const fallbackTimer = setTimeout(removeOverlay, FADE_OUT_DURATION + 100);
+  dispose(): void {
+    if (this.fadeStart !== null) return;
+    this.fadeStart = performance.now();
+    this.target.style.textShadow = "";
+    this.target.style.transition = "";
   }
 }
 
 const BEAM_DELAY_MS = 1000;
+const BEAM_TARGET_ID = "footer-apply-link";
 
 export class FlashlightHoverEffect extends TeamEffect {
   private readonly aim = new FlashlightAimAnimation();
   private timer: number | null;
-  private beam: FlashlightEffect | null = null;
+  private beam: FlashlightBeam | null = null;
 
   constructor(context: EffectContext) {
     super(context);
@@ -242,7 +167,9 @@ export class FlashlightHoverEffect extends TeamEffect {
     const slot = canvas.closest<HTMLElement>('[role="img"]') ?? canvas;
     this.timer = window.setTimeout(() => {
       this.timer = null;
-      this.beam = new FlashlightEffect(slot);
+      const target = document.getElementById(BEAM_TARGET_ID);
+      if (!target) return;
+      this.beam = new FlashlightBeam(slot, target);
       this.beam.start();
     }, BEAM_DELAY_MS);
   }

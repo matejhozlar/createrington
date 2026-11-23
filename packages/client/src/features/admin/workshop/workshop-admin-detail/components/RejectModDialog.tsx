@@ -9,8 +9,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { REJECT_REASON_LABELS } from "@/features/workshop/format";
-import { WORKSHOP_MOD_REJECT_REASONS } from "@createrington/shared/workshop";
+import {
+  WORKSHOP_MOD_REJECT_REASONS,
+  WORKSHOP_MOD_REJECT_REASON_LABELS,
+} from "@createrington/shared/workshop";
 
 type RejectReason = (typeof WORKSHOP_MOD_REJECT_REASONS)[number];
 
@@ -63,11 +65,13 @@ export function RejectModDialog({
             <SelectValue placeholder="Pick a reason" />
           </SelectTrigger>
           <SelectContent>
-            {Object.entries(REJECT_REASON_LABELS).map(([value, label]) => (
-              <SelectItem key={value} value={value}>
-                {label}
-              </SelectItem>
-            ))}
+            {Object.entries(WORKSHOP_MOD_REJECT_REASON_LABELS).map(
+              ([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ),
+            )}
           </SelectContent>
         </Select>
       </div>

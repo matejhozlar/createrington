@@ -1,7 +1,8 @@
+import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
-import { formatDate } from "@createrington/shared/format";
+import { formatDate, formatMoney } from "@createrington/shared/format";
 import { LoadingScreen } from "@/components/query-states";
-import { formatMoney } from "@/lib/format";
+import { RenderFrame } from "./components/RenderFrame";
 import { RenderTeamTag } from "./components/RenderTeamTag";
 import { RenderUnavailable } from "./components/RenderUnavailable";
 import { useRenderData } from "./hooks/use-render-data";
@@ -44,9 +45,10 @@ function StatRow({
   return (
     <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 px-3 py-2 rounded-md bg-card/60 border border-border">
       <span
-        className={`text-left text-[15px] font-semibold ${
-          win === 1 ? "text-primary" : "text-muted-foreground"
-        }`}
+        className={cn(
+          "text-left text-[15px] font-semibold",
+          win === 1 ? "text-primary" : "text-muted-foreground",
+        )}
       >
         {value1}
       </span>
@@ -54,9 +56,10 @@ function StatRow({
         {label}
       </span>
       <span
-        className={`text-right text-[15px] font-semibold ${
-          win === 2 ? "text-primary" : "text-muted-foreground"
-        }`}
+        className={cn(
+          "text-right text-[15px] font-semibold",
+          win === 2 ? "text-primary" : "text-muted-foreground",
+        )}
       >
         {value2}
       </span>
@@ -101,24 +104,17 @@ export function CompareRender() {
   );
 
   return (
-    <div
+    <RenderFrame
       id="compare-container"
-      className="relative w-[900px] h-[500px] overflow-hidden bg-background text-foreground flex flex-col"
+      banner={{
+        src: "/assets/render/player-comparison.webp",
+        alt: "Player Comparison",
+      }}
+      glows={[
+        "-left-20 top-8 h-[350px] w-[350px] bg-chart-1 opacity-20",
+        "-right-20 bottom-8 h-[350px] w-[350px] bg-chart-5 opacity-20",
+      ]}
     >
-      <div className="absolute inset-0 pointer-events-none render-bg-grid" />
-      <div className="absolute -left-20 top-8 w-[350px] h-[350px] rounded-full blur-[120px] opacity-20 pointer-events-none bg-chart-1" />
-      <div className="absolute -right-20 bottom-8 w-[350px] h-[350px] rounded-full blur-[120px] opacity-20 pointer-events-none bg-chart-5" />
-
-      <div className="flex items-center gap-4 px-8 pt-5 z-10">
-        <div className="flex-1 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
-        <img
-          src="/assets/render/player-comparison.webp"
-          alt="Player Comparison"
-          className="h-[44px] [image-rendering:pixelated]"
-        />
-        <div className="flex-1 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
-      </div>
-
       <div className="flex-1 flex items-center justify-center px-6 pt-2 z-10">
         <div className="flex flex-col items-center w-[200px] shrink-0">
           <div className="relative h-[300px] flex items-end justify-center">
@@ -144,8 +140,8 @@ export function CompareRender() {
           <div className="flex flex-col gap-2.5 w-full">
             <StatRow
               label="NETWORTH"
-              value1={formatMoney(left.networth)}
-              value2={formatMoney(right.networth)}
+              value1={formatMoney(Number(left.networth))}
+              value2={formatMoney(Number(right.networth))}
               win={networthWin}
             />
             <StatRow
@@ -186,12 +182,6 @@ export function CompareRender() {
           </div>
         </div>
       </div>
-
-      <div className="pb-3.5 text-center z-10">
-        <span className="text-[11px] font-semibold tracking-[0.3em] uppercase text-foreground/15">
-          createrington.com
-        </span>
-      </div>
-    </div>
+    </RenderFrame>
   );
 }
