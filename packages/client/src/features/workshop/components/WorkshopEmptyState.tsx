@@ -10,7 +10,7 @@ export function DashedBox({
   return (
     <div
       className={cn(
-        "rounded-xl border border-dashed border-[var(--border-strong)] px-6 py-10 text-center text-sm text-muted-foreground",
+        "rounded-xl border border-dashed border-border-strong px-6 py-10 text-center text-sm text-muted-foreground",
         className,
       )}
     >

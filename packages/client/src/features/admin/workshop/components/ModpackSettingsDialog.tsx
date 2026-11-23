@@ -179,7 +179,7 @@ export function ModpackSettingsDialog({
           instead.
         </p>
       </Field>
-      <label className="flex cursor-pointer items-start gap-3 rounded-md border border-border bg-card p-3 hover:border-[var(--border-strong)]">
+      <label className="flex cursor-pointer items-start gap-3 rounded-md border border-border bg-card p-3 hover:border-border-strong">
         <Switch
           checked={shipsServerPack}
           onCheckedChange={(value: boolean) =>

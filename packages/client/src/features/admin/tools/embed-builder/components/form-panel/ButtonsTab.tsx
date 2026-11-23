@@ -15,8 +15,8 @@ import type {
   EmbedActionButton,
   EmbedLinkButton,
 } from "@createrington/shared/api/embed";
-import { MentionAutocomplete } from "../MentionAutocomplete";
-import type { FocusTarget } from "../../focus";
+import { MentionAutocomplete } from "@/features/admin/tools/embed-builder/components/MentionAutocomplete";
+import type { FocusTarget } from "@/features/admin/tools/embed-builder/focus";
 import { Textarea } from "@/components/ui/textarea";
 import {
   COMPACT_BUTTON,
@@ -24,9 +24,9 @@ import {
   EmptyState,
   Segmented,
   RowIconButton,
-} from "../form-primitives";
+} from "@/features/admin/tools/embed-builder/components/form-primitives";
 import type { TabProps } from "./types";
-import { useDragSensors } from "../../hooks/use-drag-sensors";
+import { useDragSensors } from "@/features/admin/tools/embed-builder/hooks/use-drag-sensors";
 
 type ButtonItem =
   | { kind: "link"; btn: EmbedLinkButton; idx: number }
@@ -275,7 +275,7 @@ function ButtonRow({
       }}
       className={cn(
         "flex gap-1 rounded-md border border-border bg-card p-2 transition-shadow max-sm:flex-wrap",
-        "hover:border-[var(--border-strong)] hover:shadow-sm",
+        "hover:border-border-strong hover:shadow-sm",
         isDragging && "z-10 shadow-lg",
       )}
     >

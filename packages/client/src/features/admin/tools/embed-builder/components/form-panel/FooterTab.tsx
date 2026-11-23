@@ -1,6 +1,9 @@
 import { useEffect, useRef } from "react";
 import { Switch } from "@/components/ui/switch";
-import { TextField, type InsertableInputHandle } from "../form-primitives";
+import {
+  TextField,
+  type InsertableInputHandle,
+} from "@/features/admin/tools/embed-builder/components/form-primitives";
 import type { TabProps } from "./types";
 
 export function FooterTab({ data, set, focused }: TabProps) {
@@ -22,7 +25,7 @@ export function FooterTab({ data, set, focused }: TabProps) {
         inputRef={footerRef}
       />
 
-      <label className="flex cursor-pointer items-start gap-3 rounded-md border border-border bg-card p-3 hover:border-[var(--border-strong)]">
+      <label className="flex cursor-pointer items-start gap-3 rounded-md border border-border bg-card p-3 hover:border-border-strong">
         <Switch
           checked={!!data.timestamp}
           onCheckedChange={(checked) => set({ timestamp: checked })}

@@ -170,7 +170,7 @@ export function RotationConfig() {
       </div>
 
       <div className="space-y-4">
-        <label className="flex cursor-pointer items-start gap-3 rounded-md border border-border bg-card p-3 hover:border-[var(--border-strong)]">
+        <label className="flex cursor-pointer items-start gap-3 rounded-md border border-border bg-card p-3 hover:border-border-strong">
           <Switch checked={currentEnabled} onCheckedChange={setEnabled} />
           <div className="space-y-0.5">
             <div className="text-[13px] font-medium text-foreground">

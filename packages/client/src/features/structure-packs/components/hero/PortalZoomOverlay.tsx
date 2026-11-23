@@ -363,7 +363,7 @@ function MiniStat({ label, value, mono, accent }: MiniStatProps) {
         className={cn(
           "mt-1 truncate text-[15px] font-semibold",
           mono && "font-mono tabular-nums",
-          accent ? "text-[var(--blue-bright)]" : "text-white",
+          accent ? "text-blue-bright" : "text-white",
         )}
       >
         {value}
@@ -491,9 +491,9 @@ function PackRowV3({
 
   return (
     <>
-      <div className="group relative flex flex-col gap-3 rounded-xl border border-white/10 bg-white/[0.02] p-4 transition-colors hover:border-[var(--blue)]/40 hover:bg-white/[0.04]">
+      <div className="group relative flex flex-col gap-3 rounded-xl border border-white/10 bg-white/[0.02] p-4 transition-colors hover:border-blue/40 hover:bg-white/[0.04]">
         {leader && (
-          <div className="absolute -top-2 left-3 inline-flex items-center gap-1 rounded-full border border-[var(--blue)]/40 bg-black px-2 py-0.5 text-[9px] uppercase tracking-[0.2em] text-[var(--blue-bright)] lg:hidden">
+          <div className="absolute -top-2 left-3 inline-flex items-center gap-1 rounded-full border border-blue/40 bg-black px-2 py-0.5 text-[9px] uppercase tracking-[0.2em] text-blue-bright lg:hidden">
             <TrendingUp className="size-2.5" />
             Leading
           </div>
@@ -516,9 +516,7 @@ function PackRowV3({
           <div className="shrink-0 text-right">
             <div className="font-mono text-[28px] font-semibold leading-none tabular-nums text-white">
               {probability}
-              <span className="align-top text-[16px] text-[var(--blue-bright)]">
-                %
-              </span>
+              <span className="align-top text-[16px] text-blue-bright">%</span>
             </div>
           </div>
         </div>
@@ -544,7 +542,7 @@ function PackRowV3({
               {boostUnits}
             </span>
             {myBoostUnits > 0 && (
-              <span className="inline-flex items-center gap-1 text-[var(--blue-bright)]">
+              <span className="inline-flex items-center gap-1 text-blue-bright">
                 +{myBoostUnits} yours
               </span>
             )}
@@ -575,7 +573,7 @@ function PackRowV3({
             <button
               type="button"
               onClick={() => setBoostOpen(true)}
-              className="flex-1 rounded-md bg-[var(--blue)] px-3 py-1.5 text-[12px] font-semibold text-white transition-colors hover:bg-[var(--blue-bright)]"
+              className="flex-1 rounded-md bg-blue px-3 py-1.5 text-[12px] font-semibold text-white transition-colors hover:bg-blue-bright"
             >
               Boost
             </button>
@@ -583,7 +581,7 @@ function PackRowV3({
             <button
               type="button"
               onClick={() => void login()}
-              className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-md bg-[var(--blue)] px-3 py-1.5 text-[12px] font-semibold text-white transition-colors hover:bg-[var(--blue-bright)]"
+              className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-md bg-blue px-3 py-1.5 text-[12px] font-semibold text-white transition-colors hover:bg-blue-bright"
             >
               <LogIn className="size-3" />
               Log in to boost

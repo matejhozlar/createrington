@@ -324,7 +324,7 @@ export function Changelog() {
               ))}
 
               {filteredSections.length === 0 && sections.length > 0 && (
-                <div className="rounded-2xl border border-dashed border-[var(--border-strong)] bg-card p-16 text-center">
+                <div className="rounded-2xl border border-dashed border-border-strong bg-card p-16 text-center">
                   <div className="mb-3 text-4xl opacity-40">⚙</div>
                   <div className="mb-1 font-semibold">No matching changes</div>
                   <div className="text-sm text-muted-foreground">
@@ -375,7 +375,7 @@ function VersionRail({
                       bump === "major" &&
                         "bg-primary shadow-[0_0_0_1px_var(--primary),0_0_12px_var(--primary-glow)]",
                       bump === "minor" &&
-                        "bg-[var(--c-add)] shadow-[0_0_0_1px_var(--c-add)]",
+                        "bg-c-add shadow-[0_0_0_1px_var(--c-add)]",
                       bump === "patch" &&
                         "bg-secondary shadow-[0_0_0_1px_var(--border-strong)]",
                       isActive &&
@@ -426,7 +426,7 @@ function Hero({
 }) {
   return (
     <div
-      className="relative mb-7 overflow-hidden rounded-[18px] border border-[var(--border-strong)] p-9 pb-8 shadow-[0_1px_0_oklch(1_0_0_/_0.04)_inset,0_24px_48px_-24px_oklch(0_0_0_/_0.6)]"
+      className="relative mb-7 overflow-hidden rounded-[18px] border border-border-strong p-9 pb-8 shadow-[0_1px_0_oklch(1_0_0_/_0.04)_inset,0_24px_48px_-24px_oklch(0_0_0_/_0.6)]"
       style={{
         background:
           "radial-gradient(ellipse 70% 100% at 100% 0%, oklch(0.26 0.014 285) 0%, transparent 65%), linear-gradient(180deg, oklch(0.215 0.011 285) 0%, oklch(0.185 0.009 285) 100%)",
@@ -447,7 +447,7 @@ function Hero({
           <span className="font-mono text-[46px] font-semibold leading-none tracking-[-0.02em] text-primary">
             {latest.version}
           </span>
-          <span className="h-7 w-px bg-[var(--border-strong)]" />
+          <span className="h-7 w-px bg-border-strong" />
           <span className="text-2xl font-medium text-foreground">
             Workshop log
           </span>
@@ -507,8 +507,8 @@ function Stat({
       <div
         className={cn(
           "font-mono text-[22px] font-semibold tabular-nums tracking-[-0.01em]",
-          tone === "add" && "text-[var(--c-add)]",
-          tone === "fix" && "text-[var(--c-fix)]",
+          tone === "add" && "text-c-add",
+          tone === "fix" && "text-c-fix",
           !tone && "text-foreground",
         )}
       >
@@ -600,9 +600,9 @@ function ReleaseBlock({
       id={section.version}
       data-version={section.version}
       className={cn(
-        "relative scroll-mt-24 overflow-hidden rounded-2xl border border-border bg-card transition-colors hover:border-[var(--border-strong)]",
+        "relative scroll-mt-24 overflow-hidden rounded-2xl border border-border bg-card transition-colors hover:border-border-strong",
         isLatest &&
-          "border-[var(--primary-dim)] shadow-[0_0_0_1px_var(--primary-glow),0_24px_48px_-32px_var(--primary-glow)]",
+          "border-primary-dim shadow-[0_0_0_1px_var(--primary-glow),0_24px_48px_-32px_var(--primary-glow)]",
       )}
     >
       {isLatest && (
@@ -625,10 +625,9 @@ function ReleaseBlock({
         <div className="flex flex-1 items-center gap-[18px]">
           <div
             className={cn(
-              "flex w-[78px] shrink-0 flex-col items-center rounded-[10px] border border-[var(--border-strong)] px-2 pb-2 pt-2.5",
-              bump === "major" && "border-[var(--primary-dim)]",
-              bump === "minor" &&
-                "border-[oklch(from_var(--c-add)_l_c_h_/_0.4)]",
+              "flex w-[78px] shrink-0 flex-col items-center rounded-[10px] border border-border-strong px-2 pb-2 pt-2.5",
+              bump === "major" && "border-primary-dim",
+              bump === "minor" && "border-c-add/40",
             )}
             style={{
               background:
@@ -647,7 +646,7 @@ function ReleaseBlock({
               className={cn(
                 "mt-1 w-full border-t border-border pt-1 text-center font-mono text-[9.5px] uppercase tracking-[0.1em]",
                 bump === "major" && "text-primary",
-                bump === "minor" && "text-[var(--c-add)]",
+                bump === "minor" && "text-c-add",
                 bump === "patch" && "text-muted-foreground",
               )}
             >
@@ -669,10 +668,7 @@ function ReleaseBlock({
           </div>
         </div>
         {isLatest && (
-          <span
-            className="inline-flex items-center rounded-full border border-[var(--primary-dim)] px-2.5 py-[5px] font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-primary"
-            style={{ background: "var(--primary-glow)" }}
-          >
+          <span className="inline-flex items-center rounded-full border border-primary-dim px-2.5 py-[5px] font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-primary bg-primary-glow">
             latest
           </span>
         )}
@@ -701,9 +697,9 @@ function PackageBlock({ entry }: { entry: PackageEntry }) {
             <span
               className={cn(
                 "rounded-[5px] border border-border bg-white/[0.04] px-[7px] py-px font-mono text-[11px] text-muted-foreground",
-                bump === "major" && "border-[var(--primary-dim)] text-primary",
+                bump === "major" && "border-primary-dim text-primary",
                 (bump === "minor" || bump === "new") &&
-                  "border-[oklch(from_var(--c-add)_l_c_h_/_0.3)] text-[var(--c-add)]",
+                  "border-c-add/30 text-c-add",
               )}
             >
               {entry.versionRange}

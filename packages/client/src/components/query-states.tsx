@@ -125,7 +125,7 @@ export function ErrorState({
     <StateFrame
       className={cn(
         bordered &&
-          "flex-none rounded-xl border border-dashed border-[var(--border-strong)]",
+          "flex-none rounded-xl border border-dashed border-border-strong",
         compact ? "py-6" : bordered && "py-16",
         className,
       )}

@@ -13,16 +13,17 @@ import {
   isPlanAction,
   type AdminChatAction,
   type HighlightAction,
-} from "../actions";
+} from "@/features/admin-chat/actions";
 import {
   readActionState,
   saveActionState,
   type ActionState,
-} from "../actionState";
-import { usePlanAction } from "../hooks/use-plan-action";
+} from "@/features/admin-chat/actionState";
+import { usePlanAction } from "@/features/admin-chat/hooks/use-plan-action";
 import { EmbedActionPreview } from "./EmbedActionPreview";
 import { PlanActionPreview } from "./PlanActionPreview";
 import { ComponentsActionPreview } from "./ComponentsActionPreview";
+import "@/features/admin-chat/admin-chat.css";
 
 function applyHighlight(action: HighlightAction): boolean {
   try {

@@ -21,7 +21,7 @@ export function ColorInput({
   return (
     <div className={cn("flex items-center gap-3.5 px-3.5", className)}>
       <label
-        className="relative size-10 shrink-0 cursor-pointer overflow-hidden rounded-lg border border-(--border-strong)"
+        className="relative size-10 shrink-0 cursor-pointer overflow-hidden rounded-lg border border-border-strong"
         style={{ background: `#${hex}` }}
       >
         <input

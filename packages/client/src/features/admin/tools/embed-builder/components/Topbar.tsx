@@ -21,7 +21,7 @@ import {
   embedDataSchema,
   componentsDataSchema,
 } from "@createrington/shared/api/embed";
-import type { UseEmbedBuilder } from "../hooks/use-embed-builder";
+import type { UseEmbedBuilder } from "@/features/admin/tools/embed-builder/hooks/use-embed-builder";
 import { SendModal } from "./SendModal";
 import { SaveAsNewModal } from "./SaveAsNewModal";
 
@@ -148,7 +148,7 @@ export function Topbar({ builder, onOpenPresets }: TopbarProps) {
               "h-9 min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-2 text-center text-[14px] font-medium outline-none transition-colors",
               "placeholder:text-muted-foreground",
               "hover:bg-accent",
-              "focus-visible:border-input focus-visible:bg-background focus-visible:ring-[3px] focus-visible:ring-[var(--primary-glow)]",
+              "focus-visible:border-input focus-visible:bg-background focus-visible:ring-[3px] focus-visible:ring-primary-glow",
             )}
           />
           {isDirty && (

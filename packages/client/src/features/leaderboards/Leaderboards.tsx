@@ -6,6 +6,7 @@ import { TopRoleHero } from "./components/TopRoleHero";
 import { LeaderboardTable } from "./components/LeaderboardTable";
 import { useChampionDock } from "./hooks/use-champion-dock";
 import { figureSrc, HERO_ORDER } from "./top-roles";
+import "./leaderboards.css";
 import { useSuspenseQuery } from "@tanstack/react-query";
 
 const DOCK_DELAYS = [0.08, 0, 0.16];
