@@ -9,7 +9,12 @@ export const PLANNING_CATEGORIES = [
 
 export type PlanningCategory = (typeof PLANNING_CATEGORIES)[number];
 
-export const PLANNING_ITEM_STATUSES = ["draft", "open", "approved"] as const;
+export const PLANNING_ITEM_STATUSES = [
+  "draft",
+  "open",
+  "approved",
+  "denied",
+] as const;
 
 export type PlanningItemStatus = (typeof PLANNING_ITEM_STATUSES)[number];
 

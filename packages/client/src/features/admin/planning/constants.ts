@@ -25,6 +25,7 @@ export const STATUS_CONFIG: Record<
   },
   open: { label: "Open", tone: "info", hint: "Being discussed" },
   approved: { label: "Approved", tone: "success", hint: "Agreed by the team" },
+  denied: { label: "Denied", tone: "danger", hint: "Turned down by the team" },
 };
 
 export const SORT_OPTIONS = [

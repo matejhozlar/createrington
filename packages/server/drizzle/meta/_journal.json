@@ -701,6 +701,13 @@
       "when": 1795364070910,
       "tag": "0099_fluffy_supernaut",
       "breakpoints": true
+    },
+    {
+      "idx": 100,
+      "version": "7",
+      "when": 1795452378085,
+      "tag": "0100_great_madrox",
+      "breakpoints": true
     }
   ]
 }

@@ -1,0 +1,1 @@
+ALTER TYPE "public"."planning_item_status" ADD VALUE 'denied';

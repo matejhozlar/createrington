@@ -101,7 +101,7 @@ export class PlanningItemQueries extends PlanningItemBaseQueries {
       ),
     ]);
 
-    const statusCounts = { draft: 0, open: 0, approved: 0 };
+    const statusCounts = { draft: 0, open: 0, approved: 0, denied: 0 };
     for (const row of statusResult.rows) statusCounts[row.status] = row.total;
 
     return {
