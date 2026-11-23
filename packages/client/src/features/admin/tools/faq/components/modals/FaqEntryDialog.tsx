@@ -170,6 +170,7 @@ export function FaqEntryDialog({
         onChange={(response) => update({ response })}
         placeholder="The auto-reply message..."
         description="Supports Discord markdown and mentions"
+        max={4096}
       />
 
       <div className="flex items-end gap-4">
