@@ -8,7 +8,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { StrikeClassification } from "@createrington/shared/db";
+import {
+  STRIKE_CLASSIFICATION_LABELS,
+  STRIKE_CLASSIFICATIONS,
+  type StrikeClassification,
+} from "@createrington/shared/strike";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { useDialogDraft } from "@/hooks/use-dialog-draft";
 import { trpc, queryClient } from "@/lib/trpc";
@@ -87,17 +91,11 @@ export function IssueStrikeModal({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="pvp">PvP</SelectItem>
-            <SelectItem value="theft">Theft</SelectItem>
-            <SelectItem value="griefing">Griefing</SelectItem>
-            <SelectItem value="laggy_machines">Laggy Machines</SelectItem>
-            <SelectItem value="inappropriate_chat">
-              Inappropriate Chat
-            </SelectItem>
-            <SelectItem value="harassment">Harassment</SelectItem>
-            <SelectItem value="exploiting">Exploiting</SelectItem>
-            <SelectItem value="rule_violation">Rule Violation</SelectItem>
-            <SelectItem value="other">Other</SelectItem>
+            {STRIKE_CLASSIFICATIONS.map((value) => (
+              <SelectItem key={value} value={value}>
+                {STRIKE_CLASSIFICATION_LABELS[value]}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </Field>

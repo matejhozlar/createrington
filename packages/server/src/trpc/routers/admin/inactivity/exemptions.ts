@@ -1,3 +1,4 @@
+import { ADMIN_REASON_MAX_LENGTH } from "@createrington/shared/admin-reason";
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { db, Q } from "@/db";
@@ -47,7 +48,7 @@ export const exemptionsRouter = router({
     .input(
       z.object({
         player: z.string().trim().min(1, "Player is required"),
-        reason: z.string().trim().max(500).optional(),
+        reason: z.string().trim().max(ADMIN_REASON_MAX_LENGTH).optional(),
       }),
     )
     .mutation(async ({ input, ctx }) => {

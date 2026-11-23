@@ -1,3 +1,7 @@
+import type {
+  DiscordCommandDoc,
+  DiscordCommandsDocument,
+} from "@createrington/shared/discord-commands";
 import { createEmbed, EmbedColors, EmbedPresets } from "@/discord/embeds";
 import { isSendableChannel } from "@/discord/utils/channel-guard";
 import { replyError } from "@/discord/utils/interaction-reply";
@@ -33,23 +37,7 @@ const JSON_PATH = path.join(
   "discord-commands.json",
 );
 
-interface RawCommand {
-  name: string;
-  description: string;
-  category: string;
-  options: Array<{
-    type: number;
-    name: string;
-    description?: string;
-    options?: unknown[];
-  }>;
-}
-
-interface CommandsFile {
-  commands: RawCommand[];
-}
-
-function formatCommand(cmd: RawCommand): string {
+function formatCommand(cmd: DiscordCommandDoc): string {
   const subs = cmd.options.filter((o) => o.type === 1 || o.type === 2);
 
   if (subs.length > 0) {
@@ -99,13 +87,15 @@ async function execute(
     return;
   }
 
-  const file = JSON.parse(fs.readFileSync(JSON_PATH, "utf-8")) as CommandsFile;
+  const file = JSON.parse(
+    fs.readFileSync(JSON_PATH, "utf-8"),
+  ) as DiscordCommandsDocument;
 
   const playerCommands = file.commands.filter(
     (cmd) => cmd.category === "user" || cmd.category === "public",
   );
 
-  const grouped = new Map<string, RawCommand[]>();
+  const grouped = new Map<string, DiscordCommandDoc[]>();
   for (const cmd of playerCommands) {
     const group = COMMAND_GROUPS[cmd.name] ?? "Other";
     const list = grouped.get(group) ?? [];

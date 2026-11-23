@@ -7,8 +7,8 @@ import {
   LoadingState,
 } from "@/components/query-states";
 import { AdminPage } from "@/features/admin/components/AdminPage";
-import { trpc } from "@/lib/trpc";
-import { useServerData } from "@/contexts/server-data";
+import { trpc, type RouterOutput } from "@/lib/trpc";
+import { useLiveServerState } from "@/contexts/server-data";
 import { ServerHeader } from "./components/ServerHeader";
 import { ServerStatsCards } from "./components/ServerStatsCards";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
@@ -23,10 +23,7 @@ import { useQuery } from "@tanstack/react-query";
 
 export function AdminServerDetail() {
   const { id } = useParams<{ id: string }>();
-  const { getServer } = useServerData();
   const serverId = parseInt(id ?? "0", 10);
-
-  const [activeTab, setActiveTab] = useState<ServerTabType>("overview");
 
   const serverQuery = useQuery(
     trpc.admin.servers.get.queryOptions(
@@ -70,12 +67,20 @@ export function AdminServerDetail() {
     );
   }
 
-  const liveData = getServer(serverId);
-  const isOnline = liveData?.online ?? serverData.server.status === "online";
-  const isMaintenance =
-    liveData?.maintenance ?? serverData.server.maintenance ?? false;
-  const livePlayerCount =
-    liveData?.playerCount ?? serverData.server.playerCount;
+  return <ServerDetail serverId={serverId} serverData={serverData} />;
+}
+
+function ServerDetail({
+  serverId,
+  serverData,
+}: {
+  serverId: number;
+  serverData: RouterOutput["admin"]["servers"]["get"];
+}) {
+  const [activeTab, setActiveTab] = useState<ServerTabType>("overview");
+  const { online, maintenance, playerCount, presence } = useLiveServerState(
+    serverData.server,
+  );
 
   return (
     <AdminPage
@@ -89,19 +94,18 @@ export function AdminServerDetail() {
         serverName={serverData.server.serverName}
         ip={serverData.server.ip}
         port={serverData.server.port}
-        isOnline={isOnline}
-        isMaintenance={isMaintenance}
+        presence={presence}
       />
 
       <ServerStatsCards
-        isOnline={isOnline}
-        playerCount={livePlayerCount}
+        isOnline={online}
+        playerCount={playerCount}
         maxPlayers={serverData.server.maxPlayers}
         totalHours={serverData.stats.totalHours}
         avgSessionSeconds={serverData.stats.avgSessionSeconds}
       />
 
-      <MaintenanceToggle serverId={serverId} isMaintenance={isMaintenance} />
+      <MaintenanceToggle serverId={serverId} isMaintenance={maintenance} />
 
       <Tabs
         value={activeTab}

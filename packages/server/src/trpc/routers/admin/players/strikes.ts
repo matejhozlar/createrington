@@ -3,6 +3,7 @@ import {
   ADMIN_REASON_MAX_LENGTH,
   STRIKE_DESCRIPTION_MAX_LENGTH,
 } from "@createrington/shared/admin-reason";
+import { STRIKE_CLASSIFICATIONS } from "@createrington/shared/strike";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { playerStrikeRepo } from "@/db";
 import { id, playerId } from "@/trpc/utils";
@@ -35,17 +36,7 @@ export const strikesRouter = router({
     .input(
       z.object({
         id: playerId(),
-        classification: z.enum([
-          "pvp",
-          "theft",
-          "griefing",
-          "laggy_machines",
-          "inappropriate_chat",
-          "harassment",
-          "exploiting",
-          "rule_violation",
-          "other",
-        ]),
+        classification: z.enum(STRIKE_CLASSIFICATIONS),
         description: z
           .string()
           .min(1, "Description is required")

@@ -29,7 +29,7 @@ import {
 } from "@createrington/shared/donation";
 
 type Donation = RouterOutput["owner"]["donations"]["list"]["items"][number];
-type DonationType = "one_time" | "monthly";
+type DonationType = Donation["type"];
 
 const STATUS_DISPLAY: Record<
   DonationStatus,
@@ -41,7 +41,7 @@ const STATUS_DISPLAY: Record<
   cancelled: { label: "Cancelled", tone: "neutral" },
 };
 
-const TYPE_LABELS: Record<string, string> = {
+const TYPE_LABELS: Record<DonationType, string> = {
   one_time: "One-time",
   monthly: "Monthly",
 };
@@ -80,7 +80,7 @@ const DONATION_COLUMNS: DataTableColumn<Donation>[] = [
     skeleton: () => <BadgeCellSkeleton />,
     render: (d) => (
       <Badge variant="outline" className="text-xs">
-        {TYPE_LABELS[d.type] ?? d.type}
+        {TYPE_LABELS[d.type]}
       </Badge>
     ),
   },
@@ -97,8 +97,8 @@ const DONATION_COLUMNS: DataTableColumn<Donation>[] = [
     width: 120,
     skeleton: () => <BadgeCellSkeleton />,
     render: (d) => (
-      <Badge tone={STATUS_DISPLAY[d.status].tone} className="capitalize">
-        {d.status}
+      <Badge tone={STATUS_DISPLAY[d.status].tone}>
+        {STATUS_DISPLAY[d.status].label}
       </Badge>
     ),
   },
@@ -238,8 +238,11 @@ export function OwnerDonations() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Types</SelectItem>
-            <SelectItem value="one_time">One-time</SelectItem>
-            <SelectItem value="monthly">Monthly</SelectItem>
+            {Object.entries(TYPE_LABELS).map(([type, label]) => (
+              <SelectItem key={type} value={type}>
+                {label}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </FilterBar>

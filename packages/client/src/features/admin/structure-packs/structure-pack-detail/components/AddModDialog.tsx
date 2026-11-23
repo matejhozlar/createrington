@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { ArrowLeft, CheckCircle2, Plus } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Badge, type BadgeTone } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -15,13 +15,23 @@ import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useToastActions } from "@/hooks/use-toast";
 import { trpc, queryClient } from "@/lib/trpc";
 import { REQUIRED_DEPENDENCY } from "@createrington/shared/workshop";
+import {
+  CURSEFORGE_RELEASE_TYPES,
+  type LauncherContentReleaseType,
+} from "@createrington/shared/launcher";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Spinner } from "@/components/ui/spinner";
 import { pluralize } from "@/lib/format";
+import type { StructurePackMod } from "@/features/admin/structure-packs/structure-pack-detail/types";
 
-interface PackMod {
-  curseforgeModId: number;
-}
+const RELEASE_BADGES: Record<
+  LauncherContentReleaseType,
+  { label: string; tone: BadgeTone }
+> = {
+  release: { label: "Release", tone: "success" },
+  beta: { label: "Beta", tone: "warning" },
+  alpha: { label: "Alpha", tone: "danger" },
+};
 
 interface SelectedFile {
   id: number;
@@ -39,7 +49,7 @@ export function AddModDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   packId: number;
-  packMods: PackMod[];
+  packMods: Pick<StructurePackMod, "curseforgeModId">[];
 }) {
   const toast = useToastActions();
 
@@ -244,9 +254,7 @@ export function AddModDialog({
                       </div>
                       <div className="flex shrink-0 gap-1">
                         {mod.inModpack && (
-                          <Badge className="bg-primary/20 text-xs text-primary">
-                            In modpack
-                          </Badge>
+                          <Badge tone="primary">In modpack</Badge>
                         )}
                         {alreadyAdded && (
                           <Badge variant="secondary">In pack</Badge>
@@ -305,22 +313,7 @@ export function AddModDialog({
                             ` (${(file.fileLength / 1024).toFixed(0)} KB)`}
                         </div>
                         <div className="mt-1 flex gap-1">
-                          <Badge
-                            variant="outline"
-                            className={`text-xs ${
-                              file.releaseType === 1
-                                ? "border-green-500/50 text-green-500"
-                                : file.releaseType === 2
-                                  ? "border-yellow-500/50 text-yellow-500"
-                                  : "border-red-500/50 text-red-500"
-                            }`}
-                          >
-                            {file.releaseType === 1
-                              ? "Release"
-                              : file.releaseType === 2
-                                ? "Beta"
-                                : "Alpha"}
-                          </Badge>
+                          <ReleaseBadge releaseType={file.releaseType} />
                           {file.gameVersions.slice(0, 3).map((v) => (
                             <Badge
                               key={v}
@@ -393,7 +386,7 @@ export function AddModDialog({
             const relType = selectedFile?.dependencies.find(
               (d) => d.projectId === dep.modId,
             )?.relationType;
-            const isRequired = relType === 3;
+            const isRequired = relType === REQUIRED_DEPENDENCY;
             const isSelected = selectedDeps.has(dep.modId);
             const canSelect = !dep.inPack && !!dep.bestFile;
 
@@ -404,7 +397,7 @@ export function AddModDialog({
               >
                 <div className="shrink-0">
                   {dep.inPack ? (
-                    <CheckCircle2 className="size-4 text-green-600" />
+                    <CheckCircle2 className="size-4 text-tone-success" />
                   ) : canSelect ? (
                     <Checkbox
                       checked={isSelected}
@@ -432,9 +425,7 @@ export function AddModDialog({
                     >
                       {isRequired ? "Required" : "Optional"}
                     </Badge>
-                    {dep.inPack && (
-                      <Badge className="bg-green-600 text-xs">In pack</Badge>
-                    )}
+                    {dep.inPack && <Badge tone="success">In pack</Badge>}
                   </div>
                   {dep.bestFile ? (
                     <div className="truncate text-xs text-muted-foreground">
@@ -453,4 +444,10 @@ export function AddModDialog({
       </FormDialog>
     </>
   );
+}
+
+function ReleaseBadge({ releaseType }: { releaseType: number | null }) {
+  const { label, tone } =
+    RELEASE_BADGES[CURSEFORGE_RELEASE_TYPES[releaseType ?? 1] ?? "release"];
+  return <Badge tone={tone}>{label}</Badge>;
 }

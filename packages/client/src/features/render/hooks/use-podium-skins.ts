@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { loadSkin, randomPose } from "../skin-utils";
-import type { PodiumPlayer } from "../components/PodiumCard";
+import type { RenderPodiumPlayer } from "@createrington/shared/render";
 
 export function usePodiumSkins(
-  players: PodiumPlayer[] | null,
+  players: RenderPodiumPlayer[] | null,
 ): string[] | null {
   const [skins, setSkins] = useState<string[] | null>(null);
   const [poses] = useState(() => [randomPose(), randomPose(), randomPose()]);

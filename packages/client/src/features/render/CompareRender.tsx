@@ -9,22 +9,6 @@ import { useRenderData } from "./hooks/use-render-data";
 import { useRenderPlatesReady } from "./hooks/use-render-plates";
 import { loadSkin, randomPose } from "./skin-utils";
 
-interface PlayerData {
-  username: string;
-  uuid: string;
-  networth: string;
-  playtime: string;
-  playtimeSeconds: number;
-  sessions: number;
-  memberSince: string;
-  tagCode: string | null;
-}
-
-interface CompareData {
-  player1: PlayerData;
-  player2: PlayerData;
-}
-
 function winner(a: number, b: number): 0 | 1 | 2 {
   if (a > b) return 1;
   if (b > a) return 2;
@@ -68,7 +52,7 @@ function StatRow({
 }
 
 export function CompareRender() {
-  const { data, unavailable } = useRenderData<CompareData>("compare", [
+  const { data, unavailable } = useRenderData("compare", [
     "player1",
     "player2",
   ]);

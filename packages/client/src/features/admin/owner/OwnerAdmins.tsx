@@ -17,14 +17,8 @@ import { useToastActions } from "@/hooks/use-toast";
 import { PromoteDialog } from "./components/PromoteDialog";
 import { DemoteDialog } from "./components/DemoteDialog";
 import { AuditFeed } from "./components/AuditFeed";
+import type { AdminRow } from "./types";
 import { useQuery } from "@tanstack/react-query";
-
-type AdminRow = {
-  discordId: string;
-  minecraftUuid: string | null;
-  minecraftUsername: string | null;
-  createdAt: string | null;
-};
 
 export function OwnerAdmins() {
   const toast = useToastActions();

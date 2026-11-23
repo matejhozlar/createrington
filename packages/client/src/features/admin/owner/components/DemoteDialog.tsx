@@ -1,3 +1,4 @@
+import { ADMIN_REASON_MAX_LENGTH } from "@createrington/shared/admin-reason";
 import { useState } from "react";
 import { FormDialog } from "@/components/form-dialog";
 import { Field, FieldLabel } from "@/components/ui/field";
@@ -8,19 +9,12 @@ import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Textarea } from "@/components/ui/textarea";
 import { pluralize } from "@/lib/format";
+import type { AdminRow, DemoteResult } from "@/features/admin/owner/types";
 
 interface DemoteDialogProps {
-  admin: {
-    discordId: string;
-    minecraftUsername: string | null;
-  } | null;
+  admin: Pick<AdminRow, "discordId" | "minecraftUsername"> | null;
   onClose: () => void;
-  onSuccess: (result: {
-    minecraftUsername: string | null;
-    removedFromDb: boolean;
-    discordRoleRemoved: boolean;
-    rconResults: Array<{ serverId: number; success: boolean; error?: string }>;
-  }) => void;
+  onSuccess: (result: DemoteResult) => void;
 }
 
 export function DemoteDialog({ admin, onClose, onSuccess }: DemoteDialogProps) {
@@ -129,7 +123,7 @@ export function DemoteDialog({ admin, onClose, onSuccess }: DemoteDialogProps) {
           value={reason}
           onChange={(e) => setReason(e.target.value)}
           placeholder="e.g. Stepped down, inactive, trust concerns"
-          maxLength={500}
+          maxLength={ADMIN_REASON_MAX_LENGTH}
           rows={3}
         />
       </Field>

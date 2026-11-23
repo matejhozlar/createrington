@@ -3,24 +3,12 @@ import { LoadingState } from "@/components/query-states";
 import { Clock } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useQuery } from "@tanstack/react-query";
+import type {
+  DiscordCommandDoc,
+  DiscordCommandOption,
+} from "@createrington/shared/discord-commands";
 
-interface CommandOption {
-  type: number;
-  name: string;
-  description: string;
-  required?: boolean;
-  choices?: { name: string; value: string | number }[];
-  options?: CommandOption[];
-}
-
-interface CommandData {
-  name: string;
-  description: string;
-  options: CommandOption[];
-  cooldown?: { duration: number; type: string; message?: string };
-}
-
-function buildSyntax(name: string, options: CommandOption[]): string {
+function buildSyntax(name: string, options: DiscordCommandOption[]): string {
   const subs = options.filter((o) => o.type === 1 || o.type === 2);
   if (subs.length > 0) return `/${name} <subcommand>`;
 
@@ -30,7 +18,7 @@ function buildSyntax(name: string, options: CommandOption[]): string {
   return params ? `/${name} ${params}` : `/${name}`;
 }
 
-function CommandEntry({ command }: { command: CommandData }) {
+function CommandEntry({ command }: { command: DiscordCommandDoc }) {
   const subs = command.options.filter((o) => o.type === 1 || o.type === 2);
   const topOpts = command.options.filter((o) => o.type !== 1 && o.type !== 2);
 
@@ -102,7 +90,7 @@ function SubcommandRow({
 }: {
   parentName: string;
   groupName?: string;
-  sub: CommandOption;
+  sub: DiscordCommandOption;
 }) {
   const opts = (sub.options ?? []).filter((o) => o.type !== 1 && o.type !== 2);
   const params = opts
@@ -140,8 +128,7 @@ export function DiscordCommandsGroup({ group }: { group: string }) {
     );
   }
 
-  const commands = (data?.groups?.find((g) => g.name === group)?.commands ??
-    []) as CommandData[];
+  const commands = data?.groups.find((g) => g.name === group)?.commands ?? [];
 
   if (commands.length === 0) {
     return <p className="text-muted-foreground">No commands in this group.</p>;

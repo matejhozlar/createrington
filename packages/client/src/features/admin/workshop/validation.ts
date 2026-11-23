@@ -1,3 +1,4 @@
+import { isDiscordId } from "@createrington/shared/discord-id";
 export function workshopFormError(fields: {
   maxMods: string;
   maxUpvotes: string;
@@ -33,7 +34,7 @@ export function workshopFormError(fields: {
   const publishedPackError = modpackFormError(fields.publishedPackId ?? "");
   if (publishedPackError) return publishedPackError;
   const forumChannelId = fields.forumChannelId.trim();
-  if (forumChannelId && !/^\d{17,20}$/.test(forumChannelId)) {
+  if (forumChannelId && !isDiscordId(forumChannelId)) {
     return "Discord forum channel ID must be a 17-20 digit number";
   }
   return null;

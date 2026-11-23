@@ -7,20 +7,13 @@ import {
 } from "@/components/ui/dialog";
 import { Blocks, ExternalLink, Package } from "lucide-react";
 import { pluralize } from "@/lib/format";
-
-interface PackMod {
-  id: number;
-  modName: string;
-  modUrl: string | null;
-  thumbnailUrl: string | null;
-  fileName: string;
-}
+import type { PoolMod } from "@/features/structure-packs/types";
 
 interface PackModsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   packName: string;
-  mods: PackMod[];
+  mods: PoolMod[];
 }
 
 export function PackModsDialog({

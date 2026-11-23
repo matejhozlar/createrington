@@ -1,5 +1,6 @@
 import dotenv from "dotenv";
 import { z } from "zod";
+import { DISCORD_ID_REGEX } from "@createrington/shared/discord-id";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -124,7 +125,7 @@ const envSchema = z
       .optional(),
     OWNER_DISCORD_ID: z
       .string()
-      .regex(/^\d{17,20}$/, "OWNER_DISCORD_ID must be a Discord snowflake"),
+      .regex(DISCORD_ID_REGEX, "OWNER_DISCORD_ID must be a Discord snowflake"),
 
     RAILS_N_SAILS_SERVER_IP: ipv4("Rails 'n Sails server IP").default(
       DEV_FALLBACK_SERVER_IP,

@@ -5,14 +5,10 @@ import { RenderUnavailable } from "./components/RenderUnavailable";
 import { useRenderData } from "./hooks/use-render-data";
 import { useRenderPlatesReady } from "./hooks/use-render-plates";
 
-interface TagData {
-  tagCode: string;
-}
-
 const PLATE_ZOOM = 12;
 
 export function TagRender() {
-  const { data, unavailable } = useRenderData<TagData>("tag", ["design"]);
+  const { data, unavailable } = useRenderData("tag", ["design"]);
   const platesReady = useRenderPlatesReady();
 
   if (unavailable) return <RenderUnavailable reason={unavailable} />;

@@ -16,6 +16,8 @@ import { useDialogDraft } from "@/hooks/use-dialog-draft";
 import { FormDialog } from "@/components/form-dialog";
 import { useMutation } from "@tanstack/react-query";
 import { Textarea } from "@/components/ui/textarea";
+import type { BanType } from "@createrington/shared/db";
+import { pluralize } from "@/lib/format";
 
 interface IssueBanModalProps {
   open: boolean;
@@ -24,7 +26,12 @@ interface IssueBanModalProps {
   playerUsername: string;
 }
 
-type BanType = "temporary" | "permanent";
+const BAN_TYPE_OPTIONS: { value: BanType; label: string }[] = [
+  { value: "temporary", label: "Temporary" },
+  { value: "permanent", label: "Permanent (Deletes Player)" },
+];
+
+const DURATION_DAYS = [1, 3, 7, 14, 30, 60, 90];
 
 const EMPTY_DRAFT: {
   banType: BanType;
@@ -134,10 +141,11 @@ export function IssueBanModal({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="temporary">Temporary</SelectItem>
-              <SelectItem value="permanent">
-                Permanent (Deletes Player)
-              </SelectItem>
+              {BAN_TYPE_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </Field>
@@ -155,13 +163,11 @@ export function IssueBanModal({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="1">1 Day</SelectItem>
-                <SelectItem value="3">3 Days</SelectItem>
-                <SelectItem value="7">7 Days</SelectItem>
-                <SelectItem value="14">14 Days</SelectItem>
-                <SelectItem value="30">30 Days</SelectItem>
-                <SelectItem value="60">60 Days</SelectItem>
-                <SelectItem value="90">90 Days</SelectItem>
+                {DURATION_DAYS.map((days) => (
+                  <SelectItem key={days} value={String(days)}>
+                    {pluralize(days, "Day")}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </Field>

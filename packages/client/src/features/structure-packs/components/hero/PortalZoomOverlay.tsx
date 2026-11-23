@@ -18,27 +18,7 @@ import { useLockBodyScroll } from "@/hooks/use-lock-body-scroll";
 import { BoostDialog } from "@/features/structure-packs/components/BoostDialog";
 import { PackModsDialog } from "@/features/structure-packs/components/PackModsDialog";
 import { PortalFrame } from "./PortalFrame";
-
-interface PoolMod {
-  id: number;
-  modName: string;
-  modUrl: string | null;
-  thumbnailUrl: string | null;
-  fileName: string;
-}
-
-interface PoolPack {
-  id: number;
-  name: string;
-  description: string | null;
-  mods: PoolMod[];
-}
-
-interface PoolEntry {
-  pack: PoolPack;
-  weight: number;
-  boostUnits: number;
-}
+import type { PoolEntry, PoolPack } from "@/features/structure-packs/types";
 
 interface PortalZoomOverlayProps {
   open: boolean;

@@ -1,10 +1,10 @@
+import { isDiscordId } from "@createrington/shared/discord-id";
 import type { Collection, GuildTextBasedChannel, Message } from "discord.js";
 
 const PAGE_SIZE = 100;
 const EMBED_TEXT_LIMIT = 300;
 const MESSAGE_LINK_PATTERN =
   /^https:\/\/(?:(?:canary|ptb)\.)?discord(?:app)?\.com\/channels\/(\d+|@me)\/(\d+)\/(\d+)$/;
-const SNOWFLAKE_PATTERN = /^\d{17,20}$/;
 
 const TRANSCRIPT_MAX_BYTES = 88_000;
 
@@ -33,7 +33,7 @@ export function parseMessageReference(
   channelId: string,
 ): string | null {
   const value = input.trim();
-  if (SNOWFLAKE_PATTERN.test(value)) return value;
+  if (isDiscordId(value)) return value;
   const match = MESSAGE_LINK_PATTERN.exec(value);
   if (!match || match[2] !== channelId) return null;
   return match[3];

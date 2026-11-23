@@ -116,6 +116,15 @@ export const LAUNCHER_CONTENT_RELEASE_TYPES = [
 export type LauncherContentReleaseType =
   (typeof LAUNCHER_CONTENT_RELEASE_TYPES)[number];
 
+export const CURSEFORGE_RELEASE_TYPES: Record<
+  number,
+  LauncherContentReleaseType
+> = {
+  1: "release",
+  2: "beta",
+  3: "alpha",
+};
+
 export const LAUNCHER_CONTENT_SORTS = [
   "relevance",
   "downloads",

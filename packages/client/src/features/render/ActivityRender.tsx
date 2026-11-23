@@ -15,18 +15,6 @@ import { useRenderData } from "./hooks/use-render-data";
 import { useRenderPlatesReady } from "./hooks/use-render-plates";
 import { pluralize } from "@/lib/format";
 
-interface ActivityData {
-  username: string;
-  uuid: string;
-  online: boolean;
-  currentSessionSeconds: number | null;
-  totalSeconds: number;
-  currentStreak: number;
-  mostActiveDay: string;
-  days: Record<string, number>;
-  tagCode: string | null;
-}
-
 const NUM_WEEKS = 26;
 
 const LEVEL_COLORS = [
@@ -51,9 +39,7 @@ function StatPill({ label, value }: { label: string; value: string }) {
 }
 
 export function ActivityRender() {
-  const { data, unavailable } = useRenderData<ActivityData>("activity", [
-    "player",
-  ]);
+  const { data, unavailable } = useRenderData("activity", ["player"]);
 
   const platesReady = useRenderPlatesReady();
 

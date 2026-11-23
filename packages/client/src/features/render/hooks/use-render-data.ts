@@ -1,8 +1,6 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router";
-
-type RenderPage =
-  "activity" | "compare" | "profile" | "records" | "tag" | "top";
+import type { RenderPage, RenderPayloads } from "@createrington/shared/render";
 
 export type RenderUnavailableReason = "rejected" | "failed";
 
@@ -12,12 +10,17 @@ type RenderResult<T> =
 
 const GATE_REJECTION_STATUSES = [401, 403];
 
-export function useRenderData<T>(
-  page: RenderPage,
+export function useRenderData<P extends RenderPage>(
+  page: P,
   paramKeys: readonly string[] = [],
-): { data: T | null; unavailable: RenderUnavailableReason | null } {
+): {
+  data: RenderPayloads[P] | null;
+  unavailable: RenderUnavailableReason | null;
+} {
   const [searchParams] = useSearchParams();
-  const [result, setResult] = useState<RenderResult<T> | null>(null);
+  const [result, setResult] = useState<RenderResult<RenderPayloads[P]> | null>(
+    null,
+  );
 
   const entries = paramKeys.map((key) => [key, searchParams.get(key) ?? ""]);
   const hasMissingParams = entries.some(([, value]) => !value);
@@ -31,14 +34,18 @@ export function useRenderData<T>(
     let active = true;
 
     void fetch(request)
-      .then(async (res): Promise<RenderResult<T>> => {
+      .then(async (res): Promise<RenderResult<RenderPayloads[P]>> => {
         if (GATE_REJECTION_STATUSES.includes(res.status)) {
           return { request, data: null, unavailable: "rejected" };
         }
         if (!res.ok) throw new Error("Bad response");
-        return { request, data: (await res.json()) as T, unavailable: null };
+        return {
+          request,
+          data: (await res.json()) as RenderPayloads[P],
+          unavailable: null,
+        };
       })
-      .catch((): RenderResult<T> => ({
+      .catch((): RenderResult<RenderPayloads[P]> => ({
         request,
         data: null,
         unavailable: "failed",

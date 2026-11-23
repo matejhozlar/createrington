@@ -1,4 +1,5 @@
 import { PresenceBadge } from "@/components/presence-badge";
+import { PRESENCE_STYLES, type Presence } from "@/components/presence";
 import { Server } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
@@ -8,46 +9,25 @@ interface ServerHeaderProps {
   serverName: string;
   ip: string;
   port: number;
-  isOnline: boolean;
-  isMaintenance: boolean;
+  presence: Presence;
 }
 
 export function ServerHeader({
   serverName,
   ip,
   port,
-  isOnline,
-  isMaintenance,
+  presence,
 }: ServerHeaderProps) {
-  const presence = isMaintenance
-    ? "maintenance"
-    : isOnline
-      ? "online"
-      : "offline";
-
   return (
     <Card className="p-6">
       <div className="flex items-center gap-4">
         <div
           className={cn(
             "flex size-14 shrink-0 items-center justify-center rounded-lg",
-            isMaintenance
-              ? "bg-amber-500/10"
-              : isOnline
-                ? "bg-green-500/10"
-                : "bg-muted-foreground/10",
+            PRESENCE_STYLES[presence].tile,
           )}
         >
-          <Server
-            className={cn(
-              "size-7",
-              isMaintenance
-                ? "text-amber-500"
-                : isOnline
-                  ? "text-green-500"
-                  : "text-muted-foreground",
-            )}
-          />
+          <Server className="size-7" />
         </div>
         <div className="min-w-0 flex-1">
           <AdminPageTitle

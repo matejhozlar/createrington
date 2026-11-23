@@ -15,6 +15,7 @@ import {
   type CurseForgeProjectPage,
 } from "@/services/curseforge/project";
 import {
+  CURSEFORGE_RELEASE_TYPES,
   LAUNCHER_CONTENT_LOADERS,
   LAUNCHER_MODPACK_KIND,
   type LauncherContentCategory,
@@ -23,7 +24,6 @@ import {
   type LauncherContentKind,
   type LauncherContentLoader,
   type LauncherContentProject,
-  type LauncherContentReleaseType,
   type LauncherContentSort,
   type LauncherPackProject,
   type LauncherProject,
@@ -54,12 +54,6 @@ const SORT_FIELDS: Record<LauncherContentSort, number> = {
   downloads: CurseForgeSortField.totalDownloads,
   newest: CurseForgeSortField.releasedDate,
   updated: CurseForgeSortField.lastUpdated,
-};
-
-const RELEASE_TYPES: Record<number, LauncherContentReleaseType> = {
-  1: "release",
-  2: "beta",
-  3: "alpha",
 };
 
 const LOADER_NAMES = new Set<string>(LAUNCHER_CONTENT_LOADERS);
@@ -202,7 +196,7 @@ export function toLauncherProjectLatestFiles(
       index.modLoader === null
         ? null
         : (LOADERS_BY_TYPE.get(index.modLoader) ?? null),
-    releaseType: RELEASE_TYPES[index.releaseType] ?? "release",
+    releaseType: CURSEFORGE_RELEASE_TYPES[index.releaseType] ?? "release",
   }));
 }
 
@@ -240,7 +234,7 @@ export function toLauncherContentFileDetails(
       ? { servedBy: "curseforge", url: file.downloadUrl }
       : { servedBy: "manual", url: null },
     displayName: file.displayName || file.fileName,
-    releaseType: RELEASE_TYPES[file.releaseType ?? 1] ?? "release",
+    releaseType: CURSEFORGE_RELEASE_TYPES[file.releaseType ?? 1] ?? "release",
     publishedAt: file.fileDate,
     gameVersions: file.gameVersions.filter((entry) =>
       GAME_VERSION_PATTERN.test(entry),

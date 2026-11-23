@@ -48,6 +48,18 @@ import { pluralize } from "@/lib/format";
 type StatusFilter = "all" | "enabled" | "disabled";
 type ActiveFilter = "all" | "active" | "inactive";
 
+const STATUS_FILTER_OPTIONS: { value: StatusFilter; label: string }[] = [
+  { value: "all", label: "All Statuses" },
+  { value: "enabled", label: "Enabled" },
+  { value: "disabled", label: "Disabled" },
+];
+
+const ACTIVE_FILTER_OPTIONS: { value: ActiveFilter; label: string }[] = [
+  { value: "all", label: "All Packs" },
+  { value: "active", label: "Active" },
+  { value: "inactive", label: "Inactive" },
+];
+
 export function AdminStructurePacks() {
   const navigate = useNavigate();
   const toast = useToastActions();
@@ -311,9 +323,11 @@ export function AdminStructurePacks() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="enabled">Enabled</SelectItem>
-            <SelectItem value="disabled">Disabled</SelectItem>
+            {STATUS_FILTER_OPTIONS.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
 
@@ -325,9 +339,11 @@ export function AdminStructurePacks() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Packs</SelectItem>
-            <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="inactive">Inactive</SelectItem>
+            {ACTIVE_FILTER_OPTIONS.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </FilterBar>

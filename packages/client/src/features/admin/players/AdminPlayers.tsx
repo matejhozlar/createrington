@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { LoadingState } from "@/components/query-states";
 import { StatCard } from "@/components/stat-card";
@@ -30,6 +30,7 @@ import { useTableSort } from "@/hooks/use-table-sort";
 import { useQuery } from "@tanstack/react-query";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { formatMoney } from "@createrington/shared/format";
+import { isDiscordId } from "@createrington/shared/discord-id";
 
 type PlayerRow =
   RouterOutput["admin"]["players"]["players"]["list"]["items"][number];
@@ -37,6 +38,37 @@ type PlayerRow =
 type SortField = "minecraftUsername" | "lastSeen" | "createdAt";
 
 type ViolationFilter = "all" | "strikes" | "bans" | "any";
+
+type OnlineFilter = "all" | "online" | "offline";
+
+const ONLINE_FILTER_OPTIONS: { value: OnlineFilter; label: string }[] = [
+  { value: "all", label: "All Statuses" },
+  { value: "online", label: "Online" },
+  { value: "offline", label: "Offline" },
+];
+
+const VIOLATION_FILTER_OPTIONS: { value: ViolationFilter; label: string }[] = [
+  { value: "all", label: "All Players" },
+  { value: "any", label: "Any Violations" },
+  { value: "strikes", label: "With Strikes" },
+  { value: "bans", label: "With Bans" },
+];
+
+type Violation = "ban" | "strike";
+
+const VIOLATION_STYLES: Record<Violation, { dot: string; row: string }> = {
+  ban: { dot: "bg-destructive", row: "bg-destructive/5" },
+  strike: { dot: "bg-tone-warning", row: "bg-tone-warning/5" },
+};
+
+function violationOf(
+  player: PlayerRow,
+): { count: number; kind: Violation } | null {
+  const strikes = player.activeStrikeCount ?? 0;
+  const bans = player.activeBanCount ?? 0;
+  if (strikes + bans === 0) return null;
+  return { count: strikes + bans, kind: bans > 0 ? "ban" : "strike" };
+}
 
 type SearchFilters = {
   discordId?: string;
@@ -48,7 +80,7 @@ function classifySearch(input: string): SearchFilters {
   const trimmed = input.trim();
   if (!trimmed) return {};
 
-  if (/^\d{17,20}$/.test(trimmed)) {
+  if (isDiscordId(trimmed)) {
     return { discordId: trimmed };
   }
 
@@ -68,9 +100,7 @@ export function AdminPlayers() {
     useAdminPlayers();
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [onlineFilter, setOnlineFilter] = useState<boolean | undefined>(
-    undefined,
-  );
+  const [onlineFilter, setOnlineFilter] = useState<OnlineFilter>("all");
   const [violationFilter, setViolationFilter] =
     useState<ViolationFilter>("all");
 
@@ -88,7 +118,7 @@ export function AdminPlayers() {
     {
       ...sort.order,
       ...searchFilters,
-      online: onlineFilter,
+      online: onlineFilter === "all" ? undefined : onlineFilter === "online",
       hasStrikes: violationFilter === "strikes" ? true : undefined,
       hasBans: violationFilter === "bans" ? true : undefined,
       hasViolations: violationFilter === "any" ? true : undefined,
@@ -101,22 +131,6 @@ export function AdminPlayers() {
   const stats = statsQuery.data;
   const statsLoading = statsQuery.isLoading;
 
-  const getPlayerBadgeInfo = useCallback((player: PlayerRow) => {
-    const strikeCount = player.activeStrikeCount ?? 0;
-    const banCount = player.activeBanCount ?? 0;
-    const totalCount = strikeCount + banCount;
-
-    if (totalCount === 0) {
-      return { count: 0, color: null, hasIssues: false };
-    }
-
-    if (banCount > 0) {
-      return { count: totalCount, color: "red" as const, hasIssues: true };
-    }
-
-    return { count: totalCount, color: "yellow" as const, hasIssues: true };
-  }, []);
-
   const navigate = useNavigate();
 
   const columns: DataTableColumn<PlayerRow>[] = [
@@ -127,7 +141,7 @@ export function AdminPlayers() {
       ...sort.column("minecraftUsername"),
       skeleton: () => <AvatarCellSkeleton />,
       render: (player) => {
-        const badgeInfo = getPlayerBadgeInfo(player);
+        const violation = violationOf(player);
         return (
           <div className="flex min-w-0 items-center gap-3">
             <div className="relative shrink-0">
@@ -135,15 +149,14 @@ export function AdminPlayers() {
                 uuid={player.minecraftUuid}
                 username={player.minecraftUsername}
               />
-              {badgeInfo.hasIssues && (
+              {violation && (
                 <div
                   className={cn(
                     "absolute -right-1 -top-1 flex size-5 items-center justify-center rounded-full text-[10px] font-bold text-white ring-2 ring-background",
-                    badgeInfo.color === "yellow" && "bg-yellow-500",
-                    badgeInfo.color === "red" && "bg-destructive",
+                    VIOLATION_STYLES[violation.kind].dot,
                   )}
                 >
-                  {badgeInfo.count}
+                  {violation.count}
                 </div>
               )}
             </div>
@@ -257,29 +270,23 @@ export function AdminPlayers() {
         placeholder="Search by username, Discord ID, or UUID..."
         activeCount={
           (searchQuery ? 1 : 0) +
-          (onlineFilter !== undefined ? 1 : 0) +
+          (onlineFilter !== "all" ? 1 : 0) +
           (violationFilter !== "all" ? 1 : 0)
         }
       >
         <Select
-          value={
-            onlineFilter === undefined
-              ? "all"
-              : onlineFilter
-                ? "online"
-                : "offline"
-          }
-          onValueChange={(v) =>
-            setOnlineFilter(v === "all" ? undefined : v === "online")
-          }
+          value={onlineFilter}
+          onValueChange={(v) => setOnlineFilter(v as OnlineFilter)}
         >
           <SelectTrigger className="min-w-[120px]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="online">Online</SelectItem>
-            <SelectItem value="offline">Offline</SelectItem>
+            {ONLINE_FILTER_OPTIONS.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
 
@@ -291,10 +298,11 @@ export function AdminPlayers() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Players</SelectItem>
-            <SelectItem value="any">Any Violations</SelectItem>
-            <SelectItem value="strikes">With Strikes</SelectItem>
-            <SelectItem value="bans">With Bans</SelectItem>
+            {VIOLATION_FILTER_OPTIONS.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </FilterBar>
@@ -315,11 +323,8 @@ export function AdminPlayers() {
           navigate(`/admin/players/${player.minecraftUuid}`)
         }
         rowClassName={(player) => {
-          const badgeInfo = getPlayerBadgeInfo(player);
-          if (!badgeInfo.hasIssues) return undefined;
-          return badgeInfo.color === "red"
-            ? "bg-destructive/5"
-            : "bg-yellow-500/5";
+          const violation = violationOf(player);
+          return violation ? VIOLATION_STYLES[violation.kind].row : undefined;
         }}
       />
     </AdminPage>

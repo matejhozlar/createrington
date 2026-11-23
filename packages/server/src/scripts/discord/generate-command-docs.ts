@@ -1,3 +1,7 @@
+import type {
+  DiscordCommandDoc,
+  DiscordCommandOption,
+} from "@createrington/shared/discord-commands";
 import "@/logger.global";
 import { isCommandModule } from "@/discord/bots/common/loaders/command-loader";
 import {
@@ -64,34 +68,6 @@ const OptionType: Record<number, string> = {
   11: "Attachment",
 };
 
-interface CommandOption {
-  type: number;
-  name: string;
-  description: string;
-  required?: boolean;
-  choices?: { name: string; value: string | number }[];
-  min_value?: number;
-  max_value?: number;
-  options?: CommandOption[];
-}
-
-interface CommandData {
-  name: string;
-  description: string;
-  category: string;
-  options: CommandOption[];
-  defaultMemberPermissions: string | null;
-  permissions?: {
-    requireAdmin?: boolean;
-    requireOwner?: boolean;
-  };
-  cooldown?: {
-    duration: number;
-    type: string;
-    message?: string;
-  };
-}
-
 /** Determine category from file path */
 function getCategory(filePath: string): string {
   const relative = path.relative(COMMANDS_PATH, filePath);
@@ -100,7 +76,7 @@ function getCategory(filePath: string): string {
 }
 
 /** Format the permission level for display */
-function formatPermission(cmd: CommandData): string {
+function formatPermission(cmd: DiscordCommandDoc): string {
   if (cmd.permissions?.requireOwner) return "Owner";
   if (cmd.permissions?.requireAdmin) return "Admin";
   if (cmd.defaultMemberPermissions) return "Discord Administrator";
@@ -108,13 +84,13 @@ function formatPermission(cmd: CommandData): string {
 }
 
 /** Format cooldown for display */
-function formatCooldown(cmd: CommandData): string {
+function formatCooldown(cmd: DiscordCommandDoc): string {
   if (!cmd.cooldown) return "None";
   return `${cmd.cooldown.duration}s (${cmd.cooldown.type})`;
 }
 
 /** Format option type with range constraints */
-function formatOptionType(opt: CommandOption): string {
+function formatOptionType(opt: DiscordCommandOption): string {
   const typeName = OptionType[opt.type] ?? `Unknown(${opt.type})`;
   if (
     (opt.type === 4 || opt.type === 10) &&
@@ -137,7 +113,7 @@ function formatChoices(
 }
 
 /** Render a single option row */
-function renderOptionRow(opt: CommandOption): string {
+function renderOptionRow(opt: DiscordCommandOption): string {
   const required = opt.required ? "Yes" : "No";
   const type = formatOptionType(opt);
   const choices = formatChoices(opt.choices);
@@ -148,7 +124,7 @@ function renderOptionRow(opt: CommandOption): string {
 }
 
 /** Render option table for non-subcommand options */
-function renderOptionsTable(options: CommandOption[]): string {
+function renderOptionsTable(options: DiscordCommandOption[]): string {
   const lines = [
     "| Option | Type | Required | Description |",
     "|--------|------|----------|-------------|",
@@ -160,7 +136,7 @@ function renderOptionsTable(options: CommandOption[]): string {
 }
 
 /** Render a single subcommand block */
-function renderSubcommand(sub: CommandOption, prefix = ""): string {
+function renderSubcommand(sub: DiscordCommandOption, prefix = ""): string {
   const lines: string[] = [];
   const label = prefix ? `${prefix} ${sub.name}` : sub.name;
 
@@ -181,7 +157,7 @@ function renderSubcommand(sub: CommandOption, prefix = ""): string {
 }
 
 /** Render subcommands and subcommand groups */
-function renderSubcommands(options: CommandOption[]): string {
+function renderSubcommands(options: DiscordCommandOption[]): string {
   const lines: string[] = [];
 
   for (const opt of options) {
@@ -206,7 +182,7 @@ function renderSubcommands(options: CommandOption[]): string {
 }
 
 /** Render a full command section */
-function renderCommand(cmd: CommandData): string {
+function renderCommand(cmd: DiscordCommandDoc): string {
   const lines: string[] = [];
 
   lines.push(`### /${cmd.name}`);
@@ -247,7 +223,7 @@ async function main(): Promise<void> {
   console.log("Scanning command files...");
 
   const files = collectModuleFiles(COMMANDS_PATH, ".ts");
-  const commands: CommandData[] = [];
+  const commands: DiscordCommandDoc[] = [];
 
   // Intercept process.exit during imports (DB module calls it when offline)
   exitIntercepted = true;
@@ -307,7 +283,7 @@ async function main(): Promise<void> {
   // Write markdown
   if (emitMd) {
     // Group by category
-    const grouped = new Map<string, CommandData[]>();
+    const grouped = new Map<string, DiscordCommandDoc[]>();
     for (const cmd of commands) {
       const list = grouped.get(cmd.category) ?? [];
       list.push(cmd);

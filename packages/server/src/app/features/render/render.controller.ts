@@ -15,6 +15,15 @@ import {
   parseDesignCode,
 } from "@createrington/shared/team-tag";
 import { BadRequestError } from "@/errors";
+import type {
+  RenderActivity,
+  RenderCompare,
+  RenderComparePlayer,
+  RenderProfile,
+  RenderRecords,
+  RenderTag,
+  RenderTop,
+} from "@createrington/shared/render";
 
 import type {
   CompareQuery,
@@ -48,7 +57,7 @@ export class RenderController {
       details2.player.minecraftUuid,
     ]);
 
-    const mapPlayer = (details: typeof details1) => {
+    const mapPlayer = (details: typeof details1): RenderComparePlayer => {
       const networth = details.balance
         ? BalanceUtils.fromStorage(details.balance.balance)
         : 0;
@@ -68,7 +77,7 @@ export class RenderController {
     res.json({
       player1: mapPlayer(details1),
       player2: mapPlayer(details2),
-    });
+    } satisfies RenderCompare);
   }
 
   static async profile(_req: Request, res: Response): Promise<void> {
@@ -105,7 +114,7 @@ export class RenderController {
       deaths,
       distanceKm,
       tagCode: tags.get(details.player.minecraftUuid) ?? null,
-    });
+    } satisfies RenderProfile);
   }
 
   static async activity(_req: Request, res: Response): Promise<void> {
@@ -123,7 +132,7 @@ export class RenderController {
       uuid: target.minecraftUuid,
       mostActiveDay: activity.mostActiveDay ?? "N/A",
       tagCode: tags.get(target.minecraftUuid) ?? null,
-    });
+    } satisfies RenderActivity);
   }
 
   static async top(_req: Request, res: Response): Promise<void> {
@@ -153,14 +162,16 @@ export class RenderController {
         value: r.values[0] ?? 0,
         tagCode: tags.get(r.minecraftUuid) ?? null,
       })),
-    });
+    } satisfies RenderTop);
   }
 
   static tag(_req: Request, res: Response): void {
     const { design } = getValidated<{ query: DesignQuery }>(res).query;
 
     try {
-      res.json({ tagCode: designCode(parseDesignCode(design)) });
+      res.json({
+        tagCode: designCode(parseDesignCode(design)),
+      } satisfies RenderTag);
     } catch (error) {
       if (!(error instanceof DesignCodeError)) throw error;
       throw new BadRequestError(error.message);
@@ -180,6 +191,6 @@ export class RenderController {
         value: row.records,
         tagCode: tags.get(row.minecraftUuid) ?? null,
       })),
-    });
+    } satisfies RenderRecords);
   }
 }

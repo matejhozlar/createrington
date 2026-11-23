@@ -1,4 +1,4 @@
-import { trpc, queryClient } from "@/lib/trpc";
+import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { FormDialog } from "@/components/form-dialog";
@@ -9,15 +9,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useDialogDraft } from "@/hooks/use-dialog-draft";
 import { Field, FieldLabel } from "@/components/ui/field";
 
-interface ModpackSettings {
-  id: number;
-  name: string;
-  description: string | null;
-  curseforgeProjectId: number | null;
-  shipsServerPack: boolean;
-  titleImageUrl: string | null;
-  iconUrl: string | null;
-}
+type ModpackSettings = RouterOutput["admin"]["modpacks"]["list"][number];
 
 export function ModpackSettingsDialog({
   modpack,

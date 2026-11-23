@@ -12,7 +12,8 @@ import { useCountdown } from "@/hooks/use-countdown";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { FloatingDust } from "../FloatingDust";
+import { FloatingDust } from "@/features/structure-packs/components/FloatingDust";
+import type { PoolEntry } from "@/features/structure-packs/types";
 import { PortalFrame } from "./PortalFrame";
 import { useQuery } from "@tanstack/react-query";
 
@@ -356,12 +357,6 @@ function Stat({ icon: Icon, label, value, mono }: StatProps) {
       </div>
     </div>
   );
-}
-
-interface PoolEntry {
-  pack: { id: number; name: string };
-  weight: number;
-  boostUnits: number;
 }
 
 interface LeadingPeekProps {
