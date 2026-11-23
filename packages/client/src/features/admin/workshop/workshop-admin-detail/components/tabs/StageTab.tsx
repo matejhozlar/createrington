@@ -9,12 +9,11 @@ import {
 } from "@/components/data-table";
 import { TableCard } from "@/components/paged-table";
 import { useClientPagination } from "@/hooks/use-client-pagination";
-import type { ModEnvironment } from "@createrington/shared/db";
 import { PlayerLabel } from "@/components/player-label";
 import { FilterBar } from "@/features/admin/components/FilterBar";
 import {
   modReviewActions,
-  type ModReviewHandlers,
+  type ModTableProps,
 } from "@/features/admin/workshop/workshop-admin-detail/actions";
 import {
   STAGE_CONFIG,
@@ -22,10 +21,7 @@ import {
   type StageId,
 } from "@/features/admin/workshop/workshop-admin-detail/tabs";
 import type { AdminWorkshopMod } from "@/features/admin/workshop/workshop-admin-detail/types";
-import {
-  EnvironmentCell,
-  type EnvironmentDisplay,
-} from "@/features/workshop/components/EnvironmentCell";
+import { EnvironmentCell } from "@/features/workshop/components/EnvironmentCell";
 import { DependencyCell } from "@/features/admin/workshop/workshop-admin-detail/components/DependencyCell";
 import {
   ModCell,
@@ -114,16 +110,7 @@ export function StageTab({
 }: {
   stage: StageId;
   mods: AdminWorkshopMod[];
-  isLoading: boolean;
-  error: string | null;
-  onRetry: () => void;
-  search: string;
-  onSearchChange: (value: string) => void;
-  busyModId: number | null;
-  onView: (workshopModId: number) => void;
-  envDisplay: EnvironmentDisplay;
-  onSetEnvironment: (projectId: number, environment: ModEnvironment) => void;
-} & ModReviewHandlers) {
+} & ModTableProps) {
   const config = STAGE_CONFIG[stage];
   const query = search.trim().toLowerCase();
 
