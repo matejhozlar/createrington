@@ -7,6 +7,7 @@ import { trpc, type RouterOutput } from "@/lib/trpc";
 import { IssueWorkshopBanModal } from "./modals/IssueWorkshopBanModal";
 import { LiftWorkshopBanModal } from "./modals/LiftWorkshopBanModal";
 import { useQuery } from "@tanstack/react-query";
+import { formatDate } from "@createrington/shared/format";
 
 type WorkshopBan =
   RouterOutput["admin"]["workshops"]["bans"]["listForUser"][number];
@@ -96,14 +97,14 @@ export function WorkshopBansSection({
                       <Clock className="size-3" />
                     )}
                     {ban.expiresAt
-                      ? `Until ${new Date(ban.expiresAt).toLocaleDateString()}`
+                      ? `Until ${formatDate(ban.expiresAt)}`
                       : "Permanent"}
                   </Badge>
                 </div>
                 <p className="mt-2 text-sm">{ban.reason}</p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   Blocked by {ban.bannedByUsername} on{" "}
-                  {new Date(ban.bannedAt).toLocaleDateString()}
+                  {formatDate(ban.bannedAt)}
                 </p>
               </div>
               <Button
@@ -138,12 +139,12 @@ export function WorkshopBansSection({
                 <p className="mt-2 text-sm">{ban.reason}</p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   Blocked by {ban.bannedByUsername} on{" "}
-                  {new Date(ban.bannedAt).toLocaleDateString()}
+                  {formatDate(ban.bannedAt)}
                 </p>
                 {ban.unbanned && ban.unbannedAt && (
                   <p className="mt-1 text-xs text-muted-foreground">
                     Lifted by {ban.unbannedByUsername} on{" "}
-                    {new Date(ban.unbannedAt).toLocaleDateString()}
+                    {formatDate(ban.unbannedAt)}
                     {ban.unbanReason && ` - ${ban.unbanReason}`}
                   </p>
                 )}

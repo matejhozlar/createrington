@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useToastActions } from "@/hooks/use-toast";
 import { moveItem } from "@/lib/moveItem";
+import { localStore } from "@/lib/storage";
 import {
   createLayer,
   DEFAULT_OUTPUT,
@@ -40,10 +41,13 @@ function wordmarkProject(): Project {
 
 function loadProject(): Project {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return wordmarkProject();
-    const stored = JSON.parse(raw) as Partial<Project> & { version?: number };
-    if (stored.version !== STORAGE_VERSION || !stored.layers?.length) {
+    const stored = localStore.getJson(STORAGE_KEY) as
+      (Partial<Project> & { version?: number }) | null;
+    if (
+      !stored ||
+      stored.version !== STORAGE_VERSION ||
+      !stored.layers?.length
+    ) {
       return wordmarkProject();
     }
     const layers = stored.layers.map((layer) => createLayer(layer));
@@ -86,16 +90,14 @@ export function useTitleProject() {
       customTexture: null,
       customOverlay: null,
     }));
-    try {
-      localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({ ...project, layers, version: STORAGE_VERSION }),
-      );
-    } catch {
-      if (warnedRef.current) return;
-      warnedRef.current = true;
-      toast.warning("Changes to this title can't be saved in this browser");
-    }
+    const saved = localStore.setJson(STORAGE_KEY, {
+      ...project,
+      layers,
+      version: STORAGE_VERSION,
+    });
+    if (saved || warnedRef.current) return;
+    warnedRef.current = true;
+    toast.warning("Changes to this title can't be saved in this browser");
   }, [project, toast]);
 
   const updateLayer = useCallback((id: string, update: LayerUpdate) => {

@@ -5,6 +5,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useElementSize } from "@/hooks/use-element-size";
 import { designCode, type PlateDesign } from "@createrington/shared/team-tag";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/auth";
@@ -23,7 +24,6 @@ import { StickyPlateBar } from "./components/StickyPlateBar";
 import { TabListPreview } from "./components/TabListPreview";
 import { TagStep } from "./components/TagStep";
 import { RANKS } from "./presets";
-import { useElementWidth } from "./hooks/use-element-width";
 import { useLoadedImage } from "./hooks/use-loaded-image";
 import { usePlateAssets } from "./hooks/use-plate-assets";
 import {
@@ -63,8 +63,8 @@ export function TeamTag() {
     user?.minecraftUuid ? playerAvatarUrl(user.minecraftUuid, HEAD_SIZE) : null,
   );
   const head = useMemo(() => readHead(headImage), [headImage]);
-  const { ref: rootRef, width } = useElementWidth<HTMLDivElement>();
-  const wide = width >= WIDE_LAYOUT;
+  const { ref: rootRef, size } = useElementSize<HTMLDivElement>();
+  const wide = (size?.width ?? 0) >= WIDE_LAYOUT;
   const zooms = wide ? ZOOMS.wide : ZOOMS.narrow;
 
   const panelRef = useRef<HTMLDivElement>(null);

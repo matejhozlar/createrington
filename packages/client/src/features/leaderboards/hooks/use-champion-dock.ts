@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { prefersReducedMotion } from "@/lib/motion";
 import { clamp } from "@/lib/math";
 
 const LAND_AT = 0.3;
@@ -167,7 +168,7 @@ export function useChampionDock(keys: string[], delays: number[]): void {
   const signature = keys.join(",");
 
   useEffect(() => {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (prefersReducedMotion()) return;
     const fixedLayer = document.querySelector<HTMLElement>(
       '[data-dock-layer="fixed"]',
     );

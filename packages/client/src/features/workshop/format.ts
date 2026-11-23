@@ -14,7 +14,6 @@ import {
 import type { BadgeTone } from "@/components/ui/badge";
 
 export { WORKSHOP_MOD_REJECT_REASON_LABELS as REJECT_REASON_LABELS } from "@createrington/shared/workshop";
-export { formatDate } from "@createrington/shared/format";
 
 export const LOADER_NAMES: Record<number, string> = {
   1: "Forge",

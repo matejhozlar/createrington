@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 import { useQuery } from "@tanstack/react-query";
 import { LoadingState } from "@/components/query-states";
+import { formatDate } from "@createrington/shared/format";
 
 interface CommandOption {
   type: number;
@@ -291,11 +292,7 @@ export function CommandDocs() {
               <p>
                 {allCommands.length} commands registered
                 {payload?.generatedAt && (
-                  <>
-                    {" "}
-                    · Generated{" "}
-                    {new Date(payload.generatedAt).toLocaleDateString()}
-                  </>
+                  <> · Generated {formatDate(payload.generatedAt)}</>
                 )}
               </p>
             }

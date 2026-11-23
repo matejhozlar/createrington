@@ -9,7 +9,12 @@ import {
 } from "lucide-react";
 import { trpc, queryClient } from "@/lib/trpc";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
-import { formatBytes, formatMoney, formatRelativeDate } from "@/lib/format";
+import {
+  formatBytes,
+  formatDateTime,
+  formatMoney,
+  formatRelativeDate,
+} from "@/lib/format";
 import { PlayerLabel } from "@/components/player-label";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -158,7 +163,7 @@ export function ReviewPanel({
                 uuid={item.author.minecraftUuid}
                 name={item.author.minecraftUsername}
               />
-              <span title={submittedAt.toLocaleString()}>
+              <span title={formatDateTime(submittedAt)}>
                 Submitted {formatRelativeDate(submittedAt)}
               </span>
               {dimensions && <span>{dimensions}</span>}

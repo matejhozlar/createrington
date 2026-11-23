@@ -7,6 +7,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
 import { useMutation } from "@tanstack/react-query";
+import { formatDate } from "@createrington/shared/format";
 
 type WaitlistEntry =
   RouterOutput["admin"]["waitlists"]["list"]["items"][number];
@@ -87,13 +88,13 @@ export function DeleteWaitlistModal({
             <div className="flex justify-between">
               <span className="text-muted-foreground">Signed up:</span>
               <span className="font-medium">
-                {entry ? new Date(entry.createdAt).toLocaleDateString() : ""}
+                {entry ? formatDate(entry.createdAt) : ""}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Queued:</span>
               <span className="font-medium">
-                {entry ? new Date(entry.queuedAt).toLocaleDateString() : ""}
+                {entry ? formatDate(entry.queuedAt) : ""}
               </span>
             </div>
           </div>

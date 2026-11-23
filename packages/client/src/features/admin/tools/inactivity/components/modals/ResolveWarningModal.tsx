@@ -2,6 +2,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
 import { useMutation } from "@tanstack/react-query";
+import { formatDate } from "@createrington/shared/format";
 
 type Warning = RouterOutput["admin"]["inactivity"]["list"]["items"][number];
 
@@ -63,14 +64,14 @@ export function ResolveWarningModal({
             <div className="flex justify-between">
               <span className="text-muted-foreground">Warned:</span>
               <span className="font-medium">
-                {new Date(warning.warnedAt).toLocaleDateString()}
+                {formatDate(warning.warnedAt)}
               </span>
             </div>
             {warning.lastSeen && (
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Last seen:</span>
                 <span className="font-medium">
-                  {new Date(warning.lastSeen).toLocaleDateString()}
+                  {formatDate(warning.lastSeen)}
                 </span>
               </div>
             )}

@@ -29,6 +29,7 @@ import {
 } from "@createrington/shared/minecraft-stats";
 import { useQuery } from "@tanstack/react-query";
 import { EmptyState, ErrorState } from "@/components/query-states";
+import { pluralize } from "@/lib/format";
 
 const CATEGORY_KEYS = [
   "minecraft:picked_up",
@@ -305,8 +306,7 @@ export function StatSearch() {
                 ))}
                 {results.length > 0 && (
                   <span className="ml-auto">
-                    {results.length} player{results.length !== 1 ? "s" : ""}{" "}
-                    found
+                    {pluralize(results.length, "player")} found
                   </span>
                 )}
               </div>

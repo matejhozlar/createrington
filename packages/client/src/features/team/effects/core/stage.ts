@@ -1,5 +1,5 @@
 import type { PlayerAnimation, SkinViewer } from "skinview3d";
-import { prefersReducedMotion } from "./math";
+import { prefersReducedMotion } from "@/lib/motion";
 import type { Point } from "./screen";
 
 export interface GuestAnimation extends PlayerAnimation {

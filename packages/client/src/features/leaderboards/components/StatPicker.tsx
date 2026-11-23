@@ -5,7 +5,7 @@ import {
   formatStatItem,
   statModName,
 } from "@createrington/shared/minecraft-stats";
-import { formatNumber } from "@/lib/format";
+import { pluralize } from "@/lib/format";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
@@ -92,8 +92,7 @@ function StatResults({ onPick }: { onPick: (stat: Stat) => void }) {
                 </span>
               </span>
               <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-                {formatNumber(stat.holders)}{" "}
-                {stat.holders === 1 ? "player" : "players"}
+                {pluralize(stat.holders, "player")}
               </span>
             </CommandItem>
           );

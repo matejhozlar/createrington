@@ -1,13 +1,4 @@
-import { useEffect, useState } from "react";
-
-export function useRelativeTick(intervalMs = 60_000) {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), intervalMs);
-    return () => clearInterval(id);
-  }, [intervalMs]);
-  return now;
-}
+import { useEffect } from "react";
 
 export function useAutoResize(
   ref: React.RefObject<HTMLTextAreaElement | null>,

@@ -8,6 +8,7 @@ import { trpc, queryClient } from "@/lib/trpc";
 import type { RemoveTarget } from "../types";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Spinner } from "@/components/ui/spinner";
+import { pluralize } from "@/lib/format";
 
 interface PackMod {
   id: number;
@@ -97,9 +98,7 @@ export function RemoveModDialog({
       const total = 1 + deps.length;
       const removed = total - failures.length;
       if (failures.length === 0) {
-        toast.success(
-          `Removed ${total} mod${total !== 1 ? "s" : ""} from pack`,
-        );
+        toast.success(`Removed ${pluralize(total, "mod")} from pack`);
       } else if (removed === 0) {
         toast.error(failures.join("; "));
         return;

@@ -1,9 +1,10 @@
+import { localStore, sessionStore, type SafeStorage } from "@/lib/storage";
 import { isPlanAction, type AdminChatAction } from "./actions";
 
 export type ActionState = "pending" | "applied" | "dismissed";
 
-function storageFor(action: AdminChatAction): Storage {
-  return isPlanAction(action) ? localStorage : sessionStorage;
+function storageFor(action: AdminChatAction): SafeStorage {
+  return isPlanAction(action) ? localStore : sessionStore;
 }
 
 function keyFor(storageKey: string): string {
@@ -14,11 +15,8 @@ export function readActionState(
   action: AdminChatAction,
   storageKey: string,
 ): ActionState {
-  try {
-    const value = storageFor(action).getItem(keyFor(storageKey));
-    if (value === "applied" || value === "dismissed") return value;
-  } catch {}
-  return "pending";
+  const value = storageFor(action).get(keyFor(storageKey));
+  return value === "applied" || value === "dismissed" ? value : "pending";
 }
 
 export function saveActionState(
@@ -26,7 +24,5 @@ export function saveActionState(
   storageKey: string,
   state: Exclude<ActionState, "pending">,
 ): void {
-  try {
-    storageFor(action).setItem(keyFor(storageKey), state);
-  } catch {}
+  storageFor(action).set(keyFor(storageKey), state);
 }

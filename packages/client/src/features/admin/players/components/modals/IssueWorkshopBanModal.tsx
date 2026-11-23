@@ -12,6 +12,7 @@ import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { FormDialog } from "@/components/form-dialog";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Textarea } from "@/components/ui/textarea";
+import { pluralize } from "@/lib/format";
 
 const DURATIONS = [1, 3, 7, 14, 30, 60, 90];
 
@@ -143,7 +144,7 @@ export function IssueWorkshopBanModal({
             <SelectContent className="z-[100]">
               {DURATIONS.map((days) => (
                 <SelectItem key={days} value={String(days)}>
-                  {days} {days === 1 ? "day" : "days"}
+                  {pluralize(days, "day")}
                 </SelectItem>
               ))}
             </SelectContent>

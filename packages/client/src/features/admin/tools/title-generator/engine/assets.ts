@@ -1,4 +1,5 @@
-import { loadImage, readFileAsDataUrl } from "./canvas";
+import { loadImage } from "@/lib/image";
+import { readFileAsDataUrl } from "./canvas";
 import type {
   FontCharacters,
   FontTextures,

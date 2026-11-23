@@ -4,6 +4,7 @@ import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
 import { useMutation } from "@tanstack/react-query";
 import { Spinner } from "@/components/ui/spinner";
+import { formatDate } from "@createrington/shared/format";
 
 type Ghost =
   RouterOutput["admin"]["inactivity"]["ghosts"]["list"]["items"][number];
@@ -139,7 +140,7 @@ export function RemoveGhostModal({
             <div className="flex justify-between">
               <span className="text-muted-foreground">Last seen:</span>
               <span className="font-medium">
-                {new Date(ghost.playerLastSeen).toLocaleDateString()}
+                {formatDate(ghost.playerLastSeen)}
               </span>
             </div>
           </div>

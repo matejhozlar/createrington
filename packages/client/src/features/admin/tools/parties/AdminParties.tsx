@@ -32,6 +32,7 @@ import {
 } from "./components/PartiesTable";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { MAIN_SERVER_ID } from "@/lib/minecraft";
+import { plural } from "@/lib/format";
 
 const PAGE_COPY = {
   title: "Parties",
@@ -57,7 +58,7 @@ function purgeMessage({ removed, failed }: PurgeResult): string {
   const removedText =
     removed.length === 0
       ? "No departed members to remove."
-      : `Removed ${removed.length} departed member${removed.length === 1 ? "" : "s"} from their parties.`;
+      : `Removed ${removed.length} departed ${plural(removed.length, "member")} from their parties.`;
   return failed === 0
     ? removedText
     : `${removedText} ${failed} could not be removed, see the server log.`;

@@ -5,6 +5,7 @@ import type {
 } from "@createrington/shared/api/embed";
 import { numberToHex } from "@/lib/utils";
 import { DiscordEmoji } from "@/components/discord-emoji";
+import { pluralize } from "@/lib/format";
 
 interface ComponentsActionPreviewProps {
   components: ComponentNode[];
@@ -59,7 +60,7 @@ function NodePreview({ node }: { node: ComponentNode }): React.JSX.Element {
     case "media_gallery":
       return (
         <div className="text-[0.6875rem] text-muted-foreground">
-          🖼 {node.items.length} image{node.items.length === 1 ? "" : "s"}
+          🖼 {pluralize(node.items.length, "image")}
         </div>
       );
     case "section":

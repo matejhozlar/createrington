@@ -1,3 +1,5 @@
+import { localStore } from "@/lib/storage";
+
 export type PlayerHint = {
   uuid: string;
   username: string;
@@ -22,23 +24,11 @@ function isPlayerHint(value: unknown): value is PlayerHint {
 }
 
 export function readPlayerHint(): PlayerHint {
-  try {
-    const raw = localStorage.getItem(PLAYER_HINT_KEY);
-    const parsed: unknown = raw ? JSON.parse(raw) : null;
-    return isPlayerHint(parsed) ? parsed : DEFAULT_PLAYER;
-  } catch {
-    return DEFAULT_PLAYER;
-  }
+  const stored = localStore.getJson(PLAYER_HINT_KEY);
+  return isPlayerHint(stored) ? stored : DEFAULT_PLAYER;
 }
 
 export function writePlayerHint(hint: PlayerHint | null): void {
-  try {
-    if (hint) {
-      localStorage.setItem(PLAYER_HINT_KEY, JSON.stringify(hint));
-    } else {
-      localStorage.removeItem(PLAYER_HINT_KEY);
-    }
-  } catch {
-    return;
-  }
+  if (hint) localStore.setJson(PLAYER_HINT_KEY, hint);
+  else localStore.remove(PLAYER_HINT_KEY);
 }

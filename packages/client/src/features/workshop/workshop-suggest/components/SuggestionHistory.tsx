@@ -20,9 +20,9 @@ import { ViewToggle } from "../../components/ViewToggle";
 import {
   MOD_STATUS_STYLES,
   REJECT_REASON_LABELS,
-  formatDate,
   liveTitle,
 } from "../../format";
+import { formatDate } from "@createrington/shared/format";
 import { useQuery } from "@tanstack/react-query";
 
 type HistoryItem =

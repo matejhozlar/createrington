@@ -15,6 +15,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatRelativeDateSafe } from "@/features/admin/format";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { useQuery } from "@tanstack/react-query";
+import { formatDateTime } from "@/lib/format";
 
 type Window = "all" | "30d";
 type TopVoter = RouterOutput["admin"]["votes"]["topVoters"][number];
@@ -65,7 +66,7 @@ const COLUMNS: DataTableColumn<TopVoter>[] = [
     width: 130,
     render: (voter) => (
       <CellText
-        value={new Date(voter.lastVotedAt).toLocaleString()}
+        value={formatDateTime(voter.lastVotedAt)}
         display={formatRelativeDateSafe(voter.lastVotedAt)}
         className="text-sm text-muted-foreground"
       />

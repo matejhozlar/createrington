@@ -26,9 +26,9 @@ import {
 import {
   COMPACT_BADGE_CLASS,
   DISABLED_LABEL,
-  formatDate,
   projectKindLabel,
 } from "@/features/workshop/format";
+import { formatDate } from "@createrington/shared/format";
 import { useQuery } from "@tanstack/react-query";
 
 type Release = RouterOutput["admin"]["modpacks"]["listReleases"][number];

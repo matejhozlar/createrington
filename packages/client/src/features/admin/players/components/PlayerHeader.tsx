@@ -6,6 +6,7 @@ import { Edit, Trash2, MapPin } from "lucide-react";
 import type { RouterOutput } from "@/lib/trpc";
 import { playerPoseUrl } from "@/lib/playerImages";
 import { formatDimension, tpCommand } from "@/lib/minecraft";
+import { formatDate } from "@createrington/shared/format";
 
 type PlayerDetail =
   RouterOutput["admin"]["players"]["players"]["get"]["player"];
@@ -97,23 +98,9 @@ export function PlayerHeader({
             )}
 
           <div className="flex items-center gap-x-3 text-[11px] text-muted-foreground/70">
-            <span>
-              Registered{" "}
-              {new Date(player.createdAt).toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-                year: "numeric",
-              })}
-            </span>
+            <span>Registered {formatDate(player.createdAt)}</span>
             <span>&middot;</span>
-            <span>
-              Last seen{" "}
-              {new Date(player.lastSeen).toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-                year: "numeric",
-              })}
-            </span>
+            <span>Last seen {formatDate(player.lastSeen)}</span>
           </div>
         </div>
       </div>

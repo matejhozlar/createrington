@@ -1,4 +1,5 @@
 import { use } from "react";
+import { loadImage } from "@/lib/image";
 
 interface Preload {
   promise: Promise<void>;
@@ -12,20 +13,12 @@ function preload(url: string): Preload {
   if (existing) return existing;
 
   const entry: Preload = { done: false, promise: Promise.resolve() };
-  entry.promise = new Promise<void>((resolve) => {
-    const image = new Image();
-    const finish = () => {
+  entry.promise = loadImage(url)
+    .then((image) => image.decode())
+    .catch(() => undefined)
+    .then(() => {
       entry.done = true;
-      resolve();
-    };
-    image.onload = () =>
-      image
-        .decode()
-        .catch(() => undefined)
-        .then(finish);
-    image.onerror = finish;
-    image.src = url;
-  });
+    });
   cache.set(url, entry);
   return entry;
 }

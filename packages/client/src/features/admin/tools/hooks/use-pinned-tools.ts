@@ -1,29 +1,16 @@
 import { useState } from "react";
+import { localStore } from "@/lib/storage";
 
 const STORAGE_KEY = "admin-tools-pins";
 
 export const MAX_PINNED_TOOLS = 4;
 
 function readPins(validHrefs: string[]): string[] {
-  try {
-    const stored: unknown = JSON.parse(
-      localStorage.getItem(STORAGE_KEY) ?? "[]",
-    );
-    if (!Array.isArray(stored)) return [];
-    return stored
-      .filter((href): href is string => validHrefs.includes(href))
-      .slice(0, MAX_PINNED_TOOLS);
-  } catch {
-    return [];
-  }
-}
-
-function writePins(pins: string[]) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(pins));
-  } catch {
-    return;
-  }
+  const stored = localStore.getJson(STORAGE_KEY);
+  if (!Array.isArray(stored)) return [];
+  return stored
+    .filter((href): href is string => validHrefs.includes(href))
+    .slice(0, MAX_PINNED_TOOLS);
 }
 
 export function usePinnedTools(validHrefs: string[]) {
@@ -34,7 +21,7 @@ export function usePinnedTools(validHrefs: string[]) {
       ? pinned.filter((entry) => entry !== href)
       : [...pinned, href];
     if (next.length > MAX_PINNED_TOOLS) return false;
-    writePins(next);
+    localStore.setJson(STORAGE_KEY, next);
     setPinned(next);
     return true;
   };

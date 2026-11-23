@@ -7,6 +7,7 @@ import {
 } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/auth";
+import { localStore } from "@/lib/storage";
 import { trpc } from "@/lib/trpc";
 import { AdminChatContext } from "./context";
 import type { AdminChatContextType, OpenDrawerOptions } from "./types";
@@ -20,14 +21,6 @@ interface PanelState {
 
 const PANEL_CLOSED: PanelState = { open: false, expanded: false };
 
-function readInitialBubbleVisible(): boolean {
-  try {
-    return localStorage.getItem(BUBBLE_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
-
 export function AdminChatProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const isAdmin = Boolean(user?.isAdmin);
@@ -35,17 +28,15 @@ export function AdminChatProvider({ children }: { children: ReactNode }) {
   const { data: enabledFromServer } = useQuery(
     trpc.admin.chat.enabled.queryOptions(undefined, { enabled: isAdmin }),
   );
-  const [bubbleVisible, setBubbleVisibleState] = useState<boolean>(
-    readInitialBubbleVisible,
+  const [bubbleVisible, setBubbleVisibleState] = useState(
+    () => localStore.get(BUBBLE_KEY) === "1",
   );
   const [panel, setPanel] = useState<PanelState>(PANEL_CLOSED);
 
   const enabled = isAdmin && enabledFromServer === true;
 
   useEffect(() => {
-    try {
-      localStorage.setItem(BUBBLE_KEY, bubbleVisible ? "1" : "0");
-    } catch {}
+    localStore.set(BUBBLE_KEY, bubbleVisible ? "1" : "0");
   }, [bubbleVisible]);
 
   const openDrawer = useCallback((options?: OpenDrawerOptions) => {

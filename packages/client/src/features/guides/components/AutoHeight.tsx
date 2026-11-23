@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
+import { useElementSize } from "@/hooks/use-element-size";
 
 type AutoHeightProps = {
   children: ReactNode;
@@ -6,21 +7,8 @@ type AutoHeightProps = {
 };
 
 export function AutoHeight({ children, className }: AutoHeightProps) {
-  const innerRef = useRef<HTMLDivElement>(null);
-  const [height, setHeight] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (!innerRef.current) return;
-    const el = innerRef.current;
-
-    const ro = new ResizeObserver(([entry]) => {
-      if (!entry) return;
-      setHeight(entry.contentRect.height);
-    });
-
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
+  const { ref: innerRef, size } = useElementSize<HTMLDivElement>();
+  const height = size?.height ?? null;
 
   return (
     <div

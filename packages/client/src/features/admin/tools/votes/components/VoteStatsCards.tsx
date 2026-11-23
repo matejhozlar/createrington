@@ -2,6 +2,7 @@ import { CalendarDays, Gift, Users, Vote, type LucideIcon } from "lucide-react";
 import { StatCard, type StatTone } from "@/components/stat-card";
 import { pluralize } from "@/lib/format";
 import type { RouterOutput } from "@/lib/trpc";
+import { formatDate } from "@createrington/shared/format";
 
 type Stats = RouterOutput["admin"]["votes"]["stats"];
 
@@ -21,7 +22,7 @@ const CARDS: {
     value: (stats) => stats.total,
     detail: (stats) =>
       stats.firstVotedAt
-        ? `Since ${new Date(stats.firstVotedAt).toLocaleDateString()}`
+        ? `Since ${formatDate(stats.firstVotedAt)}`
         : "No vote yet",
   },
   {

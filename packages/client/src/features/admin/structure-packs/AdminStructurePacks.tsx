@@ -45,6 +45,7 @@ import { RotationConfig } from "./components/RotationConfig";
 import { RotationHistory } from "./components/RotationHistory";
 import { structurePackImportSchema } from "@createrington/shared/structure-pack";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { pluralize } from "@/lib/format";
 
 type StatusFilter = "all" | "enabled" | "disabled";
 type ActiveFilter = "all" | "active" | "inactive";
@@ -243,8 +244,7 @@ export function AdminStructurePacks() {
       header: "Mods",
       width: 90,
       cellClassName: "text-sm",
-      render: (pack) =>
-        `${pack.mods.length} mod${pack.mods.length !== 1 ? "s" : ""}`,
+      render: (pack) => pluralize(pack.mods.length, "mod"),
     },
     {
       key: "lastActive",

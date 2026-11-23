@@ -24,6 +24,7 @@ import type { UseEmbedBuilder } from "../hooks/use-embed-builder";
 import { useQuery } from "@tanstack/react-query";
 import { UnsavedDialog } from "./preset-sidebar/UnsavedDialog";
 import { SkeletonList } from "./preset-sidebar/SkeletonList";
+import { localStore } from "@/lib/storage";
 import { CollapsedPresetList } from "./preset-sidebar/CollapsedPresetList";
 import { PresetItem } from "./preset-sidebar/PresetItem";
 import { CategorySection } from "./preset-sidebar/CategorySection";
@@ -62,15 +63,12 @@ export function PresetSidebar({
 
   const [collapsed, setCollapsed] = useState(() => {
     if (forceExpanded) return false;
-    if (typeof window === "undefined") return false;
-    return localStorage.getItem(RAIL_COLLAPSED_KEY) === "1";
+    return localStore.get(RAIL_COLLAPSED_KEY) === "1";
   });
 
   useEffect(() => {
     if (forceExpanded) return;
-    try {
-      localStorage.setItem(RAIL_COLLAPSED_KEY, collapsed ? "1" : "0");
-    } catch {}
+    localStore.set(RAIL_COLLAPSED_KEY, collapsed ? "1" : "0");
   }, [collapsed, forceExpanded]);
 
   const isSearching = !!search;

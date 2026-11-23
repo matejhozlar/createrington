@@ -7,6 +7,7 @@ import { trpc, queryClient } from "@/lib/trpc";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Textarea } from "@/components/ui/textarea";
+import { pluralize } from "@/lib/format";
 
 interface DemoteDialogProps {
   admin: {
@@ -106,12 +107,12 @@ export function DemoteDialog({ admin, onClose, onSuccess }: DemoteDialogProps) {
             {actionRow(
               "Run /deop on Minecraft servers",
               preview.serverCount > 0 && !!preview.minecraftUsername,
-              `${preview.serverCount} server${preview.serverCount !== 1 ? "s" : ""}`,
+              pluralize(preview.serverCount, "server"),
             )}
             {actionRow(
               "Revoke active web sessions",
               preview.activeSessions > 0,
-              `${preview.activeSessions} session${preview.activeSessions !== 1 ? "s" : ""}`,
+              pluralize(preview.activeSessions, "session"),
             )}
           </div>
         ) : (

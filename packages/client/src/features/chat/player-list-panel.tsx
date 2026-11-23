@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { Avatar } from "./avatar";
-import { useRelativeTick } from "./hooks";
+import { useNow } from "@/hooks/use-now";
 import { formatCompactDuration } from "@createrington/shared/format";
 
 function PlayerRow({
@@ -75,7 +75,7 @@ export function PlayerListPanel({
   const { getServerPlayers } = usePlayerData();
   const { state: sidebarState } = useSidebar();
   const isCollapsed = sidebarState === "collapsed";
-  const now = useRelativeTick(60_000);
+  const now = useNow();
 
   const players = useMemo(
     () => getServerPlayers(serverId),

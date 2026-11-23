@@ -1,6 +1,7 @@
 import { KNOWN_POSES, type KnownPose } from "createrington-skin-api";
 import { formatMoney } from "@createrington/shared/format";
-import { formatNumber } from "@/lib/format";
+import { formatNumber, pluralize } from "@/lib/format";
+import { DAY_MS } from "@/lib/time";
 import type { RouterOutput } from "@/lib/trpc";
 
 export type ComparedPlayer =
@@ -8,7 +9,6 @@ export type ComparedPlayer =
 
 export const SIDE_COLORS = ["#4C8DFF", "#FF7A45"] as const;
 
-const DAY_MS = 24 * 60 * 60 * 1000;
 const UNSTAGED_POSES: ReadonlySet<KnownPose> = new Set(["shipped", "toasty"]);
 const STAGE_POSES = KNOWN_POSES.filter((pose) => !UNSTAGED_POSES.has(pose));
 
@@ -80,8 +80,7 @@ export const HEADLINE_METRICS: HeadlineMetric[] = [
   {
     label: "Current streak",
     value: (player) => player.streak,
-    display: (player) =>
-      `${formatNumber(player.streak)} ${player.streak === 1 ? "day" : "days"}`,
+    display: (player) => pluralize(player.streak, "day"),
   },
   {
     label: "Member since",

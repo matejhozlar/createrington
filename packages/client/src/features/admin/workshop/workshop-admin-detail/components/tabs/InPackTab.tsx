@@ -33,11 +33,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { FilterBar } from "@/features/admin/components/FilterBar";
-import {
-  DISABLED_LABEL,
-  formatDate,
-  projectKindLabel,
-} from "@/features/workshop/format";
+import { DISABLED_LABEL, projectKindLabel } from "@/features/workshop/format";
+import { formatDate } from "@createrington/shared/format";
 import type { ModEnvironment } from "@createrington/shared/db";
 import {
   EnvironmentCell,

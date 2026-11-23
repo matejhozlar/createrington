@@ -4,6 +4,7 @@ import { RenderUnavailable } from "./components/RenderUnavailable";
 import { usePodiumSkins } from "./hooks/use-podium-skins";
 import { useRenderData } from "./hooks/use-render-data";
 import { useRenderPlatesReady } from "./hooks/use-render-plates";
+import { pluralize } from "@/lib/format";
 
 interface RecordsData {
   contestedKeys: number;
@@ -17,7 +18,7 @@ const BANNER = {
 const TITLE = "Most #1 Placements";
 
 function formatValue(value: number): string {
-  return `${value.toLocaleString()} ${value === 1 ? "record" : "records"}`;
+  return pluralize(value, "record");
 }
 
 export function RecordsRender() {

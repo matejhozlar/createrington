@@ -25,7 +25,8 @@ import { ChatComposer } from "./chat-composer";
 import { ChatFallback } from "./chat-fallback";
 import { MessageGroupComponent } from "./message-group";
 import { PlayerListPanel } from "./player-list-panel";
-import { useRelativeTick } from "./hooks";
+import { useNow } from "@/hooks/use-now";
+import { useStickToBottom } from "@/hooks/use-stick-to-bottom";
 import { groupHasHighlight, groupMessages } from "./utils";
 
 const MAX_MESSAGES = 200;
@@ -75,7 +76,6 @@ export function ServerChat() {
   const [messages, setMessages] = useState<CachedMessage[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const [showScrollButton, setShowScrollButton] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [highlightedMessages, setHighlightedMessages] = useState<Set<string>>(
     new Set(),
@@ -83,24 +83,19 @@ export function ServerChat() {
 
   const [playerListOpen, setPlayerListOpen] = useState(false);
 
-  const isAtBottomRef = useRef(true);
   const lastMessageIdRef = useRef<string | null>(null);
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const {
+    ref: messagesRef,
+    pinnedToBottom,
+    isNearBottom,
+    scrollToBottom,
+    followNewContent,
+  } = useStickToBottom<HTMLDivElement>({
+    onReachBottom: () => setUnreadCount(0),
+  });
 
-  const tick = useRelativeTick();
-
-  const handleScroll = useCallback(() => {
-    const container = messagesContainerRef.current;
-    if (!container) return;
-    const atBottom =
-      container.scrollHeight - container.scrollTop - container.clientHeight <
-      50;
-    isAtBottomRef.current = atBottom;
-    setShowScrollButton(!atBottom);
-    if (atBottom) setUnreadCount(0);
-  }, []);
+  const tick = useNow();
 
   const { groups: messageGroups, sorted } = useMemo(() => {
     const sorted = [...messages].sort((a, b) => {
@@ -112,17 +107,9 @@ export function ServerChat() {
     };
   }, [messages]);
 
-  const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
-    messagesEndRef.current?.scrollIntoView({ behavior });
-  }, []);
-
   const handleScrollToBottom = useCallback(() => {
     scrollToBottom();
     setUnreadCount(0);
-  }, [scrollToBottom]);
-
-  const handleImageLoad = useCallback(() => {
-    if (isAtBottomRef.current) scrollToBottom();
   }, [scrollToBottom]);
 
   const handleHighlightEnd = useCallback((messageIds: string[]) => {
@@ -133,20 +120,23 @@ export function ServerChat() {
     });
   }, []);
 
-  const upsertMessage = useCallback((msg: CachedMessage) => {
-    setMessages((prev) => {
-      const idx = prev.findIndex((m) => m.messageId === msg.messageId);
-      const isNew = idx < 0;
+  const upsertMessage = useCallback(
+    (msg: CachedMessage) => {
+      setMessages((prev) => {
+        const idx = prev.findIndex((m) => m.messageId === msg.messageId);
+        const isNew = idx < 0;
 
-      if (isNew && !isAtBottomRef.current) {
-        setHighlightedMessages((prev) => new Set(prev).add(msg.messageId));
-      }
+        if (isNew && !isNearBottom()) {
+          setHighlightedMessages((prev) => new Set(prev).add(msg.messageId));
+        }
 
-      return idx >= 0
-        ? prev.map((m, i) => (i === idx ? msg : m))
-        : [...prev, msg].slice(-MAX_MESSAGES);
-    });
-  }, []);
+        return idx >= 0
+          ? prev.map((m, i) => (i === idx ? msg : m))
+          : [...prev, msg].slice(-MAX_MESSAGES);
+      });
+    },
+    [isNearBottom],
+  );
 
   const removeMessage = useCallback((messageId: string) => {
     setMessages((prev) => prev.filter((m) => m.messageId !== messageId));
@@ -178,11 +168,8 @@ export function ServerChat() {
   }, [isConnected, serverId, requestInitialData, subscribe, unsubscribe]);
 
   useLayoutEffect(() => {
-    if (loading) return;
-    const el = messagesContainerRef.current;
-    if (!el) return;
-    el.scrollTop = el.scrollHeight;
-  }, [loading]);
+    if (!loading) scrollToBottom("auto");
+  }, [loading, scrollToBottom]);
 
   useEffect(() => {
     if (!isConnected || !serverId) return;
@@ -220,12 +207,12 @@ export function ServerChat() {
     if (previousIdx < 0) return;
 
     const newMessageCount = sorted.length - 1 - previousIdx;
-    if (!isAtBottomRef.current) {
+    if (!isNearBottom()) {
       setUnreadCount((prev) => prev + newMessageCount);
     } else {
-      scrollToBottom();
+      followNewContent();
     }
-  }, [sorted, scrollToBottom]);
+  }, [sorted, isNearBottom, followNewContent]);
 
   if (legacyServer) {
     return <Navigate to={`/chat/${legacyServer.serverSlug}`} replace />;
@@ -307,8 +294,7 @@ export function ServerChat() {
 
       <div className="relative min-h-0 flex-1 overflow-hidden">
         <div
-          ref={messagesContainerRef}
-          onScroll={handleScroll}
+          ref={messagesRef}
           className="h-full overflow-x-hidden overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border hover:[&::-webkit-scrollbar-thumb]:bg-muted-foreground/50"
         >
           {loading ? (
@@ -347,7 +333,7 @@ export function ServerChat() {
                       group={group}
                       prevSource={prevGroup?.source}
                       tick={tick}
-                      onImageLoad={handleImageLoad}
+                      onImageLoad={followNewContent}
                       isOnline={isOnline}
                       hasHighlight={isHighlighted}
                       onHighlightEnd={handleHighlightEnd}
@@ -355,12 +341,11 @@ export function ServerChat() {
                   );
                 });
               })()}
-              <div ref={messagesEndRef} />
             </div>
           )}
         </div>
 
-        {showScrollButton && (
+        {!pinnedToBottom && (
           <div className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2">
             <button
               type="button"

@@ -1,4 +1,5 @@
 import { mcHeadsSkin } from "@/lib/externalUrls";
+import { loadImage } from "@/lib/image";
 import { STEVE_SKIN_DATA_URI } from "./steve";
 
 export type SkinModel = "classic" | "slim";
@@ -51,20 +52,10 @@ export function context2d(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
 }
 
 export async function loadSkinParts(uuid: string): Promise<SkinParts> {
-  const image = await loadImage(mcHeadsSkin(uuid)).catch(() =>
-    loadImage(STEVE_SKIN_DATA_URI),
-  );
+  const image = await loadImage(mcHeadsSkin(uuid), {
+    crossOrigin: "anonymous",
+  }).catch(() => loadImage(STEVE_SKIN_DATA_URI));
   return buildParts(image);
-}
-
-export function loadImage(src: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const image = new Image();
-    image.crossOrigin = "anonymous";
-    image.onload = () => resolve(image);
-    image.onerror = () => reject(new Error(`Failed to load skin ${src}`));
-    image.src = src;
-  });
 }
 
 function readPixels(image: HTMLImageElement): ImageData | null {

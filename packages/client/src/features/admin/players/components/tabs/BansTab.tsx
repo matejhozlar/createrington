@@ -5,6 +5,7 @@ import type { RouterOutput } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { WorkshopBansSection } from "../WorkshopBansSection";
 import { EmptyState } from "@/components/query-states";
+import { formatDate } from "@createrington/shared/format";
 
 type PlayerDetailed = RouterOutput["admin"]["players"]["players"]["get"];
 
@@ -26,7 +27,7 @@ export function BansTab({ player, onIssueBan, onUnban }: BansTabProps) {
 
     if (date < now) return "Expired";
 
-    return date.toLocaleDateString();
+    return formatDate(date);
   };
 
   const isExpired = (expiresAt: string | null) => {
@@ -111,7 +112,7 @@ export function BansTab({ player, onIssueBan, onUnban }: BansTabProps) {
                   <p className="mt-2 text-sm">{ban.reason}</p>
                   <p className="mt-1 text-xs text-muted-foreground">
                     Issued by {ban.bannedByUsername} on{" "}
-                    {new Date(ban.bannedAt).toLocaleDateString()}
+                    {formatDate(ban.bannedAt)}
                   </p>
                   {ban.serverId && (
                     <p className="mt-1 text-xs text-muted-foreground">
@@ -156,12 +157,11 @@ export function BansTab({ player, onIssueBan, onUnban }: BansTabProps) {
                 </div>
                 <p className="mt-2 text-sm">{ban.reason}</p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Issued by {ban.bannedByUsername} on{" "}
-                  {new Date(ban.bannedAt).toLocaleDateString()}
+                  Issued by {ban.bannedByUsername} on {formatDate(ban.bannedAt)}
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   Lifted by {ban.unbannedByUsername} on{" "}
-                  {new Date(ban.unbannedAt!).toLocaleDateString()}
+                  {formatDate(ban.unbannedAt)}
                   {ban.unbanReason && ` - ${ban.unbanReason}`}
                 </p>
               </div>

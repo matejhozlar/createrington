@@ -8,6 +8,7 @@ import { LoadCodeCard } from "./LoadCodeCard";
 import { PlateCanvas } from "./PlateCanvas";
 import { SectionLabel } from "./SectionLabel";
 import { TagCells } from "./TagCells";
+import { plural } from "@/lib/format";
 
 const PRESET_ZOOM = 2;
 
@@ -45,8 +46,8 @@ export function TagStep({
         <TagCells tag={draft.tag} onChange={(tag) => onChange({ tag })} />
         {missing > 0 && (
           <p className="text-xs text-amber-400">
-            {missing} more {missing === 1 ? "character" : "characters"}: tags
-            are exactly {TAG_LENGTH} letters or digits.
+            {missing} more {plural(missing, "character")}: tags are exactly{" "}
+            {TAG_LENGTH} letters or digits.
           </p>
         )}
       </section>

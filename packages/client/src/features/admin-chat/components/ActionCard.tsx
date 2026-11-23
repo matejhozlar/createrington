@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { Check, RotateCcw, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToastActions } from "@/hooks/use-toast";
+import { sessionStore } from "@/lib/storage";
 import { cn } from "@/lib/utils";
 import {
   PENDING_EMBED_KEY,
@@ -66,9 +67,7 @@ function sendToEmbedBuilder(
     window.dispatchEvent(new CustomEvent(event, { detail: payload }));
     return;
   }
-  try {
-    sessionStorage.setItem(storageKey, JSON.stringify(payload));
-  } catch {}
+  sessionStore.setJson(storageKey, payload);
   navigate(EMBED_BUILDER_PATH);
 }
 

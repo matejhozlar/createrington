@@ -17,6 +17,7 @@ import { trpc, queryClient } from "@/lib/trpc";
 import { REQUIRED_DEPENDENCY } from "@createrington/shared/workshop";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Spinner } from "@/components/ui/spinner";
+import { pluralize } from "@/lib/format";
 
 interface PackMod {
   curseforgeModId: number;
@@ -169,7 +170,7 @@ export function AddModDialog({
       const total = 1 + deps.length;
       const added = total - failures.length;
       if (failures.length === 0) {
-        toast.success(`Added ${total} mod${total !== 1 ? "s" : ""} to pack`);
+        toast.success(`Added ${pluralize(total, "mod")} to pack`);
       } else {
         toast.warning(failures.join("; "), `Added ${added} of ${total} mods`);
       }
