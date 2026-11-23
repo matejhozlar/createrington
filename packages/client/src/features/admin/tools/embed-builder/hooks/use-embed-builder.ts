@@ -1,178 +1,88 @@
-import { useState, useCallback, useMemo, useEffect, useRef } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from "react";
+import { useMutation } from "@tanstack/react-query";
 import { trpc, queryClient } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
-import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { embedBotSchema } from "@createrington/shared/api/embed";
+import { plural } from "@/lib/format";
 import type {
-  EmbedData,
-  EmbedBot,
   ComponentNode,
+  EmbedBot,
+  EmbedData,
   MessagePayload,
   PresetKind,
 } from "@createrington/shared/api/embed";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import {
+  builderReducer,
+  INITIAL_STATE,
+  payloadOf,
+} from "@/features/admin/tools/embed-builder/builder-state";
 import {
   clearDraft,
   hasPendingAssistantInsert,
   loadDraft,
   saveDraft,
-} from "../draft";
+} from "@/features/admin/tools/embed-builder/draft";
 import {
-  DEFAULT_EMBED,
-  normalizeLoadedEmbed,
-  toExternalData,
-  type ActivePreset,
-  type EmbedDataInternal,
-  type EmbedFieldInternal,
-} from "../embed-data";
-import { findPayloadIssue } from "../validation";
+  parsePayload,
+  payloadHasContent,
+  snapshotOf,
+} from "@/features/admin/tools/embed-builder/payload";
+import type { PresetRow } from "@/features/admin/tools/embed-builder/preset-row";
+import { findPayloadIssue } from "@/features/admin/tools/embed-builder/validation";
 import { usePresetActions } from "./use-preset-actions";
-import { plural } from "@/lib/format";
+
+function invalidatePresetLists() {
+  void queryClient.invalidateQueries(
+    trpc.admin.embeds.presets.list.pathFilter(),
+  );
+  void queryClient.invalidateQueries(
+    trpc.admin.embeds.presets.categories.list.pathFilter(),
+  );
+}
 
 export function useEmbedBuilder() {
   const toast = useToastActions();
+  const [restoredDraft] = useState(loadDraft);
+  const [state, dispatch] = useReducer(
+    builderReducer,
+    restoredDraft ?? INITIAL_STATE,
+  );
+  const { kind, embed, components, activePreset, presetName, channelId, bot } =
+    state;
 
-  const [pendingDraft] = useState(loadDraft);
-  const [kind, setKind] = useState<PresetKind>(
-    () => pendingDraft?.kind ?? "embed",
+  const payload = useMemo(
+    () => payloadOf({ kind, embed, components }),
+    [kind, embed, components],
   );
-  const [data, setData] = useState<EmbedDataInternal>(() =>
-    pendingDraft
-      ? normalizeLoadedEmbed(pendingDraft.data)
-      : { ...DEFAULT_EMBED },
-  );
-  const [components, setComponents] = useState<ComponentNode[]>(
-    () => pendingDraft?.components ?? [],
-  );
-  const [bot, setBot] = useState<EmbedBot>(
-    () => embedBotSchema.safeParse(pendingDraft?.bot).data ?? "main",
-  );
-  const [channelId, setChannelId] = useState(
-    () => pendingDraft?.channelId ?? "",
-  );
-  const [activePreset, setActivePreset] = useState<ActivePreset | null>(
-    () => pendingDraft?.activePreset ?? null,
-  );
-  const [presetName, setPresetName] = useState(
-    () => pendingDraft?.presetName ?? "",
-  );
-  const [search, setSearch] = useState("");
-  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(
-    () => pendingDraft?.selectedCategoryId ?? null,
-  );
-
-  const debouncedSearch = useDebouncedValue(search);
-  const [lastSavedSnapshot, setLastSavedSnapshot] = useState(
-    () => pendingDraft?.savedSnapshot ?? "",
-  );
-
-  const externalData = useMemo(() => toExternalData(data), [data]);
-
-  const currentPayload = useMemo<MessagePayload>(
-    () =>
-      kind === "components"
-        ? { kind: "components", components: { components } }
-        : { kind: "embed", embed: externalData },
-    [kind, components, externalData],
-  );
-
-  const serializedData = useMemo(
-    () =>
-      JSON.stringify(
-        currentPayload.kind === "components"
-          ? currentPayload.components
-          : currentPayload.embed,
-      ),
-    [currentPayload],
-  );
-
-  const isDirty = useMemo(() => {
-    if (!activePreset) return false;
-    return serializedData !== lastSavedSnapshot;
-  }, [serializedData, activePreset, lastSavedSnapshot]);
-
-  const hasContent =
-    kind === "components"
-      ? components.length > 0
-      : !!(
-          data.content ||
-          data.title ||
-          data.description ||
-          data.fields.length > 0
-        );
+  const snapshot = useMemo(() => snapshotOf(payload), [payload]);
+  const isDirty = !!activePreset && snapshot !== state.savedSnapshot;
+  const hasContent = payloadHasContent(payload);
 
   const draftToastedRef = useRef(false);
   useEffect(() => {
-    if (!pendingDraft || draftToastedRef.current) return;
+    if (!restoredDraft || draftToastedRef.current) return;
     draftToastedRef.current = true;
-    if (hasPendingAssistantInsert()) return;
-    toast.info("Draft restored from your last session");
-  }, [pendingDraft, toast]);
+    if (!hasPendingAssistantInsert()) {
+      toast.info("Draft restored from your last session");
+    }
+  }, [restoredDraft, toast]);
 
   useEffect(() => {
     const id = window.setTimeout(() => {
-      if (hasContent || activePreset) {
-        saveDraft({
-          kind,
-          data: toExternalData(data),
-          components,
-          presetName,
-          bot,
-          channelId,
-          activePreset,
-          selectedCategoryId,
-          savedSnapshot: lastSavedSnapshot,
-        });
-      } else {
-        clearDraft();
-      }
+      if (hasContent || activePreset) saveDraft(state);
+      else clearDraft();
     }, 500);
     return () => window.clearTimeout(id);
-  }, [
-    kind,
-    data,
-    components,
-    presetName,
-    bot,
-    channelId,
-    activePreset,
-    selectedCategoryId,
-    hasContent,
-    lastSavedSnapshot,
-  ]);
+  }, [state, hasContent, activePreset]);
 
-  const categoriesQuery = useQuery(
-    trpc.admin.embeds.presets.categories.list.queryOptions(),
-  );
-
-  const presetsQuery = useQuery(
-    trpc.admin.embeds.presets.list.queryOptions(
-      { search: debouncedSearch || undefined, limit: 50 },
-      { enabled: !!debouncedSearch },
-    ),
-  );
-
-  const linksQuery = useQuery(
-    trpc.admin.embeds.presets.links.list.queryOptions(
-      { presetId: activePreset?.id ?? 0 },
-      { enabled: !!activePreset },
-    ),
-  );
-
-  const channelsQuery = useQuery(trpc.admin.embeds.channels.queryOptions());
-
-  const channelMap = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const group of channelsQuery.data ?? []) {
-      for (const ch of group.channels) {
-        map.set(ch.id, ch.name);
-      }
-    }
-    return map;
-  }, [channelsQuery.data]);
-
-  const sendEmbed = useMutation(
+  const sendMutation = useMutation(
     trpc.admin.embeds.send.mutationOptions(
       useMutationToast({
         success: (result, variables) =>
@@ -180,30 +90,24 @@ export function useEmbedBuilder() {
       }),
     ),
   );
-  const createPreset = useMutation(
+  const createMutation = useMutation(
     trpc.admin.embeds.presets.create.mutationOptions(
       useMutationToast({
         success: (created) => `Preset "${created.name}" created`,
+        onSuccess: invalidatePresetLists,
       }),
     ),
   );
-  const updatePreset = useMutation(
+  const updateMutation = useMutation(
     trpc.admin.embeds.presets.update.mutationOptions(
       useMutationToast({
         success: (_, variables) => {
           const name = variables.name ?? activePreset?.name;
           return name ? `Preset "${name}" updated` : "Preset updated";
         },
-      }),
-    ),
-  );
-  const unlinkMutation = useMutation(
-    trpc.admin.embeds.presets.links.delete.mutationOptions(
-      useMutationToast({
-        success: "Message unlinked",
         onSuccess: () =>
           void queryClient.invalidateQueries(
-            trpc.admin.embeds.presets.links.list.pathFilter(),
+            trpc.admin.embeds.presets.list.pathFilter(),
           ),
       }),
     ),
@@ -226,47 +130,19 @@ export function useEmbedBuilder() {
       }),
     ),
   );
-  const updateLinkMutation = useMutation(
-    trpc.admin.embeds.presets.links.update.mutationOptions(
-      useMutationToast({ success: "Linked message updated" }),
-    ),
-  );
 
   const isPending =
-    sendEmbed.isPending || createPreset.isPending || updatePreset.isPending;
+    sendMutation.isPending ||
+    createMutation.isPending ||
+    updateMutation.isPending;
 
-  const setEmbedData = (
-    updater: EmbedData | ((prev: EmbedData) => EmbedData),
-  ) => {
-    setData((prev) => {
-      const prevExternal = toExternalData(prev);
-      const next =
-        typeof updater === "function" ? updater(prevExternal) : updater;
-      const fields: EmbedFieldInternal[] = next.fields.map((f, i) => {
-        const existing = prev.fields[i];
-        if (
-          existing &&
-          existing.name === f.name &&
-          existing.value === f.value &&
-          existing.inline === f.inline
-        ) {
-          return existing;
-        }
-        return {
-          ...f,
-          _id:
-            (f as EmbedFieldInternal)._id ??
-            existing?._id ??
-            crypto.randomUUID(),
-        };
-      });
-      return { ...next, fields };
-    });
+  const validateOrToast = (): boolean => {
+    const issue = findPayloadIssue(payload);
+    if (issue) toast.error(issue);
+    return !issue;
   };
 
-  const handleSend = async (opts?: {
-    linkToPreset?: boolean;
-  }): Promise<boolean> => {
+  const handleSend = async (linkToPreset = true): Promise<boolean> => {
     if (!channelId) {
       toast.error("Please select a target channel");
       return false;
@@ -279,44 +155,28 @@ export function useEmbedBuilder() {
       );
       return false;
     }
+    if (!validateOrToast()) return false;
 
-    const issue = findPayloadIssue(kind, data.fields, components);
-    if (issue) {
-      toast.error(issue);
-      return false;
-    }
-
-    const shouldLink = opts?.linkToPreset ?? true;
-    const hasActionButtons =
-      kind === "embed" && !!data.actionButtons && data.actionButtons.length > 0;
-
-    if (hasActionButtons && !activePreset) {
+    const needsPreset =
+      payload.kind === "embed" && payload.embed.actionButtons.length > 0;
+    if (needsPreset && !activePreset) {
       toast.error(
-        "Save as a preset first — action buttons need a preset to function.",
+        "Save as a preset first: action buttons need a preset to function.",
       );
       return false;
     }
 
-    const presetId = hasActionButtons
-      ? activePreset!.id
-      : shouldLink
-        ? activePreset?.id
-        : undefined;
-
+    const presetId = needsPreset || linkToPreset ? activePreset?.id : undefined;
     try {
-      await sendEmbed.mutateAsync({
-        channelId,
-        presetId,
-        bot,
-        ...currentPayload,
-      });
+      await sendMutation.mutateAsync({ channelId, presetId, bot, ...payload });
     } catch {
       return false;
     }
-    if (activePreset && shouldLink)
+    if (presetId !== undefined) {
       void queryClient.invalidateQueries(
         trpc.admin.embeds.presets.links.list.pathFilter(),
       );
+    }
     return true;
   };
 
@@ -324,236 +184,129 @@ export function useEmbedBuilder() {
     name?: string;
     categoryId?: number | null;
   }): Promise<boolean> => {
-    const issue = findPayloadIssue(kind, data.fields, components);
-    if (issue) {
-      toast.error(issue);
-      return false;
-    }
+    if (!validateOrToast()) return false;
 
     if (activePreset) {
-      const updates: {
-        id: number;
-        name?: string;
-        payload: MessagePayload;
-      } = {
-        id: activePreset.id,
-        payload: currentPayload,
-      };
-      if (presetName.trim() && presetName.trim() !== activePreset.name) {
-        updates.name = presetName.trim();
-      }
+      const trimmed = presetName.trim();
+      const name =
+        trimmed && trimmed !== activePreset.name ? trimmed : undefined;
       try {
-        await updatePreset.mutateAsync(updates);
-      } catch {
-        return false;
-      }
-      setLastSavedSnapshot(serializedData);
-      clearDraft();
-      if (updates.name) {
-        setActivePreset({
-          ...activePreset,
-          name: updates.name,
-          categoryId: activePreset.categoryId,
-        });
-      }
-      void queryClient.invalidateQueries(
-        trpc.admin.embeds.presets.list.pathFilter(),
-      );
-      return true;
-    } else {
-      const name = (opts?.name ?? presetName).trim();
-      const categoryId =
-        opts?.categoryId !== undefined ? opts.categoryId : selectedCategoryId;
-      if (!name) {
-        toast.error("Enter a preset name to save");
-        return false;
-      }
-      let created;
-      try {
-        created = await createPreset.mutateAsync({
+        await updateMutation.mutateAsync({
+          id: activePreset.id,
           name,
-          categoryId,
-          ...currentPayload,
+          payload,
         });
       } catch {
         return false;
       }
-      setLastSavedSnapshot(serializedData);
-      clearDraft();
-      void queryClient.invalidateQueries(
-        trpc.admin.embeds.presets.list.pathFilter(),
-      );
-      void queryClient.invalidateQueries(
-        trpc.admin.embeds.presets.categories.list.pathFilter(),
-      );
-      setActivePreset({
-        id: created.id,
-        name: created.name,
-        categoryId: created.categoryId ?? null,
+      dispatch({
+        type: "saved",
+        snapshot,
+        preset: name ? { ...activePreset, name } : undefined,
       });
-      setPresetName(created.name);
-      setSelectedCategoryId(created.categoryId ?? null);
       return true;
     }
-  };
 
-  const handleLoadPreset = (preset: {
-    id: number;
-    name: string;
-    kind?: PresetKind;
-    data: unknown;
-    categoryId?: number | null;
-  }) => {
-    const presetKind: PresetKind = preset.kind ?? "embed";
-    if (presetKind === "components") {
-      const loaded =
-        (preset.data as { components?: ComponentNode[] })?.components ?? [];
-      setKind("components");
-      setComponents(loaded);
-      setData({ ...DEFAULT_EMBED });
-      setLastSavedSnapshot(JSON.stringify({ components: loaded }));
-    } else {
-      const normalized = normalizeLoadedEmbed(preset.data as EmbedData);
-      setKind("embed");
-      setComponents([]);
-      setData(normalized);
-      setLastSavedSnapshot(JSON.stringify(toExternalData(normalized)));
-    }
-    setActivePreset({
-      id: preset.id,
-      name: preset.name,
-      categoryId: preset.categoryId ?? null,
-    });
-    setPresetName(preset.name);
-    setSelectedCategoryId(preset.categoryId ?? null);
-    toast.success(`Loaded "${preset.name}"`);
-  };
-
-  const detachPreset = useCallback(() => {
-    setActivePreset(null);
-    setPresetName("");
-    setSelectedCategoryId(null);
-    setLastSavedSnapshot("");
-  }, []);
-
-  const handleImportEmbed = useCallback(
-    (embed: Partial<EmbedData>) => {
-      setKind("embed");
-      setComponents([]);
-      setData(normalizeLoadedEmbed(embed));
-      detachPreset();
-    },
-    [detachPreset],
-  );
-
-  const handleImportComponents = useCallback(
-    (nodes: ComponentNode[]) => {
-      setKind("components");
-      setData({ ...DEFAULT_EMBED });
-      setComponents(nodes);
-      detachPreset();
-    },
-    [detachPreset],
-  );
-
-  const handleNewEmbed = () => {
-    setKind("embed");
-    setData({ ...DEFAULT_EMBED });
-    setComponents([]);
-    setActivePreset(null);
-    setPresetName("");
-    setChannelId("");
-    setSelectedCategoryId(null);
-    setLastSavedSnapshot("");
-    clearDraft();
-  };
-
-  const handleUpdateAll = async (): Promise<boolean> => {
-    if (!activePreset) return false;
-
-    const issue = findPayloadIssue(kind, data.fields, components);
-    if (issue) {
-      toast.error(issue);
+    const name = (opts?.name ?? presetName).trim();
+    if (!name) {
+      toast.error("Enter a preset name to save");
       return false;
     }
-
+    let created;
     try {
-      await updateAllMutation.mutateAsync({
-        presetId: activePreset.id,
-        bot,
-        ...currentPayload,
+      created = await createMutation.mutateAsync({
+        name,
+        categoryId:
+          opts?.categoryId !== undefined
+            ? opts.categoryId
+            : state.selectedCategoryId,
+        ...payload,
       });
     } catch {
       return false;
     }
-    setLastSavedSnapshot(serializedData);
+    dispatch({
+      type: "saved",
+      snapshot,
+      preset: {
+        id: created.id,
+        name: created.name,
+        categoryId: created.categoryId,
+      },
+    });
     return true;
   };
 
-  const handleUpdateLink = (linkId: number) => {
-    const issue = findPayloadIssue(kind, data.fields, components);
-    if (issue) {
-      toast.error(issue);
-      return;
+  const handleUpdateAll = async (): Promise<boolean> => {
+    if (!activePreset || !validateOrToast()) return false;
+    try {
+      await updateAllMutation.mutateAsync({
+        presetId: activePreset.id,
+        bot,
+        ...payload,
+      });
+    } catch {
+      return false;
     }
-    updateLinkMutation.mutate({
-      linkId,
-      bot,
-      ...currentPayload,
-    });
+    dispatch({ type: "saved", snapshot });
+    return true;
   };
 
-  const handleUnlink = (linkId: number) =>
-    unlinkMutation.mutate({ id: linkId });
+  const loadPreset = (row: PresetRow) => {
+    const loaded = parsePayload(row.kind, row.data);
+    if (!loaded) {
+      toast.error(`"${row.name}" holds a message the builder cannot read`);
+      return;
+    }
+    dispatch({
+      type: "load",
+      payload: loaded,
+      snapshot: snapshotOf(loaded),
+      preset: { id: row.id, name: row.name, categoryId: row.categoryId },
+    });
+    toast.success(`Loaded "${row.name}"`);
+  };
+
+  const importPayload = useCallback(
+    (next: MessagePayload) => dispatch({ type: "import", payload: next }),
+    [],
+  );
+  const reset = useCallback(() => dispatch({ type: "reset" }), []);
 
   const presetActions = usePresetActions({
     activePreset,
-    setActivePreset,
-    setSelectedCategoryId,
-    resetBuilder: handleNewEmbed,
+    onActivePresetMoved: (categoryId) =>
+      dispatch({ type: "movePreset", categoryId }),
+    onActivePresetDeleted: reset,
   });
 
   return {
-    kind,
-    setKind,
-    components,
-    setComponents,
-    data,
-    externalData,
-    setEmbedData,
-    bot,
-    setBot,
-    channelId,
-    setChannelId,
-    activePreset,
-    presetName,
-    setPresetName,
-    search,
-    setSearch,
-    selectedCategoryId,
-    setSelectedCategoryId,
+    state,
+    payload,
     isDirty,
     hasContent,
     isPending,
 
-    categoriesQuery,
-    presetsQuery,
-    linksQuery,
-    channelMap,
+    setKind: (next: PresetKind) => dispatch({ type: "setKind", kind: next }),
+    setEmbed: (update: EmbedData | ((prev: EmbedData) => EmbedData)) =>
+      dispatch({ type: "setEmbed", update }),
+    setComponents: (
+      update: ComponentNode[] | ((prev: ComponentNode[]) => ComponentNode[]),
+    ) => dispatch({ type: "setComponents", update }),
+    setPresetName: (name: string) => dispatch({ type: "setPresetName", name }),
+    setChannelId: (next: string) =>
+      dispatch({ type: "setChannel", channelId: next }),
+    setBot: (next: EmbedBot) => dispatch({ type: "setBot", bot: next }),
 
+    validateOrToast,
     handleSend,
     handleSave,
-    handleLoadPreset,
-    handleNewEmbed,
-    handleImportEmbed,
-    handleImportComponents,
     handleUpdateAll,
-    handleUpdateLink,
-    handleUnlink,
-    ...presetActions,
-
     updateAllPending: updateAllMutation.isPending,
-    updateLinkPending: updateLinkMutation.isPending,
+    loadPreset,
+    importPayload,
+    reset,
+    presetActions,
   };
 }
 

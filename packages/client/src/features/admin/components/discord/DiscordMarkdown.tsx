@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { CUSTOM_EMOJI_SOURCE, customEmojiUrl } from "@/lib/discordEmoji";
+import { DISCORD_COLORS } from "./colors";
 
 export interface MentionResolver {
   channels: Map<string, string>;
@@ -195,7 +196,7 @@ function renderInline(text: string, resolver?: MentionResolver): ReactNode[] {
           <code
             key={i}
             className="rounded px-1 py-0.5 text-[0.85em]"
-            style={{ backgroundColor: "#1E1F22" }}
+            style={{ backgroundColor: DISCORD_COLORS.inset }}
           >
             {token.content}
           </code>
@@ -208,7 +209,7 @@ function renderInline(text: string, resolver?: MentionResolver): ReactNode[] {
             target="_blank"
             rel="noopener noreferrer"
             className="hover:underline"
-            style={{ color: "#00AFF4" }}
+            style={{ color: DISCORD_COLORS.link }}
           >
             {token.text}
           </a>
@@ -232,7 +233,7 @@ function renderInline(text: string, resolver?: MentionResolver): ReactNode[] {
           <span
             key={i}
             className="cursor-pointer rounded px-0.5"
-            style={{ backgroundColor: "#1E1F22" }}
+            style={{ backgroundColor: DISCORD_COLORS.inset }}
           >
             {renderInline(token.content, resolver)}
           </span>
@@ -246,7 +247,7 @@ function renderInline(text: string, resolver?: MentionResolver): ReactNode[] {
             className="rounded px-0.5 font-medium"
             style={{
               backgroundColor: "rgba(88, 101, 242, 0.3)",
-              color: "#C9CDFB",
+              color: DISCORD_COLORS.mention,
             }}
           >
             {formatted}
@@ -261,7 +262,7 @@ function renderInline(text: string, resolver?: MentionResolver): ReactNode[] {
             className="rounded px-0.5 font-medium"
             style={{
               backgroundColor: "rgba(88, 101, 242, 0.3)",
-              color: "#C9CDFB",
+              color: DISCORD_COLORS.mention,
             }}
           >
             #{name ?? token.id}
@@ -287,7 +288,7 @@ function renderInline(text: string, resolver?: MentionResolver): ReactNode[] {
             className="rounded px-0.5 font-medium"
             style={{
               backgroundColor: "rgba(88, 101, 242, 0.3)",
-              color: "#C9CDFB",
+              color: DISCORD_COLORS.mention,
             }}
           >
             @{name ?? token.id}
@@ -326,7 +327,7 @@ export function DiscordMarkdown({
         <pre
           key={blocks.length}
           className="my-1 overflow-x-auto rounded p-2 text-[0.85em]"
-          style={{ backgroundColor: "#1E1F22" }}
+          style={{ backgroundColor: DISCORD_COLORS.inset }}
         >
           <code>{codeLines.join("\n")}</code>
         </pre>,
@@ -368,7 +369,7 @@ export function DiscordMarkdown({
         <div
           key={blocks.length}
           className="my-0.5 py-0.5 pl-3"
-          style={{ borderLeft: "3px solid #4E5058" }}
+          style={{ borderLeft: `3px solid ${DISCORD_COLORS.secondaryButton}` }}
         >
           {quoteLines.map((ql, qi) => (
             <div key={qi}>

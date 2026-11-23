@@ -6,18 +6,14 @@ import {
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
+import type { PresetRow } from "@/features/admin/tools/embed-builder/preset-row";
 
 export function CollapsedPresetList({
   activeId,
   onLoad,
 }: {
   activeId: number | undefined;
-  onLoad: (preset: {
-    id: number;
-    name: string;
-    data: unknown;
-    categoryId?: number | null;
-  }) => void;
+  onLoad: (preset: PresetRow) => void;
 }) {
   const recentQuery = useQuery(
     trpc.admin.embeds.presets.list.queryOptions({ limit: 6 }),

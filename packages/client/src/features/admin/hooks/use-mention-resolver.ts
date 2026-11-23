@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { camelCaseToTitle } from "@/lib/format";
 import { trpc } from "@/lib/trpc";
-import type { MentionResolver } from "@/features/admin/tools/embed-builder/components/DiscordMarkdown";
+import type { MentionResolver } from "@/features/admin/components/discord/DiscordMarkdown";
 import { useQuery } from "@tanstack/react-query";
 
 export function useMentionResolver(): MentionResolver {

@@ -9,7 +9,7 @@ import {
   type InsertableInputHandle,
   Divider,
   SectionHead,
-} from "../form-primitives";
+} from "@/features/admin/tools/embed-builder/components/form-primitives";
 import type { TabProps } from "./types";
 
 export function ContentTab({ data, set, focused, setFocused }: TabProps) {

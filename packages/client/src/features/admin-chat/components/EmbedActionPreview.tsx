@@ -1,11 +1,8 @@
 import type { EmbedData } from "@createrington/shared/api/embed";
+import { numberToHex } from "@/lib/utils";
 
 interface EmbedActionPreviewProps {
   embed: Partial<EmbedData>;
-}
-
-function numberToHex(color: number): string {
-  return `#${color.toString(16).padStart(6, "0")}`;
 }
 
 export function EmbedActionPreview({

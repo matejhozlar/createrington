@@ -1,38 +1,50 @@
+import { z } from "zod";
 import {
   PENDING_EMBED_KEY,
   PENDING_COMPONENTS_KEY,
 } from "@/features/admin-chat/actions";
-import type {
-  ComponentNode,
-  EmbedBot,
-  EmbedData,
-  PresetKind,
+import {
+  embedBotSchema,
+  presetKindSchema,
 } from "@createrington/shared/api/embed";
 import { localStore, sessionStore } from "@/lib/storage";
-import type { ActivePreset } from "./embed-data";
+import type { BuilderState } from "./builder-state";
+import { parseComponents, parseEmbed } from "./payload";
 
 const DRAFT_KEY = "embed-builder-draft";
 
-interface DraftState {
-  kind: PresetKind;
-  data: EmbedData;
-  components: ComponentNode[];
-  presetName: string;
-  bot: EmbedBot;
-  channelId: string;
-  activePreset: ActivePreset | null;
-  selectedCategoryId: number | null;
-  savedSnapshot?: string;
+const storedDraftSchema = z.object({
+  kind: presetKindSchema.catch("embed"),
+  data: z.record(z.string(), z.unknown()),
+  components: z.unknown(),
+  presetName: z.string().catch(""),
+  bot: embedBotSchema.catch("main"),
+  channelId: z.string().catch(""),
+  activePreset: z
+    .object({
+      id: z.number(),
+      name: z.string(),
+      categoryId: z.number().nullable(),
+    })
+    .nullable()
+    .catch(null),
+  selectedCategoryId: z.number().nullable().catch(null),
+  savedSnapshot: z.string().catch(""),
+});
+
+export function loadDraft(): BuilderState | null {
+  const stored = storedDraftSchema.safeParse(localStore.getJson(DRAFT_KEY));
+  if (!stored.success) return null;
+  const { data, components, ...rest } = stored.data;
+  return {
+    ...rest,
+    embed: parseEmbed(data),
+    components: parseComponents(components) ?? [],
+  };
 }
 
-export function loadDraft(): DraftState | null {
-  const parsed = localStore.getJson(DRAFT_KEY) as DraftState | null;
-  if (!parsed || typeof parsed !== "object" || !parsed.data) return null;
-  return parsed;
-}
-
-export function saveDraft(state: DraftState): void {
-  localStore.setJson(DRAFT_KEY, state);
+export function saveDraft({ embed, ...rest }: BuilderState): void {
+  localStore.setJson(DRAFT_KEY, { ...rest, data: embed });
 }
 
 export function clearDraft(): void {

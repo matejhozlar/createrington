@@ -1,4 +1,5 @@
 import type { LucideIcon } from "lucide-react";
+import type { Dispatch, SetStateAction } from "react";
 import {
   Box,
   ChevronDown,
@@ -27,19 +28,29 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import type {
-  ComponentActionRow,
-  ComponentButton,
-  ComponentContainer,
-  ComponentMediaGallery,
-  ComponentNode,
-  ComponentSection,
-  ComponentSeparator,
-  ComponentTextDisplay,
+import {
+  ACTION_ROW_MAX_BUTTONS,
+  COMPONENTS_V2_MAX_COMPONENTS,
+  COMPONENTS_V2_MAX_TEXT,
+  MEDIA_GALLERY_MAX_ITEMS,
+  SECTION_MAX_TEXTS,
+  measureComponentsV2,
+  type ComponentActionRow,
+  type ComponentButton,
+  type ComponentContainer,
+  type ComponentMediaGallery,
+  type ComponentNode,
+  type ComponentSection,
+  type ComponentSeparator,
+  type ComponentTextDisplay,
+  type ContainerChild,
 } from "@createrington/shared/api/embed";
-import type { UseEmbedBuilder } from "../hooks/use-embed-builder";
-import { useItemKeys } from "../hooks/use-item-keys";
-import { ColorPicker, TextField } from "../components/form-primitives";
+import { useItemKeys } from "@/features/admin/tools/embed-builder/hooks/use-item-keys";
+import {
+  ColorPicker,
+  RowIconButton,
+  TextField,
+} from "@/features/admin/tools/embed-builder/components/form-primitives";
 import { moveItem } from "@/lib/moveItem";
 import {
   newActionRow,
@@ -50,8 +61,6 @@ import {
   newSeparator,
   newTextDisplay,
 } from "./defaults";
-
-type ContainerChild = ComponentContainer["components"][number];
 
 const TYPE_LABELS: Record<ComponentNode["type"], string> = {
   container: "Container",
@@ -79,9 +88,18 @@ const CHILD_OPTIONS: AddOption<ContainerChild>[] = [
   { label: "Buttons", icon: MousePointerClick, make: newActionRow },
 ];
 
-export function ComponentTreeEditor({ builder }: { builder: UseEmbedBuilder }) {
-  const { components, setComponents } = builder;
+interface ComponentTreeEditorProps {
+  components: ComponentNode[];
+  onChange: Dispatch<SetStateAction<ComponentNode[]>>;
+}
+
+export function ComponentTreeEditor({
+  components,
+  onChange: setComponents,
+}: ComponentTreeEditorProps) {
   const itemKeys = useItemKeys(components.length);
+  const { count } = measureComponentsV2(components);
+  const full = count >= COMPONENTS_V2_MAX_COMPONENTS;
 
   const update = (i: number, node: ComponentNode) =>
     setComponents((prev) => prev.map((n, idx) => (idx === i ? node : n)));
@@ -98,7 +116,17 @@ export function ComponentTreeEditor({ builder }: { builder: UseEmbedBuilder }) {
   return (
     <div className="flex h-full flex-col">
       <div className="border-b border-border px-4 py-3">
-        <h2 className="text-sm font-semibold">Components</h2>
+        <div className="flex items-baseline justify-between gap-2">
+          <h2 className="text-sm font-semibold">Components</h2>
+          <span
+            className={cn(
+              "text-[11px] tabular-nums text-muted-foreground",
+              count > COMPONENTS_V2_MAX_COMPONENTS && "text-destructive",
+            )}
+          >
+            {count}/{COMPONENTS_V2_MAX_COMPONENTS}
+          </span>
+        </div>
         <p className="text-xs text-muted-foreground">
           Build a Components V2 message. Containers without an accent color have
           no left stripe.
@@ -121,7 +149,12 @@ export function ComponentTreeEditor({ builder }: { builder: UseEmbedBuilder }) {
             onMove={(d) => move(i, d)}
           />
         ))}
-        <AddMenu label="Add component" options={TOP_OPTIONS} onAdd={add} />
+        <AddMenu
+          label="Add component"
+          options={TOP_OPTIONS}
+          onAdd={add}
+          disabled={full}
+        />
       </div>
     </div>
   );
@@ -151,19 +184,19 @@ function NodeCard({
           {TYPE_LABELS[node.type]}
         </span>
         <div className="flex items-center gap-0.5">
-          <IconButton
+          <RowIconButton
             icon={ChevronUp}
             label="Move up"
             onClick={() => onMove(-1)}
             disabled={index === 0}
           />
-          <IconButton
+          <RowIconButton
             icon={ChevronDown}
             label="Move down"
             onClick={() => onMove(1)}
             disabled={index === total - 1}
           />
-          <IconButton
+          <RowIconButton
             icon={Trash2}
             label="Remove"
             onClick={onRemove}
@@ -217,7 +250,7 @@ function TextBody({
       rows={3}
       mentions
       ai
-      max={4000}
+      max={COMPONENTS_V2_MAX_TEXT}
       placeholder="Markdown supported"
     />
   );
@@ -283,7 +316,7 @@ function MediaGalleryBody({
             <span className="text-[11px] text-muted-foreground">
               Image {i + 1}
             </span>
-            <IconButton
+            <RowIconButton
               icon={Trash2}
               label="Remove image"
               destructive
@@ -331,7 +364,7 @@ function MediaGalleryBody({
           </label>
         </div>
       ))}
-      {items.length < 10 && (
+      {items.length < MEDIA_GALLERY_MAX_ITEMS && (
         <Button
           variant="outline"
           size="sm"
@@ -369,7 +402,7 @@ function SectionBody({
               <span className="text-[11px] text-muted-foreground">
                 Text {i + 1}
               </span>
-              <IconButton
+              <RowIconButton
                 icon={Trash2}
                 label="Remove text"
                 destructive
@@ -390,11 +423,11 @@ function SectionBody({
               }
               multiline
               mentions
-              max={4000}
+              max={COMPONENTS_V2_MAX_TEXT}
             />
           </div>
         ))}
-        {texts.length < 3 && (
+        {texts.length < SECTION_MAX_TEXTS && (
           <Button
             variant="outline"
             size="sm"
@@ -496,7 +529,7 @@ function ActionRowBody({
             <span className="text-[11px] text-muted-foreground">
               Button {i + 1}
             </span>
-            <IconButton
+            <RowIconButton
               icon={Trash2}
               label="Remove button"
               destructive
@@ -515,7 +548,7 @@ function ActionRowBody({
           />
         </div>
       ))}
-      {buttons.length < 5 && (
+      {buttons.length < ACTION_ROW_MAX_BUTTONS && (
         <Button
           variant="outline"
           size="sm"
@@ -569,10 +602,10 @@ function ContainerBody({
   node: ComponentContainer;
   onChange: (node: ComponentContainer) => void;
 }) {
-  const children = node.components as ComponentNode[];
+  const children = node.components;
   const childKeys = useItemKeys(children.length);
-  const setChildren = (next: ComponentNode[]) =>
-    onChange({ ...node, components: next as ComponentContainer["components"] });
+  const setChildren = (next: ContainerChild[]) =>
+    onChange({ ...node, components: next });
 
   return (
     <div className="space-y-3">
@@ -595,9 +628,10 @@ function ContainerBody({
             node={child}
             index={i}
             total={children.length}
-            onChange={(n) =>
-              setChildren(children.map((c, idx) => (idx === i ? n : c)))
-            }
+            onChange={(n) => {
+              if (n.type === "container") return;
+              setChildren(children.map((c, idx) => (idx === i ? n : c)));
+            }}
             onRemove={() => {
               childKeys.remove(i);
               setChildren(children.filter((_, idx) => idx !== i));
@@ -628,14 +662,16 @@ function AddMenu<T>({
   label,
   options,
   onAdd,
+  disabled,
 }: {
   label: string;
   options: AddOption<T>[];
   onAdd: (node: T) => void;
+  disabled?: boolean;
 }) {
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
+      <DropdownMenuTrigger asChild disabled={disabled}>
         <Button variant="outline" size="sm" className="w-full justify-center">
           <Plus className="mr-1.5 size-3.5" />
           {label}
@@ -650,35 +686,5 @@ function AddMenu<T>({
         ))}
       </DropdownMenuContent>
     </DropdownMenu>
-  );
-}
-
-function IconButton({
-  icon: Icon,
-  label,
-  onClick,
-  disabled,
-  destructive,
-}: {
-  icon: LucideIcon;
-  label: string;
-  onClick: () => void;
-  disabled?: boolean;
-  destructive?: boolean;
-}) {
-  return (
-    <Button
-      variant="ghost"
-      size="icon"
-      className={cn(
-        "size-6 text-muted-foreground pointer-coarse:size-9",
-        destructive && "hover:text-destructive",
-      )}
-      onClick={onClick}
-      disabled={disabled}
-      aria-label={label}
-    >
-      <Icon className="size-3.5" />
-    </Button>
   );
 }

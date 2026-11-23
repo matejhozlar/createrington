@@ -16,11 +16,11 @@ import {
   COMPONENTS_V2_MAX_COMPONENTS,
   COMPONENTS_V2_MAX_TEXT,
   componentsDataSchema,
+  measureComponentsV2,
   type ComponentActionRow,
   type ComponentButton,
   type ComponentContainer,
   type ComponentMediaGallery,
-  type ComponentNode,
   type ComponentSection,
   type ComponentSeparator,
   type ComponentTextDisplay,
@@ -147,53 +147,6 @@ export function buildComponentsV2(data: ComponentsData): TopLevelComponent[] {
         return buildActionRow(node);
     }
   });
-}
-
-type AnyComponentNode =
-  ComponentNode | ComponentContainer["components"][number];
-
-function measure(node: AnyComponentNode): { count: number; text: number } {
-  switch (node.type) {
-    case "text":
-      return { count: 1, text: node.content.length };
-    case "separator":
-      return { count: 1, text: 0 };
-    case "media_gallery":
-      return { count: 1 + node.items.length, text: 0 };
-    case "action_row":
-      return { count: 1 + node.components.length, text: 0 };
-    case "section": {
-      const textLength = node.components.reduce(
-        (sum, t) => sum + t.content.length,
-        0,
-      );
-      return { count: 1 + node.components.length + 1, text: textLength };
-    }
-    case "container": {
-      let count = 1;
-      let textLength = 0;
-      for (const child of node.components) {
-        const childMeasure = measure(child);
-        count += childMeasure.count;
-        textLength += childMeasure.text;
-      }
-      return { count, text: textLength };
-    }
-  }
-}
-
-export function measureComponentsV2(nodes: AnyComponentNode[]): {
-  count: number;
-  text: number;
-} {
-  let count = 0;
-  let text = 0;
-  for (const node of nodes) {
-    const result = measure(node);
-    count += result.count;
-    text += result.text;
-  }
-  return { count, text };
 }
 
 export function validateComponentsV2(data: ComponentsData): string | null {

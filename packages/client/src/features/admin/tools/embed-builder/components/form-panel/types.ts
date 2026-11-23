@@ -1,5 +1,5 @@
 import type { EmbedData } from "@createrington/shared/api/embed";
-import type { FocusTarget } from "../../focus";
+import type { FocusTarget } from "@/features/admin/tools/embed-builder/focus";
 
 export interface TabProps {
   data: EmbedData;

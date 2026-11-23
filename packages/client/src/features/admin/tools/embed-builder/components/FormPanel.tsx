@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import type { EmbedData } from "@createrington/shared/api/embed";
-import type { FocusTarget } from "../focus";
+import type { FocusTarget } from "@/features/admin/tools/embed-builder/focus";
 import { ContentTab } from "./form-panel/ContentTab";
 import { MediaTab } from "./form-panel/MediaTab";
 import { FieldsTab } from "./form-panel/FieldsTab";
@@ -70,8 +70,7 @@ export function FormPanel({
   }
 
   const fieldsCount = data.fields.length;
-  const buttonsCount =
-    (data.buttons?.length ?? 0) + (data.actionButtons?.length ?? 0);
+  const buttonsCount = data.buttons.length + data.actionButtons.length;
 
   return (
     <div

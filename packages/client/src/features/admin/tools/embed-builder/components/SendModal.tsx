@@ -15,7 +15,7 @@ import { trpc } from "@/lib/trpc";
 import { CUSTOM_EMOJI_SOURCE } from "@/lib/discordEmoji";
 import { ChannelSelector } from "./ChannelSelector";
 import { BotSelector } from "./BotSelector";
-import type { UseEmbedBuilder } from "../hooks/use-embed-builder";
+import type { UseEmbedBuilder } from "@/features/admin/tools/embed-builder/hooks/use-embed-builder";
 import { useQuery } from "@tanstack/react-query";
 import { plural } from "@/lib/format";
 
@@ -27,24 +27,26 @@ interface SendModalProps {
 
 export function SendModal({ open, onOpenChange, builder }: SendModalProps) {
   const {
-    kind,
-    components,
-    externalData,
-    channelId,
+    state,
+    payload,
     setChannelId,
-    bot,
     setBot,
-    activePreset,
     hasContent,
     isPending,
-    linksQuery,
     handleSend,
     handleUpdateAll,
     updateAllPending,
   } = builder;
-  const noun = kind === "components" ? "message" : "embed";
+  const { channelId, bot, activePreset } = state;
+  const noun = payload.kind === "components" ? "message" : "embed";
 
   const [linkToPreset, setLinkToPreset] = useState(true);
+  const linksQuery = useQuery(
+    trpc.admin.embeds.presets.links.list.queryOptions(
+      { presetId: activePreset?.id ?? 0 },
+      { enabled: open && !!activePreset },
+    ),
+  );
   const hasLinks = (linksQuery.data?.links.length ?? 0) > 0;
 
   const emojisQuery = useQuery(
@@ -55,20 +57,17 @@ export function SendModal({ open, onOpenChange, builder }: SendModalProps) {
   const appEmojiCount = useMemo(() => {
     if (bot === "main" || !emojisQuery.data) return 0;
     const ids = new Set(emojisQuery.data.map((emoji) => emoji.id));
-    const payload = JSON.stringify(
-      kind === "components" ? components : externalData,
-    );
     let count = 0;
-    for (const match of payload.matchAll(
+    for (const match of JSON.stringify(payload).matchAll(
       new RegExp(CUSTOM_EMOJI_SOURCE, "g"),
     )) {
       if (ids.has(match[3])) count++;
     }
     return count;
-  }, [bot, emojisQuery.data, kind, components, externalData]);
+  }, [bot, emojisQuery.data, payload]);
 
   async function onSend() {
-    if (await handleSend({ linkToPreset })) onOpenChange(false);
+    if (await handleSend(linkToPreset)) onOpenChange(false);
   }
 
   async function onUpdateAll() {

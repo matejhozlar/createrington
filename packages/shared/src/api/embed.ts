@@ -25,6 +25,9 @@ const attachmentRef = z.string().max(2048).regex(ATTACHMENT_REF, {
 
 const mediaUrl = z.union([httpUrl, attachmentRef]);
 
+export const EMBED_MAX_FIELDS = 25;
+export const EMBED_MAX_BUTTONS = 5;
+
 export const embedFieldSchema = z.object({
   name: z.string().min(1).max(256),
   value: z.string().min(1).max(1024),
@@ -52,7 +55,7 @@ export const embedDataSchema = z.object({
   description: z.string().max(4096).optional(),
   color: z.number().int().min(0).max(0xffffff).optional(),
   url: httpUrl.optional().or(z.literal("")),
-  fields: z.array(embedFieldSchema).max(25).default([]),
+  fields: z.array(embedFieldSchema).max(EMBED_MAX_FIELDS).default([]),
   footer: z.string().max(2048).optional(),
   author: z.string().max(256).optional(),
   authorUrl: httpUrl.optional().or(z.literal("")),
@@ -60,8 +63,11 @@ export const embedDataSchema = z.object({
   thumbnailUrl: httpUrl.optional().or(z.literal("")),
   imageUrl: httpUrl.optional().or(z.literal("")),
   timestamp: z.boolean().default(false),
-  buttons: z.array(embedLinkButtonSchema).max(5).default([]),
-  actionButtons: z.array(embedActionButtonSchema).max(5).default([]),
+  buttons: z.array(embedLinkButtonSchema).max(EMBED_MAX_BUTTONS).default([]),
+  actionButtons: z
+    .array(embedActionButtonSchema)
+    .max(EMBED_MAX_BUTTONS)
+    .default([]),
 });
 
 export type EmbedData = z.infer<typeof embedDataSchema>;
@@ -77,6 +83,9 @@ export type EmbedActionButton = z.infer<typeof embedActionButtonSchema>;
 // Discord's hard ceilings for a single Components V2 message.
 export const COMPONENTS_V2_MAX_COMPONENTS = 40;
 export const COMPONENTS_V2_MAX_TEXT = 4000;
+export const MEDIA_GALLERY_MAX_ITEMS = 10;
+export const ACTION_ROW_MAX_BUTTONS = 5;
+export const SECTION_MAX_TEXTS = 3;
 
 export const componentButtonSchema = z.object({
   type: z.literal("button"),
@@ -104,7 +113,7 @@ const componentMediaItemSchema = z.object({
 
 export const componentMediaGallerySchema = z.object({
   type: z.literal("media_gallery"),
-  items: z.array(componentMediaItemSchema).min(1).max(10),
+  items: z.array(componentMediaItemSchema).min(1).max(MEDIA_GALLERY_MAX_ITEMS),
 });
 
 export const componentThumbnailSchema = z.object({
@@ -116,12 +125,12 @@ export const componentThumbnailSchema = z.object({
 
 export const componentActionRowSchema = z.object({
   type: z.literal("action_row"),
-  components: z.array(componentButtonSchema).min(1).max(5),
+  components: z.array(componentButtonSchema).min(1).max(ACTION_ROW_MAX_BUTTONS),
 });
 
 export const componentSectionSchema = z.object({
   type: z.literal("section"),
-  components: z.array(componentTextDisplaySchema).min(1).max(3),
+  components: z.array(componentTextDisplaySchema).min(1).max(SECTION_MAX_TEXTS),
   accessory: z.discriminatedUnion("type", [
     componentThumbnailSchema,
     componentButtonSchema,
@@ -174,6 +183,47 @@ export type ComponentSection = z.infer<typeof componentSectionSchema>;
 export type ComponentContainer = z.infer<typeof componentContainerSchema>;
 export type ComponentNode = z.infer<typeof componentNodeSchema>;
 export type ComponentsData = z.infer<typeof componentsDataSchema>;
+export type ContainerChild = ComponentContainer["components"][number];
+export type AnyComponentNode = ComponentNode | ContainerChild;
+
+function measureNode(node: AnyComponentNode): { count: number; text: number } {
+  switch (node.type) {
+    case "text":
+      return { count: 1, text: node.content.length };
+    case "separator":
+      return { count: 1, text: 0 };
+    case "media_gallery":
+      return { count: 1 + node.items.length, text: 0 };
+    case "action_row":
+      return { count: 1 + node.components.length, text: 0 };
+    case "section":
+      return {
+        count: 1 + node.components.length + 1,
+        text: node.components.reduce((sum, t) => sum + t.content.length, 0),
+      };
+    case "container":
+      return node.components.map(measureNode).reduce(
+        (total, child) => ({
+          count: total.count + child.count,
+          text: total.text + child.text,
+        }),
+        { count: 1, text: 0 },
+      );
+  }
+}
+
+export function measureComponentsV2(nodes: AnyComponentNode[]): {
+  count: number;
+  text: number;
+} {
+  return nodes.map(measureNode).reduce(
+    (total, node) => ({
+      count: total.count + node.count,
+      text: total.text + node.text,
+    }),
+    { count: 0, text: 0 },
+  );
+}
 
 /**
  * Finds the first media or thumbnail URL in a tree that points at a message
@@ -183,9 +233,7 @@ export type ComponentsData = z.infer<typeof componentsDataSchema>;
 export function findAttachmentRef(components: ComponentNode[]): string | null {
   const fromUrl = (url: string) => (ATTACHMENT_REF.test(url) ? url : null);
 
-  const fromChild = (
-    child: ComponentContainer["components"][number],
-  ): string | null => {
+  const fromChild = (child: ContainerChild): string | null => {
     if (child.type === "media_gallery") {
       return child.items.map((item) => fromUrl(item.url)).find(Boolean) ?? null;
     }

@@ -1,42 +1,66 @@
 import { useEffect, useRef } from "react";
-import { GripVertical, Plus, Trash2 } from "lucide-react";
+import { MousePointerClick, Plus, Trash2 } from "lucide-react";
 import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import {
   SortableContext,
   arrayMove,
-  useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
-import type {
-  EmbedActionButton,
-  EmbedLinkButton,
-} from "@createrington/shared/api/embed";
-import { MentionAutocomplete } from "@/features/admin/tools/embed-builder/components/MentionAutocomplete";
-import type { FocusTarget } from "@/features/admin/tools/embed-builder/focus";
 import { Textarea } from "@/components/ui/textarea";
+import { ChoiceField } from "@/components/choice-field";
+import { EmptyState } from "@/components/query-states";
+import {
+  EMBED_MAX_BUTTONS,
+  type EmbedActionButton,
+  type EmbedLinkButton,
+} from "@createrington/shared/api/embed";
+import { MentionAutocomplete } from "@/features/admin/components/discord/MentionAutocomplete";
 import {
   COMPACT_BUTTON,
-  SectionHead,
-  EmptyState,
-  Segmented,
   RowIconButton,
+  SectionHead,
 } from "@/features/admin/tools/embed-builder/components/form-primitives";
-import type { TabProps } from "./types";
 import { useDragSensors } from "@/features/admin/tools/embed-builder/hooks/use-drag-sensors";
+import { useItemKeys } from "@/features/admin/tools/embed-builder/hooks/use-item-keys";
+import { SortableRow } from "./SortableRow";
+import type { TabProps } from "./types";
+
+type ButtonKind = "link" | "action";
 
 type ButtonItem =
-  | { kind: "link"; btn: EmbedLinkButton; idx: number }
-  | { kind: "action"; btn: EmbedActionButton; idx: number };
+  | { kind: "link"; btn: EmbedLinkButton }
+  | { kind: "action"; btn: EmbedActionButton };
+
+const KIND_OPTIONS = [
+  { value: "link", label: "Link" },
+  { value: "action", label: "Action" },
+] as const;
+
+function newActionButton(
+  label = "",
+  emoji?: string,
+  threadMessage = "Hey {user}, this thread was created for you!",
+): EmbedActionButton {
+  return {
+    label,
+    emoji,
+    action: "create_thread",
+    channelId: "",
+    threadName: "{username}'s thread",
+    threadMessage,
+  };
+}
 
 export function ButtonsTab({ data, set, focused, setFocused }: TabProps) {
-  const links = data.buttons ?? [];
-  const actions = data.actionButtons ?? [];
+  const links = data.buttons;
+  const actions = data.actionButtons;
   const total = links.length + actions.length;
+  const full = total >= EMBED_MAX_BUTTONS;
   const sensors = useDragSensors();
+  const linkKeys = useItemKeys(links.length);
+  const actionKeys = useItemKeys(actions.length);
 
   function setLink(i: number, updates: Partial<EmbedLinkButton>) {
     set({
@@ -51,91 +75,76 @@ export function ButtonsTab({ data, set, focused, setFocused }: TabProps) {
     });
   }
   function removeLink(i: number) {
+    linkKeys.remove(i);
     set({ buttons: links.filter((_, j) => j !== i) });
   }
   function removeAction(i: number) {
+    actionKeys.remove(i);
     set({ actionButtons: actions.filter((_, j) => j !== i) });
   }
   function addLink() {
-    if (total >= 5) return;
+    if (full) return;
     set({ buttons: [...links, { label: "", url: "" }] });
-    setFocused?.(`button:link:${links.length}` as FocusTarget);
+    setFocused?.(`button:link:${links.length}`);
   }
   function addAction() {
-    if (total >= 5) return;
-    set({
-      actionButtons: [
-        ...actions,
-        {
-          label: "",
-          action: "create_thread",
-          channelId: "",
-          threadName: "{username}'s thread",
-          threadMessage: "Hey {user}, this thread was created for you!",
-        },
-      ],
-    });
-    setFocused?.(`button:action:${actions.length}` as FocusTarget);
+    if (full) return;
+    set({ actionButtons: [...actions, newActionButton()] });
+    setFocused?.(`button:action:${actions.length}`);
   }
-  function migrate(item: ButtonItem, target: "link" | "action") {
+  function convert(item: ButtonItem, index: number, target: ButtonKind) {
     if (item.kind === target) return;
-    if (target === "link") {
-      const promoted: EmbedLinkButton = {
-        label: item.btn.label,
-        url: "",
-        emoji: item.btn.emoji,
-      };
+    if (item.kind === "action") {
+      actionKeys.remove(index);
       set({
-        actionButtons: actions.filter((_, j) => j !== item.idx),
-        buttons: [...links, promoted],
+        actionButtons: actions.filter((_, j) => j !== index),
+        buttons: [
+          ...links,
+          { label: item.btn.label, url: "", emoji: item.btn.emoji },
+        ],
       });
     } else {
-      const promoted: EmbedActionButton = {
-        label: item.btn.label,
-        emoji: item.btn.emoji,
-        action: "create_thread",
-        channelId: "",
-        threadName: "{username}'s thread",
-        threadMessage: "Hey {user}!",
-      };
+      linkKeys.remove(index);
       set({
-        buttons: links.filter((_, j) => j !== item.idx),
-        actionButtons: [...actions, promoted],
+        buttons: links.filter((_, j) => j !== index),
+        actionButtons: [
+          ...actions,
+          newActionButton(item.btn.label, item.btn.emoji, "Hey {user}!"),
+        ],
       });
     }
   }
 
-  function onDragEnd(event: DragEndEvent) {
-    const { active, over } = event;
+  function onDragEnd({ active, over }: DragEndEvent) {
     if (!over || active.id === over.id) return;
-    const a = String(active.id);
-    const o = String(over.id);
-    if (a.startsWith("bl-") && o.startsWith("bl-")) {
-      const from = Number(a.slice(3));
-      const to = Number(o.slice(3));
-      set({ buttons: arrayMove(links, from, to) });
-    } else if (a.startsWith("ba-") && o.startsWith("ba-")) {
-      const from = Number(a.slice(3));
-      const to = Number(o.slice(3));
-      set({ actionButtons: arrayMove(actions, from, to) });
+    const reorder = <T,>(keys: typeof linkKeys, list: T[]): T[] | null => {
+      const from = keys.indexOf(active.id);
+      const to = keys.indexOf(over.id);
+      if (from < 0 || to < 0) return null;
+      keys.reorder(from, to);
+      return arrayMove(list, from, to);
+    };
+    const nextLinks = reorder(linkKeys, links);
+    if (nextLinks) {
+      set({ buttons: nextLinks });
+      return;
     }
+    const nextActions = reorder(actionKeys, actions);
+    if (nextActions) set({ actionButtons: nextActions });
   }
-
-  const linkIds = links.map((_, i) => `bl-${i}`);
-  const actionIds = actions.map((_, i) => `ba-${i}`);
 
   return (
     <>
       <SectionHead
         title="Buttons"
-        count={`${total}/5`}
+        count={`${total}/${EMBED_MAX_BUTTONS}`}
         right={
           <div className="flex gap-1">
             <Button
               variant="outline"
               size="sm"
               className={COMPACT_BUTTON}
-              disabled={total >= 5}
+              disabled={full}
               onClick={addLink}
             >
               <Plus className="mr-1 size-3" />
@@ -145,7 +154,7 @@ export function ButtonsTab({ data, set, focused, setFocused }: TabProps) {
               variant="outline"
               size="sm"
               className={COMPACT_BUTTON}
-              disabled={total >= 5}
+              disabled={full}
               onClick={addAction}
             >
               <Plus className="mr-1 size-3" />
@@ -157,7 +166,8 @@ export function ButtonsTab({ data, set, focused, setFocused }: TabProps) {
 
       {total === 0 && (
         <EmptyState
-          title="No buttons yet"
+          icon={MousePointerClick}
+          message="No buttons yet"
           hint={
             <>
               <strong className="text-foreground">Link</strong> buttons open
@@ -165,17 +175,16 @@ export function ButtonsTab({ data, set, focused, setFocused }: TabProps) {
               run server logic, like opening a support thread.
             </>
           }
-          actions={
-            <div className="flex flex-wrap justify-center gap-2">
-              <Button variant="outline" size="sm" onClick={addLink}>
-                Add link button
-              </Button>
-              <Button variant="outline" size="sm" onClick={addAction}>
-                Add action button
-              </Button>
-            </div>
-          }
-        />
+        >
+          <div className="flex flex-wrap justify-center gap-2">
+            <Button variant="outline" size="sm" onClick={addLink}>
+              Add link button
+            </Button>
+            <Button variant="outline" size="sm" onClick={addAction}>
+              Add action button
+            </Button>
+          </div>
+        </EmptyState>
       )}
 
       <DndContext
@@ -185,39 +194,39 @@ export function ButtonsTab({ data, set, focused, setFocused }: TabProps) {
       >
         <div className="space-y-2">
           <SortableContext
-            items={linkIds}
+            items={linkKeys.keys}
             strategy={verticalListSortingStrategy}
           >
             {links.map((b, i) => (
               <ButtonRow
-                key={linkIds[i]}
-                id={linkIds[i]}
-                item={{ kind: "link", btn: b, idx: i }}
+                key={linkKeys.keys[i]}
+                id={linkKeys.keys[i]}
+                item={{ kind: "link", btn: b }}
                 focused={focused === `button:link:${i}`}
                 onChangeLink={(u) => setLink(i, u)}
                 onChangeAction={() => undefined}
                 onRemove={() => removeLink(i)}
-                onMigrate={(target) =>
-                  migrate({ kind: "link", btn: b, idx: i }, target)
+                onConvert={(target) =>
+                  convert({ kind: "link", btn: b }, i, target)
                 }
               />
             ))}
           </SortableContext>
           <SortableContext
-            items={actionIds}
+            items={actionKeys.keys}
             strategy={verticalListSortingStrategy}
           >
             {actions.map((b, i) => (
               <ButtonRow
-                key={actionIds[i]}
-                id={actionIds[i]}
-                item={{ kind: "action", btn: b, idx: i }}
+                key={actionKeys.keys[i]}
+                id={actionKeys.keys[i]}
+                item={{ kind: "action", btn: b }}
                 focused={focused === `button:action:${i}`}
                 onChangeLink={() => undefined}
                 onChangeAction={(u) => setAction(i, u)}
                 onRemove={() => removeAction(i)}
-                onMigrate={(target) =>
-                  migrate({ kind: "action", btn: b, idx: i }, target)
+                onConvert={(target) =>
+                  convert({ kind: "action", btn: b }, i, target)
                 }
               />
             ))}
@@ -235,27 +244,18 @@ function ButtonRow({
   onChangeLink,
   onChangeAction,
   onRemove,
-  onMigrate,
+  onConvert,
 }: {
-  id: string;
+  id: number;
   item: ButtonItem;
   focused: boolean;
   onChangeLink: (updates: Partial<EmbedLinkButton>) => void;
   onChangeAction: (updates: Partial<EmbedActionButton>) => void;
   onRemove: () => void;
-  onMigrate: (target: "link" | "action") => void;
+  onConvert: (target: ButtonKind) => void;
 }) {
   const labelRef = useRef<HTMLInputElement | null>(null);
   const emojiRef = useRef<HTMLInputElement | null>(null);
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    setActivatorNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id });
   useEffect(() => {
     if (focused) labelRef.current?.focus();
   }, [focused]);
@@ -267,111 +267,86 @@ function ButtonRow({
       : onChangeAction({ emoji: next || undefined });
 
   return (
-    <div
-      ref={setNodeRef}
-      style={{
-        transform: CSS.Transform.toString(transform),
-        transition,
-      }}
-      className={cn(
-        "flex gap-1 rounded-md border border-border bg-card p-2 transition-shadow max-sm:flex-wrap",
-        "hover:border-border-strong hover:shadow-sm",
-        isDragging && "z-10 shadow-lg",
-      )}
+    <SortableRow
+      id={id}
+      actions={
+        <RowIconButton
+          icon={Trash2}
+          label="Delete"
+          onClick={onRemove}
+          destructive
+        />
+      }
     >
-      <button
-        ref={setActivatorNodeRef}
-        type="button"
-        title="Drag to reorder"
-        aria-label="Drag handle"
-        {...attributes}
-        {...listeners}
-        className="mt-1 flex size-6 shrink-0 cursor-grab items-center justify-center text-muted-foreground touch-none active:cursor-grabbing max-sm:order-2 max-sm:mt-0 pointer-coarse:size-9"
-      >
-        <GripVertical className="size-4" />
-      </button>
-      <div className="min-w-0 flex-1 space-y-1.5 max-sm:order-1 max-sm:basis-full">
-        <div className="flex items-center gap-1.5 max-sm:flex-wrap">
-          <Segmented
-            value={item.kind}
-            options={[
-              { value: "link", label: "Link" },
-              { value: "action", label: "Action" },
-            ]}
-            onChange={(v) => onMigrate(v as "link" | "action")}
-          />
-          <div className="relative max-sm:min-w-0 max-sm:flex-1">
-            <Input
-              ref={emojiRef}
-              value={emoji}
-              placeholder="🔗"
-              maxLength={64}
-              title="A unicode emoji, or type : to pick a bot emoji"
-              onChange={(e) => setEmoji(e.target.value)}
-              className="h-8 w-16 text-center text-[13px] max-sm:w-full"
-            />
-            <MentionAutocomplete
-              inputRef={emojiRef}
-              value={emoji}
-              onChange={setEmoji}
-              emojiOnly
-            />
-          </div>
+      <div className="flex items-center gap-1.5 max-sm:flex-wrap">
+        <ChoiceField
+          value={item.kind}
+          options={KIND_OPTIONS}
+          onChange={onConvert}
+        />
+        <div className="relative max-sm:min-w-0 max-sm:flex-1">
           <Input
-            ref={labelRef}
-            value={item.btn.label}
-            placeholder="Label"
-            maxLength={80}
-            onChange={(e) =>
-              item.kind === "link"
-                ? onChangeLink({ label: e.target.value })
-                : onChangeAction({ label: e.target.value })
-            }
-            className="h-8 flex-1 text-[13px] max-sm:basis-full"
+            ref={emojiRef}
+            value={emoji}
+            placeholder="🔗"
+            maxLength={64}
+            title="A unicode emoji, or type : to pick a bot emoji"
+            onChange={(e) => setEmoji(e.target.value)}
+            className="h-8 w-16 text-center text-[13px] max-sm:w-full"
+          />
+          <MentionAutocomplete
+            inputRef={emojiRef}
+            value={emoji}
+            onChange={setEmoji}
+            emojiOnly
           />
         </div>
+        <Input
+          ref={labelRef}
+          value={item.btn.label}
+          placeholder="Label"
+          maxLength={80}
+          onChange={(e) =>
+            item.kind === "link"
+              ? onChangeLink({ label: e.target.value })
+              : onChangeAction({ label: e.target.value })
+          }
+          className="h-8 flex-1 text-[13px] max-sm:basis-full"
+        />
+      </div>
 
-        {item.kind === "link" ? (
+      {item.kind === "link" ? (
+        <Input
+          value={item.btn.url}
+          placeholder="https://..."
+          onChange={(e) => onChangeLink({ url: e.target.value })}
+          className="h-8 text-[13px]"
+        />
+      ) : (
+        <div className="space-y-1.5">
           <Input
-            value={item.btn.url}
-            placeholder="https://..."
-            onChange={(e) => onChangeLink({ url: e.target.value })}
+            value={item.btn.channelId}
+            placeholder="Channel ID"
+            onChange={(e) => onChangeAction({ channelId: e.target.value })}
             className="h-8 text-[13px]"
           />
-        ) : (
-          <div className="space-y-1.5">
-            <Input
-              value={item.btn.channelId}
-              placeholder="Channel ID"
-              onChange={(e) => onChangeAction({ channelId: e.target.value })}
-              className="h-8 text-[13px]"
-            />
-            <Input
-              value={item.btn.threadName}
-              placeholder="{username}'s ticket"
-              maxLength={100}
-              onChange={(e) => onChangeAction({ threadName: e.target.value })}
-              className="h-8 text-[13px]"
-            />
-            <Textarea
-              value={item.btn.threadMessage}
-              placeholder="Welcome message"
-              rows={2}
-              maxLength={2000}
-              onChange={(e) =>
-                onChangeAction({ threadMessage: e.target.value })
-              }
-              className="resize-y px-2.5 py-1.5 text-[13px] md:text-[13px]"
-            />
-          </div>
-        )}
-      </div>
-
-      <div className="flex shrink-0 flex-col gap-0.5 max-sm:order-3 max-sm:ml-auto max-sm:flex-row">
-        <RowIconButton title="Delete" onClick={onRemove} destructive>
-          <Trash2 className="size-3.5" />
-        </RowIconButton>
-      </div>
-    </div>
+          <Input
+            value={item.btn.threadName}
+            placeholder="{username}'s ticket"
+            maxLength={100}
+            onChange={(e) => onChangeAction({ threadName: e.target.value })}
+            className="h-8 text-[13px]"
+          />
+          <Textarea
+            value={item.btn.threadMessage}
+            placeholder="Welcome message"
+            rows={2}
+            maxLength={2000}
+            onChange={(e) => onChangeAction({ threadMessage: e.target.value })}
+            className="resize-y px-2.5 py-1.5 text-[13px] md:text-[13px]"
+          />
+        </div>
+      )}
+    </SortableRow>
   );
 }

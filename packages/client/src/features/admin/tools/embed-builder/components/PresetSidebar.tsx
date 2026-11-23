@@ -3,16 +3,8 @@ import { ChevronLeft, ChevronRight, FolderPlus, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SearchInput } from "@/components/search-input";
 import { Input } from "@/components/ui/input";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { FormDialog } from "@/components/form-dialog";
 import {
   Tooltip,
   TooltipContent,
@@ -20,8 +12,10 @@ import {
 } from "@/components/ui/tooltip";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
-import type { UseEmbedBuilder } from "../hooks/use-embed-builder";
 import { useQuery } from "@tanstack/react-query";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import type { PresetActions } from "@/features/admin/tools/embed-builder/hooks/use-preset-actions";
+import type { PresetRow } from "@/features/admin/tools/embed-builder/preset-row";
 import { UnsavedDialog } from "./preset-sidebar/UnsavedDialog";
 import { SkeletonList } from "./preset-sidebar/SkeletonList";
 import { localStore } from "@/lib/storage";
@@ -32,34 +26,36 @@ import { CategorySection } from "./preset-sidebar/CategorySection";
 const RAIL_COLLAPSED_KEY = "embed-builder.rail-collapsed";
 
 interface PresetSidebarProps {
-  builder: UseEmbedBuilder;
+  activePresetId: number | undefined;
+  isDirty: boolean;
+  onLoad: (preset: PresetRow) => void;
+  onNew: () => void;
+  actions: PresetActions;
   className?: string;
   onNavigate?: () => void;
   forceExpanded?: boolean;
 }
 
 export function PresetSidebar({
-  builder,
+  activePresetId,
+  isDirty,
+  onLoad,
+  onNew,
+  actions,
   className,
   onNavigate,
   forceExpanded,
 }: PresetSidebarProps) {
   const {
-    search,
-    setSearch,
-    presetsQuery,
-    categoriesQuery,
-    activePreset,
-    isDirty,
-    handleLoadPreset,
-    handleNewEmbed,
     handleDeletePreset,
     handleDuplicatePreset,
     handleCreateCategory,
     handleUpdateCategory,
     handleDeleteCategory,
     handleSetPresetCategory,
-  } = builder;
+  } = actions;
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search);
 
   const [collapsed, setCollapsed] = useState(() => {
     if (forceExpanded) return false;
@@ -70,6 +66,16 @@ export function PresetSidebar({
     if (forceExpanded) return;
     localStore.set(RAIL_COLLAPSED_KEY, collapsed ? "1" : "0");
   }, [collapsed, forceExpanded]);
+
+  const presetsQuery = useQuery(
+    trpc.admin.embeds.presets.list.queryOptions(
+      { search: debouncedSearch || undefined, limit: 50 },
+      { enabled: !!debouncedSearch },
+    ),
+  );
+  const categoriesQuery = useQuery(
+    trpc.admin.embeds.presets.categories.list.queryOptions(),
+  );
 
   const isSearching = !!search;
   const searchResults = presetsQuery.data?.items ?? [];
@@ -86,6 +92,7 @@ export function PresetSidebar({
     name: string;
   } | null>(null);
   const [renameName, setRenameName] = useState("");
+  const [renaming, setRenaming] = useState(false);
   const [showNewCategory, setShowNewCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
 
@@ -94,13 +101,8 @@ export function PresetSidebar({
     else action();
   }
 
-  function loadAndNavigate(preset: {
-    id: number;
-    name: string;
-    data: unknown;
-    categoryId?: number | null;
-  }) {
-    handleLoadPreset(preset);
+  function loadAndNavigate(preset: PresetRow) {
+    onLoad(preset);
     onNavigate?.();
   }
 
@@ -140,7 +142,7 @@ export function PresetSidebar({
               variant="ghost"
               size="icon"
               className="size-9"
-              onClick={() => guardUnsaved(handleNewEmbed)}
+              onClick={() => guardUnsaved(onNew)}
               aria-label="New embed"
             >
               <Plus className="size-4" />
@@ -150,7 +152,7 @@ export function PresetSidebar({
         </Tooltip>
         <div className="my-1 h-px w-6 bg-border" />
         <CollapsedPresetList
-          activeId={activePreset?.id}
+          activeId={activePresetId}
           onLoad={(p) => guardUnsaved(() => loadAndNavigate(p))}
         />
 
@@ -215,7 +217,7 @@ export function PresetSidebar({
           variant="outline"
           size="sm"
           className="w-full justify-start"
-          onClick={() => guardUnsaved(handleNewEmbed)}
+          onClick={() => guardUnsaved(onNew)}
         >
           <Plus className="mr-1.5 size-3.5" />
           New embed
@@ -280,7 +282,7 @@ export function PresetSidebar({
                 <PresetItem
                   key={preset.id}
                   preset={preset}
-                  isActive={activePreset?.id === preset.id}
+                  isActive={activePresetId === preset.id}
                   categories={categories}
                   onLoad={() => guardUnsaved(() => loadAndNavigate(preset))}
                   onDelete={() =>
@@ -308,7 +310,7 @@ export function PresetSidebar({
                     categoryId={cat.id}
                     name={cat.name}
                     presetCount={cat.presetCount}
-                    activePresetId={activePreset?.id}
+                    activePresetId={activePresetId}
                     categories={categories}
                     guardUnsaved={guardUnsaved}
                     onLoadPreset={loadAndNavigate}
@@ -334,7 +336,7 @@ export function PresetSidebar({
                   categoryId="uncategorized"
                   name="Uncategorized"
                   presetCount={uncategorizedTotal}
-                  activePresetId={activePreset?.id}
+                  activePresetId={activePresetId}
                   categories={categories}
                   guardUnsaved={guardUnsaved}
                   onLoadPreset={loadAndNavigate}
@@ -355,103 +357,67 @@ export function PresetSidebar({
         setPendingAction={setPendingAction}
       />
 
-      <AlertDialog
+      <ConfirmDialog
         open={!!deleteTarget}
         onOpenChange={(open) => {
           if (!open) setDeleteTarget(null);
         }}
-      >
-        <AlertDialogContent size="sm">
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              Delete {deleteTarget?.type === "category" ? "category" : "preset"}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {deleteTarget?.type === "category" ? (
-                <>
-                  Delete the category &ldquo;{deleteTarget?.name}&rdquo;?
-                  Presets in this category will become uncategorized.
-                </>
-              ) : (
-                <>
-                  Delete &ldquo;{deleteTarget?.name}&rdquo;? This action cannot
-                  be undone.
-                </>
-              )}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              onClick={() => {
-                if (deleteTarget) {
-                  if (deleteTarget.type === "category") {
-                    void handleDeleteCategory(
-                      deleteTarget.id,
-                      deleteTarget.name,
-                    );
-                  } else {
-                    void handleDeletePreset(deleteTarget.id, deleteTarget.name);
-                  }
-                }
-                setDeleteTarget(null);
-              }}
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        size="sm"
+        variant="destructive"
+        title={`Delete ${deleteTarget?.type === "category" ? "category" : "preset"}`}
+        description={
+          deleteTarget?.type === "category" ? (
+            <>
+              Delete the category &ldquo;{deleteTarget.name}&rdquo;? Presets in
+              this category will become uncategorized.
+            </>
+          ) : (
+            <>
+              Delete &ldquo;{deleteTarget?.name}&rdquo;? This action cannot be
+              undone.
+            </>
+          )
+        }
+        confirmLabel="Delete"
+        onConfirm={() => {
+          if (!deleteTarget) return;
+          return deleteTarget.type === "category"
+            ? handleDeleteCategory(deleteTarget.id, deleteTarget.name)
+            : handleDeletePreset(deleteTarget.id, deleteTarget.name);
+        }}
+      />
 
-      <AlertDialog
+      <FormDialog
         open={!!renameTarget}
-        onOpenChange={(open) => {
-          if (!open) setRenameTarget(null);
+        onClose={() => setRenameTarget(null)}
+        title="Rename category"
+        description={
+          <>Enter a new name for &ldquo;{renameTarget?.name}&rdquo;.</>
+        }
+        confirmLabel="Rename"
+        asForm
+        loading={renaming}
+        disabled={
+          !renameName.trim() || renameName.trim() === renameTarget?.name
+        }
+        onConfirm={() => {
+          if (!renameTarget) return;
+          setRenaming(true);
+          void handleUpdateCategory(renameTarget.id, renameName.trim())
+            .then(
+              () => setRenameTarget(null),
+              () => undefined,
+            )
+            .finally(() => setRenaming(false));
         }}
       >
-        <AlertDialogContent size="sm">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Rename category</AlertDialogTitle>
-            <AlertDialogDescription>
-              Enter a new name for &ldquo;{renameTarget?.name}&rdquo;.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="px-6 pb-2">
-            <Input
-              autoFocus
-              value={renameName}
-              onChange={(e) => setRenameName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && renameName.trim() && renameTarget) {
-                  void handleUpdateCategory(renameTarget.id, {
-                    name: renameName.trim(),
-                  });
-                  setRenameTarget(null);
-                }
-              }}
-            />
-          </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              disabled={
-                !renameName.trim() || renameName.trim() === renameTarget?.name
-              }
-              onClick={() => {
-                if (renameTarget && renameName.trim()) {
-                  void handleUpdateCategory(renameTarget.id, {
-                    name: renameName.trim(),
-                  });
-                }
-                setRenameTarget(null);
-              }}
-            >
-              Rename
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        <Input
+          autoFocus
+          aria-label="Category name"
+          value={renameName}
+          onChange={(e) => setRenameName(e.target.value)}
+        />
+      </FormDialog>
     </aside>
   );
 }

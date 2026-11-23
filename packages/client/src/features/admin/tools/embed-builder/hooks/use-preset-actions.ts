@@ -1,24 +1,15 @@
 import { useMutation } from "@tanstack/react-query";
-import type {
-  ComponentNode,
-  EmbedData,
-  MessagePayload,
-  PresetKind,
-} from "@createrington/shared/api/embed";
 import { useToastActions } from "@/hooks/use-toast";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { trpc, queryClient } from "@/lib/trpc";
-import {
-  normalizeLoadedEmbed,
-  toExternalData,
-  type ActivePreset,
-} from "../embed-data";
+import type { ActivePreset } from "@/features/admin/tools/embed-builder/builder-state";
+import { parsePayload } from "@/features/admin/tools/embed-builder/payload";
+import type { PresetRow } from "@/features/admin/tools/embed-builder/preset-row";
 
 interface UsePresetActionsOptions {
   activePreset: ActivePreset | null;
-  setActivePreset: (preset: ActivePreset | null) => void;
-  setSelectedCategoryId: (categoryId: number | null) => void;
-  resetBuilder: () => void;
+  onActivePresetMoved: (categoryId: number | null) => void;
+  onActivePresetDeleted: () => void;
 }
 
 function invalidatePresetLists() {
@@ -30,11 +21,31 @@ function invalidatePresetLists() {
   );
 }
 
+function invalidateCategories() {
+  void queryClient.invalidateQueries(
+    trpc.admin.embeds.presets.categories.list.pathFilter(),
+  );
+}
+
+async function nextCopyName(name: string): Promise<string> {
+  const baseName = name.replace(/ \(copy(?: \d+)?\)$/, "");
+  const existing = await queryClient.fetchQuery(
+    trpc.admin.embeds.presets.list.queryOptions({
+      search: baseName,
+      limit: 50,
+    }),
+  );
+  const taken = new Set(existing.items.map((p) => p.name));
+  if (!taken.has(`${baseName} (copy)`)) return `${baseName} (copy)`;
+  let n = 2;
+  while (taken.has(`${baseName} (copy ${n})`)) n++;
+  return `${baseName} (copy ${n})`;
+}
+
 export function usePresetActions({
   activePreset,
-  setActivePreset,
-  setSelectedCategoryId,
-  resetBuilder,
+  onActivePresetMoved,
+  onActivePresetDeleted,
 }: UsePresetActionsOptions) {
   const toast = useToastActions();
 
@@ -53,10 +64,7 @@ export function usePresetActions({
     trpc.admin.embeds.presets.categories.create.mutationOptions(
       useMutationToast({
         success: (_, variables) => `Category "${variables.name}" created`,
-        onSuccess: () =>
-          void queryClient.invalidateQueries(
-            trpc.admin.embeds.presets.categories.list.pathFilter(),
-          ),
+        onSuccess: invalidateCategories,
       }),
     ),
   );
@@ -64,10 +72,7 @@ export function usePresetActions({
     trpc.admin.embeds.presets.categories.update.mutationOptions(
       useMutationToast({
         success: "Category updated",
-        onSuccess: () =>
-          void queryClient.invalidateQueries(
-            trpc.admin.embeds.presets.categories.list.pathFilter(),
-          ),
+        onSuccess: invalidateCategories,
       }),
     ),
   );
@@ -82,73 +87,29 @@ export function usePresetActions({
         success: "Preset moved",
         onSuccess: (_, { presetId, categoryId }) => {
           invalidatePresetLists();
-          if (activePreset?.id === presetId) {
-            setActivePreset({ ...activePreset, categoryId });
-            setSelectedCategoryId(categoryId);
-          }
+          if (activePreset?.id === presetId) onActivePresetMoved(categoryId);
         },
       }),
     ),
   );
 
-  const handleDuplicatePreset = async (preset: {
-    id: number;
-    name: string;
-    kind?: PresetKind;
-    data: unknown;
-    categoryId?: number | null;
-  }) => {
-    const presetKind: PresetKind = preset.kind ?? "embed";
-    const baseName = preset.name.replace(/ \(copy(?: \d+)?\)$/, "");
-    let copyName = `${baseName} (copy)`;
-
-    const existing = await queryClient.fetchQuery(
-      trpc.admin.embeds.presets.list.queryOptions({
-        search: baseName,
-        limit: 50,
-      }),
-    );
-    const copyNames = new Set(existing.items.map((p) => p.name));
-    if (copyNames.has(copyName)) {
-      let n = 2;
-      while (copyNames.has(`${baseName} (copy ${n})`)) n++;
-      copyName = `${baseName} (copy ${n})`;
+  const handleDuplicatePreset = async (preset: PresetRow) => {
+    const payload = parsePayload(preset.kind, preset.data);
+    if (!payload) {
+      toast.error(`"${preset.name}" holds a message the builder cannot read`);
+      return;
     }
-
-    const payload: MessagePayload =
-      presetKind === "components"
-        ? {
-            kind: "components",
-            components: {
-              components:
-                (preset.data as { components?: ComponentNode[] })?.components ??
-                [],
-            },
-          }
-        : {
-            kind: "embed",
-            embed: toExternalData(
-              normalizeLoadedEmbed(preset.data as EmbedData),
-            ),
-          };
-
     duplicatePresetMutation.mutate({
-      name: copyName,
-      categoryId: preset.categoryId ?? null,
+      name: await nextCopyName(preset.name),
+      categoryId: preset.categoryId,
       ...payload,
     });
   };
 
   const handleDeletePreset = async (id: number, name: string) => {
-    try {
-      await deletePresetMutation.mutateAsync({ id });
-    } catch {
-      return;
-    }
+    await deletePresetMutation.mutateAsync({ id });
     toast.success(`Preset "${name}" deleted`);
-    if (activePreset?.id === id) {
-      resetBuilder();
-    }
+    if (activePreset?.id === id) onActivePresetDeleted();
     invalidatePresetLists();
   };
 
@@ -160,22 +121,13 @@ export function usePresetActions({
     }
   };
 
-  const handleUpdateCategory = (
-    id: number,
-    updates: { name?: string; sortOrder?: number },
-  ) => updateCategoryMutation.mutate({ id, ...updates });
+  const handleUpdateCategory = (id: number, name: string) =>
+    updateCategoryMutation.mutateAsync({ id, name });
 
   const handleDeleteCategory = async (id: number, name: string) => {
-    try {
-      await deleteCategoryMutation.mutateAsync({ id });
-    } catch {
-      return;
-    }
+    await deleteCategoryMutation.mutateAsync({ id });
     invalidatePresetLists();
-    if (activePreset?.categoryId === id) {
-      setActivePreset({ ...activePreset, categoryId: null });
-      setSelectedCategoryId(null);
-    }
+    if (activePreset?.categoryId === id) onActivePresetMoved(null);
     toast.success(`Category "${name}" deleted`);
   };
 
@@ -193,3 +145,5 @@ export function usePresetActions({
     handleSetPresetCategory,
   };
 }
+
+export type PresetActions = ReturnType<typeof usePresetActions>;

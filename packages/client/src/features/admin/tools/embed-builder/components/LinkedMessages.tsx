@@ -1,15 +1,7 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import {
   Tooltip,
   TooltipContent,
@@ -17,28 +9,60 @@ import {
 } from "@/components/ui/tooltip";
 import { Link2, RefreshCw, Unlink } from "lucide-react";
 import { camelCaseToTitle } from "@/lib/format";
-import type { UseEmbedBuilder } from "../hooks/use-embed-builder";
+import { queryClient, trpc } from "@/lib/trpc";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
+import type { EmbedBot, MessagePayload } from "@createrington/shared/api/embed";
 
 interface LinkedMessagesProps {
-  builder: UseEmbedBuilder;
+  presetId: number;
+  payload: MessagePayload;
+  bot: EmbedBot;
+  validateOrToast: () => boolean;
 }
 
-export function LinkedMessages({ builder }: LinkedMessagesProps) {
-  const {
-    linksQuery,
-    channelMap,
-    handleUpdateLink,
-    handleUnlink,
-    updateLinkPending,
-  } = builder;
+export function LinkedMessages({
+  presetId,
+  payload,
+  bot,
+  validateOrToast,
+}: LinkedMessagesProps) {
+  const linksQuery = useQuery(
+    trpc.admin.embeds.presets.links.list.queryOptions({ presetId }),
+  );
+  const channelsQuery = useQuery(trpc.admin.embeds.channels.queryOptions());
+  const channelNames = useMemo(
+    () =>
+      new Map(
+        (channelsQuery.data ?? []).flatMap((group) =>
+          group.channels.map((ch) => [ch.id, ch.name] as const),
+        ),
+      ),
+    [channelsQuery.data],
+  );
 
-  const links = linksQuery.data?.links ?? [];
+  const updateLink = useMutation(
+    trpc.admin.embeds.presets.links.update.mutationOptions(
+      useMutationToast({ success: "Linked message updated" }),
+    ),
+  );
+  const unlink = useMutation(
+    trpc.admin.embeds.presets.links.delete.mutationOptions(
+      useMutationToast({
+        success: "Message unlinked",
+        onSuccess: () =>
+          void queryClient.invalidateQueries(
+            trpc.admin.embeds.presets.links.list.pathFilter(),
+          ),
+      }),
+    ),
+  );
 
   const [unlinkTarget, setUnlinkTarget] = useState<{
     id: number;
     channelName: string | null;
   } | null>(null);
 
+  const links = linksQuery.data?.links ?? [];
   if (links.length === 0) return null;
 
   return (
@@ -49,7 +73,7 @@ export function LinkedMessages({ builder }: LinkedMessagesProps) {
       </div>
       <div className="space-y-1">
         {links.map((link) => {
-          const channelName = channelMap.get(link.channelId);
+          const channelName = channelNames.get(link.channelId);
           return (
             <div
               key={link.id}
@@ -74,8 +98,16 @@ export function LinkedMessages({ builder }: LinkedMessagesProps) {
                       variant="ghost"
                       size="sm"
                       className="size-6 cursor-pointer p-0 text-muted-foreground hover:text-foreground pointer-coarse:size-9"
-                      disabled={updateLinkPending}
-                      onClick={() => handleUpdateLink(link.id)}
+                      disabled={updateLink.isPending}
+                      onClick={() => {
+                        if (validateOrToast()) {
+                          updateLink.mutate({
+                            linkId: link.id,
+                            bot,
+                            ...payload,
+                          });
+                        }
+                      }}
                     >
                       <RefreshCw className="size-3" />
                     </Button>
@@ -111,44 +143,35 @@ export function LinkedMessages({ builder }: LinkedMessagesProps) {
         })}
       </div>
 
-      <AlertDialog
+      <ConfirmDialog
         open={!!unlinkTarget}
         onOpenChange={(open) => {
           if (!open) setUnlinkTarget(null);
         }}
-      >
-        <AlertDialogContent size="sm">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Unlink this message?</AlertDialogTitle>
-            <AlertDialogDescription>
-              The message in Discord will stay where it is, but it won't be
-              updated when you save changes to this preset.
-              {unlinkTarget?.channelName ? (
-                <>
-                  {" "}
-                  Currently linked in{" "}
-                  <span className="font-medium text-foreground">
-                    #{camelCaseToTitle(unlinkTarget.channelName)}
-                  </span>
-                  .
-                </>
-              ) : null}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              onClick={() => {
-                if (unlinkTarget) void handleUnlink(unlinkTarget.id);
-                setUnlinkTarget(null);
-              }}
-            >
-              Unlink
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        size="sm"
+        variant="destructive"
+        title="Unlink this message?"
+        description={
+          <>
+            The message in Discord will stay where it is, but it won't be
+            updated when you save changes to this preset.
+            {unlinkTarget?.channelName ? (
+              <>
+                {" "}
+                Currently linked in{" "}
+                <span className="font-medium text-foreground">
+                  #{camelCaseToTitle(unlinkTarget.channelName)}
+                </span>
+                .
+              </>
+            ) : null}
+          </>
+        }
+        confirmLabel="Unlink"
+        onConfirm={() =>
+          unlinkTarget ? unlink.mutateAsync({ id: unlinkTarget.id }) : undefined
+        }
+      />
     </div>
   );
 }

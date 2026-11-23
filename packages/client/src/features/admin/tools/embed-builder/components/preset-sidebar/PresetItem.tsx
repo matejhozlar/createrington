@@ -17,15 +17,10 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import type { PresetRow } from "@/features/admin/tools/embed-builder/preset-row";
 
 interface PresetItemProps {
-  preset: {
-    id: number;
-    name: string;
-    createdBy: string;
-    data: unknown;
-    categoryId?: number | null;
-  };
+  preset: PresetRow;
   isActive: boolean;
   categories: { id: number; name: string }[];
   onLoad: () => void;
