@@ -240,11 +240,12 @@ const SECTIONS: LegalSection[] = [
           reasonable timeframe.
         </p>
         <p className="mt-2">
-          You can delete your account and all associated data yourself from your{" "}
+          You can delete your account and your personal data yourself from your{" "}
           <Link to="/settings" className="text-primary hover:underline">
             Settings
-          </Link>
-          . You can also ask us to do it by contacting us at{" "}
+          </Link>{" "}
+          (this also removes you from our Discord server). You can also ask us
+          to do it by contacting us at{" "}
           <a
             href={`mailto:${CONTACT_EMAIL}`}
             className="text-primary hover:underline"
@@ -342,7 +343,7 @@ export function PrivacyPolicy() {
     <LegalPage
       title="Privacy Policy"
       description="How we collect, use, and protect your personal data."
-      effectiveDate="September 9, 2026"
+      effectiveDate="November 23, 2026"
       sections={SECTIONS}
       related={{ to: "/terms", label: "Terms of Service" }}
     />
