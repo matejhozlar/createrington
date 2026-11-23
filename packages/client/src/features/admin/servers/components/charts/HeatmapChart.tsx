@@ -1,15 +1,9 @@
 import { useMemo } from "react";
 import { cn } from "@/lib/utils";
-
-interface HeatmapDataPoint {
-  day: string;
-  hour: number;
-  uniquePlayers: number;
-  totalSeconds: number;
-}
+import type { RouterOutput } from "@/lib/trpc";
 
 interface HeatmapChartProps {
-  data: HeatmapDataPoint[];
+  data: RouterOutput["admin"]["servers"]["heatmap"]["heatmap"];
 }
 
 const DAYS_OF_WEEK = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];

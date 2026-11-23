@@ -1,3 +1,4 @@
+import { ADMIN_REASON_MAX_LENGTH } from "@createrington/shared/admin-reason";
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { id, auditActor } from "@/trpc/utils";
@@ -26,7 +27,7 @@ export const adminWorkshopBansRouter = router({
       z.object({
         discordId,
         workshopId: id().nullable(),
-        reason: z.string().trim().min(1).max(500),
+        reason: z.string().trim().min(1).max(ADMIN_REASON_MAX_LENGTH),
         durationDays: z.number().int().min(1).max(365).optional(),
       }),
     )
@@ -39,7 +40,7 @@ export const adminWorkshopBansRouter = router({
     .input(
       z.object({
         banId: id(),
-        reason: z.string().trim().min(1).max(500),
+        reason: z.string().trim().min(1).max(ADMIN_REASON_MAX_LENGTH),
       }),
     )
     .mutation(async ({ ctx, input }) => {

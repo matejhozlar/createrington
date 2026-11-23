@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { trpc, queryClient } from "@/lib/trpc";
+import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { Button } from "@/components/ui/button";
@@ -16,17 +16,7 @@ import { workshopFormError } from "@/features/admin/workshop/validation";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Field, FieldLabel } from "@/components/ui/field";
 
-interface WorkshopSettings {
-  id: number;
-  name: string;
-  slug: string;
-  description: string | null;
-  modpackId: number;
-  maxModsPerUser: number;
-  maxUpvotesPerUser: number;
-  discordForumChannelId: string | null;
-  baseModpackProjectId: number | null;
-}
+type WorkshopSettings = RouterOutput["admin"]["workshops"]["list"][number];
 
 export function WorkshopSettingsDialog({
   open,

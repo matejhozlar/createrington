@@ -1,3 +1,4 @@
+import { isDiscordId } from "@createrington/shared/discord-id";
 import { ADMIN_REASON_MAX_LENGTH } from "@createrington/shared/admin-reason";
 import { Input } from "@/components/ui/input";
 import {
@@ -9,7 +10,12 @@ import {
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { useDialogDraft } from "@/hooks/use-dialog-draft";
-import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
+import {
+  trpc,
+  queryClient,
+  type RouterInput,
+  type RouterOutput,
+} from "@/lib/trpc";
 import { FormDialog } from "@/components/form-dialog";
 import { useMutation } from "@tanstack/react-query";
 import { Textarea } from "@/components/ui/textarea";
@@ -86,7 +92,7 @@ export function EditPlayerModal({
 
     if (discordId.trim().length === 0) {
       newErrors.discordId = "Discord ID is required";
-    } else if (!/^\d{17,20}$/.test(discordId.trim())) {
+    } else if (!isDiscordId(discordId.trim())) {
       newErrors.discordId = "Discord ID must be 17-20 digits";
     }
 
@@ -107,12 +113,7 @@ export function EditPlayerModal({
   };
 
   const handleConfirmSubmit = async () => {
-    const input: {
-      id: string;
-      reason: string;
-      minecraftUsername?: string;
-      discordId?: string;
-    } = {
+    const input: RouterInput["admin"]["players"]["players"]["update"] = {
       id: player.minecraftUuid,
       reason: reason.trim(),
     };

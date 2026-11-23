@@ -1,3 +1,4 @@
+import { ADMIN_REASON_MAX_LENGTH } from "@createrington/shared/admin-reason";
 import { Field, FieldLabel } from "@/components/ui/field";
 import {
   Select,
@@ -162,7 +163,7 @@ export function IssueWorkshopBanModal({
           value={reason}
           onChange={(e) => update({ reason: e.target.value })}
           rows={4}
-          maxLength={500}
+          maxLength={ADMIN_REASON_MAX_LENGTH}
         />
       </Field>
     </FormDialog>

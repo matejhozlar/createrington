@@ -9,22 +9,6 @@ import { useRenderData } from "./hooks/use-render-data";
 import { useRenderPlatesReady } from "./hooks/use-render-plates";
 import { loadSkin, randomPose } from "./skin-utils";
 
-interface ProfileData {
-  username: string;
-  uuid: string;
-  online: boolean;
-  cashBalance: string;
-  playtime: string;
-  playtimeSeconds: number;
-  sessions: number;
-  memberSince: string;
-  blocksMined: number;
-  mobsKilled: number;
-  deaths: number;
-  distanceKm: number;
-  tagCode: string | null;
-}
-
 function StatPill({
   label,
   value,
@@ -52,9 +36,7 @@ function StatPill({
 }
 
 export function ProfileRender() {
-  const { data, unavailable } = useRenderData<ProfileData>("profile", [
-    "player",
-  ]);
+  const { data, unavailable } = useRenderData("profile", ["player"]);
   const [skinSrc, setSkinSrc] = useState<string | null>(null);
   const [pose] = useState(randomPose);
   const platesReady = useRenderPlatesReady();

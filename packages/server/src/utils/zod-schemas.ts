@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { DISCORD_ID_REGEX } from "@createrington/shared/discord-id";
 
 export const MC_UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -14,8 +15,6 @@ export const mcUsername = z
   .string()
   .trim()
   .regex(MC_USERNAME_REGEX, "Invalid Minecraft username");
-
-export const DISCORD_ID_REGEX = /^\d{17,20}$/;
 
 export const discordId = z
   .string()

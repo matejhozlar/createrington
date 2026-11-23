@@ -1,12 +1,5 @@
-import { Badge, type BadgeTone } from "@/components/ui/badge";
-
-type Presence = "online" | "offline" | "maintenance";
-
-const PRESENCE: Record<Presence, { label: string; tone?: BadgeTone }> = {
-  online: { label: "Online", tone: "success" },
-  maintenance: { label: "Maintenance", tone: "warning" },
-  offline: { label: "Offline" },
-};
+import { Badge } from "@/components/ui/badge";
+import { PRESENCE_STYLES, type Presence } from "@/components/presence";
 
 export function PresenceBadge({
   status,
@@ -17,7 +10,7 @@ export function PresenceBadge({
   className?: string;
   children?: React.ReactNode;
 }) {
-  const { label, tone } = PRESENCE[status];
+  const { label, tone } = PRESENCE_STYLES[status];
 
   return (
     <Badge variant="outline" tone={tone} className={className}>

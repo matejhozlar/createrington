@@ -5,16 +5,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { FormDialog } from "@/components/form-dialog";
 import { useToastActions } from "@/hooks/use-toast";
 import { trpc, queryClient } from "@/lib/trpc";
-import type { RemoveTarget } from "../types";
+import type {
+  RemoveTarget,
+  StructurePackMod,
+} from "@/features/admin/structure-packs/structure-pack-detail/types";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Spinner } from "@/components/ui/spinner";
 import { pluralize } from "@/lib/format";
-
-interface PackMod {
-  id: number;
-  curseforgeModId: number;
-  modName: string;
-}
 
 export function RemoveModDialog({
   target,
@@ -25,7 +22,7 @@ export function RemoveModDialog({
   target: RemoveTarget | null;
   onOpenChange: (open: boolean) => void;
   packId: number;
-  packMods: PackMod[];
+  packMods: Pick<StructurePackMod, "id" | "curseforgeModId" | "modName">[];
 }) {
   const toast = useToastActions();
 

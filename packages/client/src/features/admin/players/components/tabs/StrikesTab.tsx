@@ -5,6 +5,7 @@ import type { RouterOutput } from "@/lib/trpc";
 import { EmptyState } from "@/components/query-states";
 import { TabSectionHeader } from "@/features/admin/players/components/TabSectionHeader";
 import { formatDate } from "@createrington/shared/format";
+import { STRIKE_CLASSIFICATION_LABELS } from "@createrington/shared/strike";
 
 type PlayerDetailed = RouterOutput["admin"]["players"]["players"]["get"];
 
@@ -45,7 +46,9 @@ export function StrikesTab({
                   <Badge variant="destructive">
                     Severity {strike.severity}
                   </Badge>
-                  <Badge variant="outline">{strike.classification}</Badge>
+                  <Badge variant="outline">
+                    {STRIKE_CLASSIFICATION_LABELS[strike.classification]}
+                  </Badge>
                 </div>
                 <p className="mt-2 text-sm">{strike.description}</p>
                 <p className="mt-1 text-xs text-muted-foreground">
@@ -80,7 +83,9 @@ export function StrikesTab({
                 >
                   <div className="flex items-center gap-2">
                     <Badge variant="outline">Severity {strike.severity}</Badge>
-                    <Badge variant="outline">{strike.classification}</Badge>
+                    <Badge variant="outline">
+                      {STRIKE_CLASSIFICATION_LABELS[strike.classification]}
+                    </Badge>
                     <Badge variant="outline">Removed</Badge>
                   </div>
                   <p className="mt-2 text-sm">{strike.description}</p>

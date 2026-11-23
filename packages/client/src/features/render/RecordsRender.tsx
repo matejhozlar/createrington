@@ -1,15 +1,10 @@
 import { LoadingScreen } from "@/components/query-states";
-import { PodiumCard, type PodiumPlayer } from "./components/PodiumCard";
+import { PodiumCard } from "./components/PodiumCard";
 import { RenderUnavailable } from "./components/RenderUnavailable";
 import { usePodiumSkins } from "./hooks/use-podium-skins";
 import { useRenderData } from "./hooks/use-render-data";
 import { useRenderPlatesReady } from "./hooks/use-render-plates";
 import { pluralize } from "@/lib/format";
-
-interface RecordsData {
-  contestedKeys: number;
-  players: PodiumPlayer[];
-}
 
 const BANNER = {
   src: "/assets/render/player-records.webp",
@@ -22,7 +17,7 @@ function formatValue(value: number): string {
 }
 
 export function RecordsRender() {
-  const { data, unavailable } = useRenderData<RecordsData>("records");
+  const { data, unavailable } = useRenderData("records");
   const skins = usePodiumSkins(data?.players ?? null);
   const platesReady = useRenderPlatesReady();
 

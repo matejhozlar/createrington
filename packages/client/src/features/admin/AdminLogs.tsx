@@ -36,12 +36,7 @@ type SortField = "performedAt" | "actionType" | "adminUsername";
 
 type LogAction = RouterOutput["admin"]["logs"]["list"]["items"][number];
 
-function getDescription(action: {
-  description: string | null;
-  targetPlayerName: string | null;
-  tableName: string | null;
-  fieldName: string | null;
-}): string {
+function getDescription(action: LogAction): string {
   if (action.description) return action.description;
   const parts: string[] = [];
   if (action.tableName && action.fieldName) {
@@ -213,14 +208,7 @@ export function AdminLogs() {
           <DialogHeader>
             <DialogTitle>Entry Metadata</DialogTitle>
             <DialogDescription>
-              {getDescription(
-                metadataAction ?? {
-                  description: null,
-                  targetPlayerName: null,
-                  tableName: null,
-                  fieldName: null,
-                },
-              ) || "—"}
+              {(metadataAction && getDescription(metadataAction)) || "—"}
             </DialogDescription>
           </DialogHeader>
           <pre className="max-h-[400px] overflow-auto rounded-md bg-muted p-4 text-xs">

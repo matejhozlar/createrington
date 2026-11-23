@@ -1,6 +1,8 @@
 import { Link, useNavigate } from "react-router";
 import { useAuth } from "@/contexts/auth";
-import { trpc } from "@/lib/trpc";
+import { trpc, type RouterOutput } from "@/lib/trpc";
+import { cn } from "@/lib/utils";
+import { PRESENCE_STYLES, presenceOf } from "@/components/presence";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
 import {
   EmptyState,
@@ -48,6 +50,16 @@ const TRAIL = [
   { label: "Admin", href: "/admin/dashboard" },
   { label: "Dashboard" },
 ];
+
+const WAITLIST_TILES = [
+  { key: "queued", label: "Queued" },
+  { key: "promoted", label: "Promoted" },
+  { key: "registered", label: "Registered" },
+  { key: "joinedMinecraft", label: "In-Game" },
+] satisfies {
+  key: keyof RouterOutput["admin"]["waitlists"]["stats"];
+  label: string;
+}[];
 
 export function AdminDashboard() {
   const { user } = useAuth();
@@ -425,11 +437,15 @@ export function AdminDashboard() {
                   >
                     <div className="flex items-center gap-2">
                       <div
-                        className={`size-2 rounded-full ${
-                          server.status === "online"
-                            ? "bg-green-500"
-                            : "bg-muted-foreground"
-                        }`}
+                        className={cn(
+                          "size-2 rounded-full",
+                          PRESENCE_STYLES[
+                            presenceOf({
+                              online: server.status === "online",
+                              maintenance: server.maintenance,
+                            })
+                          ].fill,
+                        )}
                       />
                       <span className="text-sm font-medium">
                         {server.serverName}
@@ -454,30 +470,14 @@ export function AdminDashboard() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <div className="rounded-lg border p-3 text-center">
-                <p className="text-2xl font-bold">
-                  {waitlistStats?.queued ?? 0}
-                </p>
-                <p className="text-xs text-muted-foreground">Queued</p>
-              </div>
-              <div className="rounded-lg border p-3 text-center">
-                <p className="text-2xl font-bold">
-                  {waitlistStats?.promoted ?? 0}
-                </p>
-                <p className="text-xs text-muted-foreground">Promoted</p>
-              </div>
-              <div className="rounded-lg border p-3 text-center">
-                <p className="text-2xl font-bold">
-                  {waitlistStats?.registered ?? 0}
-                </p>
-                <p className="text-xs text-muted-foreground">Registered</p>
-              </div>
-              <div className="rounded-lg border p-3 text-center">
-                <p className="text-2xl font-bold">
-                  {waitlistStats?.joinedMinecraft ?? 0}
-                </p>
-                <p className="text-xs text-muted-foreground">In-Game</p>
-              </div>
+              {WAITLIST_TILES.map(({ key, label }) => (
+                <div key={key} className="rounded-lg border p-3 text-center">
+                  <p className="text-2xl font-bold">
+                    {waitlistStats?.[key] ?? 0}
+                  </p>
+                  <p className="text-xs text-muted-foreground">{label}</p>
+                </div>
+              ))}
             </div>
             <Button
               variant="outline"

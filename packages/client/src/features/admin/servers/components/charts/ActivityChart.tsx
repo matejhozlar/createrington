@@ -8,15 +8,10 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
-
-interface ActivityDataPoint {
-  date: string;
-  uniquePlayers: number;
-  totalHours: number;
-}
+import type { RouterOutput } from "@/lib/trpc";
 
 interface ActivityChartProps {
-  data: ActivityDataPoint[];
+  data: RouterOutput["admin"]["servers"]["activity"]["activity"];
 }
 
 function formatDay(day: string): string {

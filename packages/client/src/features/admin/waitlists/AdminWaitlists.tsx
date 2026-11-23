@@ -21,7 +21,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Users, UserPlus, UserCheck, Clock, Trash2 } from "lucide-react";
-import type { WaitlistStatus } from "@createrington/shared/db";
+import {
+  WAITLIST_STATUSES,
+  type WaitlistStatus,
+} from "@createrington/shared/waitlist";
+import { isDiscordId } from "@createrington/shared/discord-id";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { usePagedQuery } from "@/hooks/use-paged-query";
 import { useTableSort } from "@/hooks/use-table-sort";
@@ -37,19 +41,23 @@ type WaitlistEntry =
 type SortField = "createdAt" | "queuedAt" | "promotedAt" | "discordUsername";
 type StatusFilter = "all" | WaitlistStatus;
 
-const STATUS_LABELS: Record<WaitlistStatus, string> = {
-  queued: "Queued",
-  promoted: "Promoted",
-  registered: "Registered",
-  expired: "Expired",
+const WAITLIST_STATUS: Record<
+  WaitlistStatus,
+  { label: string; tone: BadgeTone }
+> = {
+  queued: { label: "Queued", tone: "warning" },
+  promoted: { label: "Promoted", tone: "teal" },
+  registered: { label: "Registered", tone: "success" },
+  expired: { label: "Expired", tone: "neutral" },
 };
 
-const STATUS_TONES: Record<WaitlistStatus, BadgeTone> = {
-  queued: "warning",
-  promoted: "teal",
-  registered: "success",
-  expired: "neutral",
-};
+const STATUS_FILTER_OPTIONS: { value: StatusFilter; label: string }[] = [
+  { value: "all", label: "All Statuses" },
+  ...WAITLIST_STATUSES.map((value) => ({
+    value,
+    label: WAITLIST_STATUS[value].label,
+  })),
+];
 
 function hasRequeued(entry: WaitlistEntry) {
   return (
@@ -77,7 +85,7 @@ export function AdminWaitlists() {
   const statsLoading = statsQuery.isLoading;
 
   const search = debouncedSearch.trim();
-  const searchIsId = /^\d{15,21}$/.test(search);
+  const searchIsId = isDiscordId(search);
 
   const entries = usePagedQuery(
     {
@@ -128,8 +136,8 @@ export function AdminWaitlists() {
       skeleton: () => <BadgeCellSkeleton />,
       render: (entry) => (
         <div className="flex items-center gap-1.5">
-          <Badge tone={STATUS_TONES[entry.status]}>
-            {STATUS_LABELS[entry.status]}
+          <Badge tone={WAITLIST_STATUS[entry.status].tone}>
+            {WAITLIST_STATUS[entry.status].label}
           </Badge>
           {entry.joinedMinecraft && <Badge tone="success">In-Game</Badge>}
         </div>
@@ -246,11 +254,11 @@ export function AdminWaitlists() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="queued">Queued</SelectItem>
-            <SelectItem value="promoted">Promoted</SelectItem>
-            <SelectItem value="registered">Registered</SelectItem>
-            <SelectItem value="expired">Expired</SelectItem>
+            {STATUS_FILTER_OPTIONS.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </FilterBar>

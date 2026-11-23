@@ -6,7 +6,9 @@ import { ilikeContains } from "@/db/utils";
 import { adminRoleService } from "@/services/auth/admin-role/admin-role.service";
 import { Discord } from "@/discord/constants";
 import { SERVERS } from "@/services/mc-server/servers";
-import { discordId, DISCORD_ID_REGEX } from "@/utils/zod-schemas";
+import { isDiscordId } from "@createrington/shared/discord-id";
+import { ADMIN_REASON_MAX_LENGTH } from "@createrington/shared/admin-reason";
+import { discordId } from "@/utils/zod-schemas";
 
 export const ownerAdminsRouter = router({
   list: ownerProcedure
@@ -51,7 +53,7 @@ export const ownerAdminsRouter = router({
       const query = input.query.trim();
       if (!query) return { players: [] };
 
-      const results = DISCORD_ID_REGEX.test(query)
+      const results = isDiscordId(query)
         ? await Q.player.findAll({ discordId: query })
         : await Q.player
             .where({ minecraftUsername: ilikeContains(query) })
@@ -111,7 +113,7 @@ export const ownerAdminsRouter = router({
     .input(
       z.object({
         discordId,
-        reason: z.string().max(500).optional(),
+        reason: z.string().max(ADMIN_REASON_MAX_LENGTH).optional(),
       }),
     )
     .mutation(({ ctx, input }) =>
@@ -126,7 +128,7 @@ export const ownerAdminsRouter = router({
     .input(
       z.object({
         discordId,
-        reason: z.string().max(500).optional(),
+        reason: z.string().max(ADMIN_REASON_MAX_LENGTH).optional(),
       }),
     )
     .mutation(({ ctx, input }) =>

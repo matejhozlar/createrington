@@ -1,3 +1,4 @@
+import { ADMIN_REASON_MAX_LENGTH } from "@createrington/shared/admin-reason";
 import { FormDialog } from "@/components/form-dialog";
 import { SearchInput } from "@/components/search-input";
 import { Field, FieldLabel } from "@/components/ui/field";
@@ -10,14 +11,15 @@ import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Textarea } from "@/components/ui/textarea";
 import { useDialogDraft } from "@/hooks/use-dialog-draft";
+import type {
+  AdminCandidate,
+  PromoteResult,
+} from "@/features/admin/owner/types";
 
 interface PromoteDialogProps {
   open: boolean;
   onClose: () => void;
-  onSuccess: (result: {
-    discordRoleAdded: boolean;
-    minecraftUsername: string | null;
-  }) => void;
+  onSuccess: (result: PromoteResult) => void;
 }
 
 export function PromoteDialog({
@@ -28,11 +30,7 @@ export function PromoteDialog({
   const [draft, update] = useDialogDraft<{
     query: string;
     reason: string;
-    selected: {
-      discordId: string;
-      minecraftUsername: string;
-      minecraftUuid: string;
-    } | null;
+    selected: AdminCandidate | null;
   }>(open, () => ({ query: "", reason: "", selected: null }));
   const { query, reason, selected } = draft;
 
@@ -136,15 +134,7 @@ export function PromoteDialog({
                     <button
                       key={p.discordId}
                       type="button"
-                      onClick={() =>
-                        update({
-                          selected: {
-                            discordId: p.discordId,
-                            minecraftUsername: p.minecraftUsername,
-                            minecraftUuid: p.minecraftUuid,
-                          },
-                        })
-                      }
+                      onClick={() => update({ selected: p })}
                       className="flex w-full items-center gap-2 border-b px-3 py-2 text-left last:border-b-0 hover:bg-muted/50"
                     >
                       <MinecraftAvatar
@@ -176,7 +166,7 @@ export function PromoteDialog({
           value={reason}
           onChange={(e) => update({ reason: e.target.value })}
           placeholder="e.g. Trusted moderator, handles Discord tickets"
-          maxLength={500}
+          maxLength={ADMIN_REASON_MAX_LENGTH}
           rows={3}
         />
       </Field>

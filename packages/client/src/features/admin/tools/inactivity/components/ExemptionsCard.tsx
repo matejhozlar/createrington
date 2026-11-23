@@ -1,3 +1,4 @@
+import { ADMIN_REASON_MAX_LENGTH } from "@createrington/shared/admin-reason";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { CardDescription, CardTitle } from "@/components/ui/card";
@@ -152,7 +153,7 @@ export function ExemptionsCard() {
                 placeholder="Reason (optional)"
                 value={reasonInput}
                 onChange={(e) => setReasonInput(e.target.value)}
-                maxLength={500}
+                maxLength={ADMIN_REASON_MAX_LENGTH}
                 className="min-w-48 flex-1"
               />
               <Button

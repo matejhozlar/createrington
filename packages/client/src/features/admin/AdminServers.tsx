@@ -8,13 +8,15 @@ import { PresenceBadge } from "@/components/presence-badge";
 import { Progress } from "@/components/ui/progress";
 import { Server, Users, Clock, Activity } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { trpc } from "@/lib/trpc";
-import { useServerData } from "@/contexts/server-data";
+import { trpc, type RouterOutput } from "@/lib/trpc";
+import { useLiveServerState } from "@/contexts/server-data";
+import { PRESENCE_STYLES } from "@/components/presence";
 import { useQuery } from "@tanstack/react-query";
+
+type ServerRow = RouterOutput["admin"]["servers"]["list"]["servers"][number];
 
 export function AdminServers() {
   const navigate = useNavigate();
-  const { getServer } = useServerData();
 
   const listQuery = useQuery(trpc.admin.servers.list.queryOptions());
   const servers = listQuery.data?.servers ?? [];
@@ -85,110 +87,89 @@ export function AdminServers() {
           )}
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {servers.map((server) => {
-              const liveData = getServer(server.serverId);
-              const isOnline = liveData?.online ?? server.status === "online";
-              const isMaintenance =
-                liveData?.maintenance ?? server.maintenance ?? false;
-              const livePlayerCount =
-                liveData?.playerCount ?? server.playerCount;
-
-              const presence = isMaintenance
-                ? "maintenance"
-                : isOnline
-                  ? "online"
-                  : "offline";
-
-              return (
-                <Card
-                  key={server.serverId}
-                  className="cursor-pointer transition-colors hover:bg-accent/50"
-                  onClick={() => navigate(`/admin/servers/${server.serverId}`)}
-                >
-                  <CardContent className="flex flex-col gap-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={cn(
-                            "flex size-10 items-center justify-center rounded-lg",
-                            isMaintenance
-                              ? "bg-amber-500/10"
-                              : isOnline
-                                ? "bg-green-500/10"
-                                : "bg-muted-foreground/10",
-                          )}
-                        >
-                          <Server
-                            className={cn(
-                              "size-5",
-                              isMaintenance
-                                ? "text-amber-500"
-                                : isOnline
-                                  ? "text-green-500"
-                                  : "text-muted-foreground",
-                            )}
-                          />
-                        </div>
-                        <div>
-                          <p className="font-semibold">{server.serverName}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {server.ip}:{server.port}
-                          </p>
-                        </div>
-                      </div>
-                      <PresenceBadge status={presence} />
-                    </div>
-
-                    <div>
-                      <div className="mb-1 flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">Players</span>
-                        <span className="font-medium">
-                          {livePlayerCount} / {server.maxPlayers}
-                        </span>
-                      </div>
-                      <Progress
-                        className="bg-muted"
-                        indicatorClassName={cn(
-                          isMaintenance
-                            ? "bg-amber-500"
-                            : isOnline
-                              ? "bg-green-500"
-                              : "bg-muted-foreground",
-                        )}
-                        value={Math.min(
-                          (livePlayerCount / server.maxPlayers) * 100,
-                          100,
-                        )}
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-2 text-center text-sm">
-                      <div>
-                        <p className="text-muted-foreground">Unique</p>
-                        <p className="font-medium">
-                          {server.stats.uniquePlayers}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Hours</p>
-                        <p className="font-medium">
-                          {server.stats.totalHours.toLocaleString()}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Avg Session</p>
-                        <p className="font-medium">
-                          {Math.round(server.stats.avgSessionSeconds / 60)}m
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
+            {servers.map((server) => (
+              <ServerCard
+                key={server.serverId}
+                server={server}
+                onOpen={() => navigate(`/admin/servers/${server.serverId}`)}
+              />
+            ))}
           </div>
         </>
       )}
     </AdminPage>
+  );
+}
+
+function ServerCard({
+  server,
+  onOpen,
+}: {
+  server: ServerRow;
+  onOpen: () => void;
+}) {
+  const { presence, playerCount } = useLiveServerState(server);
+  const styles = PRESENCE_STYLES[presence];
+
+  return (
+    <Card
+      className="cursor-pointer transition-colors hover:bg-accent/50"
+      onClick={onOpen}
+    >
+      <CardContent className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div
+              className={cn(
+                "flex size-10 items-center justify-center rounded-lg",
+                styles.tile,
+              )}
+            >
+              <Server className="size-5" />
+            </div>
+            <div>
+              <p className="font-semibold">{server.serverName}</p>
+              <p className="text-xs text-muted-foreground">
+                {server.ip}:{server.port}
+              </p>
+            </div>
+          </div>
+          <PresenceBadge status={presence} />
+        </div>
+
+        <div>
+          <div className="mb-1 flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">Players</span>
+            <span className="font-medium">
+              {playerCount} / {server.maxPlayers}
+            </span>
+          </div>
+          <Progress
+            className="bg-muted"
+            indicatorClassName={styles.fill}
+            value={Math.min((playerCount / server.maxPlayers) * 100, 100)}
+          />
+        </div>
+
+        <div className="grid grid-cols-3 gap-2 text-center text-sm">
+          <div>
+            <p className="text-muted-foreground">Unique</p>
+            <p className="font-medium">{server.stats.uniquePlayers}</p>
+          </div>
+          <div>
+            <p className="text-muted-foreground">Hours</p>
+            <p className="font-medium">
+              {server.stats.totalHours.toLocaleString()}
+            </p>
+          </div>
+          <div>
+            <p className="text-muted-foreground">Avg Session</p>
+            <p className="font-medium">
+              {Math.round(server.stats.avgSessionSeconds / 60)}m
+            </p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

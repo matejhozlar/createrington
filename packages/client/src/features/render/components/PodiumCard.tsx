@@ -1,20 +1,14 @@
 import { RenderFrame } from "./RenderFrame";
 import { cn } from "@/lib/utils";
 import { RenderTeamTag } from "./RenderTeamTag";
-
-export interface PodiumPlayer {
-  username: string;
-  uuid: string;
-  value: number;
-  tagCode: string | null;
-}
+import type { RenderPodiumPlayer } from "@createrington/shared/render";
 
 interface PodiumCardProps {
   containerId: string;
   banner: { src: string; alt: string };
   title: string;
   subtitle?: string;
-  players: PodiumPlayer[];
+  players: RenderPodiumPlayer[];
   skins: string[];
   emptyText: string;
   formatValue: (value: number) => string;
@@ -49,7 +43,7 @@ function PodiumEntry({
   rank,
   valueLabel,
 }: {
-  player: PodiumPlayer;
+  player: RenderPodiumPlayer;
   skinSrc: string;
   rank: number;
   valueLabel: string;

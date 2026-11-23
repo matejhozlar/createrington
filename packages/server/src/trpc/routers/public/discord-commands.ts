@@ -1,3 +1,7 @@
+import type {
+  DiscordCommandDoc,
+  DiscordCommandsDocument,
+} from "@createrington/shared/discord-commands";
 import { router, publicProcedure } from "@/trpc/trpc";
 import { COMMAND_GROUPS, GROUP_ORDER } from "@/config/command-groups";
 import fs from "node:fs";
@@ -13,22 +17,6 @@ const JSON_PATH = path.join(
   "config",
   "discord-commands.json",
 );
-
-export interface RawCommand {
-  name: string;
-  description: string;
-  category: string;
-  options: unknown[];
-  defaultMemberPermissions: string | null;
-  permissions?: { requireAdmin?: boolean; requireOwner?: boolean };
-  cooldown?: { duration: number; type: string; message?: string };
-  [key: string]: unknown;
-}
-
-export interface DiscordCommandsDocument {
-  generatedAt: string | null;
-  commands: RawCommand[];
-}
 
 export const discordCommandsRouter = router({
   list: publicProcedure
@@ -49,7 +37,7 @@ export const discordCommandsRouter = router({
         (cmd) => cmd.category === "user" || cmd.category === "public",
       );
 
-      const grouped = new Map<string, RawCommand[]>();
+      const grouped = new Map<string, DiscordCommandDoc[]>();
       for (const cmd of playerCommands) {
         const group = COMMAND_GROUPS[cmd.name] ?? "Other";
         const list = grouped.get(group) ?? [];

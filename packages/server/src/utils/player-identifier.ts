@@ -1,8 +1,5 @@
-import {
-  DISCORD_ID_REGEX,
-  MC_USERNAME_REGEX,
-  MC_UUID_REGEX,
-} from "@/utils/zod-schemas";
+import { isDiscordId } from "@createrington/shared/discord-id";
+import { MC_USERNAME_REGEX, MC_UUID_REGEX } from "@/utils/zod-schemas";
 
 export const NIL_UUID = "00000000-0000-0000-0000-000000000000";
 
@@ -12,8 +9,7 @@ export function getIdType(
   const isMinecraftUUID = MC_UUID_REGEX.test(id);
   if (isMinecraftUUID) return "minecraftUuid";
 
-  const isDiscordID = DISCORD_ID_REGEX.test(id);
-  if (isDiscordID) return "discord";
+  if (isDiscordId(id)) return "discord";
 
   const isMinecraftUsername = MC_USERNAME_REGEX.test(id);
   if (isMinecraftUsername) return "minecraftUsername";

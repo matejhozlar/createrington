@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { trpc, queryClient } from "@/lib/trpc";
+import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,10 +18,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 const REWARD_MAX = 1_000_000;
 const CAP_MAX = 100;
 
-interface GallerySettings {
-  rewardAmount: number;
-  weeklyRewardCap: number;
-}
+type GallerySettings = RouterOutput["admin"]["gallery"]["settings"]["get"];
 
 interface SettingsDialogProps {
   open: boolean;

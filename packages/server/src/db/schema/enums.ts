@@ -4,6 +4,8 @@ import { DONATION_STATUSES } from "@createrington/shared/donation";
 import { FAQ_MATCH_MODES } from "@createrington/shared/faq";
 import { MAINTENANCE_SCHEDULE_STATUSES } from "@createrington/shared/maintenance";
 import { REWARD_TYPES } from "@createrington/shared/reward";
+import { STRIKE_CLASSIFICATIONS } from "@createrington/shared/strike";
+import { WAITLIST_STATUSES } from "@createrington/shared/waitlist";
 import { TICKET_ACTION_TYPES } from "@createrington/shared/ticket";
 import { GALLERY_SUBMISSION_STATUSES } from "@createrington/shared/gallery";
 import {
@@ -28,17 +30,10 @@ import {
 
 export const banTypeEnum = pgEnum("ban_type", ["temporary", "permanent"]);
 
-export const strikeClassificationEnum = pgEnum("strike_classification", [
-  "pvp",
-  "theft",
-  "griefing",
-  "laggy_machines",
-  "inappropriate_chat",
-  "harassment",
-  "exploiting",
-  "rule_violation",
-  "other",
-]);
+export const strikeClassificationEnum = pgEnum(
+  "strike_classification",
+  STRIKE_CLASSIFICATIONS,
+);
 
 export const ticketStatusEnum = pgEnum("ticket_status", [
   "open",
@@ -48,12 +43,7 @@ export const ticketStatusEnum = pgEnum("ticket_status", [
 
 export const ticketTypeEnum = pgEnum("ticket_type", ["general", "report"]);
 
-export const waitlistStatusEnum = pgEnum("waitlist_status", [
-  "queued",
-  "promoted",
-  "registered",
-  "expired",
-]);
+export const waitlistStatusEnum = pgEnum("waitlist_status", WAITLIST_STATUSES);
 
 export const discordAutoMessageRotationEnum = pgEnum(
   "discord_auto_message_rotation",
