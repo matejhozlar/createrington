@@ -22,15 +22,17 @@ import {
   MOD_STATUS_STYLES,
   projectCategories,
 } from "@/features/workshop/format";
-import type { ModEnvironment } from "@createrington/shared/db";
+import { EnvironmentCell } from "@/features/workshop/components/EnvironmentCell";
 import {
-  EnvironmentCell,
-  type EnvironmentDisplay,
-} from "@/features/workshop/components/EnvironmentCell";
-import { modReviewActions, type ModReviewHandlers } from "../../actions";
-import type { AdminWorkshopMod } from "../../types";
-import { DependencyCell } from "../DependencyCell";
-import { ModCell, ModCellSkeleton } from "../ModCell";
+  modReviewActions,
+  type ModTableProps,
+} from "@/features/admin/workshop/workshop-admin-detail/actions";
+import type { AdminWorkshopMod } from "@/features/admin/workshop/workshop-admin-detail/types";
+import { DependencyCell } from "@/features/admin/workshop/workshop-admin-detail/components/DependencyCell";
+import {
+  ModCell,
+  ModCellSkeleton,
+} from "@/features/admin/workshop/workshop-admin-detail/components/ModCell";
 
 const MODS_PER_PAGE = 10;
 
@@ -49,16 +51,7 @@ export function AllModsTab({
   onReject,
 }: {
   mods: AdminWorkshopMod[];
-  isLoading: boolean;
-  error: string | null;
-  onRetry: () => void;
-  search: string;
-  onSearchChange: (value: string) => void;
-  busyModId: number | null;
-  onView: (workshopModId: number) => void;
-  envDisplay: EnvironmentDisplay;
-  onSetEnvironment: (projectId: number, environment: ModEnvironment) => void;
-} & ModReviewHandlers) {
+} & ModTableProps) {
   const [category, setCategory] = useState("all");
   const query = search.trim().toLowerCase();
 

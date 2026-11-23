@@ -207,7 +207,7 @@ const AdminLauncher = LAUNCHER_ENABLED
   ? lazyNamed(() => import("./features/admin/AdminLauncher"), "AdminLauncher")
   : null;
 const Changelog = lazyNamed(
-  () => import("./features/admin/Changelog"),
+  () => import("./features/admin/changelog/Changelog"),
   "Changelog",
 );
 const AdminStructurePacks = lazyNamed(

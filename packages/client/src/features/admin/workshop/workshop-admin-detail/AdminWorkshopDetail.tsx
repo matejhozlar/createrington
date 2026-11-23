@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 import { Hammer, PackagePlus, Settings2 } from "lucide-react";
-import { sessionStore } from "@/lib/storage";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { trpc, queryClient } from "@/lib/trpc";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { Button } from "@/components/ui/button";
@@ -21,18 +21,12 @@ import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { AdminPage } from "@/features/admin/components/AdminPage";
 import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { ModDetailDialog } from "@/features/workshop/workshop-detail/components/ModDetailDialog";
-import type { EnvironmentDisplay } from "@/features/workshop/components/EnvironmentCell";
 import { WORKSHOP_STATUS_STYLES } from "@/features/workshop/format";
-import {
-  MOD_ENVIRONMENT_LABELS,
-  WORKSHOP_STATUS_TRANSITIONS,
-  type WorkshopModReviewAction,
-} from "@createrington/shared/workshop";
-import type {
-  ModEnvironment,
-  WorkshopModStatus,
-} from "@createrington/shared/db";
-import type { AdminWorkshopMod, AttentionItem } from "./types";
+import { WORKSHOP_STATUS_TRANSITIONS } from "@createrington/shared/workshop";
+import type { WorkshopModStatus } from "@createrington/shared/db";
+import type { ModTableProps } from "@/features/admin/workshop/workshop-admin-detail/actions";
+import { invalidateWorkshopMods } from "@/features/admin/workshop/workshop-admin-detail/invalidate";
+import type { AdminWorkshopMod } from "@/features/admin/workshop/workshop-admin-detail/types";
 import {
   STAGE_CONFIG,
   isModTab,
@@ -42,38 +36,25 @@ import {
   type ModTabId,
   type TopTabId,
   type WorkshopTabId,
-} from "./tabs";
-import { useWorkshopHotkeys } from "./hooks/use-workshop-hotkeys";
-import { AddModsDialog } from "./components/AddModsDialog";
+} from "@/features/admin/workshop/workshop-admin-detail/tabs";
+import { useEnvironmentFlags } from "@/features/admin/workshop/workshop-admin-detail/hooks/use-environment-flags";
+import { useWorkshopHotkeys } from "@/features/admin/workshop/workshop-admin-detail/hooks/use-workshop-hotkeys";
+import { useWorkshopReview } from "@/features/admin/workshop/workshop-admin-detail/hooks/use-workshop-review";
+import { AddModsDialog } from "@/features/admin/workshop/workshop-admin-detail/components/AddModsDialog";
+import { ConfirmActionDialog } from "@/features/admin/workshop/workshop-admin-detail/components/ConfirmActionDialog";
+import { RejectModDialog } from "@/features/admin/workshop/workshop-admin-detail/components/RejectModDialog";
+import { WorkshopSettingsDialog } from "@/features/admin/workshop/workshop-admin-detail/components/WorkshopSettingsDialog";
 import {
-  ConfirmActionDialog,
-  type ConfirmActionTarget,
-} from "./components/ConfirmActionDialog";
-import { RejectModDialog } from "./components/RejectModDialog";
-import { WorkshopSettingsDialog } from "./components/WorkshopSettingsDialog";
-import { WorkshopGroupTabs, WorkshopModTabs } from "./components/WorkshopTabs";
-import { ActivityTab } from "./components/tabs/ActivityTab";
-import { AllModsTab } from "./components/tabs/AllModsTab";
-import { DependenciesTab } from "./components/tabs/DependenciesTab";
-import { InPackTab } from "./components/tabs/InPackTab";
-import { IssuesTab } from "./components/tabs/IssuesTab";
-import { ReleasesTab } from "./components/tabs/ReleasesTab";
-import { StageTab } from "./components/tabs/StageTab";
-import { useQuery, useMutation } from "@tanstack/react-query";
-
-const REVIEW_TOASTS: Partial<Record<WorkshopModStatus, string>> = {
-  approved: "Mod approved",
-  testing: "Mod moved to testing",
-  next_update: "Mod approved, coming next update",
-  rejected: "Mod rejected",
-};
-
-const SEND_BACK_TOASTS: Partial<Record<WorkshopModStatus, string>> = {
-  approved: "Mod sent back, awaiting testing",
-  testing: "Mod sent back to testing",
-};
-
-const SKIP_CONFIRM_SESSION_KEY = "workshop-admin-skip-confirms";
+  WorkshopGroupTabs,
+  WorkshopModTabs,
+} from "@/features/admin/workshop/workshop-admin-detail/components/WorkshopTabs";
+import { ActivityTab } from "@/features/admin/workshop/workshop-admin-detail/components/tabs/ActivityTab";
+import { AllModsTab } from "@/features/admin/workshop/workshop-admin-detail/components/tabs/AllModsTab";
+import { DependenciesTab } from "@/features/admin/workshop/workshop-admin-detail/components/tabs/DependenciesTab";
+import { InPackTab } from "@/features/admin/workshop/workshop-admin-detail/components/tabs/InPackTab";
+import { IssuesTab } from "@/features/admin/workshop/workshop-admin-detail/components/tabs/IssuesTab";
+import { ReleasesTab } from "@/features/admin/workshop/workshop-admin-detail/components/tabs/ReleasesTab";
+import { StageTab } from "@/features/admin/workshop/workshop-admin-detail/components/tabs/StageTab";
 
 export function AdminWorkshopDetail() {
   const { slug } = useParams<{ slug: string }>();
@@ -104,21 +85,16 @@ export function AdminWorkshopDetail() {
   const [detailModId, setDetailModId] = useState<number | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [rejectTarget, setRejectTarget] = useState<{
-    workshopModId: number;
-    name: string;
-  } | null>(null);
-  const [confirmTarget, setConfirmTarget] =
-    useState<ConfirmActionTarget | null>(null);
-  const [envPending, setEnvPending] = useState<Map<number, ModEnvironment>>(
-    new Map(),
-  );
-  const [lingeringEnvItems, setLingeringEnvItems] = useState<
-    Array<{ item: AttentionItem; environment: ModEnvironment }>
-  >([]);
-  const [skipConfirms, setSkipConfirms] = useState(
-    () => sessionStore.get(SKIP_CONFIRM_SESSION_KEY) === "1",
-  );
+
+  const invalidate = () => invalidateWorkshopMods(workshopId);
+  const mods = useMemo(() => modsQuery.data ?? [], [modsQuery.data]);
+
+  const environment = useEnvironmentFlags({
+    attention: attentionQuery.data,
+    keepFlaggedIssues: activeTab === "issues",
+    onChanged: invalidate,
+  });
+  const review = useWorkshopReview({ workshopId, mods, onChanged: invalidate });
 
   const setActiveTab = (tab: WorkshopTabId) => {
     if (tab === activeTab) return;
@@ -127,7 +103,7 @@ export function AdminWorkshopDetail() {
     else next.set("tab", tab);
     setSearchParams(next, { replace: true });
     setSearch("");
-    setLingeringEnvItems([]);
+    environment.releaseFlaggedIssues();
   };
 
   const lastModTab = useRef<ModTabId>("review");
@@ -143,110 +119,6 @@ export function AdminWorkshopDetail() {
     onTabChange: setActiveTab,
     onOpenGroup: openGroup,
   });
-
-  const invalidate = () =>
-    Promise.all([
-      queryClient.invalidateQueries(
-        trpc.admin.workshops.listMods.queryFilter({ workshopId }),
-      ),
-      queryClient.invalidateQueries(trpc.admin.workshops.getMod.pathFilter()),
-      queryClient.invalidateQueries(
-        trpc.admin.workshops.searchProjects.queryFilter({ workshopId }),
-      ),
-      queryClient.invalidateQueries(
-        trpc.admin.workshops.listPackMods.queryFilter({ workshopId }),
-      ),
-      queryClient.invalidateQueries(
-        trpc.admin.workshops.attention.queryFilter({ workshopId }),
-      ),
-      queryClient.invalidateQueries(
-        trpc.admin.workshops.listDependencies.queryFilter({ workshopId }),
-      ),
-      queryClient.invalidateQueries(
-        trpc.admin.workshops.listEvents.queryFilter({ workshopId }),
-      ),
-      queryClient.invalidateQueries(trpc.user.workshops.list.pathFilter()),
-      queryClient.invalidateQueries(trpc.user.workshops.get.pathFilter()),
-      queryClient.invalidateQueries(
-        trpc.user.workshops.listRejected.queryFilter({ workshopId }),
-      ),
-      queryClient.invalidateQueries(
-        trpc.user.workshops.getPack.queryFilter({ workshopId }),
-      ),
-    ]);
-
-  const reviewMutation = useMutation(
-    trpc.admin.workshops.reviewMod.mutationOptions(
-      useMutationToast({
-        success: (mod, variables) => {
-          const toasts =
-            variables.action === "send_back" ? SEND_BACK_TOASTS : REVIEW_TOASTS;
-          return toasts[mod.status] ?? "Mod updated";
-        },
-        onSuccess: () => {
-          setRejectTarget(null);
-          void invalidate();
-        },
-        onError: () => {
-          void invalidate();
-        },
-      }),
-    ),
-  );
-
-  const addProjectMutation = useMutation(
-    trpc.admin.workshops.addMods.mutationOptions(
-      useMutationToast({
-        success: "Added to the workshop as approved",
-        onSuccess: () => {
-          void invalidate();
-        },
-      }),
-    ),
-  );
-
-  const clearEnvPending = (projectId: number, environment: ModEnvironment) => {
-    setEnvPending((current) => {
-      if (current.get(projectId) !== environment) return current;
-      const next = new Map(current);
-      next.delete(projectId);
-      return next;
-    });
-  };
-
-  const environmentMutation = useMutation(
-    trpc.admin.workshops.setProjectEnvironment.mutationOptions(
-      useMutationToast({
-        success: (project) =>
-          project.environment === "unspecified"
-            ? "Environment flag cleared"
-            : `Flagged as ${MOD_ENVIRONMENT_LABELS[project.environment]}`,
-        onSuccess: async (project, variables) => {
-          setLingeringEnvItems((current) =>
-            current.map((lingering) =>
-              lingering.item.curseforgeProjectId ===
-              variables.curseforgeProjectId
-                ? { ...lingering, environment: project.environment }
-                : lingering,
-            ),
-          );
-          await invalidate();
-          clearEnvPending(variables.curseforgeProjectId, variables.environment);
-        },
-        onError: (_err, variables) => {
-          clearEnvPending(variables.curseforgeProjectId, variables.environment);
-          setLingeringEnvItems((current) =>
-            current.filter(
-              (lingering) =>
-                lingering.item.curseforgeProjectId !==
-                  variables.curseforgeProjectId ||
-                lingering.environment !== "unspecified",
-            ),
-          );
-        },
-      }),
-    ),
-  );
 
   const updateWorkshopMutation = useMutation(
     trpc.admin.workshops.update.mutationOptions(
@@ -267,41 +139,11 @@ export function AdminWorkshopDetail() {
     ),
   );
 
-  const mods = useMemo(() => modsQuery.data ?? [], [modsQuery.data]);
-
   const modsByStatus = useMemo(() => {
     const groups: Partial<Record<WorkshopModStatus, AdminWorkshopMod[]>> = {};
     for (const mod of mods) (groups[mod.status] ??= []).push(mod);
     return groups;
   }, [mods]);
-
-  const issueItems = useMemo(() => {
-    const fresh = attentionQuery.data ?? [];
-    if (lingeringEnvItems.length === 0) return fresh;
-    const unresolved = new Set(
-      fresh
-        .filter((item) => item.type === "environment_unspecified")
-        .map((item) => item.curseforgeProjectId),
-    );
-    return [
-      ...fresh,
-      ...lingeringEnvItems
-        .filter((l) => !unresolved.has(l.item.curseforgeProjectId))
-        .map((l) => l.item),
-    ];
-  }, [attentionQuery.data, lingeringEnvItems]);
-
-  const envDisplay: EnvironmentDisplay = useMemo(() => {
-    const merged = new Map<number, ModEnvironment>();
-    for (const lingering of lingeringEnvItems) {
-      if (lingering.environment === "unspecified") continue;
-      merged.set(lingering.item.curseforgeProjectId, lingering.environment);
-    }
-    for (const [projectId, environment] of envPending) {
-      merged.set(projectId, environment);
-    }
-    return merged;
-  }, [lingeringEnvItems, envPending]);
 
   const stageCount = (status: WorkshopModStatus) =>
     modsQuery.data ? (modsByStatus[status]?.length ?? 0) : undefined;
@@ -320,79 +162,18 @@ export function AdminWorkshopDetail() {
         : undefined,
   };
 
-  const busyModId = reviewMutation.isPending
-    ? (reviewMutation.variables?.workshopModId ?? null)
-    : null;
-  const busyProjectId = addProjectMutation.isPending
-    ? (addProjectMutation.variables?.projectIds[0] ?? null)
-    : null;
-
-  const handleSetEnvironment = (
-    projectId: number,
-    environment: ModEnvironment,
-  ) => {
-    if (activeTab === "issues") {
-      setLingeringEnvItems((current) => {
-        if (current.some((l) => l.item.curseforgeProjectId === projectId)) {
-          return current;
-        }
-        const item = (attentionQuery.data ?? []).find(
-          (row) =>
-            row.type === "environment_unspecified" &&
-            row.curseforgeProjectId === projectId,
-        );
-        return item
-          ? [...current, { item, environment: "unspecified" }]
-          : current;
-      });
-    }
-    setEnvPending((current) => new Map(current).set(projectId, environment));
-    environmentMutation.mutate({
-      curseforgeProjectId: projectId,
-      environment,
-    });
-  };
-
-  const handleReview = (
-    id: number,
-    action: Exclude<WorkshopModReviewAction, "reject">,
-  ) => {
-    const mod = mods.find((row) => row.id === id);
-    if (!mod) return;
-    if (skipConfirms) {
-      reviewMutation.mutate({ workshopModId: id, action });
-      return;
-    }
-    setConfirmTarget({
-      kind: "review",
-      workshopModId: id,
-      name: mod.project.name,
-      status: mod.status,
-      action,
-    });
-  };
-
-  const addProject = (projectId: number, name: string) => {
-    if (skipConfirms) {
-      addProjectMutation.mutate({ workshopId, projectIds: [projectId] });
-      return;
-    }
-    setConfirmTarget({ kind: "add", projectId, name });
-  };
-
-  const handleConfirm = (target: ConfirmActionTarget, skipSession: boolean) => {
-    if (target.kind === "add") {
-      addProjectMutation.mutate({ workshopId, projectIds: [target.projectId] });
-    } else {
-      reviewMutation.mutate({
-        workshopModId: target.workshopModId,
-        action: target.action,
-      });
-    }
-    if (skipSession) {
-      setSkipConfirms(true);
-      sessionStore.set(SKIP_CONFIRM_SESSION_KEY, "1");
-    }
+  const modTable: ModTableProps = {
+    isLoading: modsQuery.isLoading,
+    error: modsQuery.error?.message ?? null,
+    onRetry: () => void modsQuery.refetch(),
+    search,
+    onSearchChange: setSearch,
+    busyModId: review.busyModId,
+    onView: setDetailModId,
+    envDisplay: environment.envDisplay,
+    onSetEnvironment: environment.setEnvironment,
+    onReview: review.review,
+    onReject: review.openReject,
   };
 
   if (workshopsQuery.isLoading) {
@@ -488,37 +269,14 @@ export function AdminWorkshopDetail() {
               >
                 {isStageTab(activeTab) && (
                   <StageTab
+                    {...modTable}
                     stage={activeTab}
                     mods={modsByStatus[STAGE_CONFIG[activeTab].status] ?? []}
-                    isLoading={modsQuery.isLoading}
-                    error={modsQuery.error?.message ?? null}
-                    onRetry={() => modsQuery.refetch()}
-                    search={search}
-                    onSearchChange={setSearch}
-                    busyModId={busyModId}
-                    onView={setDetailModId}
-                    envDisplay={envDisplay}
-                    onSetEnvironment={handleSetEnvironment}
-                    onReview={handleReview}
-                    onReject={setRejectTarget}
                   />
                 )}
 
                 {activeTab === "all" && (
-                  <AllModsTab
-                    mods={mods}
-                    isLoading={modsQuery.isLoading}
-                    error={modsQuery.error?.message ?? null}
-                    onRetry={() => modsQuery.refetch()}
-                    search={search}
-                    onSearchChange={setSearch}
-                    busyModId={busyModId}
-                    onView={setDetailModId}
-                    envDisplay={envDisplay}
-                    onSetEnvironment={handleSetEnvironment}
-                    onReview={handleReview}
-                    onReject={setRejectTarget}
-                  />
+                  <AllModsTab {...modTable} mods={mods} />
                 )}
 
                 {activeTab === "in-pack" && (
@@ -532,8 +290,8 @@ export function AdminWorkshopDetail() {
                     search={search}
                     onSearchChange={setSearch}
                     onReconciled={invalidate}
-                    envDisplay={envDisplay}
-                    onSetEnvironment={handleSetEnvironment}
+                    envDisplay={environment.envDisplay}
+                    onSetEnvironment={environment.setEnvironment}
                   />
                 )}
               </TabsContent>
@@ -545,23 +303,23 @@ export function AdminWorkshopDetail() {
               workshopId={workshopId}
               search={search}
               onSearchChange={setSearch}
-              onAddProject={addProject}
-              busyProjectId={busyProjectId}
+              onAddProject={review.addProject}
+              busyProjectId={review.busyProjectId}
             />
           )}
 
           {activeTab === "issues" && (
             <IssuesTab
               workshopId={workshopId}
-              items={issueItems}
+              items={environment.issueItems}
               isLoading={attentionQuery.isLoading}
               error={attentionQuery.error?.message ?? null}
               onRetry={() => attentionQuery.refetch()}
               onView={setDetailModId}
               onResolved={invalidate}
               unresolvedCount={attentionCount ?? 0}
-              envDisplay={envDisplay}
-              onSetEnvironment={handleSetEnvironment}
+              envDisplay={environment.envDisplay}
+              onSetEnvironment={environment.setEnvironment}
             />
           )}
 
@@ -606,22 +364,20 @@ export function AdminWorkshopDetail() {
       />
 
       <ConfirmActionDialog
-        target={confirmTarget}
+        target={review.confirmTarget}
         onOpenChange={(open) => {
-          if (!open) setConfirmTarget(null);
+          if (!open) review.closeConfirm();
         }}
-        onConfirm={handleConfirm}
+        onConfirm={review.confirm}
       />
 
       <RejectModDialog
-        target={rejectTarget}
+        target={review.rejectTarget}
         onOpenChange={(open) => {
-          if (!open) setRejectTarget(null);
+          if (!open) review.closeReject();
         }}
-        onReject={(input) =>
-          reviewMutation.mutate({ ...input, action: "reject" })
-        }
-        pending={reviewMutation.isPending}
+        onReject={review.reject}
+        pending={review.rejectPending}
       />
     </AdminPage>
   );

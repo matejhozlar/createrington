@@ -1,30 +1,12 @@
-import { useMemo, useRef, useState } from "react";
-import { FileUp, Package, RefreshCw, Search } from "lucide-react";
+import { useRef, useState } from "react";
+import { FileUp, RefreshCw } from "lucide-react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { formatDate } from "@createrington/shared/format";
+import type { ModEnvironment } from "@createrington/shared/db";
 import { trpc, queryClient } from "@/lib/trpc";
-import { useToastActions } from "@/hooks/use-toast";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
-import {
-  modpackManifestUploadSchema,
-  type ModpackManifestUpload,
-} from "@createrington/shared/workshop";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { Badge, type BadgeTone } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardAction,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { CellDate, CellText } from "@/components/cell-text";
-import {
-  BadgeCellSkeleton,
-  type DataTableColumn,
-} from "@/components/data-table";
-import { PagedTable } from "@/components/paged-table";
-import { useClientPagination } from "@/hooks/use-client-pagination";
-import { PlayerLabel } from "@/components/player-label";
 import {
   Select,
   SelectContent,
@@ -33,83 +15,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { FilterBar } from "@/features/admin/components/FilterBar";
-import { DISABLED_LABEL, projectKindLabel } from "@/features/workshop/format";
-import { formatDate } from "@createrington/shared/format";
-import type { ModEnvironment } from "@createrington/shared/db";
-import {
-  EnvironmentCell,
-  type EnvironmentDisplay,
-} from "@/features/workshop/components/EnvironmentCell";
-import type { PackMod, ReleaseMod } from "../../types";
-import { ModCell, ModCellSkeleton } from "../ModCell";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import type { EnvironmentDisplay } from "@/features/workshop/components/EnvironmentCell";
+import type { PackMod } from "@/features/admin/workshop/workshop-admin-detail/types";
+import { useManifestImport } from "@/features/admin/workshop/workshop-admin-detail/hooks/use-manifest-import";
+import { CurrentPackTable } from "@/features/admin/workshop/workshop-admin-detail/components/in-pack/CurrentPackTable";
+import { ReleaseModsTable } from "@/features/admin/workshop/workshop-admin-detail/components/in-pack/ReleaseModsTable";
 
-const MODS_PER_PAGE = 10;
-
-const ORIGIN_LABELS: Record<PackMod["origin"], string> = {
-  suggestion: "Suggestion",
-  dependency: "Dependency",
-  import: "Pack Import",
-};
-
-const PUBLISH_STATES = {
-  live: {
-    label: "Live",
-    tone: "success",
-  },
-  dropped: {
-    label: "Dropped",
-    tone: "warning",
-  },
-  awaiting: {
-    label: "Awaiting",
-    tone: "neutral",
-  },
-} satisfies Record<string, { label: string; tone: BadgeTone }>;
-
-function publishState(row: PackMod) {
-  if (row.liveAt) {
-    return {
-      ...PUBLISH_STATES.live,
-      label: row.liveInVersion ?? PUBLISH_STATES.live.label,
-      title: row.liveInVersion ? `Live in ${row.liveInVersion}` : undefined,
-    };
-  }
-  const state = row.droppedFromManifestAt
-    ? PUBLISH_STATES.dropped
-    : PUBLISH_STATES.awaiting;
-  return { ...state, title: undefined };
-}
-
-function Credit({ row }: { row: PackMod }) {
-  if (row.origin === "suggestion") {
-    return row.suggestedByName ? (
-      <span className="flex items-center gap-1">
-        Suggested by <PlayerLabel name={row.suggestedByName} size={16} />
-      </span>
-    ) : (
-      "Suggested by a player"
-    );
-  }
-  if (row.origin === "dependency") {
-    return row.requiredBy.length > 0 ? (
-      <CellText
-        value={`Required by ${row.requiredBy.map((required) => required.name).join(", ")}`}
-      />
-    ) : (
-      "Required dependency"
-    );
-  }
-  return row.liveInVersion
-    ? `Added with ${row.liveInVersion}`
-    : "From the pack manifest";
-}
-
-function releaseFileLabel(row: ReleaseMod) {
-  return row.fileName ?? row.displayName ?? `File #${row.fileId}`;
-}
-
-const MAX_MANIFEST_BYTES = 5 * 1024 * 1024;
+const CURRENT_PACK = "current";
 
 export function InPackTab({
   workshopId,
@@ -136,14 +48,8 @@ export function InPackTab({
   envDisplay: EnvironmentDisplay;
   onSetEnvironment: (projectId: number, environment: ModEnvironment) => void;
 }) {
-  const toast = useToastActions();
-  const [selected, setSelected] = useState("current");
+  const [releaseId, setReleaseId] = useState<number | null>(null);
   const manifestInputRef = useRef<HTMLInputElement>(null);
-  const [pendingManifest, setPendingManifest] =
-    useState<ModpackManifestUpload | null>(null);
-
-  const isCurrent = selected === "current";
-  const releaseId = isCurrent ? null : Number(selected);
 
   const modpacksQuery = useQuery(trpc.admin.modpacks.list.queryOptions());
   const modpack = modpacksQuery.data?.find((row) => row.id === modpackId);
@@ -151,15 +57,7 @@ export function InPackTab({
     modpack !== undefined && modpack.curseforgeProjectId === null;
 
   const releasesQuery = useQuery(
-    trpc.admin.modpacks.listReleases.queryOptions({
-      modpackId,
-    }),
-  );
-  const releaseModsQuery = useQuery(
-    trpc.admin.modpacks.listReleaseMods.queryOptions(
-      { releaseId: releaseId ?? 0 },
-      { enabled: releaseId !== null },
-    ),
+    trpc.admin.modpacks.listReleases.queryOptions({ modpackId }),
   );
 
   const reconcileMutation = useMutation(
@@ -176,216 +74,54 @@ export function InPackTab({
     ),
   );
 
-  const seedMutation = useMutation(
-    trpc.admin.modpacks.seedFromManifest.mutationOptions(
-      useMutationToast({
-        onSuccess: (result) => {
-          if (result.unresolvedProjectIds.length > 0) {
-            toast.warning(
-              `Imported ${result.memberCount} mods, ${result.unresolvedProjectIds.length} could not be resolved on CurseForge`,
-            );
-          } else if (result.duplicateProjectIds.length > 0) {
-            toast.warning(
-              `Imported ${result.memberCount} mods, ${result.duplicateProjectIds.length} listed more than once in the manifest and were merged`,
-            );
-          } else {
-            toast.success(
-              `Imported ${result.memberCount} mods from the manifest`,
-            );
-          }
-          onReconciled();
-          void queryClient.invalidateQueries(
-            trpc.admin.modpacks.list.pathFilter(),
-          );
-        },
-      }),
-    ),
-  );
-
-  const handleManifestFile = async (file: File) => {
-    if (file.size > MAX_MANIFEST_BYTES) {
-      toast.error("That file is too large to be a modpack manifest.json");
-      return;
-    }
-    let raw: unknown;
-    try {
-      raw = JSON.parse(await file.text());
-    } catch {
-      toast.error("Could not read that file as JSON");
-      return;
-    }
-    const parsed = modpackManifestUploadSchema.safeParse(raw);
-    if (!parsed.success) {
-      toast.error("That file does not look like a modpack manifest.json");
-      return;
-    }
-    if (rows.length === 0) {
-      seedMutation.mutate({ modpackId, manifest: parsed.data });
-      return;
-    }
-    setPendingManifest(parsed.data);
-  };
+  const manifest = useManifestImport({
+    modpackId,
+    memberCount: rows.length,
+    onImported: onReconciled,
+  });
 
   const query = search.trim().toLowerCase();
+  const title = unlinked ? "Pack Members" : "Published Pack";
 
-  const currentFiltered = useMemo(() => {
-    if (!query) return rows;
-    return rows.filter((row) =>
-      [
-        row.project.name,
-        row.project.slug,
-        row.suggestedByName,
-        projectKindLabel(row.project.classId),
-        row.required ? null : DISABLED_LABEL,
-      ].some((value) => value?.toLowerCase().includes(query)),
-    );
-  }, [rows, query]);
-
-  const releaseRows = useMemo(
-    () => releaseModsQuery.data ?? [],
-    [releaseModsQuery.data],
+  const action = (
+    <>
+      {unlinked ? (
+        <Button
+          variant="outline"
+          size="sm"
+          loading={manifest.importing}
+          onClick={() => manifestInputRef.current?.click()}
+          className="max-sm:w-full"
+        >
+          <FileUp className="size-4" />
+          Import manifest.json
+        </Button>
+      ) : (
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={modpacksQuery.isLoading}
+          loading={reconcileMutation.isPending}
+          onClick={() => reconcileMutation.mutate({ modpackId })}
+          className="max-sm:w-full"
+        >
+          <RefreshCw className="size-4" />
+          Check Published Pack
+        </Button>
+      )}
+      <input
+        ref={manifestInputRef}
+        type="file"
+        accept=".json,application/json"
+        className="hidden"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          event.target.value = "";
+          if (file) void manifest.importFile(file);
+        }}
+      />
+    </>
   );
-  const releaseFiltered = useMemo(() => {
-    if (!query) return releaseRows;
-    return releaseRows.filter((row) =>
-      [
-        row.projectName,
-        row.projectSlug,
-        row.fileName,
-        projectKindLabel(row.classId),
-        row.required ? null : DISABLED_LABEL,
-      ].some((value) => value?.toLowerCase().includes(query)),
-    );
-  }, [releaseRows, query]);
-
-  const total = isCurrent ? rows.length : releaseRows.length;
-  const currentPaged = useClientPagination(currentFiltered, {
-    perPage: MODS_PER_PAGE,
-    resetKey: [query, selected],
-    loading: isLoading,
-    error,
-    retry: onRetry,
-  });
-  const releasePaged = useClientPagination(releaseFiltered, {
-    perPage: MODS_PER_PAGE,
-    resetKey: [query, selected],
-    loading: releaseModsQuery.isLoading,
-    error: releaseModsQuery.error?.message ?? null,
-    retry: () => void releaseModsQuery.refetch(),
-  });
-
-  const currentColumns: DataTableColumn<PackMod>[] = [
-    {
-      key: "mod",
-      header: "Mod",
-      minWidth: 220,
-      skeleton: () => <ModCellSkeleton />,
-      render: (row) => (
-        <ModCell
-          name={row.project.name}
-          slug={row.project.slug}
-          thumbnailUrl={row.project.thumbnailUrl}
-          classId={row.project.classId}
-          required={row.required}
-        />
-      ),
-    },
-    {
-      key: "origin",
-      header: "Origin",
-      width: 140,
-      cellClassName: "text-sm",
-      render: (row) => {
-        const otherWorkshop =
-          row.suggestionWorkshopId !== null &&
-          row.suggestionWorkshopId !== workshopId
-            ? (row.suggestionWorkshopName ?? "another workshop")
-            : null;
-        return (
-          <>
-            <p>{ORIGIN_LABELS[row.origin]}</p>
-            {otherWorkshop && (
-              <CellText
-                value={`from ${otherWorkshop}`}
-                className="text-xs text-muted-foreground"
-              />
-            )}
-          </>
-        );
-      },
-    },
-    {
-      key: "credit",
-      header: "Credit",
-      minWidth: 180,
-      cellClassName: "text-sm text-muted-foreground",
-      render: (row) => <Credit row={row} />,
-    },
-    {
-      key: "environment",
-      header: "Environment",
-      width: 140,
-      skeleton: () => <BadgeCellSkeleton />,
-      render: (row) => (
-        <EnvironmentCell
-          projectId={row.project.id}
-          environment={row.project.environment}
-          source={row.project.environmentSource}
-          display={envDisplay}
-          onSetEnvironment={onSetEnvironment}
-        />
-      ),
-    },
-    {
-      key: "publishState",
-      header: "Publish State",
-      width: 150,
-      skeleton: () => <BadgeCellSkeleton />,
-      render: (row) => {
-        const state = publishState(row);
-        return (
-          <Badge tone={state.tone} className="text-xs" title={state.title}>
-            {state.label}
-          </Badge>
-        );
-      },
-    },
-  ];
-
-  const releaseColumns: DataTableColumn<ReleaseMod>[] = [
-    {
-      key: "mod",
-      header: "Mod",
-      minWidth: 220,
-      skeleton: () => <ModCellSkeleton />,
-      render: (row) => (
-        <ModCell
-          name={row.projectName}
-          slug={row.projectSlug}
-          thumbnailUrl={row.thumbnailUrl}
-          classId={row.classId}
-          required={row.required}
-        />
-      ),
-    },
-    {
-      key: "file",
-      header: "File",
-      minWidth: 180,
-      render: (row) => (
-        <CellText
-          value={releaseFileLabel(row)}
-          className="text-sm text-muted-foreground"
-        />
-      ),
-    },
-    {
-      key: "fileDate",
-      header: "File Date",
-      width: 130,
-      render: (row) => <CellDate value={row.fileDate} />,
-    },
-  ];
 
   return (
     <>
@@ -393,14 +129,19 @@ export function InPackTab({
         search={search}
         onSearchChange={onSearchChange}
         placeholder="Search mods..."
-        activeCount={(query ? 1 : 0) + (isCurrent ? 0 : 1)}
+        activeCount={(query ? 1 : 0) + (releaseId === null ? 0 : 1)}
       >
-        <Select value={selected} onValueChange={setSelected}>
+        <Select
+          value={releaseId === null ? CURRENT_PACK : String(releaseId)}
+          onValueChange={(value) =>
+            setReleaseId(value === CURRENT_PACK ? null : Number(value))
+          }
+        >
           <SelectTrigger className="min-w-[190px]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="current">Current</SelectItem>
+            <SelectItem value={CURRENT_PACK}>Current</SelectItem>
             {(releasesQuery.data ?? []).map((release) => (
               <SelectItem key={release.id} value={String(release.id)}>
                 {release.version ??
@@ -415,117 +156,50 @@ export function InPackTab({
         </Select>
       </FilterBar>
 
-      <Card className="gap-0">
-        <CardHeader className="border-b">
-          <CardTitle>
-            {unlinked ? "Pack Members" : "Published Pack"} (
-            {total.toLocaleString()})
-          </CardTitle>
-          <CardDescription className="max-sm:col-start-1">
-            {!isCurrent
-              ? "What this build shipped, frozen at the moment it was recorded."
-              : unlinked
-                ? "What the pack contains, seeded from an imported manifest.json. Once the pack is published on CurseForge, link its project to derive this automatically."
-                : "What the published CurseForge pack actually contains, read from its manifest. Mods staged for the next update appear here once you publish a build that includes them."}
-          </CardDescription>
-          <CardAction className="max-sm:col-span-full max-sm:row-start-3 max-sm:mt-2 max-sm:justify-self-stretch">
-            {unlinked ? (
-              <Button
-                variant="outline"
-                size="sm"
-                loading={seedMutation.isPending}
-                onClick={() => manifestInputRef.current?.click()}
-                className="max-sm:w-full"
-              >
-                <FileUp className="size-4" />
-                Import manifest.json
-              </Button>
-            ) : (
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={modpacksQuery.isLoading}
-                loading={reconcileMutation.isPending}
-                onClick={() => reconcileMutation.mutate({ modpackId })}
-                className="max-sm:w-full"
-              >
-                <RefreshCw className="size-4" />
-                Check Published Pack
-              </Button>
-            )}
-            <input
-              ref={manifestInputRef}
-              type="file"
-              accept=".json,application/json"
-              className="hidden"
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                event.target.value = "";
-                if (file) void handleManifestFile(file);
-              }}
-            />
-          </CardAction>
-        </CardHeader>
-
-        {isCurrent ? (
-          <PagedTable
-            variant="card"
-            paged={currentPaged}
-            empty={
-              rows.length === 0
-                ? {
-                    icon: Package,
-                    message: unlinked
-                      ? "Nothing imported yet"
-                      : "Nothing published yet",
-                  }
-                : { icon: Search, message: "No mods match your search" }
-            }
-            itemLabel="mod"
-            columns={currentColumns}
-            rowKey={(row) => row.id}
-          />
-        ) : (
-          <PagedTable
-            variant="card"
-            paged={releasePaged}
-            empty={
-              releaseRows.length === 0
-                ? { icon: Package, message: "This release recorded no mods" }
-                : { icon: Search, message: "No mods match your search" }
-            }
-            itemLabel="mod"
-            columns={releaseColumns}
-            rowKey={(row) => `${row.curseforgeProjectId}-${row.fileId}`}
-          />
-        )}
-      </Card>
+      {releaseId === null ? (
+        <CurrentPackTable
+          workshopId={workshopId}
+          rows={rows}
+          query={query}
+          isLoading={isLoading}
+          error={error}
+          onRetry={onRetry}
+          envDisplay={envDisplay}
+          onSetEnvironment={onSetEnvironment}
+          unlinked={unlinked}
+          title={title}
+          action={action}
+        />
+      ) : (
+        <ReleaseModsTable
+          releaseId={releaseId}
+          query={query}
+          title={title}
+          action={action}
+        />
+      )}
 
       <ConfirmDialog
-        open={pendingManifest !== null}
+        open={manifest.pendingManifest !== null}
         onOpenChange={(open) => {
-          if (!open) setPendingManifest(null);
+          if (!open) manifest.cancelPending();
         }}
         title="Replace the pack contents?"
         description={
           <>
             This pack already has {rows.length.toLocaleString()} members.
             Importing{" "}
-            {pendingManifest?.version
-              ? `manifest "${pendingManifest.version}"`
+            {manifest.pendingManifest?.version
+              ? `manifest "${manifest.pendingManifest.version}"`
               : "this manifest"}{" "}
             syncs them against its{" "}
-            {(pendingManifest?.files.length ?? 0).toLocaleString()} mods:
-            members missing from the manifest are dropped, and their suggestions
-            move back to Coming next update.
+            {(manifest.pendingManifest?.files.length ?? 0).toLocaleString()}{" "}
+            mods: members missing from the manifest are dropped, and their
+            suggestions move back to Coming next update.
           </>
         }
         confirmLabel="Import"
-        onConfirm={() =>
-          pendingManifest
-            ? seedMutation.mutateAsync({ modpackId, manifest: pendingManifest })
-            : undefined
-        }
+        onConfirm={manifest.confirmPending}
       />
     </>
   );
