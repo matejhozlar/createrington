@@ -1,19 +1,8 @@
 import type { Level, LevelId } from "./levels";
-import { context2d, createCanvas } from "./skin";
+import { context2d, createCanvas } from "@/lib/canvas";
 import { GROUND_ROWS, type Sprite, type Sprites } from "./sprites";
-import { hash, mix, rgb, type Rgb } from "./util";
-
-export type View = {
-  ctx: CanvasRenderingContext2D;
-  W: number;
-  H: number;
-  texel: number;
-  groundPx: number;
-  worldWidth: number;
-  scroll: number;
-  time: number;
-  nightMix: number;
-};
+import { hash, mix, rgb, rgba, type Rgb } from "./util";
+import { blit, screenX, screenY, type View } from "./view";
 
 export type Drifter = {
   x: number;
@@ -39,7 +28,7 @@ type OverworldPalette = {
 const STAR_COUNT = 40;
 const GROUND_TILE = 64;
 const NIGHT_STEPS = 16;
-export const NIGHT_TINT = "12, 18, 44";
+const NIGHT_TINT: Rgb = [12, 18, 44];
 
 const DAY: OverworldPalette = {
   skyTop: [111, 178, 232],
@@ -74,10 +63,10 @@ const NETHER = {
   cliff: [72, 22, 26] as Rgb,
   lava: [235, 120, 30] as Rgb,
   lavaBright: [255, 210, 80] as Rgb,
-  lavaGlow: "255, 140, 40",
+  lavaGlow: [255, 140, 40] as Rgb,
   fungus: [66, 20, 28] as Rgb,
   glowstone: [232, 194, 96] as Rgb,
-  glow: "255, 220, 120",
+  glow: [255, 220, 120] as Rgb,
   ground: [112, 40, 40] as Rgb,
   groundTop: [140, 52, 52] as Rgb,
   groundEdge: [90, 30, 30] as Rgb,
@@ -91,7 +80,7 @@ const END = {
   pillar: [16, 12, 26] as Rgb,
   crystal: [214, 110, 230] as Rgb,
   crystalCore: [255, 230, 255] as Rgb,
-  crystalGlow: "214, 110, 230",
+  crystalGlow: [214, 110, 230] as Rgb,
   island: [80, 80, 66] as Rgb,
   islandDark: [58, 58, 48] as Rgb,
   chorus: [42, 26, 54] as Rgb,
@@ -104,24 +93,6 @@ const END = {
 };
 
 const tiles = new Map<string, Sprite>();
-
-function sx(view: View, x: number): number {
-  return Math.round(x * view.texel);
-}
-
-function sy(view: View, height: number): number {
-  return view.groundPx - Math.round(height * view.texel);
-}
-
-function blit(view: View, sprite: Sprite, x: number, y: number, scale = 1) {
-  view.ctx.drawImage(
-    sprite,
-    Math.round(x),
-    Math.round(y),
-    sprite.width * view.texel * scale,
-    sprite.height * view.texel * scale,
-  );
-}
 
 function sky(view: View, stops: readonly (readonly [number, string])[]) {
   const { ctx, W, H, groundPx } = view;
@@ -160,7 +131,8 @@ function drifters(
   view.ctx.globalAlpha = base * alpha;
   for (const d of list) {
     const sprite = frames[d.frame % frames.length];
-    if (sprite) blit(view, sprite, sx(view, d.x), d.y * view.texel, d.scale);
+    if (sprite)
+      blit(view, sprite, screenX(view, d.x), d.y * view.texel, d.scale);
   }
   view.ctx.globalAlpha = base;
 }
@@ -193,12 +165,17 @@ function silhouette(
   ctx.fillStyle = color;
   segments(view, depth, segment, (i, x) => {
     const h = base + hash(i, seed) * amplitude;
-    const top = sy(view, h);
-    ctx.fillRect(sx(view, x), top, segment * texel + 1, groundPx - top + 1);
-    const cap = hash(i, seed + 1) * amplitude * 0.5;
-    const capTop = sy(view, h + cap);
+    const top = screenY(view, h);
     ctx.fillRect(
-      sx(view, x + segment * 0.25),
+      screenX(view, x),
+      top,
+      segment * texel + 1,
+      groundPx - top + 1,
+    );
+    const cap = hash(i, seed + 1) * amplitude * 0.5;
+    const capTop = screenY(view, h + cap);
+    ctx.fillRect(
+      screenX(view, x + segment * 0.25),
       capTop,
       segment * 0.5 * texel,
       top - capTop + 1,
@@ -212,9 +189,24 @@ function trees(view: View, depth: number, color: string, seed: number) {
   segments(view, depth, 22, (i, x) => {
     if (hash(i, seed) >= 0.38) return;
     const trunk = 7 + Math.round(hash(i, seed + 1) * 5);
-    ctx.fillRect(sx(view, x + 10), sy(view, trunk), 2 * texel, trunk * texel);
-    ctx.fillRect(sx(view, x + 6), sy(view, trunk + 8), 10 * texel, 8 * texel);
-    ctx.fillRect(sx(view, x + 8), sy(view, trunk + 10), 6 * texel, 2 * texel);
+    ctx.fillRect(
+      screenX(view, x + 10),
+      screenY(view, trunk),
+      2 * texel,
+      trunk * texel,
+    );
+    ctx.fillRect(
+      screenX(view, x + 6),
+      screenY(view, trunk + 8),
+      10 * texel,
+      8 * texel,
+    );
+    ctx.fillRect(
+      screenX(view, x + 8),
+      screenY(view, trunk + 10),
+      6 * texel,
+      2 * texel,
+    );
   });
 }
 
@@ -226,20 +218,20 @@ function fungi(view: View, depth: number, color: string, seed: number) {
     const stem = 9 + Math.round(hash(i, seed + 1) * 7);
     const lean = Math.round(hash(i, seed + 2) * 6);
     ctx.fillRect(
-      sx(view, x + 10 + lean),
-      sy(view, stem),
+      screenX(view, x + 10 + lean),
+      screenY(view, stem),
       3 * texel,
       stem * texel,
     );
     ctx.fillRect(
-      sx(view, x + 5 + lean),
-      sy(view, stem + 4),
+      screenX(view, x + 5 + lean),
+      screenY(view, stem + 4),
       13 * texel,
       4 * texel,
     );
     ctx.fillRect(
-      sx(view, x + 7 + lean),
-      sy(view, stem + 6),
+      screenX(view, x + 7 + lean),
+      screenY(view, stem + 6),
       9 * texel,
       2 * texel,
     );
@@ -259,24 +251,24 @@ function ceiling(view: View) {
       const drip = 2 + Math.round(hash(i, 72) * 6);
       const w = 2 + Math.round(hash(i, 74) * 2);
       ctx.fillStyle = rgb(NETHER.ceilingDark);
-      ctx.fillRect(sx(view, x + 3), rows * texel, w * texel, drip * texel);
+      ctx.fillRect(screenX(view, x + 3), rows * texel, w * texel, drip * texel);
       ctx.fillRect(
-        sx(view, x + 3 + Math.floor(w / 2)),
+        screenX(view, x + 3 + Math.floor(w / 2)),
         (rows + drip) * texel,
         texel,
         texel,
       );
     } else if (n > 0.93) {
-      const cx = sx(view, x + 4.5);
+      const cx = screenX(view, x + 4.5);
       const cy = (rows + 1.5) * texel;
       const halo = ctx.createRadialGradient(cx, cy, 0, cx, cy, 9 * texel);
-      halo.addColorStop(0, `rgba(${NETHER.glow}, 0.3)`);
-      halo.addColorStop(1, `rgba(${NETHER.glow}, 0)`);
+      halo.addColorStop(0, rgba(NETHER.glow, 0.3));
+      halo.addColorStop(1, rgba(NETHER.glow, 0));
       ctx.fillStyle = halo;
       ctx.fillRect(cx - 9 * texel, cy - 9 * texel, 18 * texel, 18 * texel);
       ctx.fillStyle = rgb(NETHER.glowstone);
-      ctx.fillRect(sx(view, x + 2), rows * texel, 5 * texel, 3 * texel);
-      ctx.fillRect(sx(view, x + 3), (rows + 3) * texel, 3 * texel, texel);
+      ctx.fillRect(screenX(view, x + 2), rows * texel, 5 * texel, 3 * texel);
+      ctx.fillRect(screenX(view, x + 3), (rows + 3) * texel, 3 * texel, texel);
     }
   });
 }
@@ -284,11 +276,11 @@ function ceiling(view: View) {
 function lavaSea(view: View) {
   const { ctx, texel, W, groundPx } = view;
   const height = 4;
-  const top = sy(view, height);
-  const glowTop = sy(view, height + 12);
+  const top = screenY(view, height);
+  const glowTop = screenY(view, height + 12);
   const glow = ctx.createLinearGradient(0, glowTop, 0, top);
-  glow.addColorStop(0, `rgba(${NETHER.lavaGlow}, 0)`);
-  glow.addColorStop(1, `rgba(${NETHER.lavaGlow}, 0.35)`);
+  glow.addColorStop(0, rgba(NETHER.lavaGlow, 0));
+  glow.addColorStop(1, rgba(NETHER.lavaGlow, 0.35));
   ctx.fillStyle = glow;
   ctx.fillRect(0, glowTop, W, top - glowTop);
   ctx.fillStyle = rgb(NETHER.lava);
@@ -299,8 +291,8 @@ function lavaSea(view: View) {
     if (hash(i, 75) + pulse < 0.55) return;
     const y = 1 + Math.floor(hash(i, 77) * 2);
     ctx.fillRect(
-      sx(view, x + hash(i, 76) * 4),
-      sy(view, y),
+      screenX(view, x + hash(i, 76) * 4),
+      screenY(view, y),
       texel * (hash(i, 78) > 0.5 ? 2 : 1),
       texel,
     );
@@ -316,22 +308,27 @@ function pillars(view: View) {
     const px = x + hash(i, 84) * 24;
     ctx.fillStyle = rgb(END.pillar);
     ctx.fillRect(
-      sx(view, px),
-      sy(view, height),
+      screenX(view, px),
+      screenY(view, height),
       width * texel,
       height * texel + 1,
     );
-    const cx = sx(view, px + width / 2);
-    const cy = sy(view, height + 3);
+    const cx = screenX(view, px + width / 2);
+    const cy = screenY(view, height + 3);
     const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, 7 * texel);
-    glow.addColorStop(0, `rgba(${END.crystalGlow}, 0.45)`);
-    glow.addColorStop(1, `rgba(${END.crystalGlow}, 0)`);
+    glow.addColorStop(0, rgba(END.crystalGlow, 0.45));
+    glow.addColorStop(1, rgba(END.crystalGlow, 0));
     ctx.fillStyle = glow;
     ctx.fillRect(cx - 7 * texel, cy - 7 * texel, 14 * texel, 14 * texel);
     ctx.fillStyle = rgb(END.crystal);
-    ctx.fillRect(cx - 1.5 * texel, sy(view, height + 4), 3 * texel, 3 * texel);
+    ctx.fillRect(
+      cx - 1.5 * texel,
+      screenY(view, height + 4),
+      3 * texel,
+      3 * texel,
+    );
     ctx.fillStyle = rgb(END.crystalCore);
-    ctx.fillRect(cx - 0.5 * texel, sy(view, height + 3), texel, texel);
+    ctx.fillRect(cx - 0.5 * texel, screenY(view, height + 3), texel, texel);
   });
 }
 
@@ -345,22 +342,27 @@ function islands(view: View) {
     const px = x + hash(i, 89) * 10;
     ctx.fillStyle = rgb(END.island);
     ctx.fillRect(
-      sx(view, px),
-      sy(view, bottom + height),
+      screenX(view, px),
+      screenY(view, bottom + height),
       width * texel,
       height * texel,
     );
     ctx.fillStyle = rgb(END.islandDark);
     ctx.fillRect(
-      sx(view, px + 2),
-      sy(view, bottom + 1),
+      screenX(view, px + 2),
+      screenY(view, bottom + 1),
       (width - 4) * texel,
       texel,
     );
     for (let j = 0; j < 3; j++) {
       const dx = 3 + hash(i * 3 + j, 90) * (width - 6);
       const drop = 1 + Math.round(hash(i * 3 + j, 91) * 2);
-      ctx.fillRect(sx(view, px + dx), sy(view, bottom), texel, drop * texel);
+      ctx.fillRect(
+        screenX(view, px + dx),
+        screenY(view, bottom),
+        texel,
+        drop * texel,
+      );
     }
   });
 }
@@ -373,12 +375,27 @@ function chorusSilhouettes(view: View) {
     const b = 3 + Math.round(hash(i, 94) * 3);
     const px = x + 8;
     ctx.fillStyle = rgb(END.chorus);
-    ctx.fillRect(sx(view, px), sy(view, h), 2 * texel, h * texel);
-    ctx.fillRect(sx(view, px + 2), sy(view, h - 3), 3 * texel, texel);
-    ctx.fillRect(sx(view, px + 4), sy(view, h - 3 + b), texel, b * texel);
+    ctx.fillRect(screenX(view, px), screenY(view, h), 2 * texel, h * texel);
+    ctx.fillRect(screenX(view, px + 2), screenY(view, h - 3), 3 * texel, texel);
+    ctx.fillRect(
+      screenX(view, px + 4),
+      screenY(view, h - 3 + b),
+      texel,
+      b * texel,
+    );
     ctx.fillStyle = rgb(END.chorusFlower);
-    ctx.fillRect(sx(view, px - 1), sy(view, h + 2), 4 * texel, 2 * texel);
-    ctx.fillRect(sx(view, px + 3), sy(view, h - 1 + b), 3 * texel, 2 * texel);
+    ctx.fillRect(
+      screenX(view, px - 1),
+      screenY(view, h + 2),
+      4 * texel,
+      2 * texel,
+    );
+    ctx.fillRect(
+      screenX(view, px + 3),
+      screenY(view, h - 1 + b),
+      3 * texel,
+      2 * texel,
+    );
   });
 }
 
@@ -452,7 +469,7 @@ function ground(view: View, level: LevelId) {
   for (let k = 0; k < count; k++) {
     ctx.drawImage(
       tile,
-      sx(view, k * GROUND_TILE - offset),
+      screenX(view, k * GROUND_TILE - offset),
       groundPx,
       GROUND_TILE * texel + 1,
       GROUND_ROWS * texel,
@@ -520,6 +537,6 @@ export function drawScene(
 
 export function drawNightTint(view: View, strength: number): void {
   if (strength <= 0) return;
-  view.ctx.fillStyle = `rgba(${NIGHT_TINT}, ${strength * 0.35})`;
+  view.ctx.fillStyle = rgba(NIGHT_TINT, strength * 0.35);
   view.ctx.fillRect(0, 0, view.W, view.H);
 }

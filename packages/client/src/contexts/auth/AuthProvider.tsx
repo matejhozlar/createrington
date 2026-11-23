@@ -11,7 +11,7 @@ import {
   SESSION_EXPIRED_EVENT,
 } from "@/services/auth/token-manager";
 import { api, type ApiError } from "@/services/api/client";
-import { writePlayerHint } from "@/lib/skin-runner/player-hint";
+import { writePlayerHint } from "@/lib/playerHint";
 import { toast } from "sonner";
 
 interface AuthProviderProps {

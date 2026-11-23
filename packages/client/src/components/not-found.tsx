@@ -12,7 +12,7 @@ import { Card } from "@/components/ui/card";
 import { StatusPage, STATUS_CARD_CLASS } from "@/components/status-page";
 import { Kbd } from "@/components/ui/kbd";
 import { useAuth } from "@/contexts/auth";
-import { DEFAULT_PLAYER } from "@/lib/skin-runner/player-hint";
+import { DEFAULT_PLAYER } from "@/lib/playerHint";
 import { lazyNamed } from "@/lib/lazy";
 import { cn } from "@/lib/utils";
 

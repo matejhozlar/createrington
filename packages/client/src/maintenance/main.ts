@@ -1,9 +1,6 @@
 import "./maintenance.css";
-import {
-  mountSkinRunner,
-  readPlayerHint,
-  type RunnerState,
-} from "@/lib/skin-runner";
+import { readPlayerHint } from "@/lib/playerHint";
+import { mountSkinRunner, type RunnerState } from "@/lib/skin-runner";
 import { sessionStore } from "@/lib/storage";
 
 const POLL_INTERVAL_MS = 15000;
