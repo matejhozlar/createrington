@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
+import { AdminPage } from "@/features/admin/components/AdminPage";
 import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -152,71 +152,67 @@ export function AdminPrompts() {
   ];
 
   return (
-    <div className="flex flex-1 flex-col gap-4">
-      <AdminPageHeader
-        trail={[
-          { label: "Admin", href: "/admin/dashboard" },
-          { label: "Tools", href: "/admin/tools" },
-          { label: "Player Prompts" },
-        ]}
+    <AdminPage
+      trail={[
+        { label: "Admin", href: "/admin/dashboard" },
+        { label: "Tools", href: "/admin/tools" },
+        { label: "Player Prompts" },
+      ]}
+    >
+      <AdminPageTitle
+        title="Player Prompts"
+        actions={
+          <>
+            <Select
+              value={statusFilter}
+              onValueChange={(v) => setStatusFilter(v as StatusFilter)}
+            >
+              <SelectTrigger className="w-full xs:w-36">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {STATUS_FILTER_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={prompts.retry}
+              disabled={prompts.query.isFetching}
+              title="Refresh"
+            >
+              <RefreshCw
+                className={
+                  prompts.query.isFetching ? "size-4 animate-spin" : "size-4"
+                }
+              />
+            </Button>
+            <Button onClick={() => setCreateOpen(true)}>
+              <Plus className="size-4" /> New Prompt
+            </Button>
+          </>
+        }
       />
 
-      <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
-        <AdminPageTitle
-          title="Player Prompts"
-          actions={
-            <>
-              <Select
-                value={statusFilter}
-                onValueChange={(v) => setStatusFilter(v as StatusFilter)}
-              >
-                <SelectTrigger className="w-full xs:w-36">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {STATUS_FILTER_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={prompts.retry}
-                disabled={prompts.query.isFetching}
-                title="Refresh"
-              >
-                <RefreshCw
-                  className={
-                    prompts.query.isFetching ? "size-4 animate-spin" : "size-4"
-                  }
-                />
-              </Button>
-              <Button onClick={() => setCreateOpen(true)}>
-                <Plus className="size-4" /> New Prompt
-              </Button>
-            </>
-          }
-        />
-
-        <TableCard
-          paged={prompts}
-          empty={{
-            icon: MessageSquare,
-            message: "No prompts yet.",
-            hint: "Create one to ask players a question in Discord.",
-            className: "py-16",
-          }}
-          itemLabel="prompt"
-          columns={columns}
-          rowKey={(row) => row.id}
-          onRowClick={(row) => navigate(`/admin/tools/prompts/${row.id}`)}
-          actions={promptActions}
-          actionSlots={1}
-        />
-      </div>
+      <TableCard
+        paged={prompts}
+        empty={{
+          icon: MessageSquare,
+          message: "No prompts yet.",
+          hint: "Create one to ask players a question in Discord.",
+          className: "py-16",
+        }}
+        itemLabel="prompt"
+        columns={columns}
+        rowKey={(row) => row.id}
+        onRowClick={(row) => navigate(`/admin/tools/prompts/${row.id}`)}
+        actions={promptActions}
+        actionSlots={1}
+      />
 
       <CreatePromptModal
         open={createOpen}
@@ -234,6 +230,6 @@ export function AdminPrompts() {
           }
         }}
       />
-    </div>
+    </AdminPage>
   );
 }

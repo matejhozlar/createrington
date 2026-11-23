@@ -18,7 +18,7 @@ import {
   LoadingState,
 } from "@/components/query-states";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
-import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
+import { AdminPage } from "@/features/admin/components/AdminPage";
 import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { ModDetailDialog } from "@/features/workshop/workshop-detail/components/ModDetailDialog";
 import type { EnvironmentDisplay } from "@/features/workshop/components/EnvironmentCell";
@@ -104,15 +104,12 @@ export function AdminWorkshopDetail() {
   const [detailModId, setDetailModId] = useState<number | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [settingsKey, setSettingsKey] = useState(0);
   const [rejectTarget, setRejectTarget] = useState<{
     workshopModId: number;
     name: string;
   } | null>(null);
-  const [rejectKey, setRejectKey] = useState(0);
   const [confirmTarget, setConfirmTarget] =
     useState<ConfirmActionTarget | null>(null);
-  const [confirmKey, setConfirmKey] = useState(0);
   const [envPending, setEnvPending] = useState<Map<number, ModEnvironment>>(
     new Map(),
   );
@@ -146,16 +143,6 @@ export function AdminWorkshopDetail() {
     onTabChange: setActiveTab,
     onOpenGroup: openGroup,
   });
-
-  const openReject = (target: { workshopModId: number; name: string }) => {
-    setRejectKey((key) => key + 1);
-    setRejectTarget(target);
-  };
-
-  const openConfirm = (target: ConfirmActionTarget) => {
-    setConfirmKey((key) => key + 1);
-    setConfirmTarget(target);
-  };
 
   const invalidate = () =>
     Promise.all([
@@ -376,7 +363,7 @@ export function AdminWorkshopDetail() {
       reviewMutation.mutate({ workshopModId: id, action });
       return;
     }
-    openConfirm({
+    setConfirmTarget({
       kind: "review",
       workshopModId: id,
       name: mod.project.name,
@@ -390,7 +377,7 @@ export function AdminWorkshopDetail() {
       addProjectMutation.mutate({ workshopId, projectIds: [projectId] });
       return;
     }
-    openConfirm({ kind: "add", projectId, name });
+    setConfirmTarget({ kind: "add", projectId, name });
   };
 
   const handleConfirm = (target: ConfirmActionTarget, skipSession: boolean) => {
@@ -426,182 +413,172 @@ export function AdminWorkshopDetail() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-4">
-      <AdminPageHeader
-        trail={[
-          { label: "Admin", href: "/admin/dashboard" },
-          { label: "Tools", href: "/admin/tools" },
-          { label: "Workshop", href: "/admin/tools/workshop" },
-          { label: workshop.name },
-        ]}
+    <AdminPage
+      trail={[
+        { label: "Admin", href: "/admin/dashboard" },
+        { label: "Tools", href: "/admin/tools" },
+        { label: "Workshop", href: "/admin/tools/workshop" },
+        { label: workshop.name },
+      ]}
+    >
+      <AdminPageTitle
+        title={workshop.name}
+        actions={
+          <>
+            <Select
+              value={workshop.status}
+              disabled={updateWorkshopMutation.isPending}
+              onValueChange={(status) =>
+                updateWorkshopMutation.mutate({
+                  workshopId,
+                  patch: { status: status as typeof workshop.status },
+                })
+              }
+            >
+              <SelectTrigger className="w-full xs:w-32">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {[
+                  workshop.status,
+                  ...WORKSHOP_STATUS_TRANSITIONS[workshop.status],
+                ].map((status) => (
+                  <SelectItem key={status} value={status}>
+                    {WORKSHOP_STATUS_STYLES[status]?.label ?? status}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button variant="outline" onClick={() => setSettingsOpen(true)}>
+              <Settings2 className="mr-2 size-4" />
+              Settings
+            </Button>
+            <Button onClick={() => setAddOpen(true)}>
+              <PackagePlus className="mr-2 size-4" />
+              Add Projects
+            </Button>
+          </>
+        }
       />
 
-      <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
-        <AdminPageTitle
-          title={workshop.name}
-          actions={
-            <>
-              <Select
-                value={workshop.status}
-                disabled={updateWorkshopMutation.isPending}
-                onValueChange={(status) =>
-                  updateWorkshopMutation.mutate({
-                    workshopId,
-                    patch: { status: status as typeof workshop.status },
-                  })
-                }
-              >
-                <SelectTrigger className="w-full xs:w-32">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {[
-                    workshop.status,
-                    ...WORKSHOP_STATUS_TRANSITIONS[workshop.status],
-                  ].map((status) => (
-                    <SelectItem key={status} value={status}>
-                      {WORKSHOP_STATUS_STYLES[status]?.label ?? status}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setSettingsKey((key) => key + 1);
-                  setSettingsOpen(true);
-                }}
-              >
-                <Settings2 className="mr-2 size-4" />
-                Settings
-              </Button>
-              <Button onClick={() => setAddOpen(true)}>
-                <PackagePlus className="mr-2 size-4" />
-                Add Projects
-              </Button>
-            </>
-          }
-        />
+      <Tabs
+        value={tabGroup(activeTab)}
+        onValueChange={(group) => openGroup(group as TopTabId)}
+        className={isModTab(activeTab) ? "gap-3" : "gap-4"}
+      >
+        <WorkshopGroupTabs activeTab={activeTab} counts={counts} />
 
-        <Tabs
+        <TabsContent
           value={tabGroup(activeTab)}
-          onValueChange={(group) => openGroup(group as TopTabId)}
-          className={isModTab(activeTab) ? "gap-3" : "gap-4"}
+          tabIndex={-1}
+          className="flex flex-col gap-4"
         >
-          <WorkshopGroupTabs activeTab={activeTab} counts={counts} />
+          {isModTab(activeTab) && (
+            <Tabs
+              value={activeTab}
+              onValueChange={(tab) => setActiveTab(tab as ModTabId)}
+              className="gap-4"
+            >
+              <WorkshopModTabs activeTab={activeTab} counts={counts} />
 
-          <TabsContent
-            value={tabGroup(activeTab)}
-            tabIndex={-1}
-            className="flex flex-col gap-4"
-          >
-            {isModTab(activeTab) && (
-              <Tabs
+              <TabsContent
                 value={activeTab}
-                onValueChange={(tab) => setActiveTab(tab as ModTabId)}
-                className="gap-4"
+                tabIndex={-1}
+                className="flex flex-col gap-4"
               >
-                <WorkshopModTabs activeTab={activeTab} counts={counts} />
+                {isStageTab(activeTab) && (
+                  <StageTab
+                    stage={activeTab}
+                    mods={modsByStatus[STAGE_CONFIG[activeTab].status] ?? []}
+                    isLoading={modsQuery.isLoading}
+                    error={modsQuery.error?.message ?? null}
+                    onRetry={() => modsQuery.refetch()}
+                    search={search}
+                    onSearchChange={setSearch}
+                    busyModId={busyModId}
+                    onView={setDetailModId}
+                    envDisplay={envDisplay}
+                    onSetEnvironment={handleSetEnvironment}
+                    onReview={handleReview}
+                    onReject={setRejectTarget}
+                  />
+                )}
 
-                <TabsContent
-                  value={activeTab}
-                  tabIndex={-1}
-                  className="flex flex-col gap-4"
-                >
-                  {isStageTab(activeTab) && (
-                    <StageTab
-                      stage={activeTab}
-                      mods={modsByStatus[STAGE_CONFIG[activeTab].status] ?? []}
-                      isLoading={modsQuery.isLoading}
-                      error={modsQuery.error?.message ?? null}
-                      onRetry={() => modsQuery.refetch()}
-                      search={search}
-                      onSearchChange={setSearch}
-                      busyModId={busyModId}
-                      onView={setDetailModId}
-                      envDisplay={envDisplay}
-                      onSetEnvironment={handleSetEnvironment}
-                      onReview={handleReview}
-                      onReject={openReject}
-                    />
-                  )}
+                {activeTab === "all" && (
+                  <AllModsTab
+                    mods={mods}
+                    isLoading={modsQuery.isLoading}
+                    error={modsQuery.error?.message ?? null}
+                    onRetry={() => modsQuery.refetch()}
+                    search={search}
+                    onSearchChange={setSearch}
+                    busyModId={busyModId}
+                    onView={setDetailModId}
+                    envDisplay={envDisplay}
+                    onSetEnvironment={handleSetEnvironment}
+                    onReview={handleReview}
+                    onReject={setRejectTarget}
+                  />
+                )}
 
-                  {activeTab === "all" && (
-                    <AllModsTab
-                      mods={mods}
-                      isLoading={modsQuery.isLoading}
-                      error={modsQuery.error?.message ?? null}
-                      onRetry={() => modsQuery.refetch()}
-                      search={search}
-                      onSearchChange={setSearch}
-                      busyModId={busyModId}
-                      onView={setDetailModId}
-                      envDisplay={envDisplay}
-                      onSetEnvironment={handleSetEnvironment}
-                      onReview={handleReview}
-                      onReject={openReject}
-                    />
-                  )}
+                {activeTab === "in-pack" && (
+                  <InPackTab
+                    workshopId={workshopId}
+                    modpackId={workshop.modpackId}
+                    rows={packModsQuery.data ?? []}
+                    isLoading={packModsQuery.isLoading}
+                    error={packModsQuery.error?.message ?? null}
+                    onRetry={() => packModsQuery.refetch()}
+                    search={search}
+                    onSearchChange={setSearch}
+                    onReconciled={invalidate}
+                    envDisplay={envDisplay}
+                    onSetEnvironment={handleSetEnvironment}
+                  />
+                )}
+              </TabsContent>
+            </Tabs>
+          )}
 
-                  {activeTab === "in-pack" && (
-                    <InPackTab
-                      workshopId={workshopId}
-                      modpackId={workshop.modpackId}
-                      rows={packModsQuery.data ?? []}
-                      isLoading={packModsQuery.isLoading}
-                      error={packModsQuery.error?.message ?? null}
-                      onRetry={() => packModsQuery.refetch()}
-                      search={search}
-                      onSearchChange={setSearch}
-                      onReconciled={invalidate}
-                      envDisplay={envDisplay}
-                      onSetEnvironment={handleSetEnvironment}
-                    />
-                  )}
-                </TabsContent>
-              </Tabs>
-            )}
+          {activeTab === "dependencies" && (
+            <DependenciesTab
+              workshopId={workshopId}
+              search={search}
+              onSearchChange={setSearch}
+              onAddProject={addProject}
+              busyProjectId={busyProjectId}
+            />
+          )}
 
-            {activeTab === "dependencies" && (
-              <DependenciesTab
-                workshopId={workshopId}
-                search={search}
-                onSearchChange={setSearch}
-                onAddProject={addProject}
-                busyProjectId={busyProjectId}
-              />
-            )}
+          {activeTab === "issues" && (
+            <IssuesTab
+              workshopId={workshopId}
+              items={issueItems}
+              isLoading={attentionQuery.isLoading}
+              error={attentionQuery.error?.message ?? null}
+              onRetry={() => attentionQuery.refetch()}
+              onView={setDetailModId}
+              onResolved={invalidate}
+              unresolvedCount={attentionCount ?? 0}
+              envDisplay={envDisplay}
+              onSetEnvironment={handleSetEnvironment}
+            />
+          )}
 
-            {activeTab === "issues" && (
-              <IssuesTab
-                workshopId={workshopId}
-                items={issueItems}
-                isLoading={attentionQuery.isLoading}
-                error={attentionQuery.error?.message ?? null}
-                onRetry={() => attentionQuery.refetch()}
-                onView={setDetailModId}
-                onResolved={invalidate}
-                unresolvedCount={attentionCount ?? 0}
-                envDisplay={envDisplay}
-                onSetEnvironment={handleSetEnvironment}
-              />
-            )}
+          {activeTab === "activity" && (
+            <ActivityTab
+              workshopId={workshopId}
+              search={search}
+              onSearchChange={setSearch}
+              onView={setDetailModId}
+            />
+          )}
 
-            {activeTab === "activity" && (
-              <ActivityTab
-                workshopId={workshopId}
-                search={search}
-                onSearchChange={setSearch}
-                onView={setDetailModId}
-              />
-            )}
-
-            {activeTab === "releases" && (
-              <ReleasesTab modpackId={workshop.modpackId} />
-            )}
-          </TabsContent>
-        </Tabs>
-      </div>
+          {activeTab === "releases" && (
+            <ReleasesTab modpackId={workshop.modpackId} />
+          )}
+        </TabsContent>
+      </Tabs>
 
       <ModDetailDialog
         workshopModId={detailModId}
@@ -619,7 +596,6 @@ export function AdminWorkshopDetail() {
       />
 
       <WorkshopSettingsDialog
-        key={`settings-${settingsKey}`}
         open={settingsOpen}
         onOpenChange={setSettingsOpen}
         workshop={workshop}
@@ -630,7 +606,6 @@ export function AdminWorkshopDetail() {
       />
 
       <ConfirmActionDialog
-        key={`confirm-${confirmKey}`}
         target={confirmTarget}
         onOpenChange={(open) => {
           if (!open) setConfirmTarget(null);
@@ -639,7 +614,6 @@ export function AdminWorkshopDetail() {
       />
 
       <RejectModDialog
-        key={`reject-${rejectKey}`}
         target={rejectTarget}
         onOpenChange={(open) => {
           if (!open) setRejectTarget(null);
@@ -649,6 +623,6 @@ export function AdminWorkshopDetail() {
         }
         pending={reviewMutation.isPending}
       />
-    </div>
+    </AdminPage>
   );
 }

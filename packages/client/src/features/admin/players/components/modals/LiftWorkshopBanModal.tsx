@@ -1,28 +1,22 @@
-import { useState } from "react";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { trpc, queryClient } from "@/lib/trpc";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
+import { useDialogDraft } from "@/hooks/use-dialog-draft";
 import { FormDialog } from "@/components/form-dialog";
 import { useMutation } from "@tanstack/react-query";
 import { Textarea } from "@/components/ui/textarea";
 
 interface LiftWorkshopBanModalProps {
-  open: boolean;
+  banId: number | null;
   onClose: () => void;
-  banId: number;
 }
 
 export function LiftWorkshopBanModal({
-  open,
-  onClose,
   banId,
+  onClose,
 }: LiftWorkshopBanModalProps) {
-  const [reason, setReason] = useState("");
-
-  const handleClose = () => {
-    setReason("");
-    onClose();
-  };
+  const open = banId !== null;
+  const [{ reason }, update] = useDialogDraft(open, () => ({ reason: "" }));
 
   const liftBan = useMutation(
     trpc.admin.workshops.bans.lift.mutationOptions(
@@ -32,20 +26,21 @@ export function LiftWorkshopBanModal({
           void queryClient.invalidateQueries(
             trpc.admin.workshops.bans.pathFilter(),
           );
-          handleClose();
+          onClose();
         },
       }),
     ),
   );
 
   const handleSubmit = () => {
+    if (banId === null) return;
     liftBan.mutate({ banId, reason: reason.trim() });
   };
 
   return (
     <FormDialog
       open={open}
-      onClose={handleClose}
+      onClose={onClose}
       title="Lift suggestion block"
       description="The user will be able to submit new mod suggestions again."
       onConfirm={handleSubmit}
@@ -68,7 +63,7 @@ export function LiftWorkshopBanModal({
           id="lift-workshop-ban-reason"
           placeholder="Enter reason for lifting the block..."
           value={reason}
-          onChange={(e) => setReason(e.target.value)}
+          onChange={(e) => update({ reason: e.target.value })}
           rows={4}
           maxLength={500}
         />

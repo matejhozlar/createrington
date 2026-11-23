@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { ADMIN_REASON_MAX_LENGTH } from "@createrington/shared/admin-reason";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Input } from "@/components/ui/input";
@@ -6,6 +5,7 @@ import { Field, FieldLabel } from "@/components/ui/field";
 import { trpc, type RouterOutput, queryClient } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
+import { useDialogDraft } from "@/hooks/use-dialog-draft";
 import { FormDialog } from "@/components/form-dialog";
 import { useMutation } from "@tanstack/react-query";
 
@@ -32,12 +32,11 @@ export function DeletePlayerModal({
     ),
   );
 
-  const [reason, setReason] = useState("");
-  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-
-  const handleDeleteClick = () => {
-    setShowConfirmDialog(true);
-  };
+  const [draft, update] = useDialogDraft(open, () => ({
+    reason: "",
+    confirming: false,
+  }));
+  const { reason } = draft;
 
   const handleConfirmDelete = async () => {
     await deletePlayer.mutateAsync({
@@ -66,7 +65,7 @@ export function DeletePlayerModal({
             cannot be undone.
           </>
         }
-        onConfirm={handleDeleteClick}
+        onConfirm={() => update({ confirming: true })}
         confirmLabel="Delete Player"
         loading={deletePlayer.isPending}
         disabled={!reason.trim()}
@@ -98,15 +97,15 @@ export function DeletePlayerModal({
             type="text"
             placeholder="Enter reason for deletion"
             value={reason}
-            onChange={(e) => setReason(e.target.value)}
+            onChange={(e) => update({ reason: e.target.value })}
             maxLength={ADMIN_REASON_MAX_LENGTH}
           />
         </Field>
       </FormDialog>
 
       <ConfirmDialog
-        open={showConfirmDialog}
-        onOpenChange={setShowConfirmDialog}
+        open={draft.confirming}
+        onOpenChange={(confirming) => update({ confirming })}
         title="Confirm Deletion"
         description="This action is permanent and cannot be undone."
         confirmLabel="Confirm"

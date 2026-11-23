@@ -10,7 +10,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SearchInput } from "@/components/search-input";
-import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Spinner } from "@/components/ui/spinner";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
@@ -22,6 +21,7 @@ import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Textarea } from "@/components/ui/textarea";
+import { Field, FieldLabel } from "@/components/ui/field";
 
 interface MaintenanceSettingsDialogProps {
   serverId: number;
@@ -63,9 +63,9 @@ function TemplateField({
 }: TemplateFieldProps) {
   const isPreset = value === preset;
   return (
-    <div className="space-y-2">
+    <Field>
       <div className="flex items-center justify-between">
-        <Label htmlFor={id}>{label}</Label>
+        <FieldLabel htmlFor={id}>{label}</FieldLabel>
         <Button
           type="button"
           variant="ghost"
@@ -96,7 +96,7 @@ function TemplateField({
         text={previewText(value)}
         className="rounded-md border border-border bg-[#111] px-3 py-2 text-xs text-gray-200"
       />
-    </div>
+    </Field>
   );
 }
 

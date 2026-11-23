@@ -10,6 +10,7 @@ import {
 import { PagedTable } from "@/components/paged-table";
 import { usePagedQuery } from "@/hooks/use-paged-query";
 import { ArrowLeftRight } from "lucide-react";
+import { TabSectionHeader } from "@/features/admin/players/components/TabSectionHeader";
 
 interface TransactionsTabProps {
   playerId: string;
@@ -88,14 +89,10 @@ export function TransactionsTab({ playerId }: TransactionsTabProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold">Transactions</h3>
-          <p className="text-sm text-muted-foreground">
-            {transactions.total.toLocaleString()} total
-          </p>
-        </div>
-      </div>
+      <TabSectionHeader
+        title="Transactions"
+        description={`${transactions.total.toLocaleString()} total`}
+      />
 
       <PagedTable
         paged={transactions}

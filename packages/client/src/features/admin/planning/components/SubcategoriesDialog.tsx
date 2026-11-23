@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Check, Pencil, Plus, Trash2, X } from "lucide-react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -20,8 +19,9 @@ import {
   PLANNING_SUBCATEGORY_NAME_MAX_LENGTH,
   type PlanningCategory,
 } from "@createrington/shared/planning";
-import { CATEGORY_CONFIG } from "../constants";
-import type { PlanningSubcategory } from "../types";
+import { CATEGORY_CONFIG } from "@/features/admin/planning/constants";
+import type { PlanningSubcategory } from "@/features/admin/planning/types";
+import { useDialogDraft } from "@/hooks/use-dialog-draft";
 
 interface SubcategoriesDialogProps {
   open: boolean;
@@ -36,12 +36,18 @@ export function SubcategoriesDialog({
   defaultCategory,
   subcategories,
 }: SubcategoriesDialogProps) {
-  const [category, setCategory] = useState(defaultCategory);
-  const [newName, setNewName] = useState("");
-  const [editing, setEditing] = useState<{ id: number; name: string } | null>(
-    null,
-  );
-  const [deleting, setDeleting] = useState<PlanningSubcategory | null>(null);
+  const [draft, update] = useDialogDraft<{
+    category: PlanningCategory;
+    newName: string;
+    editing: { id: number; name: string } | null;
+    deleting: PlanningSubcategory | null;
+  }>(open, () => ({
+    category: defaultCategory,
+    newName: "",
+    editing: null,
+    deleting: null,
+  }));
+  const { category, newName, editing, deleting } = draft;
 
   const invalidate = () =>
     queryClient.invalidateQueries(trpc.admin.planning.pathFilter());
@@ -51,7 +57,7 @@ export function SubcategoriesDialog({
       useMutationToast({
         onSuccess: () => {
           void invalidate();
-          setNewName("");
+          update({ newName: "" });
         },
       }),
     ),
@@ -61,7 +67,7 @@ export function SubcategoriesDialog({
       useMutationToast({
         onSuccess: () => {
           void invalidate();
-          setEditing(null);
+          update({ editing: null });
         },
       }),
     ),
@@ -95,8 +101,8 @@ export function SubcategoriesDialog({
         <Tabs
           value={category}
           onValueChange={(value) => {
-            setCategory(value as PlanningCategory);
-            setEditing(null);
+            update({ category: value as PlanningCategory });
+            update({ editing: null });
           }}
         >
           <TabsList className="text-foreground/80">
@@ -127,7 +133,9 @@ export function SubcategoriesDialog({
                   <Input
                     value={editing.name}
                     onChange={(event) =>
-                      setEditing({ id: editing.id, name: event.target.value })
+                      update({
+                        editing: { id: editing.id, name: event.target.value },
+                      })
                     }
                     aria-label="Subcategory name"
                     maxLength={PLANNING_SUBCATEGORY_NAME_MAX_LENGTH}
@@ -148,7 +156,7 @@ export function SubcategoriesDialog({
                     variant="ghost"
                     size="icon-sm"
                     aria-label="Cancel rename"
-                    onClick={() => setEditing(null)}
+                    onClick={() => update({ editing: null })}
                   >
                     <X className="size-4" />
                   </Button>
@@ -171,7 +179,9 @@ export function SubcategoriesDialog({
                   size="icon-sm"
                   aria-label={`Rename ${subcategory.name}`}
                   onClick={() =>
-                    setEditing({ id: subcategory.id, name: subcategory.name })
+                    update({
+                      editing: { id: subcategory.id, name: subcategory.name },
+                    })
                   }
                 >
                   <Pencil className="size-4" />
@@ -181,7 +191,7 @@ export function SubcategoriesDialog({
                   variant="ghost"
                   size="icon-sm"
                   aria-label={`Delete ${subcategory.name}`}
-                  onClick={() => setDeleting(subcategory)}
+                  onClick={() => update({ deleting: subcategory })}
                 >
                   <Trash2 className="size-4" />
                 </Button>
@@ -199,7 +209,7 @@ export function SubcategoriesDialog({
         >
           <Input
             value={newName}
-            onChange={(event) => setNewName(event.target.value)}
+            onChange={(event) => update({ newName: event.target.value })}
             placeholder={`New ${CATEGORY_CONFIG[category].label} subcategory`}
             aria-label="New subcategory name"
             maxLength={PLANNING_SUBCATEGORY_NAME_MAX_LENGTH}
@@ -217,7 +227,7 @@ export function SubcategoriesDialog({
         <ConfirmDialog
           open={deleting !== null}
           onOpenChange={(isOpen) => {
-            if (!isOpen) setDeleting(null);
+            if (!isOpen) update({ deleting: null });
           }}
           title="Delete Subcategory"
           description={

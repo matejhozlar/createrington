@@ -1,7 +1,8 @@
 import { useCallback, useState } from "react";
 import { LoadingState } from "@/components/query-states";
 import { StatCard } from "@/components/stat-card";
-import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
+import { AdminPage } from "@/features/admin/components/AdminPage";
+import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { FilterBar } from "@/features/admin/components/FilterBar";
 import { TableCard } from "@/components/paged-table";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
@@ -64,10 +65,9 @@ export function AdminWaitlists() {
     newFieldDirection: "desc",
   });
 
-  const [promoteModal, setPromoteModal] = useState<{
-    open: boolean;
-    entry: WaitlistEntry | null;
-  }>({ open: false, entry: null });
+  const [promoteTarget, setPromoteTarget] = useState<WaitlistEntry | null>(
+    null,
+  );
   const [deleteTarget, setDeleteTarget] = useState<WaitlistEntry | null>(null);
 
   const debouncedSearch = useDebouncedValue(searchQuery);
@@ -91,7 +91,7 @@ export function AdminWaitlists() {
   );
 
   const handlePromote = useCallback((entry: WaitlistEntry) => {
-    setPromoteModal({ open: true, entry });
+    setPromoteTarget(entry);
   }, []);
 
   const handleDelete = useCallback((entry: WaitlistEntry) => {
@@ -188,101 +188,92 @@ export function AdminWaitlists() {
   };
 
   return (
-    <div className="flex flex-1 flex-col gap-4">
-      <AdminPageHeader
-        trail={[
-          { label: "Admin", href: "/admin/dashboard" },
-          { label: "Waitlist" },
-        ]}
+    <AdminPage
+      trail={[
+        { label: "Admin", href: "/admin/dashboard" },
+        { label: "Waitlist" },
+      ]}
+    >
+      <AdminPageTitle title="Waitlist" />
+      {statsLoading ? (
+        <LoadingState text="Loading statistics..." className="flex-none py-8" />
+      ) : stats ? (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <StatCard
+            label="In Queue"
+            value={stats.queued}
+            icon={Users}
+            tone="primary"
+            footer={`${stats.total} entries total`}
+          />
+          <StatCard
+            label="Promoted"
+            value={stats.promoted}
+            icon={Clock}
+            tone="chart-2"
+            footer="awaiting registration"
+          />
+          <StatCard
+            label="Registered"
+            value={stats.registered}
+            icon={UserCheck}
+            tone="chart-4"
+            footer={`${stats.joinedMinecraft} joined Minecraft`}
+          />
+          <StatCard
+            label="New This Week"
+            value={stats.signups.thisWeek}
+            icon={UserPlus}
+            tone="chart-3"
+            footer={`${stats.signups.today} today`}
+          />
+        </div>
+      ) : null}
+
+      <IntakeSettingsCard />
+
+      <FilterBar
+        search={searchQuery}
+        onSearchChange={setSearchQuery}
+        placeholder="Search by Discord username or ID..."
+        activeCount={(searchQuery ? 1 : 0) + (statusFilter !== "all" ? 1 : 0)}
+      >
+        <Select
+          value={statusFilter}
+          onValueChange={(v) => setStatusFilter(v as StatusFilter)}
+        >
+          <SelectTrigger className="min-w-[150px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Statuses</SelectItem>
+            <SelectItem value="queued">Queued</SelectItem>
+            <SelectItem value="promoted">Promoted</SelectItem>
+            <SelectItem value="registered">Registered</SelectItem>
+            <SelectItem value="expired">Expired</SelectItem>
+          </SelectContent>
+        </Select>
+      </FilterBar>
+
+      <TableCard
+        title="Waitlist Entries"
+        paged={entries}
+        empty={{ icon: Users, message: "No waitlist entries found" }}
+        itemLabel="entry"
+        columns={columns}
+        rowKey={(entry) => entry.id}
+        actions={entryActions}
       />
 
-      <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
-        {statsLoading ? (
-          <LoadingState
-            text="Loading statistics..."
-            className="flex-none py-8"
-          />
-        ) : stats ? (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <StatCard
-              label="In Queue"
-              value={stats.queued}
-              icon={Users}
-              tone="primary"
-              footer={`${stats.total} entries total`}
-            />
-            <StatCard
-              label="Promoted"
-              value={stats.promoted}
-              icon={Clock}
-              tone="chart-2"
-              footer="awaiting registration"
-            />
-            <StatCard
-              label="Registered"
-              value={stats.registered}
-              icon={UserCheck}
-              tone="chart-4"
-              footer={`${stats.joinedMinecraft} joined Minecraft`}
-            />
-            <StatCard
-              label="New This Week"
-              value={stats.signups.thisWeek}
-              icon={UserPlus}
-              tone="chart-3"
-              footer={`${stats.signups.today} today`}
-            />
-          </div>
-        ) : null}
-
-        <IntakeSettingsCard />
-
-        <FilterBar
-          search={searchQuery}
-          onSearchChange={setSearchQuery}
-          placeholder="Search by Discord username or ID..."
-          activeCount={(searchQuery ? 1 : 0) + (statusFilter !== "all" ? 1 : 0)}
-        >
-          <Select
-            value={statusFilter}
-            onValueChange={(v) => setStatusFilter(v as StatusFilter)}
-          >
-            <SelectTrigger className="min-w-[150px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="queued">Queued</SelectItem>
-              <SelectItem value="promoted">Promoted</SelectItem>
-              <SelectItem value="registered">Registered</SelectItem>
-              <SelectItem value="expired">Expired</SelectItem>
-            </SelectContent>
-          </Select>
-        </FilterBar>
-
-        <TableCard
-          title="Waitlist Entries"
-          paged={entries}
-          empty={{ icon: Users, message: "No waitlist entries found" }}
-          itemLabel="entry"
-          columns={columns}
-          rowKey={(entry) => entry.id}
-          actions={entryActions}
-        />
-      </div>
-
-      {promoteModal.entry !== null && (
-        <PromoteWaitlistModal
-          open={promoteModal.open}
-          onClose={() => setPromoteModal({ open: false, entry: null })}
-          entry={promoteModal.entry}
-        />
-      )}
+      <PromoteWaitlistModal
+        entry={promoteTarget}
+        onClose={() => setPromoteTarget(null)}
+      />
 
       <DeleteWaitlistModal
         entry={deleteTarget}
         onClose={() => setDeleteTarget(null)}
       />
-    </div>
+    </AdminPage>
   );
 }

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, useNavigate, NavLink } from "react-router";
-import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
+import { AdminPage } from "@/features/admin/components/AdminPage";
 import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -118,138 +118,133 @@ export function PromptDetail() {
     : pluralize(responses.length, "response");
 
   return (
-    <div className="flex flex-1 flex-col gap-4">
-      <AdminPageHeader
-        trail={[
-          { label: "Admin", href: "/admin/dashboard" },
-          { label: "Tools", href: "/admin/tools" },
-          { label: "Prompts", href: "/admin/tools/prompts" },
-          { label: prompt.question },
-        ]}
-      />
-
-      <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
-        <AdminPageTitle
-          title={prompt.question}
-          icon={MessageSquare}
-          badges={
-            <>
-              <Badge tone={PROMPT_STATUS_DISPLAY[prompt.status].tone}>
-                {PROMPT_STATUS_DISPLAY[prompt.status].label}
-              </Badge>
-              <Badge variant="outline">
-                {isMulti ? "Multiple entries" : "Single entry"}
-              </Badge>
-            </>
-          }
-          description={
-            <>
-              {prompt.description && <p>{prompt.description}</p>}
-              <p className="text-xs">
-                Created {formatDateTime(prompt.createdAt)} by{" "}
-                <span className="font-medium">{authorLabel}</span> • Closes{" "}
-                {formatDateTime(prompt.endsAt)} • {countLabel}
-              </p>
-              <p className="text-xs text-muted-foreground/80">
-                {describeEntryRules(prompt)}
-              </p>
-            </>
-          }
-          actions={
-            <>
+    <AdminPage
+      trail={[
+        { label: "Admin", href: "/admin/dashboard" },
+        { label: "Tools", href: "/admin/tools" },
+        { label: "Prompts", href: "/admin/tools/prompts" },
+        { label: prompt.question },
+      ]}
+    >
+      <AdminPageTitle
+        title={prompt.question}
+        icon={MessageSquare}
+        badges={
+          <>
+            <Badge tone={PROMPT_STATUS_DISPLAY[prompt.status].tone}>
+              {PROMPT_STATUS_DISPLAY[prompt.status].label}
+            </Badge>
+            <Badge variant="outline">
+              {isMulti ? "Multiple entries" : "Single entry"}
+            </Badge>
+          </>
+        }
+        description={
+          <>
+            {prompt.description && <p>{prompt.description}</p>}
+            <p className="text-xs">
+              Created {formatDateTime(prompt.createdAt)} by{" "}
+              <span className="font-medium">{authorLabel}</span> • Closes{" "}
+              {formatDateTime(prompt.endsAt)} • {countLabel}
+            </p>
+            <p className="text-xs text-muted-foreground/80">
+              {describeEntryRules(prompt)}
+            </p>
+          </>
+        }
+        actions={
+          <>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => void detailQuery.refetch()}
+              disabled={detailQuery.isFetching}
+              title="Refresh"
+            >
+              <RefreshCw
+                className={
+                  detailQuery.isFetching ? "size-4 animate-spin" : "size-4"
+                }
+              />
+            </Button>
+            {isActive && (
               <Button
                 variant="outline"
-                size="icon"
-                onClick={() => void detailQuery.refetch()}
-                disabled={detailQuery.isFetching}
-                title="Refresh"
+                onClick={() => closeMutation.mutate({ id: prompt.id })}
+                disabled={closeMutation.isPending}
               >
-                <RefreshCw
-                  className={
-                    detailQuery.isFetching ? "size-4 animate-spin" : "size-4"
-                  }
-                />
+                <Lock className="size-4" /> Close now
               </Button>
-              {isActive && (
-                <Button
-                  variant="outline"
-                  onClick={() => closeMutation.mutate({ id: prompt.id })}
-                  disabled={closeMutation.isPending}
-                >
-                  <Lock className="size-4" /> Close now
-                </Button>
-              )}
-              <Button variant="destructive" onClick={() => setDeleteOpen(true)}>
-                <Trash2 className="size-4" /> Delete
-              </Button>
-            </>
-          }
-        />
+            )}
+            <Button variant="destructive" onClick={() => setDeleteOpen(true)}>
+              <Trash2 className="size-4" /> Delete
+            </Button>
+          </>
+        }
+      />
 
-        {responses.length === 0 ? (
-          <div className="rounded-lg border border-border bg-card">
-            <EmptyState icon={MessageSquare} message="No responses yet." />
-          </div>
-        ) : (
-          <ul className="flex flex-col gap-3">
-            {groups.map((group) => (
-              <li
-                key={group.discordId}
-                className="flex gap-3 rounded-lg border border-border/60 bg-card p-3"
-              >
-                <MinecraftAvatar
-                  uuid={group.minecraftUuid ?? undefined}
-                  username={group.minecraftUsername ?? "?"}
-                  size={40}
-                  className="shrink-0 rounded"
-                />
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <div className="flex items-baseline gap-2">
-                      <span className="font-medium">
-                        {group.minecraftUsername ??
-                          `Discord user ${group.discordId}`}
-                      </span>
-                      {!group.minecraftUsername && (
-                        <span className="text-xs text-muted-foreground">
-                          (no linked Minecraft account)
-                        </span>
-                      )}
-                    </div>
-                    <span className="text-xs text-muted-foreground">
-                      {group.entries.length > 1
-                        ? `${group.entries.length} entries`
-                        : formatEntryTime(group.entries[0])}
+      {responses.length === 0 ? (
+        <div className="rounded-lg border border-border bg-card">
+          <EmptyState icon={MessageSquare} message="No responses yet." />
+        </div>
+      ) : (
+        <ul className="flex flex-col gap-3">
+          {groups.map((group) => (
+            <li
+              key={group.discordId}
+              className="flex gap-3 rounded-lg border border-border/60 bg-card p-3"
+            >
+              <MinecraftAvatar
+                uuid={group.minecraftUuid ?? undefined}
+                username={group.minecraftUsername ?? "?"}
+                size={40}
+                className="shrink-0 rounded"
+              />
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <div className="flex items-baseline gap-2">
+                    <span className="font-medium">
+                      {group.minecraftUsername ??
+                        `Discord user ${group.discordId}`}
                     </span>
+                    {!group.minecraftUsername && (
+                      <span className="text-xs text-muted-foreground">
+                        (no linked Minecraft account)
+                      </span>
+                    )}
                   </div>
-                  {group.entries.length === 1 ? (
-                    <p className="mt-1 whitespace-pre-wrap text-sm text-foreground">
-                      {group.entries[0].responseText}
-                    </p>
-                  ) : (
-                    <ol className="mt-2 flex flex-col gap-2">
-                      {group.entries.map((entry) => (
-                        <li
-                          key={entry.id}
-                          className="border-l-2 border-border/60 pl-3"
-                        >
-                          <div className="text-xs text-muted-foreground">
-                            Entry #{entry.entryNumber} •{" "}
-                            {formatEntryTime(entry)}
-                          </div>
-                          <p className="mt-0.5 whitespace-pre-wrap text-sm text-foreground">
-                            {entry.responseText}
-                          </p>
-                        </li>
-                      ))}
-                    </ol>
-                  )}
+                  <span className="text-xs text-muted-foreground">
+                    {group.entries.length > 1
+                      ? `${group.entries.length} entries`
+                      : formatEntryTime(group.entries[0])}
+                  </span>
                 </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+                {group.entries.length === 1 ? (
+                  <p className="mt-1 whitespace-pre-wrap text-sm text-foreground">
+                    {group.entries[0].responseText}
+                  </p>
+                ) : (
+                  <ol className="mt-2 flex flex-col gap-2">
+                    {group.entries.map((entry) => (
+                      <li
+                        key={entry.id}
+                        className="border-l-2 border-border/60 pl-3"
+                      >
+                        <div className="text-xs text-muted-foreground">
+                          Entry #{entry.entryNumber} • {formatEntryTime(entry)}
+                        </div>
+                        <p className="mt-0.5 whitespace-pre-wrap text-sm text-foreground">
+                          {entry.responseText}
+                        </p>
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
 
       <DeletePromptModal
         prompt={deleteOpen ? prompt : null}
@@ -260,6 +255,6 @@ export function PromptDetail() {
           void navigate("/admin/tools/prompts");
         }}
       />
-    </div>
+    </AdminPage>
   );
 }

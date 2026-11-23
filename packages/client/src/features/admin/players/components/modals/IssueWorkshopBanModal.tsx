@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Field, FieldLabel } from "@/components/ui/field";
 import {
   Select,
@@ -9,6 +8,7 @@ import {
 } from "@/components/ui/select";
 import { trpc, queryClient } from "@/lib/trpc";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
+import { useDialogDraft } from "@/hooks/use-dialog-draft";
 import { FormDialog } from "@/components/form-dialog";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Textarea } from "@/components/ui/textarea";
@@ -27,6 +27,18 @@ interface IssueWorkshopBanModalProps {
 
 type BanType = "temporary" | "permanent";
 
+const EMPTY_DRAFT: {
+  scope: string;
+  banType: BanType;
+  reason: string;
+  durationDays: number;
+} = {
+  scope: GLOBAL_SCOPE,
+  banType: "temporary",
+  reason: "",
+  durationDays: 7,
+};
+
 export function IssueWorkshopBanModal({
   open,
   onClose,
@@ -39,18 +51,8 @@ export function IssueWorkshopBanModal({
     }),
   );
 
-  const [scope, setScope] = useState<string>(GLOBAL_SCOPE);
-  const [banType, setBanType] = useState<BanType>("temporary");
-  const [reason, setReason] = useState("");
-  const [durationDays, setDurationDays] = useState(7);
-
-  const handleClose = () => {
-    setScope(GLOBAL_SCOPE);
-    setBanType("temporary");
-    setReason("");
-    setDurationDays(7);
-    onClose();
-  };
+  const [draft, update] = useDialogDraft(open, EMPTY_DRAFT);
+  const { scope, banType, reason, durationDays } = draft;
 
   const issueBan = useMutation(
     trpc.admin.workshops.bans.issue.mutationOptions(
@@ -60,7 +62,7 @@ export function IssueWorkshopBanModal({
           void queryClient.invalidateQueries(
             trpc.admin.workshops.bans.pathFilter(),
           );
-          handleClose();
+          onClose();
         },
       }),
     ),
@@ -78,7 +80,7 @@ export function IssueWorkshopBanModal({
   return (
     <FormDialog
       open={open}
-      onClose={handleClose}
+      onClose={onClose}
       title="Block workshop suggestions"
       description={`${playerUsername} will not be able to submit new mod suggestions. Minecraft access, Discord membership, upvotes and their existing suggestions are unaffected.`}
       onConfirm={handleSubmit}
@@ -90,13 +92,13 @@ export function IssueWorkshopBanModal({
         <FieldLabel htmlFor="workshop-ban-scope">Scope</FieldLabel>
         <Select
           value={scope}
-          onValueChange={setScope}
+          onValueChange={(value) => update({ scope: value })}
           disabled={workshops.isLoading || !!workshops.error}
         >
           <SelectTrigger id="workshop-ban-scope">
             <SelectValue />
           </SelectTrigger>
-          <SelectContent className="z-[100]">
+          <SelectContent>
             <SelectItem value={GLOBAL_SCOPE}>Every workshop</SelectItem>
             {workshops.data?.map((workshop) => (
               <SelectItem key={workshop.id} value={String(workshop.id)}>
@@ -119,12 +121,12 @@ export function IssueWorkshopBanModal({
         <FieldLabel htmlFor="workshop-ban-type">Duration</FieldLabel>
         <Select
           value={banType}
-          onValueChange={(value) => setBanType(value as BanType)}
+          onValueChange={(value) => update({ banType: value as BanType })}
         >
           <SelectTrigger id="workshop-ban-type">
             <SelectValue />
           </SelectTrigger>
-          <SelectContent className="z-[100]">
+          <SelectContent>
             <SelectItem value="temporary">Temporary</SelectItem>
             <SelectItem value="permanent">Permanent</SelectItem>
           </SelectContent>
@@ -136,12 +138,12 @@ export function IssueWorkshopBanModal({
           <FieldLabel htmlFor="workshop-ban-duration">Length</FieldLabel>
           <Select
             value={String(durationDays)}
-            onValueChange={(value) => setDurationDays(Number(value))}
+            onValueChange={(value) => update({ durationDays: Number(value) })}
           >
             <SelectTrigger id="workshop-ban-duration">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className="z-[100]">
+            <SelectContent>
               {DURATIONS.map((days) => (
                 <SelectItem key={days} value={String(days)}>
                   {pluralize(days, "day")}
@@ -158,7 +160,7 @@ export function IssueWorkshopBanModal({
           id="workshop-ban-reason"
           placeholder="Shown to the user when they try to suggest"
           value={reason}
-          onChange={(e) => setReason(e.target.value)}
+          onChange={(e) => update({ reason: e.target.value })}
           rows={4}
           maxLength={500}
         />

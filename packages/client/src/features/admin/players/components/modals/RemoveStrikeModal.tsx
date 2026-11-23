@@ -1,26 +1,25 @@
-import { useState } from "react";
 import { ADMIN_REASON_MAX_LENGTH } from "@createrington/shared/admin-reason";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
+import { useDialogDraft } from "@/hooks/use-dialog-draft";
 import { trpc, queryClient } from "@/lib/trpc";
 import { FormDialog } from "@/components/form-dialog";
 import { useMutation } from "@tanstack/react-query";
 import { Textarea } from "@/components/ui/textarea";
 
 interface RemoveStrikeModalProps {
-  open: boolean;
+  strikeId: number | null;
   onClose: () => void;
   playerId: string;
-  strikeId: number;
 }
 
 export function RemoveStrikeModal({
-  open,
+  strikeId,
   onClose,
   playerId,
-  strikeId,
 }: RemoveStrikeModalProps) {
-  const [reason, setReason] = useState("");
+  const open = strikeId !== null;
+  const [{ reason }, update] = useDialogDraft(open, () => ({ reason: "" }));
 
   const removeStrike = useMutation(
     trpc.admin.players.strikes.delete.mutationOptions(
@@ -28,7 +27,6 @@ export function RemoveStrikeModal({
         success: "Strike removed",
         onSuccess: () => {
           void queryClient.invalidateQueries(trpc.admin.players.pathFilter());
-          setReason("");
           onClose();
         },
       }),
@@ -36,7 +34,7 @@ export function RemoveStrikeModal({
   );
 
   const handleSubmit = () => {
-    if (!reason.trim()) return;
+    if (strikeId === null || !reason.trim()) return;
 
     removeStrike.mutate({
       id: playerId,
@@ -61,7 +59,7 @@ export function RemoveStrikeModal({
           id="remove-strike-reason"
           placeholder="Explain why this strike is being removed..."
           value={reason}
-          onChange={(e) => setReason(e.target.value)}
+          onChange={(e) => update({ reason: e.target.value })}
           maxLength={ADMIN_REASON_MAX_LENGTH}
           rows={4}
         />

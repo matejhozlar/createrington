@@ -1,25 +1,29 @@
-import { useState } from "react";
 import { Save } from "lucide-react";
 import { FormDialog } from "@/components/form-dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { useDialogDraft } from "@/hooks/use-dialog-draft";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { trpc, queryClient } from "@/lib/trpc";
 import { useMutation } from "@tanstack/react-query";
 
 export function EditPackDialog({
+  open,
   onClose,
   packId,
   initialName,
   initialDescription,
 }: {
+  open: boolean;
   onClose: () => void;
   packId: number;
   initialName: string;
   initialDescription: string;
 }) {
-  const [name, setName] = useState(initialName);
-  const [description, setDescription] = useState(initialDescription);
+  const [{ name, description }, update] = useDialogDraft(open, () => ({
+    name: initialName,
+    description: initialDescription,
+  }));
 
   const updateMutation = useMutation(
     trpc.admin.structurePacks.update.mutationOptions(
@@ -40,7 +44,7 @@ export function EditPackDialog({
 
   return (
     <FormDialog
-      open
+      open={open}
       onClose={onClose}
       title="Edit Pack"
       confirmLabel={
@@ -56,20 +60,26 @@ export function EditPackDialog({
           description: description || undefined,
         })
       }
-      disabled={!name.trim() || updateMutation.isPending}
+      disabled={!name.trim()}
+      loading={updateMutation.isPending}
       contentClassName="sm:max-w-lg"
     >
-      <div className="space-y-2">
-        <Label>Name</Label>
-        <Input value={name} onChange={(e) => setName(e.target.value)} />
-      </div>
-      <div className="space-y-2">
-        <Label>Description</Label>
+      <Field>
+        <FieldLabel htmlFor="edit-pack-name">Name</FieldLabel>
         <Input
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
+          id="edit-pack-name"
+          value={name}
+          onChange={(e) => update({ name: e.target.value })}
         />
-      </div>
+      </Field>
+      <Field>
+        <FieldLabel htmlFor="edit-pack-description">Description</FieldLabel>
+        <Input
+          id="edit-pack-description"
+          value={description}
+          onChange={(e) => update({ description: e.target.value })}
+        />
+      </Field>
     </FormDialog>
   );
 }

@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Shield } from "lucide-react";
 import type { RouterOutput } from "@/lib/trpc";
 import { EmptyState } from "@/components/query-states";
+import { TabSectionHeader } from "@/features/admin/players/components/TabSectionHeader";
 import { formatDate } from "@createrington/shared/format";
 
 type PlayerDetailed = RouterOutput["admin"]["players"]["players"]["get"];
@@ -20,13 +21,15 @@ export function StrikesTab({
 }: StrikesTabProps) {
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">Strikes</h3>
-        <Button size="sm" onClick={onIssueStrike}>
-          <Shield className="size-4" />
-          Issue Strike
-        </Button>
-      </div>
+      <TabSectionHeader
+        title="Strikes"
+        actions={
+          <Button size="sm" onClick={onIssueStrike}>
+            <Shield className="size-4" />
+            Issue Strike
+          </Button>
+        }
+      />
 
       {player.strikes.active.length === 0 ? (
         <EmptyState icon={Shield} message="No active strikes" />

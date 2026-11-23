@@ -1,3 +1,4 @@
+import { Card } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { History, CheckCircle2, XCircle } from "lucide-react";
@@ -80,7 +81,7 @@ export function RotationHistory() {
   ];
 
   return (
-    <div className="rounded-lg border border-border bg-card p-6">
+    <Card className="gap-0 p-6">
       <div className="mb-4">
         <h2 className="flex items-center gap-2 font-semibold">
           <History className="size-4" />
@@ -100,6 +101,6 @@ export function RotationHistory() {
         columns={columns}
         rowKey={(rotation) => rotation.id}
       />
-    </div>
+    </Card>
   );
 }

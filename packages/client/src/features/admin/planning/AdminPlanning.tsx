@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/auth";
-import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
+import { AdminPage } from "@/features/admin/components/AdminPage";
 import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { trpc } from "@/lib/trpc";
@@ -122,234 +122,224 @@ export function AdminPlanning() {
   };
 
   return (
-    <div className="flex flex-1 flex-col gap-4">
-      <AdminPageHeader
-        trail={[
-          { label: "Admin", href: "/admin/dashboard" },
-          { label: "Planning" },
-        ]}
-      />
-
-      <div className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-4 px-4 pb-4">
-        <AdminPageTitle
-          title="Planning"
-          description="Ideas, problems and open questions the team is working through."
-          actions={
-            <>
-              <Button
-                variant="outline"
-                onClick={() => setSubcategoriesOpen(true)}
-              >
-                <Tags className="mr-2 size-4" />
-                Subcategories
-              </Button>
-              <Button onClick={() => setCreateOpen(true)}>
-                <Plus className="mr-2 size-4" />
-                New Plan
-              </Button>
-            </>
-          }
-        />
-
-        <Tabs
-          value={status}
-          onValueChange={(value) =>
-            changeFilter(() => setStatus(value as StatusTab))
-          }
-        >
-          <div className="overflow-x-auto overflow-y-hidden [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <TabsList className="text-foreground/80">
-              {STATUS_TABS.map(({ value, label }) => (
-                <TabsTrigger key={value} value={value}>
-                  {label}
-                  {counts && (
-                    <Badge
-                      variant="outline"
-                      className="border-transparent bg-foreground/10"
-                    >
-                      {value === ALL ? totalPlans : counts[value]}
-                    </Badge>
-                  )}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </div>
-        </Tabs>
-
-        <Card className="gap-2">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Filter className="size-4 text-muted-foreground" />
-              Filters
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2">
-              <SearchInput
-                className="min-w-48 flex-1"
-                placeholder="Search plans..."
-                value={search}
-                onValueChange={(value) => changeFilter(() => setSearch(value))}
-              />
-
-              <Select
-                value={category}
-                onValueChange={(value) =>
-                  changeFilter(() => {
-                    setCategory(value as CategoryFilter);
-                    setSubcategory(ALL);
-                  })
-                }
-              >
-                <SelectTrigger className="w-full xs:w-44" aria-label="Category">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={ALL}>All categories</SelectItem>
-                  {PLANNING_CATEGORIES.map((value) => (
-                    <SelectItem key={value} value={value}>
-                      {CATEGORY_CONFIG[value].label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              {category !== ALL && (
-                <Select
-                  value={subcategory}
-                  onValueChange={(value) =>
-                    changeFilter(() => setSubcategory(value))
-                  }
-                >
-                  <SelectTrigger
-                    className="w-full xs:w-52"
-                    aria-label="Subcategory"
-                  >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={ALL}>All subcategories</SelectItem>
-                    {subcategories
-                      .filter((s) => s.category === category)
-                      .map((s) => (
-                        <SelectItem key={s.id} value={String(s.id)}>
-                          {s.name}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-              )}
-
-              <Select
-                value={assignee}
-                onValueChange={(value) =>
-                  changeFilter(() => setAssignee(value as AssigneeFilter))
-                }
-              >
-                <SelectTrigger className="w-full xs:w-52" aria-label="Assignee">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {ASSIGNEE_FILTERS.map(({ value, label }) => (
-                    <SelectItem key={value} value={value}>
-                      {label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select
-                value={sort}
-                onValueChange={(value) =>
-                  changeFilter(() => setSort(value as SortValue))
-                }
-              >
-                <SelectTrigger className="w-full xs:w-44" aria-label="Sort by">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {SORT_OPTIONS.map(({ value, label }) => (
-                    <SelectItem key={value} value={value}>
-                      {label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </CardContent>
-        </Card>
-
-        {itemsQuery.error ? (
-          <ErrorState
-            message={itemsQuery.error.message}
-            onRetry={() => void itemsQuery.refetch()}
-            bordered
-          />
-        ) : itemsQuery.isLoading ? (
-          <LoadingState />
-        ) : totalPlans === 0 && !isFiltered ? (
-          <EmptyState
-            icon={Lightbulb}
-            message="No plans yet"
-            hint="Write down the first idea, problem or open question."
-          >
+    <AdminPage
+      trail={[
+        { label: "Admin", href: "/admin/dashboard" },
+        { label: "Planning" },
+      ]}
+    >
+      <AdminPageTitle
+        title="Planning"
+        description="Ideas, problems and open questions the team is working through."
+        actions={
+          <>
+            <Button
+              variant="outline"
+              onClick={() => setSubcategoriesOpen(true)}
+            >
+              <Tags className="mr-2 size-4" />
+              Subcategories
+            </Button>
             <Button onClick={() => setCreateOpen(true)}>
               <Plus className="mr-2 size-4" />
               New Plan
             </Button>
-          </EmptyState>
-        ) : items.length === 0 ? (
-          <EmptyState icon={SearchX} message="No plans match these filters" />
-        ) : (
-          <>
-            <div
-              className={cn(
-                "grid auto-rows-fr gap-4 sm:grid-cols-2 xl:grid-cols-3",
-                itemsQuery.isPlaceholderData && "opacity-60",
-              )}
-            >
-              {items.map((item) => (
-                <PlanCard
-                  key={item.id}
-                  item={item}
-                  subcategory={subcategoryName(
-                    subcategories,
-                    item.subcategoryId,
-                  )}
-                />
-              ))}
-            </div>
-
-            {pagination && (
-              <Paginator
-                page={pagination.page}
-                limit={pagination.limit}
-                total={pagination.total}
-                totalPages={pagination.totalPages}
-                onPageChange={setPage}
-                itemLabel="plan"
-                className="w-full"
-              />
-            )}
           </>
-        )}
-      </div>
+        }
+      />
 
-      {createOpen && (
-        <PlanFormDialog
-          open
-          onClose={() => setCreateOpen(false)}
-          defaultCategory={defaultCategory}
+      <Tabs
+        value={status}
+        onValueChange={(value) =>
+          changeFilter(() => setStatus(value as StatusTab))
+        }
+      >
+        <div className="overflow-x-auto overflow-y-hidden [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <TabsList className="text-foreground/80">
+            {STATUS_TABS.map(({ value, label }) => (
+              <TabsTrigger key={value} value={value}>
+                {label}
+                {counts && (
+                  <Badge
+                    variant="outline"
+                    className="border-transparent bg-foreground/10"
+                  >
+                    {value === ALL ? totalPlans : counts[value]}
+                  </Badge>
+                )}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </div>
+      </Tabs>
+
+      <Card className="gap-2">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Filter className="size-4 text-muted-foreground" />
+            Filters
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-2">
+            <SearchInput
+              className="min-w-48 flex-1"
+              placeholder="Search plans..."
+              value={search}
+              onValueChange={(value) => changeFilter(() => setSearch(value))}
+            />
+
+            <Select
+              value={category}
+              onValueChange={(value) =>
+                changeFilter(() => {
+                  setCategory(value as CategoryFilter);
+                  setSubcategory(ALL);
+                })
+              }
+            >
+              <SelectTrigger className="w-full xs:w-44" aria-label="Category">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>All categories</SelectItem>
+                {PLANNING_CATEGORIES.map((value) => (
+                  <SelectItem key={value} value={value}>
+                    {CATEGORY_CONFIG[value].label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {category !== ALL && (
+              <Select
+                value={subcategory}
+                onValueChange={(value) =>
+                  changeFilter(() => setSubcategory(value))
+                }
+              >
+                <SelectTrigger
+                  className="w-full xs:w-52"
+                  aria-label="Subcategory"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL}>All subcategories</SelectItem>
+                  {subcategories
+                    .filter((s) => s.category === category)
+                    .map((s) => (
+                      <SelectItem key={s.id} value={String(s.id)}>
+                        {s.name}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            )}
+
+            <Select
+              value={assignee}
+              onValueChange={(value) =>
+                changeFilter(() => setAssignee(value as AssigneeFilter))
+              }
+            >
+              <SelectTrigger className="w-full xs:w-52" aria-label="Assignee">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {ASSIGNEE_FILTERS.map(({ value, label }) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select
+              value={sort}
+              onValueChange={(value) =>
+                changeFilter(() => setSort(value as SortValue))
+              }
+            >
+              <SelectTrigger className="w-full xs:w-44" aria-label="Sort by">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {SORT_OPTIONS.map(({ value, label }) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
+
+      {itemsQuery.error ? (
+        <ErrorState
+          message={itemsQuery.error.message}
+          onRetry={() => void itemsQuery.refetch()}
+          bordered
         />
+      ) : itemsQuery.isLoading ? (
+        <LoadingState />
+      ) : totalPlans === 0 && !isFiltered ? (
+        <EmptyState
+          icon={Lightbulb}
+          message="No plans yet"
+          hint="Write down the first idea, problem or open question."
+        >
+          <Button onClick={() => setCreateOpen(true)}>
+            <Plus className="mr-2 size-4" />
+            New Plan
+          </Button>
+        </EmptyState>
+      ) : items.length === 0 ? (
+        <EmptyState icon={SearchX} message="No plans match these filters" />
+      ) : (
+        <>
+          <div
+            className={cn(
+              "grid auto-rows-fr gap-4 sm:grid-cols-2 xl:grid-cols-3",
+              itemsQuery.isPlaceholderData && "opacity-60",
+            )}
+          >
+            {items.map((item) => (
+              <PlanCard
+                key={item.id}
+                item={item}
+                subcategory={subcategoryName(subcategories, item.subcategoryId)}
+              />
+            ))}
+          </div>
+
+          {pagination && (
+            <Paginator
+              page={pagination.page}
+              limit={pagination.limit}
+              total={pagination.total}
+              totalPages={pagination.totalPages}
+              onPageChange={setPage}
+              itemLabel="plan"
+              className="w-full"
+            />
+          )}
+        </>
       )}
 
+      <PlanFormDialog
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        defaultCategory={defaultCategory}
+      />
+
       <SubcategoriesDialog
-        key={`subcategories-${defaultCategory}`}
         open={subcategoriesOpen}
         onClose={() => setSubcategoriesOpen(false)}
         defaultCategory={defaultCategory}
         subcategories={subcategories}
       />
-    </div>
+    </AdminPage>
   );
 }

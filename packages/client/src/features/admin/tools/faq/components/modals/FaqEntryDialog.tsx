@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Field, FieldLabel, FieldDescription } from "@/components/ui/field";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -6,6 +6,7 @@ import { ChoiceField } from "@/components/choice-field";
 import { FormDialog } from "@/components/form-dialog";
 import { useToastActions } from "@/hooks/use-toast";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
+import { useDialogDraft } from "@/hooks/use-dialog-draft";
 import { insertAtCursor } from "@/lib/insertAtCursor";
 import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
 import { InsertMenu } from "@/features/admin/components/InsertMenu";
@@ -75,13 +76,10 @@ export function FaqEntryDialog({
 
   const mentionResolver = useMentionResolver();
   const responseRef = useRef<HTMLTextAreaElement>(null);
-  const [draft, setDraft] = useState<FaqDraft>(() => toDraft(entry));
-  const update = (patch: Partial<FaqDraft>) =>
-    setDraft((prev) => ({ ...prev, ...patch }));
+  const [draft, update] = useDialogDraft(open, () => toDraft(entry));
 
   const handleSaved = () => {
     void queryClient.invalidateQueries(trpc.admin.faq.pathFilter());
-    if (!isEdit) setDraft(EMPTY_DRAFT);
     onClose();
   };
 

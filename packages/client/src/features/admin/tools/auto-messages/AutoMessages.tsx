@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
+import { AdminPage } from "@/features/admin/components/AdminPage";
 import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { EnabledBadge } from "@/features/admin/components/EnabledBadge";
@@ -26,16 +26,14 @@ type ConfigDetail = RouterOutput["admin"]["autoMessages"]["configs"]["get"];
 type Message = ConfigDetail["messages"][number];
 
 export function AutoMessages() {
-  const [configDialog, setConfigDialog] = useState<{
-    open: boolean;
+  const [configTarget, setConfigTarget] = useState<{
     config: Config | null;
-  }>({ open: false, config: null });
+  } | null>(null);
 
-  const [messageDialog, setMessageDialog] = useState<{
-    open: boolean;
+  const [messageTarget, setMessageTarget] = useState<{
     configId: number;
     message: Message | null;
-  }>({ open: false, configId: 0, message: null });
+  } | null>(null);
 
   const [deleteConfigTarget, setDeleteConfigTarget] = useState<Config | null>(
     null,
@@ -96,234 +94,216 @@ export function AutoMessages() {
   );
 
   return (
-    <div className="flex flex-1 flex-col gap-4">
-      <AdminPageHeader
-        trail={[
-          { label: "Admin", href: "/admin/dashboard" },
-          { label: "Tools", href: "/admin/tools" },
-          { label: "Auto Messages" },
-        ]}
+    <AdminPage
+      trail={[
+        { label: "Admin", href: "/admin/dashboard" },
+        { label: "Tools", href: "/admin/tools" },
+        { label: "Auto Messages" },
+      ]}
+    >
+      <AdminPageTitle
+        title="Auto Messages"
+        actions={
+          <Button onClick={() => setConfigTarget({ config: null })}>
+            <Plus className="mr-2 size-4" />
+            New Config
+          </Button>
+        }
       />
 
-      <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
-        <AdminPageTitle
-          title="Auto Messages"
-          actions={
-            <Button
-              onClick={() => setConfigDialog({ open: true, config: null })}
-            >
-              <Plus className="mr-2 size-4" />
-              New Config
-            </Button>
-          }
-        />
+      {configsQuery.isLoading ? (
+        <LoadingState text="Loading configs..." />
+      ) : configs.length === 0 ? (
+        <EmptyState icon={Timer} message="No auto-message configs yet">
+          <Button onClick={() => setConfigTarget({ config: null })}>
+            <Plus className="mr-2 size-4" />
+            Create First Config
+          </Button>
+        </EmptyState>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {configs.map((config) => {
+            const isExpanded = expandedId === config.id;
+            const ch = channelMap.get(config.channelId);
 
-        {configsQuery.isLoading ? (
-          <LoadingState text="Loading configs..." />
-        ) : configs.length === 0 ? (
-          <EmptyState icon={Timer} message="No auto-message configs yet">
-            <Button
-              onClick={() => setConfigDialog({ open: true, config: null })}
-            >
-              <Plus className="mr-2 size-4" />
-              Create First Config
-            </Button>
-          </EmptyState>
-        ) : (
-          <div className="flex flex-col gap-3">
-            {configs.map((config) => {
-              const isExpanded = expandedId === config.id;
-              const ch = channelMap.get(config.channelId);
-
-              return (
+            return (
+              <div
+                key={config.id}
+                className="rounded-lg border border-border bg-card"
+              >
                 <div
-                  key={config.id}
-                  className="rounded-lg border border-border bg-card"
+                  className="flex cursor-pointer items-center gap-3 p-4 transition-colors hover:bg-sidebar-accent/30"
+                  onClick={() => setExpandedId(isExpanded ? null : config.id)}
                 >
-                  <div
-                    className="flex cursor-pointer items-center gap-3 p-4 transition-colors hover:bg-sidebar-accent/30"
-                    onClick={() => setExpandedId(isExpanded ? null : config.id)}
-                  >
-                    {isExpanded ? (
-                      <ChevronDown className="size-4 text-muted-foreground" />
-                    ) : (
-                      <ChevronRight className="size-4 text-muted-foreground" />
-                    )}
+                  {isExpanded ? (
+                    <ChevronDown className="size-4 text-muted-foreground" />
+                  ) : (
+                    <ChevronRight className="size-4 text-muted-foreground" />
+                  )}
 
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold truncate">
-                          {config.name}
-                        </h3>
-                        <EnabledBadge enabled={config.enabled} />
-                      </div>
-                      <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
-                        <span>
-                          #{ch?.name ?? config.channelId}
-                          {ch && ` (${ch.category})`}
-                        </span>
-                        <span>Every {config.intervalMinutes}m</span>
-                        <span className="capitalize">
-                          {config.rotationMode}
-                        </span>
-                        <span>
-                          {config.messageCount} message
-                          {config.messageCount !== 1 && "s"}
-                        </span>
-                      </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold truncate">{config.name}</h3>
+                      <EnabledBadge enabled={config.enabled} />
                     </div>
-
-                    <div
-                      className="flex gap-2"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setConfigDialog({ open: true, config })}
-                      >
-                        <Pencil className="size-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => setDeleteConfigTarget(config)}
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
+                    <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
+                      <span>
+                        #{ch?.name ?? config.channelId}
+                        {ch && ` (${ch.category})`}
+                      </span>
+                      <span>Every {config.intervalMinutes}m</span>
+                      <span className="capitalize">{config.rotationMode}</span>
+                      <span>
+                        {config.messageCount} message
+                        {config.messageCount !== 1 && "s"}
+                      </span>
                     </div>
                   </div>
 
-                  {isExpanded && (
-                    <div className="border-t border-border">
-                      <div className="flex items-center justify-between p-4 pb-2">
-                        <h4 className="text-sm font-semibold">Messages</h4>
-                        <Button
-                          size="sm"
-                          onClick={() =>
-                            setMessageDialog({
-                              open: true,
-                              configId: config.id,
-                              message: null,
-                            })
-                          }
-                        >
-                          <Plus className="mr-1 size-3" />
-                          Add Message
-                        </Button>
-                      </div>
-
-                      {detailQuery.isLoading ? (
-                        <LoadingState
-                          size="small"
-                          text="Loading messages..."
-                          className="flex-none py-8"
-                        />
-                      ) : (detailQuery.data?.messages.length ?? 0) === 0 ? (
-                        <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
-                          <MessageSquare className="mr-2 size-4" />
-                          No messages yet — add one to get started
-                        </div>
-                      ) : (
-                        <div className="divide-y divide-border">
-                          {detailQuery.data?.messages.map((msg) => (
-                            <div
-                              key={msg.id}
-                              className="flex items-start gap-3 px-4 py-3"
-                            >
-                              <span className="mt-0.5 font-mono text-xs text-muted-foreground">
-                                #{msg.sortOrder}
-                              </span>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm whitespace-pre-wrap break-words">
-                                  {msg.content}
-                                </p>
-                                {!msg.enabled && (
-                                  <EnabledBadge
-                                    enabled={false}
-                                    className="mt-1"
-                                  />
-                                )}
-                                {msg.followups.length > 0 && (
-                                  <div className="mt-2 space-y-1 border-l-2 border-border/60 pl-3">
-                                    {msg.followups.map((f) => (
-                                      <div
-                                        key={f.id}
-                                        className="flex items-start gap-2 text-xs"
-                                      >
-                                        <ArrowDown className="mt-0.5 size-3 shrink-0 text-muted-foreground" />
-                                        <div className="min-w-0 flex-1">
-                                          <span className="text-muted-foreground">
-                                            +{f.delaySeconds}s:
-                                          </span>{" "}
-                                          <span className="whitespace-pre-wrap break-words">
-                                            {f.content}
-                                          </span>
-                                          {!f.enabled && (
-                                            <EnabledBadge
-                                              enabled={false}
-                                              className="ml-2 text-[10px]"
-                                            />
-                                          )}
-                                        </div>
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                              <div className="flex gap-1 shrink-0">
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="size-8 p-0"
-                                  onClick={() =>
-                                    setMessageDialog({
-                                      open: true,
-                                      configId: config.id,
-                                      message: msg,
-                                    })
-                                  }
-                                >
-                                  <Pencil className="size-3.5" />
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="size-8 p-0 text-destructive hover:text-destructive"
-                                  onClick={() => setDeleteMessageId(msg.id)}
-                                >
-                                  <Trash2 className="size-3.5" />
-                                </Button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  <div
+                    className="flex gap-2"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setConfigTarget({ config })}
+                    >
+                      <Pencil className="size-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => setDeleteConfigTarget(config)}
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </div>
                 </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
+
+                {isExpanded && (
+                  <div className="border-t border-border">
+                    <div className="flex items-center justify-between p-4 pb-2">
+                      <h4 className="text-sm font-semibold">Messages</h4>
+                      <Button
+                        size="sm"
+                        onClick={() =>
+                          setMessageTarget({
+                            configId: config.id,
+                            message: null,
+                          })
+                        }
+                      >
+                        <Plus className="mr-1 size-3" />
+                        Add Message
+                      </Button>
+                    </div>
+
+                    {detailQuery.isLoading ? (
+                      <LoadingState
+                        size="small"
+                        text="Loading messages..."
+                        className="flex-none py-8"
+                      />
+                    ) : (detailQuery.data?.messages.length ?? 0) === 0 ? (
+                      <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
+                        <MessageSquare className="mr-2 size-4" />
+                        No messages yet — add one to get started
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-border">
+                        {detailQuery.data?.messages.map((msg) => (
+                          <div
+                            key={msg.id}
+                            className="flex items-start gap-3 px-4 py-3"
+                          >
+                            <span className="mt-0.5 font-mono text-xs text-muted-foreground">
+                              #{msg.sortOrder}
+                            </span>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm whitespace-pre-wrap break-words">
+                                {msg.content}
+                              </p>
+                              {!msg.enabled && (
+                                <EnabledBadge
+                                  enabled={false}
+                                  className="mt-1"
+                                />
+                              )}
+                              {msg.followups.length > 0 && (
+                                <div className="mt-2 space-y-1 border-l-2 border-border/60 pl-3">
+                                  {msg.followups.map((f) => (
+                                    <div
+                                      key={f.id}
+                                      className="flex items-start gap-2 text-xs"
+                                    >
+                                      <ArrowDown className="mt-0.5 size-3 shrink-0 text-muted-foreground" />
+                                      <div className="min-w-0 flex-1">
+                                        <span className="text-muted-foreground">
+                                          +{f.delaySeconds}s:
+                                        </span>{" "}
+                                        <span className="whitespace-pre-wrap break-words">
+                                          {f.content}
+                                        </span>
+                                        {!f.enabled && (
+                                          <EnabledBadge
+                                            enabled={false}
+                                            className="ml-2 text-[10px]"
+                                          />
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex gap-1 shrink-0">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="size-8 p-0"
+                                onClick={() =>
+                                  setMessageTarget({
+                                    configId: config.id,
+                                    message: msg,
+                                  })
+                                }
+                              >
+                                <Pencil className="size-3.5" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="size-8 p-0 text-destructive hover:text-destructive"
+                                onClick={() => setDeleteMessageId(msg.id)}
+                              >
+                                <Trash2 className="size-3.5" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       <UpsertConfigDialog
-        key={configDialog.config?.id ?? "new"}
-        open={configDialog.open}
-        onClose={() => setConfigDialog({ open: false, config: null })}
-        config={configDialog.config}
+        open={configTarget !== null}
+        onClose={() => setConfigTarget(null)}
+        config={configTarget?.config}
         channels={channels}
       />
 
       <MessageDialog
-        key={messageDialog.message?.id ?? `new-${messageDialog.configId}`}
-        open={messageDialog.open}
-        onClose={() =>
-          setMessageDialog({ open: false, configId: 0, message: null })
-        }
-        configId={messageDialog.configId}
-        message={messageDialog.message}
+        open={messageTarget !== null}
+        onClose={() => setMessageTarget(null)}
+        configId={messageTarget?.configId ?? 0}
+        message={messageTarget?.message}
       />
 
       <ConfirmDialog
@@ -357,6 +337,6 @@ export function AutoMessages() {
             : undefined
         }
       />
-    </div>
+    </AdminPage>
   );
 }

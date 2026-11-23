@@ -4,8 +4,8 @@ import {
   CollapsibleContent,
 } from "@/components/ui/collapsible";
 import { Paginator } from "@/components/paginator";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { TabSectionHeader } from "@/features/admin/players/components/TabSectionHeader";
 import { FileText } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { usePagedQuery } from "@/hooks/use-paged-query";
@@ -50,23 +50,12 @@ export function AuditTab({ playerId }: AuditTabProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold">Admin Action History</h3>
-          <p className="text-sm text-muted-foreground">
-            {audit.total.toLocaleString()} total actions
-          </p>
-        </div>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={audit.retry}
-          loading={audit.loading}
-        >
-          <FileText className="size-4" />
-          Refresh
-        </Button>
-      </div>
+      <TabSectionHeader
+        title="Admin Action History"
+        description={`${audit.total.toLocaleString()} total actions`}
+        onRefresh={audit.retry}
+        refreshing={audit.loading}
+      />
 
       {audit.query.isLoading ? (
         <LoadingState text="Loading audit log..." />

@@ -7,7 +7,8 @@ import {
   type LauncherPlatform,
   type LauncherReleaseStatus,
 } from "@createrington/shared/launcher";
-import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
+import { AdminPage } from "@/features/admin/components/AdminPage";
+import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { FilterBar } from "@/features/admin/components/FilterBar";
 import { EmptyState, ErrorState } from "@/components/query-states";
 import {
@@ -447,114 +448,109 @@ export function OwnerLauncherReleases() {
   const copy = action ? CONFIRM_COPY[action.kind] : null;
 
   return (
-    <div className="flex flex-1 flex-col gap-4">
-      <AdminPageHeader
-        trail={[
-          { label: "Home", href: "/" },
-          { label: "Owner" },
-          { label: "Launcher releases" },
-        ]}
-      />
-
-      <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
-        <FilterBar
-          search={search}
-          onSearchChange={setSearch}
-          placeholder={LIST_COPY.search}
-          activeCount={(search ? 1 : 0) + (status !== "all" ? 1 : 0)}
+    <AdminPage
+      trail={[
+        { label: "Home", href: "/" },
+        { label: "Owner" },
+        { label: "Launcher releases" },
+      ]}
+    >
+      <AdminPageTitle title="Launcher releases" />
+      <FilterBar
+        search={search}
+        onSearchChange={setSearch}
+        placeholder={LIST_COPY.search}
+        activeCount={(search ? 1 : 0) + (status !== "all" ? 1 : 0)}
+      >
+        <Select
+          value={status}
+          onValueChange={(value) => setStatus(value as StatusFilter)}
         >
-          <Select
-            value={status}
-            onValueChange={(value) => setStatus(value as StatusFilter)}
-          >
-            <SelectTrigger className="min-w-[160px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {STATUS_FILTERS.map(({ value, label }) => (
-                <SelectItem key={value} value={value}>
-                  {label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </FilterBar>
+          <SelectTrigger className="min-w-[160px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {STATUS_FILTERS.map(({ value, label }) => (
+              <SelectItem key={value} value={value}>
+                {label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </FilterBar>
 
-        <Card className="gap-0">
-          <CardHeader className="pb-6">
-            <CardTitle>
-              Launcher releases
-              {channel && ` (${CHANNEL_LABELS[channel]})`}
-            </CardTitle>
-            <CardDescription>
-              {enabled
-                ? "A published version stays pending until you release it. Download a pending build to test it first."
-                : "Publishing is switched off on this environment."}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="p-0">
-            {releasesQuery.isError ? (
-              <ErrorState
-                message={`Failed to load launcher releases: ${releasesQuery.error.message}`}
-                onRetry={releases.retry}
-                compact
-              />
-            ) : (
-              <Tabs
-                value={platform}
-                onValueChange={(value) =>
-                  setPlatform(value as LauncherPlatform)
-                }
-              >
-                <TabsList className="mx-6">
-                  {tabs.map(({ value, label, icon: Icon }) => (
-                    <TabsTrigger key={value} value={value}>
-                      <Icon aria-hidden />
-                      {label}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
-                <TabsContent value={platform}>
-                  {!releases.loading && releases.total === 0 ? (
-                    <EmptyState
-                      icon={Rocket}
-                      message={(filtered ? LIST_COPY.noMatch : LIST_COPY.empty)(
-                        launcherPlatformLabel(platform),
-                      )}
-                      className="py-8"
-                    />
-                  ) : (
-                    <DataTable
-                      columns={columns}
-                      rows={releases.rows}
-                      loading={releases.loading}
-                      loadingRows={releases.loadingRows}
-                      rowKey={(release) => release.id}
-                      actions={rowActions}
-                      actionSlots={2}
-                    />
-                  )}
-                </TabsContent>
-              </Tabs>
-            )}
-          </CardContent>
-          {releases.total > 0 && !releasesQuery.isError && (
-            <CardFooter className="border-t">
-              <Paginator
-                page={releases.page}
-                limit={releases.limit}
-                total={releases.total}
-                totalPages={releases.totalPages}
-                onPageChange={releases.setPage}
-                itemLabel="release"
-                className="w-full"
-              />
-            </CardFooter>
+      <Card className="gap-0">
+        <CardHeader className="pb-6">
+          <CardTitle>
+            Launcher releases
+            {channel && ` (${CHANNEL_LABELS[channel]})`}
+          </CardTitle>
+          <CardDescription>
+            {enabled
+              ? "A published version stays pending until you release it. Download a pending build to test it first."
+              : "Publishing is switched off on this environment."}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-0">
+          {releasesQuery.isError ? (
+            <ErrorState
+              message={`Failed to load launcher releases: ${releasesQuery.error.message}`}
+              onRetry={releases.retry}
+              compact
+            />
+          ) : (
+            <Tabs
+              value={platform}
+              onValueChange={(value) => setPlatform(value as LauncherPlatform)}
+            >
+              <TabsList className="mx-6">
+                {tabs.map(({ value, label, icon: Icon }) => (
+                  <TabsTrigger key={value} value={value}>
+                    <Icon aria-hidden />
+                    {label}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+              <TabsContent value={platform}>
+                {!releases.loading && releases.total === 0 ? (
+                  <EmptyState
+                    icon={Rocket}
+                    message={(filtered ? LIST_COPY.noMatch : LIST_COPY.empty)(
+                      launcherPlatformLabel(platform),
+                    )}
+                    className="py-8"
+                  />
+                ) : (
+                  <DataTable
+                    columns={columns}
+                    rows={releases.rows}
+                    loading={releases.loading}
+                    loadingRows={releases.loadingRows}
+                    rowKey={(release) => release.id}
+                    actions={rowActions}
+                    actionSlots={2}
+                  />
+                )}
+              </TabsContent>
+            </Tabs>
           )}
-        </Card>
+        </CardContent>
+        {releases.total > 0 && !releasesQuery.isError && (
+          <CardFooter className="border-t">
+            <Paginator
+              page={releases.page}
+              limit={releases.limit}
+              total={releases.total}
+              totalPages={releases.totalPages}
+              onPageChange={releases.setPage}
+              itemLabel="release"
+              className="w-full"
+            />
+          </CardFooter>
+        )}
+      </Card>
 
-        <ContentGatewayCard />
-      </div>
+      <ContentGatewayCard />
 
       <ConfirmDialog
         open={action !== null}
@@ -596,7 +592,7 @@ export function OwnerLauncherReleases() {
           </div>
         )}
       </ConfirmDialog>
-    </div>
+    </AdminPage>
   );
 }
 

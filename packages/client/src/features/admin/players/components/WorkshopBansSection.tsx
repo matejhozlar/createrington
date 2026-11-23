@@ -4,8 +4,9 @@ import { Badge } from "@/components/ui/badge";
 import { Clock, Globe, MessageSquareOff } from "lucide-react";
 import { ErrorState, LoadingState } from "@/components/query-states";
 import { trpc, type RouterOutput } from "@/lib/trpc";
-import { IssueWorkshopBanModal } from "./modals/IssueWorkshopBanModal";
-import { LiftWorkshopBanModal } from "./modals/LiftWorkshopBanModal";
+import { IssueWorkshopBanModal } from "@/features/admin/players/components/modals/IssueWorkshopBanModal";
+import { LiftWorkshopBanModal } from "@/features/admin/players/components/modals/LiftWorkshopBanModal";
+import { TabSectionHeader } from "@/features/admin/players/components/TabSectionHeader";
 import { useQuery } from "@tanstack/react-query";
 import { formatDate } from "@createrington/shared/format";
 
@@ -42,19 +43,20 @@ export function WorkshopBansSection({
 
   return (
     <div className="flex flex-col gap-3 border-t border-border pt-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold">Workshop Suggestions</h3>
-          <p className="text-sm text-muted-foreground">
-            Blocks new mod suggestions only — Minecraft access, Discord
-            membership, upvotes and existing suggestions are untouched.
-          </p>
-        </div>
-        <Button size="sm" variant="outline" onClick={() => setIssueOpen(true)}>
-          <MessageSquareOff className="size-4" />
-          Block Suggestions
-        </Button>
-      </div>
+      <TabSectionHeader
+        title="Workshop Suggestions"
+        description="Blocks new mod suggestions only — Minecraft access, Discord membership, upvotes and existing suggestions are untouched."
+        actions={
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setIssueOpen(true)}
+          >
+            <MessageSquareOff className="size-4" />
+            Block Suggestions
+          </Button>
+        }
+      />
 
       {bans.isLoading ? (
         <LoadingState
@@ -161,13 +163,10 @@ export function WorkshopBansSection({
         playerUsername={playerUsername}
       />
 
-      {liftBanId !== null && (
-        <LiftWorkshopBanModal
-          open
-          onClose={() => setLiftBanId(null)}
-          banId={liftBanId}
-        />
-      )}
+      <LiftWorkshopBanModal
+        banId={liftBanId}
+        onClose={() => setLiftBanId(null)}
+      />
     </div>
   );
 }

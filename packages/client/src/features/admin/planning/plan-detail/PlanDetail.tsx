@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
+import { AdminPage } from "@/features/admin/components/AdminPage";
 import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { formatRelativeDate } from "@/lib/format";
@@ -26,13 +26,16 @@ import {
   PLANNING_ITEM_STATUSES,
   type PlanningItemStatus,
 } from "@createrington/shared/planning";
-import { AssigneePicker } from "../components/AssigneePicker";
-import { CategoryBadges, StatusBadge } from "../components/PlanBadges";
-import { PlanFormDialog } from "../components/PlanFormDialog";
-import { PlanMarkdown } from "../components/PlanMarkdown";
-import { SourceLink } from "../components/SourceLink";
-import { STATUS_CONFIG } from "../constants";
-import { personName, subcategoryName } from "../format";
+import { AssigneePicker } from "@/features/admin/planning/components/AssigneePicker";
+import {
+  CategoryBadges,
+  StatusBadge,
+} from "@/features/admin/planning/components/PlanBadges";
+import { PlanFormDialog } from "@/features/admin/planning/components/PlanFormDialog";
+import { PlanMarkdown } from "@/features/admin/planning/components/PlanMarkdown";
+import { SourceLink } from "@/features/admin/planning/components/SourceLink";
+import { STATUS_CONFIG } from "@/features/admin/planning/constants";
+import { personName, subcategoryName } from "@/features/admin/planning/format";
 import { PlanComments } from "./components/PlanComments";
 import { PlanHistory } from "./components/PlanHistory";
 
@@ -115,157 +118,151 @@ export function PlanDetail() {
   const subcategories = subcategoriesQuery.data?.subcategories ?? [];
 
   return (
-    <div className="flex flex-1 flex-col gap-4">
-      <AdminPageHeader
-        trail={[
-          { label: "Admin", href: "/admin/dashboard" },
-          { label: "Planning", href: PLANNING_PATH },
-          { label: item.title },
-        ]}
+    <AdminPage
+      trail={[
+        { label: "Admin", href: "/admin/dashboard" },
+        { label: "Planning", href: PLANNING_PATH },
+        { label: item.title },
+      ]}
+    >
+      <AdminPageTitle
+        title={item.title}
+        badges={
+          <>
+            <StatusBadge status={item.status} />
+            <CategoryBadges
+              category={item.category}
+              subcategory={subcategoryName(subcategories, item.subcategoryId)}
+            />
+          </>
+        }
+        description={
+          <>
+            <p className="text-xs">
+              Added by{" "}
+              <span className="font-medium">{personName(item.createdBy)}</span>{" "}
+              {formatRelativeDate(item.createdAt)}, last edited by{" "}
+              <span className="font-medium">{personName(item.updatedBy)}</span>{" "}
+              {formatRelativeDate(item.updatedAt)}
+            </p>
+            {item.sourceUrl && (
+              <SourceLink
+                url={item.sourceUrl}
+                label="Captured from Discord"
+                className="-ml-2"
+              />
+            )}
+          </>
+        }
+        actions={
+          <>
+            <Select
+              value={item.status}
+              disabled={changeStatus.isPending}
+              onValueChange={(value) =>
+                changeStatus.mutate({
+                  id: item.id,
+                  revision: item.revision,
+                  status: value as PlanningItemStatus,
+                })
+              }
+            >
+              <SelectTrigger className="w-full xs:w-36" aria-label="Status">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PLANNING_ITEM_STATUSES.map((value) => (
+                  <SelectItem key={value} value={value}>
+                    {STATUS_CONFIG[value].label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button variant="outline" onClick={() => setEditing(true)}>
+              <Pencil className="mr-2 size-4" />
+              Edit
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              className="size-9"
+              aria-label="Delete plan"
+              onClick={() => setConfirmingDelete(true)}
+            >
+              <Trash2 className="size-4" />
+            </Button>
+          </>
+        }
       />
 
-      <div className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-4 px-4 pb-4">
-        <AdminPageTitle
-          title={item.title}
-          badges={
-            <>
-              <StatusBadge status={item.status} />
-              <CategoryBadges
-                category={item.category}
-                subcategory={subcategoryName(subcategories, item.subcategoryId)}
-              />
-            </>
-          }
-          description={
-            <>
-              <p className="text-xs">
-                Added by{" "}
-                <span className="font-medium">
-                  {personName(item.createdBy)}
-                </span>{" "}
-                {formatRelativeDate(item.createdAt)}, last edited by{" "}
-                <span className="font-medium">
-                  {personName(item.updatedBy)}
-                </span>{" "}
-                {formatRelativeDate(item.updatedAt)}
-              </p>
-              {item.sourceUrl && (
-                <SourceLink
-                  url={item.sourceUrl}
-                  label="Captured from Discord"
-                  className="-ml-2"
-                />
+      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
+        <div className="flex min-w-0 flex-col gap-4">
+          <Card className="gap-2">
+            <CardHeader>
+              <CardTitle className="text-base">Description</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {item.body ? (
+                <PlanMarkdown text={item.body} />
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  No description yet.
+                </p>
               )}
-            </>
-          }
-          actions={
-            <>
-              <Select
-                value={item.status}
-                disabled={changeStatus.isPending}
-                onValueChange={(value) =>
-                  changeStatus.mutate({
-                    id: item.id,
-                    revision: item.revision,
-                    status: value as PlanningItemStatus,
-                  })
+            </CardContent>
+          </Card>
+
+          <Card className="gap-2">
+            <CardHeader>
+              <CardTitle className="text-base">
+                Comments ({comments.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <PlanComments itemId={item.id} comments={comments} />
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="flex min-w-0 flex-col gap-4">
+          <Card className="gap-2">
+            <CardHeader>
+              <CardTitle className="text-base">Assigned to</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <AssigneePicker
+                value={item.assignees.map((assignee) => assignee.discordId)}
+                onChange={(discordIds) =>
+                  setAssignees.mutate({ id: item.id, discordIds })
                 }
-              >
-                <SelectTrigger className="w-full xs:w-36" aria-label="Status">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {PLANNING_ITEM_STATUSES.map((value) => (
-                    <SelectItem key={value} value={value}>
-                      {STATUS_CONFIG[value].label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button variant="outline" onClick={() => setEditing(true)}>
-                <Pencil className="mr-2 size-4" />
-                Edit
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                className="size-9"
-                aria-label="Delete plan"
-                onClick={() => setConfirmingDelete(true)}
-              >
-                <Trash2 className="size-4" />
-              </Button>
-            </>
-          }
-        />
+                disabled={setAssignees.isPending}
+              />
+            </CardContent>
+          </Card>
 
-        <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
-          <div className="flex min-w-0 flex-col gap-4">
-            <Card className="gap-2">
-              <CardHeader>
-                <CardTitle className="text-base">Description</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {item.body ? (
-                  <PlanMarkdown text={item.body} />
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    No description yet.
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card className="gap-2">
-              <CardHeader>
-                <CardTitle className="text-base">
-                  Comments ({comments.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <PlanComments itemId={item.id} comments={comments} />
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="flex min-w-0 flex-col gap-4">
-            <Card className="gap-2">
-              <CardHeader>
-                <CardTitle className="text-base">Assigned to</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <AssigneePicker
-                  value={item.assignees.map((assignee) => assignee.discordId)}
-                  onChange={(discordIds) =>
-                    setAssignees.mutate({ id: item.id, discordIds })
-                  }
-                  disabled={setAssignees.isPending}
-                />
-              </CardContent>
-            </Card>
-
-            <Card className="gap-2">
-              <CardHeader>
-                <CardTitle className="text-base">
-                  History ({revisions.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <PlanHistory
-                  itemId={item.id}
-                  currentRevision={item.revision}
-                  revisions={revisions}
-                  subcategories={subcategories}
-                />
-              </CardContent>
-            </Card>
-          </div>
+          <Card className="gap-2">
+            <CardHeader>
+              <CardTitle className="text-base">
+                History ({revisions.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <PlanHistory
+                itemId={item.id}
+                currentRevision={item.revision}
+                revisions={revisions}
+                subcategories={subcategories}
+              />
+            </CardContent>
+          </Card>
         </div>
       </div>
 
-      {editing && (
-        <PlanFormDialog open onClose={() => setEditing(false)} item={item} />
-      )}
+      <PlanFormDialog
+        open={editing}
+        onClose={() => setEditing(false)}
+        item={item}
+      />
 
       <ConfirmDialog
         open={confirmingDelete}
@@ -281,6 +278,6 @@ export function PlanDetail() {
         variant="destructive"
         onConfirm={() => deleteItem.mutateAsync({ id: item.id })}
       />
-    </div>
+    </AdminPage>
   );
 }

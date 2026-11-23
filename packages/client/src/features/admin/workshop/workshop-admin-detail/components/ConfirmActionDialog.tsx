@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -7,6 +6,7 @@ import {
   WORKSHOP_MOD_REVIEW_ACTION_LABELS,
   type WorkshopModReviewAction,
 } from "@createrington/shared/workshop";
+import { useDialogDraft } from "@/hooks/use-dialog-draft";
 
 type ConfirmReviewAction = Exclude<WorkshopModReviewAction, "reject">;
 
@@ -100,7 +100,11 @@ export function ConfirmActionDialog({
   onOpenChange: (open: boolean) => void;
   onConfirm: (target: ConfirmActionTarget, skipSession: boolean) => void;
 }) {
-  const [dontAskAgain, setDontAskAgain] = useState(false);
+  const [draft, update] = useDialogDraft<{ dontAskAgain: boolean }>(
+    target !== null,
+    () => ({ dontAskAgain: false }),
+  );
+  const { dontAskAgain } = draft;
   const copy = target ? copyFor(target) : null;
 
   return (
@@ -119,7 +123,9 @@ export function ConfirmActionDialog({
         <Checkbox
           id="confirm-action-skip"
           checked={dontAskAgain}
-          onCheckedChange={(checked) => setDontAskAgain(checked === true)}
+          onCheckedChange={(checked) =>
+            update({ dontAskAgain: checked === true })
+          }
         />
         <Label
           htmlFor="confirm-action-skip"

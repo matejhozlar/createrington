@@ -1,11 +1,9 @@
-import { useState } from "react";
 import { useNavigate } from "react-router";
 import { trpc, queryClient } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { FormDialog } from "@/components/form-dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -14,8 +12,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { LOADER_NAMES } from "@/features/workshop/format";
-import { workshopFormError } from "../validation";
+import { workshopFormError } from "@/features/admin/workshop/validation";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useDialogDraft } from "@/hooks/use-dialog-draft";
+import { Field, FieldLabel } from "@/components/ui/field";
 
 export function CreateWorkshopDialog({
   open,
@@ -27,16 +27,41 @@ export function CreateWorkshopDialog({
   const navigate = useNavigate();
   const toast = useToastActions();
 
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [gameVersion, setGameVersion] = useState("");
-  const [loaderType, setLoaderType] = useState("6");
-  const [maxMods, setMaxMods] = useState("5");
-  const [maxUpvotes, setMaxUpvotes] = useState("5");
-  const [forumChannelId, setForumChannelId] = useState("");
-  const [basePackId, setBasePackId] = useState("");
-  const [modpackSel, setModpackSel] = useState("new");
-  const [modpackName, setModpackName] = useState("");
+  const [draft, update] = useDialogDraft<{
+    name: string;
+    description: string;
+    gameVersion: string;
+    loaderType: string;
+    maxMods: string;
+    maxUpvotes: string;
+    forumChannelId: string;
+    basePackId: string;
+    modpackSel: string;
+    modpackName: string;
+  }>(open, () => ({
+    name: "",
+    description: "",
+    gameVersion: "",
+    loaderType: "6",
+    maxMods: "5",
+    maxUpvotes: "5",
+    forumChannelId: "",
+    basePackId: "",
+    modpackSel: "new",
+    modpackName: "",
+  }));
+  const {
+    name,
+    description,
+    gameVersion,
+    loaderType,
+    maxMods,
+    maxUpvotes,
+    forumChannelId,
+    basePackId,
+    modpackSel,
+    modpackName,
+  } = draft;
 
   const modpacksQuery = useQuery(
     trpc.admin.modpacks.list.queryOptions(undefined, {
@@ -108,30 +133,33 @@ export function CreateWorkshopDialog({
       loading={createMutation.isPending}
       contentClassName="sm:max-w-lg"
     >
-      <div className="space-y-2">
-        <Label htmlFor="workshop-name">Name</Label>
+      <Field>
+        <FieldLabel htmlFor="workshop-name">Name</FieldLabel>
         <Input
           id="workshop-name"
           placeholder="Createrington Season 3 Modpack"
           maxLength={120}
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={(e) => update({ name: e.target.value })}
         />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="workshop-desc">Description</Label>
+      </Field>
+      <Field>
+        <FieldLabel htmlFor="workshop-desc">Description</FieldLabel>
         <Input
           id="workshop-desc"
           placeholder="What is this workshop about?"
           maxLength={2000}
           value={description}
-          onChange={(e) => setDescription(e.target.value)}
+          onChange={(e) => update({ description: e.target.value })}
         />
-      </div>
-      <div className="space-y-2">
-        <Label>Modpack</Label>
-        <Select value={modpackSel} onValueChange={setModpackSel}>
-          <SelectTrigger>
+      </Field>
+      <Field>
+        <FieldLabel htmlFor="workshop-modpack">Modpack</FieldLabel>
+        <Select
+          value={modpackSel}
+          onValueChange={(value: string) => update({ modpackSel: value })}
+        >
+          <SelectTrigger id="workshop-modpack">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -143,34 +171,34 @@ export function CreateWorkshopDialog({
             ))}
           </SelectContent>
         </Select>
-      </div>
+      </Field>
       {modpackSel === "new" && (
-        <div className="space-y-2">
-          <Label htmlFor="workshop-modpack-name">Modpack Name</Label>
+        <Field>
+          <FieldLabel htmlFor="workshop-modpack-name">Modpack Name</FieldLabel>
           <Input
             id="workshop-modpack-name"
             placeholder="Createrington Season 3"
             maxLength={120}
             value={modpackName}
-            onChange={(e) => setModpackName(e.target.value)}
+            onChange={(e) => update({ modpackName: e.target.value })}
           />
-        </div>
+        </Field>
       )}
       <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="workshop-version">Game Version</Label>
+        <Field>
+          <FieldLabel htmlFor="workshop-version">Game Version</FieldLabel>
           {versionsQuery.error || versionsQuery.data?.length === 0 ? (
             <Input
               id="workshop-version"
               placeholder="1.21.1"
               maxLength={20}
               value={gameVersion}
-              onChange={(e) => setGameVersion(e.target.value)}
+              onChange={(e) => update({ gameVersion: e.target.value })}
             />
           ) : (
             <Select
               value={gameVersion}
-              onValueChange={setGameVersion}
+              onValueChange={(value: string) => update({ gameVersion: value })}
               disabled={versionsQuery.isLoading}
             >
               <SelectTrigger id="workshop-version">
@@ -189,11 +217,14 @@ export function CreateWorkshopDialog({
               </SelectContent>
             </Select>
           )}
-        </div>
-        <div className="space-y-2">
-          <Label>Mod Loader</Label>
-          <Select value={loaderType} onValueChange={setLoaderType}>
-            <SelectTrigger>
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="workshop-loader">Mod Loader</FieldLabel>
+          <Select
+            value={loaderType}
+            onValueChange={(value: string) => update({ loaderType: value })}
+          >
+            <SelectTrigger id="workshop-loader">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -204,53 +235,57 @@ export function CreateWorkshopDialog({
               ))}
             </SelectContent>
           </Select>
-        </div>
+        </Field>
       </div>
       <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="workshop-max">Suggestions per Player</Label>
+        <Field>
+          <FieldLabel htmlFor="workshop-max">Suggestions per Player</FieldLabel>
           <Input
             id="workshop-max"
             type="number"
             min={1}
             max={25}
             value={maxMods}
-            onChange={(e) => setMaxMods(e.target.value)}
+            onChange={(e) => update({ maxMods: e.target.value })}
           />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="workshop-max-upvotes">Upvotes per Player</Label>
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="workshop-max-upvotes">
+            Upvotes per Player
+          </FieldLabel>
           <Input
             id="workshop-max-upvotes"
             type="number"
             min={1}
             max={100}
             value={maxUpvotes}
-            onChange={(e) => setMaxUpvotes(e.target.value)}
+            onChange={(e) => update({ maxUpvotes: e.target.value })}
           />
-        </div>
+        </Field>
       </div>
-      <div className="space-y-2">
-        <Label htmlFor="workshop-basepack">Base Modpack ID (Optional)</Label>
+      <Field>
+        <FieldLabel htmlFor="workshop-basepack">
+          Base Modpack ID (Optional)
+        </FieldLabel>
         <Input
           id="workshop-basepack"
           type="number"
           placeholder="Leave empty for a fresh workshop"
           value={basePackId}
-          onChange={(e) => setBasePackId(e.target.value)}
+          onChange={(e) => update({ basePackId: e.target.value })}
         />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="workshop-forum">
+      </Field>
+      <Field>
+        <FieldLabel htmlFor="workshop-forum">
           Discord Forum Channel ID (Optional)
-        </Label>
+        </FieldLabel>
         <Input
           id="workshop-forum"
           placeholder="Forum for per-suggestion discussion threads"
           value={forumChannelId}
-          onChange={(e) => setForumChannelId(e.target.value)}
+          onChange={(e) => update({ forumChannelId: e.target.value })}
         />
-      </div>
+      </Field>
     </FormDialog>
   );
 }

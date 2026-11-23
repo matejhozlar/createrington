@@ -16,12 +16,12 @@ import {
   type DataTableColumn,
 } from "@/components/data-table";
 import { LabeledSwitch } from "@/components/labeled-switch";
-import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
+import { AdminPage } from "@/features/admin/components/AdminPage";
 import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { WORKSHOP_STATUS_STYLES, loaderName } from "@/features/workshop/format";
-import { CreateWorkshopDialog } from "./components/CreateWorkshopDialog";
+import { CreateWorkshopDialog } from "@/features/admin/workshop/components/CreateWorkshopDialog";
 import { ModpacksCard } from "./components/ModpacksCard";
-import { WorkshopSettingsDialog } from "./workshop-admin-detail/components/WorkshopSettingsDialog";
+import { WorkshopSettingsDialog } from "@/features/admin/workshop/workshop-admin-detail/components/WorkshopSettingsDialog";
 import { useQuery, useMutation } from "@tanstack/react-query";
 
 type AdminWorkshopRow = RouterOutput["admin"]["workshops"]["list"][number];
@@ -72,11 +72,9 @@ export function AdminWorkshop() {
   );
 
   const [createOpen, setCreateOpen] = useState(false);
-  const [createKey, setCreateKey] = useState(0);
   const [settingsTarget, setSettingsTarget] = useState<AdminWorkshopRow | null>(
     null,
   );
-  const [settingsKey, setSettingsKey] = useState(0);
   const [deleteTarget, setDeleteTarget] = useState<AdminWorkshopRow | null>(
     null,
   );
@@ -97,16 +95,6 @@ export function AdminWorkshop() {
       }),
     ),
   );
-
-  const openCreate = () => {
-    setCreateKey((key) => key + 1);
-    setCreateOpen(true);
-  };
-
-  const openSettings = (workshop: AdminWorkshopRow) => {
-    setSettingsKey((key) => key + 1);
-    setSettingsTarget(workshop);
-  };
 
   const workshops = workshopsQuery.data ?? [];
 
@@ -162,108 +150,98 @@ export function AdminWorkshop() {
   ];
 
   return (
-    <div className="flex flex-1 flex-col gap-4">
-      <AdminPageHeader
-        trail={[
-          { label: "Admin", href: "/admin/dashboard" },
-          { label: "Tools", href: "/admin/tools" },
-          { label: "Workshop" },
-        ]}
-      />
-
-      <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
-        <AdminPageTitle
-          title="Workshop"
-          actions={
-            <>
-              {FLAGS.map((flag) => (
-                <LabeledSwitch
-                  key={flag.name}
-                  id={flag.id}
-                  label={flag.label}
-                  checked={flagEnabled(flag.name)}
-                  disabled={
-                    flagsQuery.isLoading ||
-                    !!flagsQuery.error ||
-                    setFlagMutation.isPending
-                  }
-                  onCheckedChange={(checked) =>
-                    setFlagMutation.mutate({
-                      name: flag.name,
-                      enabled: checked,
-                      description: flag.description,
-                    })
-                  }
-                />
-              ))}
-              <Button onClick={openCreate}>
-                <Plus className="mr-2 size-4" />
-                New Workshop
-              </Button>
-            </>
-          }
-        />
-
-        <Card className="gap-0">
-          <CardHeader className="gap-0 border-b">
-            <CardTitle>
-              Workshops ({workshops.length.toLocaleString()})
-            </CardTitle>
-          </CardHeader>
-
-          {workshopsQuery.error ? (
-            <ErrorState
-              message={workshopsQuery.error.message}
-              onRetry={() => workshopsQuery.refetch()}
-            />
-          ) : !workshopsQuery.isLoading && workshops.length === 0 ? (
-            <EmptyState icon={Hammer} message="No workshops yet">
-              <Button onClick={openCreate}>
-                <Plus className="mr-2 size-4" />
-                Create First Workshop
-              </Button>
-            </EmptyState>
-          ) : (
-            <CardContent className="px-0">
-              <DataTable
-                columns={columns}
-                rows={workshops}
-                loading={workshopsQuery.isLoading}
-                rowKey={(workshop) => workshop.id}
-                onRowClick={(workshop) =>
-                  navigate(`/admin/tools/workshop/${workshop.slug}`)
+    <AdminPage
+      trail={[
+        { label: "Admin", href: "/admin/dashboard" },
+        { label: "Tools", href: "/admin/tools" },
+        { label: "Workshop" },
+      ]}
+    >
+      <AdminPageTitle
+        title="Workshop"
+        actions={
+          <>
+            {FLAGS.map((flag) => (
+              <LabeledSwitch
+                key={flag.name}
+                id={flag.id}
+                label={flag.label}
+                checked={flagEnabled(flag.name)}
+                disabled={
+                  flagsQuery.isLoading ||
+                  !!flagsQuery.error ||
+                  setFlagMutation.isPending
                 }
-                actions={(workshop) => [
-                  {
-                    label: "Edit",
-                    icon: Pencil,
-                    onClick: () => openSettings(workshop),
-                  },
-                  {
-                    label:
-                      workshop.status === "archived"
-                        ? "Delete"
-                        : "Only archived workshops can be deleted",
-                    icon: Trash2,
-                    variant: "destructive",
-                    disabled: workshop.status !== "archived",
-                    onClick: () => setDeleteTarget(workshop),
-                  },
-                ]}
-                actionSlots={2}
+                onCheckedChange={(checked) =>
+                  setFlagMutation.mutate({
+                    name: flag.name,
+                    enabled: checked,
+                    description: flag.description,
+                  })
+                }
               />
-            </CardContent>
-          )}
-        </Card>
-
-        <ModpacksCard />
-      </div>
-
-      <CreateWorkshopDialog
-        key={createKey}
-        open={createOpen}
-        onOpenChange={setCreateOpen}
+            ))}
+            <Button onClick={() => setCreateOpen(true)}>
+              <Plus className="mr-2 size-4" />
+              New Workshop
+            </Button>
+          </>
+        }
       />
+
+      <Card className="gap-0">
+        <CardHeader className="gap-0 border-b">
+          <CardTitle>Workshops ({workshops.length.toLocaleString()})</CardTitle>
+        </CardHeader>
+
+        {workshopsQuery.error ? (
+          <ErrorState
+            message={workshopsQuery.error.message}
+            onRetry={() => workshopsQuery.refetch()}
+          />
+        ) : !workshopsQuery.isLoading && workshops.length === 0 ? (
+          <EmptyState icon={Hammer} message="No workshops yet">
+            <Button onClick={() => setCreateOpen(true)}>
+              <Plus className="mr-2 size-4" />
+              Create First Workshop
+            </Button>
+          </EmptyState>
+        ) : (
+          <CardContent className="px-0">
+            <DataTable
+              columns={columns}
+              rows={workshops}
+              loading={workshopsQuery.isLoading}
+              rowKey={(workshop) => workshop.id}
+              onRowClick={(workshop) =>
+                navigate(`/admin/tools/workshop/${workshop.slug}`)
+              }
+              actions={(workshop) => [
+                {
+                  label: "Edit",
+                  icon: Pencil,
+                  onClick: () => setSettingsTarget(workshop),
+                },
+                {
+                  label:
+                    workshop.status === "archived"
+                      ? "Delete"
+                      : "Only archived workshops can be deleted",
+                  icon: Trash2,
+                  variant: "destructive",
+                  disabled: workshop.status !== "archived",
+                  onClick: () => setDeleteTarget(workshop),
+                },
+              ]}
+              actionSlots={2}
+            />
+          </CardContent>
+        )}
+      </Card>
+
+      <ModpacksCard />
+
+      <CreateWorkshopDialog open={createOpen} onOpenChange={setCreateOpen} />
 
       <ConfirmDialog
         open={deleteTarget !== null}
@@ -281,17 +259,14 @@ export function AdminWorkshop() {
         }
       />
 
-      {settingsTarget && (
-        <WorkshopSettingsDialog
-          key={`settings-${settingsKey}`}
-          open
-          onOpenChange={(open) => {
-            if (!open) setSettingsTarget(null);
-          }}
-          workshop={settingsTarget}
-          hasMods={settingsTarget.modCount > 0}
-        />
-      )}
-    </div>
+      <WorkshopSettingsDialog
+        open={settingsTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setSettingsTarget(null);
+        }}
+        workshop={settingsTarget}
+        hasMods={(settingsTarget?.modCount ?? 0) > 0}
+      />
+    </AdminPage>
   );
 }
