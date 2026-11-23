@@ -523,11 +523,8 @@ function PackRowV3({
 
         <div className="h-[3px] overflow-hidden rounded-full bg-white/5">
           <div
-            className="h-full rounded-full"
-            style={{
-              width: `${probability}%`,
-              background: "var(--blue-bright)",
-            }}
+            className="h-full rounded-full bg-blue-bright"
+            style={{ width: `${probability}%` }}
           />
         </div>
 
