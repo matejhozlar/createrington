@@ -9,6 +9,7 @@ import {
   LoadingState,
 } from "@/components/query-states";
 import { formatDate } from "@createrington/shared/format";
+import { TabSectionHeader } from "@/features/admin/players/components/TabSectionHeader";
 
 interface TicketsTabProps {
   playerId: string;
@@ -29,14 +30,10 @@ export function TicketsTab({ playerId }: TicketsTabProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold">Support Tickets</h3>
-          <p className="text-sm text-muted-foreground">
-            {paged.total.toLocaleString()} total
-          </p>
-        </div>
-      </div>
+      <TabSectionHeader
+        title="Support Tickets"
+        description={`${paged.total.toLocaleString()} total`}
+      />
 
       {paged.query.isLoading ? (
         <LoadingState text="Loading tickets..." />

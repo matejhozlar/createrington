@@ -8,15 +8,13 @@ type WaitlistEntry =
   RouterOutput["admin"]["waitlists"]["list"]["items"][number];
 
 interface PromoteWaitlistModalProps {
-  open: boolean;
+  entry: WaitlistEntry | null;
   onClose: () => void;
-  entry: WaitlistEntry;
 }
 
 export function PromoteWaitlistModal({
-  open,
-  onClose,
   entry,
+  onClose,
 }: PromoteWaitlistModalProps) {
   const toast = useToastActions();
   const promoteEntry = useMutation(
@@ -36,11 +34,12 @@ export function PromoteWaitlistModal({
     ),
   );
 
-  const handleSubmit = () => promoteEntry.mutateAsync({ id: entry.id });
+  const handleSubmit = () =>
+    entry ? promoteEntry.mutateAsync({ id: entry.id }) : undefined;
 
   return (
     <ConfirmDialog
-      open={open}
+      open={entry !== null}
       onOpenChange={(isOpen) => {
         if (!isOpen) onClose();
       }}
@@ -48,7 +47,7 @@ export function PromoteWaitlistModal({
       description={
         <>
           This will reserve a spot for{" "}
-          <span className="font-semibold">{entry.discordUsername}</span> and
+          <span className="font-semibold">{entry?.discordUsername}</span> and
           ping them in their verification channel so they can register
           immediately. If they don't register within 7 days, the spot passes to
           the next person in line.

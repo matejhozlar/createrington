@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router";
 import { FormDialog } from "@/components/form-dialog";
@@ -20,11 +19,12 @@ import {
   type PlanningCategory,
   type PlanningItemStatus,
 } from "@createrington/shared/planning";
-import { STATUS_CONFIG } from "../constants";
-import type { PlanningItemDetail } from "../types";
+import { STATUS_CONFIG } from "@/features/admin/planning/constants";
+import type { PlanningItemDetail } from "@/features/admin/planning/types";
 import { AssigneePicker } from "./AssigneePicker";
 import { CategoryFields } from "./CategoryFields";
 import { MarkdownField } from "./MarkdownField";
+import { useDialogDraft } from "@/hooks/use-dialog-draft";
 
 interface PlanFormDialogProps {
   open: boolean;
@@ -40,17 +40,32 @@ export function PlanFormDialog({
   defaultCategory = "modpack",
 }: PlanFormDialogProps) {
   const navigate = useNavigate();
-  const [title, setTitle] = useState(item?.title ?? "");
-  const [body, setBody] = useState(item?.body ?? "");
-  const [category, setCategory] = useState(item?.category ?? defaultCategory);
-  const [subcategoryId, setSubcategoryId] = useState(
-    item?.subcategoryId ?? null,
-  );
-  const [status, setStatus] = useState<PlanningItemStatus>(
-    item?.status ?? "draft",
-  );
-  const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
-  const [revision] = useState(item?.revision);
+  const [draft, update] = useDialogDraft<{
+    title: string;
+    body: string;
+    category: PlanningCategory;
+    subcategoryId: number | null;
+    status: PlanningItemStatus;
+    assigneeIds: string[];
+    revision: number | undefined;
+  }>(open, () => ({
+    title: item?.title ?? "",
+    body: item?.body ?? "",
+    category: item?.category ?? defaultCategory,
+    subcategoryId: item?.subcategoryId ?? null,
+    status: item?.status ?? "draft",
+    assigneeIds: [],
+    revision: item?.revision,
+  }));
+  const {
+    title,
+    body,
+    category,
+    subcategoryId,
+    status,
+    assigneeIds,
+    revision,
+  } = draft;
 
   const subcategoriesQuery = useQuery(
     trpc.admin.planning.subcategories.list.queryOptions(),
@@ -72,7 +87,7 @@ export function PlanFormDialog({
     ),
   );
 
-  const update = useMutation(
+  const updateItem = useMutation(
     trpc.admin.planning.items.update.mutationOptions(
       useMutationToast({
         success: "Plan saved",
@@ -87,7 +102,7 @@ export function PlanFormDialog({
 
   const submit = () => {
     if (item && revision !== undefined) {
-      update.mutate({
+      updateItem.mutate({
         id: item.id,
         revision,
         title,
@@ -113,7 +128,7 @@ export function PlanFormDialog({
       }
       onConfirm={submit}
       confirmLabel={item ? "Save Changes" : "Create Draft"}
-      loading={create.isPending || update.isPending}
+      loading={create.isPending || updateItem.isPending}
       disabled={!title.trim()}
       contentClassName="sm:max-w-2xl"
       asForm
@@ -123,7 +138,7 @@ export function PlanFormDialog({
         <Input
           id="plan-title"
           value={title}
-          onChange={(event) => setTitle(event.target.value)}
+          onChange={(event) => update({ title: event.target.value })}
           placeholder="e.g. Money has nothing worth buying"
           maxLength={PLANNING_TITLE_MAX_LENGTH}
         />
@@ -134,7 +149,9 @@ export function PlanFormDialog({
           <FieldLabel htmlFor="plan-status">Status</FieldLabel>
           <Select
             value={status}
-            onValueChange={(value) => setStatus(value as PlanningItemStatus)}
+            onValueChange={(value) =>
+              update({ status: value as PlanningItemStatus })
+            }
           >
             <SelectTrigger id="plan-status" className="w-full">
               <SelectValue />
@@ -156,8 +173,10 @@ export function PlanFormDialog({
         subcategoryId={subcategoryId}
         subcategories={subcategoriesQuery.data?.subcategories ?? []}
         onChange={(next) => {
-          setCategory(next.category);
-          setSubcategoryId(next.subcategoryId);
+          update({
+            category: next.category,
+            subcategoryId: next.subcategoryId,
+          });
         }}
       />
 
@@ -165,7 +184,7 @@ export function PlanFormDialog({
         id="plan-body"
         label="Description"
         value={body}
-        onChange={setBody}
+        onChange={(value: string) => update({ body: value })}
         rows={12}
         maxLength={PLANNING_TEXT_MAX_LENGTH}
         placeholder="What is the idea or the problem?"
@@ -174,7 +193,10 @@ export function PlanFormDialog({
       {!item && (
         <Field>
           <FieldLabel>Assigned to</FieldLabel>
-          <AssigneePicker value={assigneeIds} onChange={setAssigneeIds} />
+          <AssigneePicker
+            value={assigneeIds}
+            onChange={(value: string[]) => update({ assigneeIds: value })}
+          />
         </Field>
       )}
     </FormDialog>

@@ -1,5 +1,7 @@
 import { PresenceBadge } from "@/components/presence-badge";
 import { Server } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { cn } from "@/lib/utils";
 
 interface ServerHeaderProps {
@@ -24,11 +26,11 @@ export function ServerHeader({
       : "offline";
 
   return (
-    <div className="rounded-lg border border-border bg-card p-6">
+    <Card className="p-6">
       <div className="flex items-center gap-4">
         <div
           className={cn(
-            "flex size-14 items-center justify-center rounded-lg",
+            "flex size-14 shrink-0 items-center justify-center rounded-lg",
             isMaintenance
               ? "bg-amber-500/10"
               : isOnline
@@ -47,16 +49,18 @@ export function ServerHeader({
             )}
           />
         </div>
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold">{serverName}</h1>
-            <PresenceBadge status={presence} />
-          </div>
-          <p className="text-sm text-muted-foreground">
-            {ip}:{port}
-          </p>
+        <div className="min-w-0 flex-1">
+          <AdminPageTitle
+            title={serverName}
+            badges={<PresenceBadge status={presence} />}
+            description={
+              <p>
+                {ip}:{port}
+              </p>
+            }
+          />
         </div>
       </div>
-    </div>
+    </Card>
   );
 }

@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import { ArrowDown, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Field, FieldLabel, FieldDescription } from "@/components/ui/field";
@@ -15,6 +15,7 @@ import { useMentionResolver } from "@/features/admin/hooks/use-mention-resolver"
 import { DiscordMarkdown } from "@/features/admin/tools/embed-builder/components/DiscordMarkdown";
 import { useMutation } from "@tanstack/react-query";
 import { Textarea } from "@/components/ui/textarea";
+import { useDialogDraft } from "@/hooks/use-dialog-draft";
 
 type Message =
   RouterOutput["admin"]["autoMessages"]["configs"]["get"]["messages"][number];
@@ -64,34 +65,44 @@ export function MessageDialog({
 
   const mentionResolver = useMentionResolver();
   const contentRef = useRef<HTMLTextAreaElement>(null);
-  const [content, setContent] = useState(message?.content ?? "");
-  const [enabled, setEnabled] = useState(message?.enabled ?? true);
-  const [followups, setFollowups] = useState<FollowupDraft[]>(
-    message?.followups?.map((f) => ({
-      content: f.content,
-      delaySeconds: f.delaySeconds,
-      enabled: f.enabled,
-    })) ?? [],
-  );
+  const [draft, update] = useDialogDraft<{
+    content: string;
+    enabled: boolean;
+    followups: FollowupDraft[];
+  }>(open, () => ({
+    content: message?.content ?? "",
+    enabled: message?.enabled ?? true,
+    followups:
+      message?.followups?.map((f) => ({
+        content: f.content,
+        delaySeconds: f.delaySeconds,
+        enabled: f.enabled,
+      })) ?? [],
+  }));
+  const { content, enabled, followups } = draft;
 
   const isPending = createMutation.isPending || updateMutation.isPending;
 
   const addFollowup = () => {
     if (followups.length >= MAX_FOLLOWUPS) return;
-    setFollowups([
-      ...followups,
-      { content: "", delaySeconds: 5, enabled: true },
-    ]);
+    update({
+      followups: [
+        ...followups,
+        { content: "", delaySeconds: 5, enabled: true },
+      ],
+    });
   };
 
   const updateFollowup = (index: number, patch: Partial<FollowupDraft>) => {
-    setFollowups((prev) =>
-      prev.map((f, i) => (i === index ? { ...f, ...patch } : f)),
-    );
+    update((d) => ({
+      followups: d.followups.map((f, i) =>
+        i === index ? { ...f, ...patch } : f,
+      ),
+    }));
   };
 
   const removeFollowup = (index: number) => {
-    setFollowups((prev) => prev.filter((_, i) => i !== index));
+    update((d) => ({ followups: d.followups.filter((_, i) => i !== index) }));
   };
 
   const handleSubmit = () => {
@@ -157,7 +168,12 @@ export function MessageDialog({
           <FieldLabel htmlFor="msg-content">Message</FieldLabel>
           <InsertMenu
             onInsert={(mention) =>
-              insertAtCursor(contentRef.current, content, mention, setContent)
+              insertAtCursor(
+                contentRef.current,
+                content,
+                mention,
+                (value: string) => update({ content: value }),
+              )
             }
           />
         </div>
@@ -165,7 +181,7 @@ export function MessageDialog({
           ref={contentRef}
           id="msg-content"
           value={content}
-          onChange={(e) => setContent(e.target.value)}
+          onChange={(e) => update({ content: e.target.value })}
           placeholder="The message the bot will send..."
           rows={4}
           maxLength={2000}
@@ -190,7 +206,7 @@ export function MessageDialog({
       <label className="flex cursor-pointer items-center gap-2">
         <Checkbox
           checked={enabled}
-          onCheckedChange={(checked) => setEnabled(checked === true)}
+          onCheckedChange={(checked) => update({ enabled: checked === true })}
         />
         <span className="text-sm font-medium">Enabled</span>
       </label>

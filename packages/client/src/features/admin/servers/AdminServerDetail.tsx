@@ -6,12 +6,13 @@ import {
   ErrorState,
   LoadingState,
 } from "@/components/query-states";
-import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
+import { AdminPage } from "@/features/admin/components/AdminPage";
 import { trpc } from "@/lib/trpc";
 import { useServerData } from "@/contexts/server-data";
 import { ServerHeader } from "./components/ServerHeader";
 import { ServerStatsCards } from "./components/ServerStatsCards";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { Card } from "@/components/ui/card";
 import { ServerTabs, type ServerTabType } from "./components/ServerTabs";
 import { OverviewTab } from "./components/tabs/OverviewTab";
 import { SessionsTab } from "./components/tabs/SessionsTab";
@@ -77,46 +78,40 @@ export function AdminServerDetail() {
     liveData?.playerCount ?? serverData.server.playerCount;
 
   return (
-    <div className="flex flex-1 flex-col">
-      <AdminPageHeader
-        trail={[
-          { label: "Admin", href: "/admin/dashboard" },
-          { label: "Servers", href: "/admin/servers" },
-          { label: serverData.server.serverName },
-        ]}
+    <AdminPage
+      trail={[
+        { label: "Admin", href: "/admin/dashboard" },
+        { label: "Servers", href: "/admin/servers" },
+        { label: serverData.server.serverName },
+      ]}
+    >
+      <ServerHeader
+        serverName={serverData.server.serverName}
+        ip={serverData.server.ip}
+        port={serverData.server.port}
+        isOnline={isOnline}
+        isMaintenance={isMaintenance}
       />
 
-      <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 py-4">
-        <ServerHeader
-          serverName={serverData.server.serverName}
-          ip={serverData.server.ip}
-          port={serverData.server.port}
-          isOnline={isOnline}
-          isMaintenance={isMaintenance}
-        />
+      <ServerStatsCards
+        isOnline={isOnline}
+        playerCount={livePlayerCount}
+        maxPlayers={serverData.server.maxPlayers}
+        totalHours={serverData.stats.totalHours}
+        avgSessionSeconds={serverData.stats.avgSessionSeconds}
+      />
 
-        <ServerStatsCards
-          isOnline={isOnline}
-          playerCount={livePlayerCount}
-          maxPlayers={serverData.server.maxPlayers}
-          totalHours={serverData.stats.totalHours}
-          avgSessionSeconds={serverData.stats.avgSessionSeconds}
-        />
+      <MaintenanceToggle serverId={serverId} isMaintenance={isMaintenance} />
 
-        <MaintenanceToggle serverId={serverId} isMaintenance={isMaintenance} />
+      <Tabs
+        value={activeTab}
+        onValueChange={(tab) => setActiveTab(tab as ServerTabType)}
+        className="gap-4"
+      >
+        <ServerTabs />
 
-        <Tabs
-          value={activeTab}
-          onValueChange={(tab) => setActiveTab(tab as ServerTabType)}
-          className="gap-4"
-        >
-          <ServerTabs />
-
-          <TabsContent
-            value={activeTab}
-            tabIndex={-1}
-            className="rounded-lg border border-border bg-card p-6"
-          >
+        <TabsContent value={activeTab} tabIndex={-1} asChild>
+          <Card className="p-6">
             {activeTab === "overview" && (
               <OverviewTab serverId={serverId} serverData={serverData} />
             )}
@@ -128,9 +123,9 @@ export function AdminServerDetail() {
             {activeTab === "sessions" && <SessionsTab serverId={serverId} />}
 
             {activeTab === "analytics" && <AnalyticsTab serverId={serverId} />}
-          </TabsContent>
-        </Tabs>
-      </div>
-    </div>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </AdminPage>
   );
 }

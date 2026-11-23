@@ -1,7 +1,5 @@
-import { useState } from "react";
 import { FormDialog } from "@/components/form-dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -13,6 +11,8 @@ import {
   WORKSHOP_MOD_REJECT_REASONS,
   WORKSHOP_MOD_REJECT_REASON_LABELS,
 } from "@createrington/shared/workshop";
+import { useDialogDraft } from "@/hooks/use-dialog-draft";
+import { Field, FieldLabel } from "@/components/ui/field";
 
 type RejectReason = (typeof WORKSHOP_MOD_REJECT_REASONS)[number];
 
@@ -31,8 +31,11 @@ export function RejectModDialog({
   }) => void;
   pending: boolean;
 }) {
-  const [reason, setReason] = useState<RejectReason | "">("");
-  const [note, setNote] = useState("");
+  const [draft, update] = useDialogDraft<{
+    reason: RejectReason | "";
+    note: string;
+  }>(target !== null, () => ({ reason: "", note: "" }));
+  const { reason, note } = draft;
 
   return (
     <FormDialog
@@ -55,13 +58,13 @@ export function RejectModDialog({
       destructive
       contentClassName="sm:max-w-lg"
     >
-      <div className="space-y-2">
-        <Label>Reason</Label>
+      <Field>
+        <FieldLabel htmlFor="reject-mod-reason">Reason</FieldLabel>
         <Select
           value={reason}
-          onValueChange={(value) => setReason(value as RejectReason)}
+          onValueChange={(value) => update({ reason: value as RejectReason })}
         >
-          <SelectTrigger>
+          <SelectTrigger id="reject-mod-reason">
             <SelectValue placeholder="Pick a reason" />
           </SelectTrigger>
           <SelectContent>
@@ -74,17 +77,17 @@ export function RejectModDialog({
             )}
           </SelectContent>
         </Select>
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="reject-note">Note (Optional)</Label>
+      </Field>
+      <Field>
+        <FieldLabel htmlFor="reject-note">Note (Optional)</FieldLabel>
         <Input
           id="reject-note"
           placeholder="Extra context, shown to players."
           maxLength={500}
           value={note}
-          onChange={(event) => setNote(event.target.value)}
+          onChange={(event) => update({ note: event.target.value })}
         />
-      </div>
+      </Field>
     </FormDialog>
   );
 }

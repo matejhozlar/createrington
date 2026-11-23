@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
+import { AdminPage } from "@/features/admin/components/AdminPage";
 import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { SearchInput } from "@/components/search-input";
 import { Badge } from "@/components/ui/badge";
@@ -273,19 +273,17 @@ export function CommandDocs() {
   );
 
   return (
-    <div className="flex flex-1 flex-col gap-4">
-      <AdminPageHeader
-        trail={[
-          { label: "Admin", href: "/admin/dashboard" },
-          { label: "Tools", href: "/admin/tools" },
-          { label: "Command Docs" },
-        ]}
-      />
-
+    <AdminPage
+      trail={[
+        { label: "Admin", href: "/admin/dashboard" },
+        { label: "Tools", href: "/admin/tools" },
+        { label: "Command Docs" },
+      ]}
+    >
       {isLoading ? (
         <LoadingState text="Loading commands..." className="py-0" />
       ) : (
-        <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
+        <>
           <AdminPageTitle
             title="Discord Commands"
             description={
@@ -381,8 +379,8 @@ export function CommandDocs() {
               })}
             </div>
           )}
-        </div>
+        </>
       )}
-    </div>
+    </AdminPage>
   );
 }

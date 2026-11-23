@@ -32,17 +32,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { FormDialog } from "@/components/form-dialog";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
+import { AdminPage } from "@/features/admin/components/AdminPage";
 import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { HeaderActions } from "@/features/admin/components/HeaderActions";
 import { FilterBar } from "@/features/admin/components/FilterBar";
 import { EnabledBadge } from "@/features/admin/components/EnabledBadge";
-import { RotationConfig } from "./components/RotationConfig";
-import { RotationHistory } from "./components/RotationHistory";
+import { RotationConfig } from "@/features/admin/structure-packs/components/RotationConfig";
+import { RotationHistory } from "@/features/admin/structure-packs/components/RotationHistory";
+import { CreatePackDialog } from "@/features/admin/structure-packs/components/CreatePackDialog";
 import { structurePackImportSchema } from "@createrington/shared/structure-pack";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { pluralize } from "@/lib/format";
@@ -59,8 +57,6 @@ export function AdminStructurePacks() {
   const packs = useMemo(() => packsQuery.data ?? [], [packsQuery.data]);
 
   const [createOpen, setCreateOpen] = useState(false);
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
 
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
@@ -159,23 +155,6 @@ export function AdminStructurePacks() {
     }
     importMutation.mutate(parsed.data);
   }
-
-  const createMutation = useMutation(
-    trpc.admin.structurePacks.create.mutationOptions(
-      useMutationToast({
-        success: "Structure pack created",
-        onSuccess: (pack) => {
-          void queryClient.invalidateQueries(
-            trpc.admin.structurePacks.list.pathFilter(),
-          );
-          setCreateOpen(false);
-          setName("");
-          setDescription("");
-          void navigate(`/admin/tools/structure-packs/${pack.id}`);
-        },
-      }),
-    ),
-  );
 
   const toggleEnabledMutation = useMutation(
     trpc.admin.structurePacks.toggleEnabled.mutationOptions(
@@ -283,123 +262,117 @@ export function AdminStructurePacks() {
   ];
 
   return (
-    <div className="flex flex-1 flex-col gap-4">
-      <AdminPageHeader
-        trail={[
-          { label: "Admin", href: "/admin/dashboard" },
-          { label: "Tools", href: "/admin/tools" },
-          { label: "Structure Packs" },
-        ]}
-      />
+    <AdminPage
+      trail={[
+        { label: "Admin", href: "/admin/dashboard" },
+        { label: "Tools", href: "/admin/tools" },
+        { label: "Structure Packs" },
+      ]}
+    >
+      <AdminPageTitle title="Structure Packs" />
 
-      <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
-        <AdminPageTitle title="Structure Packs" />
+      <div className="grid gap-4 lg:grid-cols-2">
+        <RotationConfig />
+        <RotationHistory />
+      </div>
 
-        <div className="grid gap-4 lg:grid-cols-2">
-          <RotationConfig />
-          <RotationHistory />
-        </div>
+      <FilterBar
+        title="Packs"
+        search={searchQuery}
+        onSearchChange={setSearchQuery}
+        placeholder="Search by name..."
+        activeCount={
+          (searchQuery ? 1 : 0) +
+          (statusFilter !== "all" ? 1 : 0) +
+          (activeFilter !== "all" ? 1 : 0)
+        }
+        actions={
+          <HeaderActions>
+            <Button
+              variant="outline"
+              onClick={handleImport}
+              disabled={importMutation.isPending}
+            >
+              <Upload className="mr-2 size-4" />
+              Import
+            </Button>
+            <Button onClick={() => setCreateOpen(true)}>
+              <Plus className="mr-2 size-4" />
+              New Pack
+            </Button>
+          </HeaderActions>
+        }
+      >
+        <Select
+          value={statusFilter}
+          onValueChange={(v) => setStatusFilter(v as StatusFilter)}
+        >
+          <SelectTrigger className="min-w-[130px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Statuses</SelectItem>
+            <SelectItem value="enabled">Enabled</SelectItem>
+            <SelectItem value="disabled">Disabled</SelectItem>
+          </SelectContent>
+        </Select>
 
-        <FilterBar
-          title="Packs"
-          search={searchQuery}
-          onSearchChange={setSearchQuery}
-          placeholder="Search by name..."
-          activeCount={
-            (searchQuery ? 1 : 0) +
-            (statusFilter !== "all" ? 1 : 0) +
-            (activeFilter !== "all" ? 1 : 0)
-          }
-          actions={
-            <HeaderActions>
-              <Button
-                variant="outline"
-                onClick={handleImport}
-                disabled={importMutation.isPending}
-              >
-                <Upload className="mr-2 size-4" />
-                Import
-              </Button>
+        <Select
+          value={activeFilter}
+          onValueChange={(v) => setActiveFilter(v as ActiveFilter)}
+        >
+          <SelectTrigger className="min-w-[130px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Packs</SelectItem>
+            <SelectItem value="active">Active</SelectItem>
+            <SelectItem value="inactive">Inactive</SelectItem>
+          </SelectContent>
+        </Select>
+      </FilterBar>
+
+      <Card className="gap-0">
+        <CardHeader className="gap-0 border-b">
+          <CardTitle>Packs ({filteredPacks.length.toLocaleString()})</CardTitle>
+        </CardHeader>
+
+        {packsQuery.isError ? (
+          <ErrorState
+            message={packsQuery.error.message}
+            onRetry={() => packsQuery.refetch()}
+          />
+        ) : !packsQuery.isLoading && filteredPacks.length === 0 ? (
+          <EmptyState
+            icon={Package}
+            message={
+              packs.length === 0
+                ? "No structure packs yet"
+                : "No packs match your filters"
+            }
+          >
+            {packs.length === 0 && (
               <Button onClick={() => setCreateOpen(true)}>
                 <Plus className="mr-2 size-4" />
-                New Pack
+                Create First Pack
               </Button>
-            </HeaderActions>
-          }
-        >
-          <Select
-            value={statusFilter}
-            onValueChange={(v) => setStatusFilter(v as StatusFilter)}
-          >
-            <SelectTrigger className="min-w-[130px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="enabled">Enabled</SelectItem>
-              <SelectItem value="disabled">Disabled</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select
-            value={activeFilter}
-            onValueChange={(v) => setActiveFilter(v as ActiveFilter)}
-          >
-            <SelectTrigger className="min-w-[130px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Packs</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="inactive">Inactive</SelectItem>
-            </SelectContent>
-          </Select>
-        </FilterBar>
-
-        <Card className="gap-0">
-          <CardHeader className="gap-0 border-b">
-            <CardTitle>
-              Packs ({filteredPacks.length.toLocaleString()})
-            </CardTitle>
-          </CardHeader>
-
-          {packsQuery.isError ? (
-            <ErrorState
-              message={packsQuery.error.message}
-              onRetry={() => packsQuery.refetch()}
-            />
-          ) : !packsQuery.isLoading && filteredPacks.length === 0 ? (
-            <EmptyState
-              icon={Package}
-              message={
-                packs.length === 0
-                  ? "No structure packs yet"
-                  : "No packs match your filters"
+            )}
+          </EmptyState>
+        ) : (
+          <CardContent className="px-0">
+            <DataTable
+              columns={columns}
+              rows={filteredPacks}
+              loading={packsQuery.isLoading}
+              rowKey={(pack) => pack.id}
+              onRowClick={(pack) =>
+                navigate(`/admin/tools/structure-packs/${pack.id}`)
               }
-            >
-              {packs.length === 0 && (
-                <Button onClick={() => setCreateOpen(true)}>
-                  <Plus className="mr-2 size-4" />
-                  Create First Pack
-                </Button>
-              )}
-            </EmptyState>
-          ) : (
-            <CardContent className="px-0">
-              <DataTable
-                columns={columns}
-                rows={filteredPacks}
-                loading={packsQuery.isLoading}
-                rowKey={(pack) => pack.id}
-                onRowClick={(pack) =>
-                  navigate(`/admin/tools/structure-packs/${pack.id}`)
-                }
-                actions={packActions}
-              />
-            </CardContent>
-          )}
-        </Card>
-      </div>
+              actions={packActions}
+            />
+          </CardContent>
+        )}
+      </Card>
 
       <ConfirmDialog
         open={deleteTarget !== null}
@@ -417,39 +390,10 @@ export function AdminStructurePacks() {
         }
       />
 
-      <FormDialog
+      <CreatePackDialog
         open={createOpen}
         onClose={() => setCreateOpen(false)}
-        title="Create Structure Pack"
-        confirmLabel="Create"
-        onConfirm={() =>
-          createMutation.mutate({
-            name,
-            description: description || undefined,
-          })
-        }
-        disabled={!name.trim() || createMutation.isPending}
-        contentClassName="sm:max-w-lg"
-      >
-        <div className="space-y-2">
-          <Label htmlFor="name">Name</Label>
-          <Input
-            id="name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. Medieval Structures"
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="description">Description (optional)</Label>
-          <Input
-            id="description"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="A collection of medieval-themed structure mods"
-          />
-        </div>
-      </FormDialog>
-    </div>
+      />
+    </AdminPage>
   );
 }

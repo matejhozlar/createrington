@@ -1,6 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { PresenceBadge } from "@/components/presence-badge";
 import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
+import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { CellText } from "@/components/cell-text";
 import { Edit, Trash2, MapPin } from "lucide-react";
 import type { RouterOutput } from "@/lib/trpc";
@@ -29,7 +31,7 @@ export function PlayerHeader({
   const activeStrikes = 0;
 
   return (
-    <div className="overflow-hidden rounded-lg border border-border bg-card">
+    <Card className="gap-0 overflow-hidden py-0">
       <div className="flex">
         <div className="relative hidden w-36 shrink-0 items-center justify-center border-r border-border py-4 sm:flex">
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-sidebar-primary/8 via-transparent to-transparent" />
@@ -41,44 +43,45 @@ export function PlayerHeader({
         </div>
 
         <div className="flex min-w-0 flex-1 flex-col gap-3 p-5">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-xl font-bold leading-tight">
-                {player.minecraftUsername}
-              </h1>
-              <PresenceBadge
-                status={isOnline ? "online" : "offline"}
-                className="px-1.5 py-0 text-[10px]"
-              />
-              {isOnline && currentServerName && (
-                <span className="text-xs text-muted-foreground">
-                  on{" "}
-                  <span className="font-medium text-foreground">
-                    {currentServerName}
+          <AdminPageTitle
+            title={player.minecraftUsername}
+            badges={
+              <>
+                <PresenceBadge
+                  status={isOnline ? "online" : "offline"}
+                  className="px-1.5 py-0 text-[10px]"
+                />
+                {isOnline && currentServerName && (
+                  <span className="text-xs text-muted-foreground">
+                    on{" "}
+                    <span className="font-medium text-foreground">
+                      {currentServerName}
+                    </span>
                   </span>
-                </span>
-              )}
-              {activeStrikes > 0 && (
-                <Badge
-                  variant="destructive"
-                  className="text-[10px] px-1.5 py-0"
-                >
-                  {activeStrikes} Strike{activeStrikes > 1 ? "s" : ""}
-                </Badge>
-              )}
-            </div>
-
-            <div className="flex shrink-0 gap-2">
-              <Button variant="outline" size="sm" onClick={onEdit}>
-                <Edit className="size-3.5" />
-                Edit
-              </Button>
-              <Button variant="destructive" size="sm" onClick={onDelete}>
-                <Trash2 className="size-3.5" />
-                Delete
-              </Button>
-            </div>
-          </div>
+                )}
+                {activeStrikes > 0 && (
+                  <Badge
+                    variant="destructive"
+                    className="text-[10px] px-1.5 py-0"
+                  >
+                    {activeStrikes} Strike{activeStrikes > 1 ? "s" : ""}
+                  </Badge>
+                )}
+              </>
+            }
+            actions={
+              <>
+                <Button variant="outline" size="sm" onClick={onEdit}>
+                  <Edit className="size-3.5" />
+                  Edit
+                </Button>
+                <Button variant="destructive" size="sm" onClick={onDelete}>
+                  <Trash2 className="size-3.5" />
+                  Delete
+                </Button>
+              </>
+            }
+          />
 
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
             <CopyField label="UUID" value={player.minecraftUuid} />
@@ -104,7 +107,7 @@ export function PlayerHeader({
           </div>
         </div>
       </div>
-    </div>
+    </Card>
   );
 }
 

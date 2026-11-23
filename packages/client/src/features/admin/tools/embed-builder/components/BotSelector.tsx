@@ -5,8 +5,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
 import type { EmbedBot } from "@createrington/shared/api/embed";
+import { Field, FieldLabel } from "@/components/ui/field";
 
 const BOTS: { value: EmbedBot; label: string }[] = [
   { value: "main", label: "Createrington" },
@@ -21,10 +21,10 @@ export function BotSelector({ value, onChange }: BotSelectorProps) {
   if (BOTS.length < 2) return null;
 
   return (
-    <div className="space-y-2">
-      <Label>Bot</Label>
+    <Field>
+      <FieldLabel htmlFor="embed-bot">Bot</FieldLabel>
       <Select value={value} onValueChange={onChange}>
-        <SelectTrigger className="w-full">
+        <SelectTrigger id="embed-bot" className="w-full">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -35,6 +35,6 @@ export function BotSelector({ value, onChange }: BotSelectorProps) {
           ))}
         </SelectContent>
       </Select>
-    </div>
+    </Field>
   );
 }

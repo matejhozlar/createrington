@@ -1,9 +1,10 @@
 import { ExternalLink, Package, Plus, Trash2 } from "lucide-react";
 import { HeaderActions } from "@/features/admin/components/HeaderActions";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { CellText } from "@/components/cell-text";
 import { DataTable, type DataTableColumn } from "@/components/data-table";
-import type { RemoveTarget } from "../types";
+import type { RemoveTarget } from "@/features/admin/structure-packs/structure-pack-detail/types";
 
 interface Mod {
   id: number;
@@ -64,7 +65,7 @@ export function ModsList({
   ];
 
   return (
-    <div className="rounded-lg border border-border bg-card p-6">
+    <Card className="gap-0 p-6">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="font-semibold">Mods</h2>
@@ -105,6 +106,6 @@ export function ModsList({
           actionSlots={1}
         />
       )}
-    </div>
+    </Card>
   );
 }

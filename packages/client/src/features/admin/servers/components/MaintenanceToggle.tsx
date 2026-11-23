@@ -35,6 +35,7 @@ import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { useCountdown } from "@/hooks/use-countdown";
 import { MaintenanceSettingsDialog } from "./MaintenanceSettingsDialog";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { Field, FieldLabel } from "@/components/ui/field";
 
 const DEFAULT_ESTIMATED_MINUTES = 30;
 
@@ -342,15 +343,18 @@ export function MaintenanceToggle({
               </TabsList>
 
               <TabsContent value="schedule" className="mt-4 space-y-4">
-                <div className="space-y-2">
-                  <Label>Type</Label>
+                <Field>
+                  <FieldLabel htmlFor="maintenance-type">Type</FieldLabel>
                   <Select
                     value={maintenanceType}
                     onValueChange={(v) =>
                       setMaintenanceType(v as "maintenance" | "modpack_update")
                     }
                   >
-                    <SelectTrigger className="cursor-pointer">
+                    <SelectTrigger
+                      id="maintenance-type"
+                      className="cursor-pointer"
+                    >
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -362,9 +366,11 @@ export function MaintenanceToggle({
                       </SelectItem>
                     </SelectContent>
                   </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="scheduled-at">Start Date & Time</Label>
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="scheduled-at">
+                    Start Date & Time
+                  </FieldLabel>
                   <Input
                     id="scheduled-at"
                     type="datetime-local"
@@ -372,11 +378,11 @@ export function MaintenanceToggle({
                     onChange={(e) => setScheduledAt(e.target.value)}
                     min={minDatetime}
                   />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="estimated-minutes">
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="estimated-minutes">
                     Estimated Duration (minutes)
-                  </Label>
+                  </FieldLabel>
                   <Input
                     id="estimated-minutes"
                     type="number"
@@ -390,7 +396,7 @@ export function MaintenanceToggle({
                       )
                     }
                   />
-                </div>
+                </Field>
                 <p className="text-xs text-muted-foreground">
                   Discord warnings will be sent at 1h, 30m, 15m, 10m, 5m, and 1m
                   before the scheduled time.

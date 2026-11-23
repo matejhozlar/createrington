@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Field, FieldLabel, FieldDescription } from "@/components/ui/field";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -15,6 +14,7 @@ import { useToastActions } from "@/hooks/use-toast";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
 import { useMutation } from "@tanstack/react-query";
+import { useDialogDraft } from "@/hooks/use-dialog-draft";
 
 type Config = RouterOutput["admin"]["autoMessages"]["configs"]["list"][number];
 type ChannelGroup = RouterOutput["admin"]["autoMessages"]["channels"][number];
@@ -59,15 +59,20 @@ export function UpsertConfigDialog({
     ),
   );
 
-  const [name, setName] = useState(config?.name ?? "");
-  const [channelId, setChannelId] = useState(config?.channelId ?? "");
-  const [intervalMinutes, setIntervalMinutes] = useState(
-    config?.intervalMinutes ?? 60,
-  );
-  const [rotationMode, setRotationMode] = useState<RotationMode>(
-    config?.rotationMode ?? "sequential",
-  );
-  const [enabled, setEnabled] = useState(config?.enabled ?? false);
+  const [draft, update] = useDialogDraft<{
+    name: string;
+    channelId: string;
+    intervalMinutes: number;
+    rotationMode: RotationMode;
+    enabled: boolean;
+  }>(open, () => ({
+    name: config?.name ?? "",
+    channelId: config?.channelId ?? "",
+    intervalMinutes: config?.intervalMinutes ?? 60,
+    rotationMode: config?.rotationMode ?? "sequential",
+    enabled: config?.enabled ?? false,
+  }));
+  const { name, channelId, intervalMinutes, rotationMode, enabled } = draft;
 
   const isPending = createMutation.isPending || updateMutation.isPending;
 
@@ -117,16 +122,19 @@ export function UpsertConfigDialog({
         <Input
           id="config-name"
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={(e) => update({ name: e.target.value })}
           placeholder="e.g. Rails 'n Sails Tips"
           maxLength={100}
         />
       </Field>
 
       <Field>
-        <FieldLabel>Channel</FieldLabel>
-        <Select value={channelId} onValueChange={setChannelId}>
-          <SelectTrigger className="w-full">
+        <FieldLabel htmlFor="auto-message-channel">Channel</FieldLabel>
+        <Select
+          value={channelId}
+          onValueChange={(value: string) => update({ channelId: value })}
+        >
+          <SelectTrigger id="auto-message-channel" className="w-full">
             <SelectValue placeholder="Select a channel">
               {channelLabel
                 ? `#${channelLabel.name} (${channelLabel.category})`
@@ -158,7 +166,7 @@ export function UpsertConfigDialog({
           min={1}
           max={10080}
           value={intervalMinutes}
-          onChange={(e) => setIntervalMinutes(Number(e.target.value))}
+          onChange={(e) => update({ intervalMinutes: Number(e.target.value) })}
         />
         <FieldDescription>
           How often a message is sent (1 min – 7 days)
@@ -170,7 +178,7 @@ export function UpsertConfigDialog({
         <ChoiceField
           value={rotationMode}
           options={ROTATION_MODE_OPTIONS}
-          onChange={setRotationMode}
+          onChange={(value: RotationMode) => update({ rotationMode: value })}
         />
         <FieldDescription>
           Sequential cycles in order, random picks any message
@@ -180,7 +188,7 @@ export function UpsertConfigDialog({
       <label className="flex cursor-pointer items-center gap-2">
         <Checkbox
           checked={enabled}
-          onCheckedChange={(checked) => setEnabled(checked === true)}
+          onCheckedChange={(checked) => update({ enabled: checked === true })}
         />
         <span className="text-sm font-medium">Enabled</span>
       </label>

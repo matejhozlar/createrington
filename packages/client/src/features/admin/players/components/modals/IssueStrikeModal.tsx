@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { STRIKE_DESCRIPTION_MAX_LENGTH } from "@createrington/shared/admin-reason";
 import { Input } from "@/components/ui/input";
 import { Field, FieldLabel } from "@/components/ui/field";
@@ -11,10 +10,23 @@ import {
 } from "@/components/ui/select";
 import type { StrikeClassification } from "@createrington/shared/db";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
+import { useDialogDraft } from "@/hooks/use-dialog-draft";
 import { trpc, queryClient } from "@/lib/trpc";
 import { FormDialog } from "@/components/form-dialog";
 import { useMutation } from "@tanstack/react-query";
 import { Textarea } from "@/components/ui/textarea";
+
+type Severity = 1 | 2 | 3 | 4 | 5;
+
+const EMPTY_DRAFT: {
+  classification: StrikeClassification;
+  description: string;
+  severity: Severity;
+} = {
+  classification: "rule_violation",
+  description: "",
+  severity: 1,
+};
 
 interface IssueStrikeModalProps {
   open: boolean;
@@ -27,10 +39,8 @@ export function IssueStrikeModal({
   onClose,
   playerId,
 }: IssueStrikeModalProps) {
-  const [classification, setClassification] =
-    useState<StrikeClassification>("rule_violation");
-  const [description, setDescription] = useState("");
-  const [severity, setSeverity] = useState<1 | 2 | 3 | 4 | 5>(1);
+  const [draft, update] = useDialogDraft(open, EMPTY_DRAFT);
+  const { classification, description, severity } = draft;
 
   const issueStrike = useMutation(
     trpc.admin.players.strikes.issue.mutationOptions(
@@ -38,8 +48,6 @@ export function IssueStrikeModal({
         success: "Strike issued",
         onSuccess: () => {
           void queryClient.invalidateQueries(trpc.admin.players.pathFilter());
-          setDescription("");
-          setSeverity(1);
           onClose();
         },
       }),
@@ -72,13 +80,13 @@ export function IssueStrikeModal({
         <Select
           value={classification}
           onValueChange={(value) =>
-            setClassification(value as StrikeClassification)
+            update({ classification: value as StrikeClassification })
           }
         >
           <SelectTrigger id="strike-classification" className="w-full">
             <SelectValue />
           </SelectTrigger>
-          <SelectContent className="z-[100]">
+          <SelectContent>
             <SelectItem value="pvp">PvP</SelectItem>
             <SelectItem value="theft">Theft</SelectItem>
             <SelectItem value="griefing">Griefing</SelectItem>
@@ -103,7 +111,9 @@ export function IssueStrikeModal({
           max="5"
           value={severity}
           onChange={(e) =>
-            setSeverity(parseInt(e.target.value) as 1 | 2 | 3 | 4 | 5)
+            update({
+              severity: parseInt(e.target.value) as Severity,
+            })
           }
         />
       </Field>
@@ -114,7 +124,7 @@ export function IssueStrikeModal({
           id="strike-description"
           placeholder="Describe the violation..."
           value={description}
-          onChange={(e) => setDescription(e.target.value)}
+          onChange={(e) => update({ description: e.target.value })}
           maxLength={STRIKE_DESCRIPTION_MAX_LENGTH}
           rows={4}
         />

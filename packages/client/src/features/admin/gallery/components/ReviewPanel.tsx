@@ -25,7 +25,7 @@ import {
 } from "@/features/admin/gallery/format";
 import { ApproveDialog } from "./ApproveDialog";
 import { CreditsPicker } from "./CreditsPicker";
-import { RejectDialog } from "./RejectDialog";
+import { RejectDialog } from "@/features/admin/gallery/components/RejectDialog";
 import { SubmissionImage } from "./SubmissionImage";
 import { useMutation } from "@tanstack/react-query";
 import { Textarea } from "@/components/ui/textarea";
@@ -54,7 +54,6 @@ export function ReviewPanel({
   const [credits, setCredits] = useState<GalleryCredit[]>(item.credits);
   const [approveOpen, setApproveOpen] = useState(false);
   const [rejectOpen, setRejectOpen] = useState(false);
-  const [rejectKey, setRejectKey] = useState(0);
 
   const invalidate = () => {
     void queryClient.invalidateQueries(trpc.admin.gallery.list.pathFilter());
@@ -106,11 +105,6 @@ export function ReviewPanel({
       rewardAmount: parsedReward,
       creditPlayerUuids: credits.map((credit) => credit.minecraftUuid),
     });
-
-  const openReject = () => {
-    setRejectKey((key) => key + 1);
-    setRejectOpen(true);
-  };
 
   return (
     <>
@@ -248,7 +242,7 @@ export function ReviewPanel({
                 variant="destructive"
                 size="lg"
                 disabled={busy}
-                onClick={openReject}
+                onClick={() => setRejectOpen(true)}
               >
                 <X className="mr-2 size-4" />
                 Reject
@@ -268,7 +262,6 @@ export function ReviewPanel({
       />
 
       <RejectDialog
-        key={rejectKey}
         open={rejectOpen}
         onOpenChange={setRejectOpen}
         authorName={item.author.minecraftUsername}

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
+import { AdminPage } from "@/features/admin/components/AdminPage";
 import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { ReviewPanel } from "./components/ReviewPanel";
 import { SettingsDialog } from "./components/SettingsDialog";
@@ -81,118 +81,114 @@ export function AdminGallery() {
     current && detailQuery.data?.id === current.id ? detailQuery.data : null;
 
   return (
-    <div className="flex flex-1 flex-col gap-4">
-      <AdminPageHeader
-        trail={[
-          { label: "Admin", href: "/admin/dashboard" },
-          { label: "Tools", href: "/admin/tools" },
-          { label: "Gallery" },
-        ]}
+    <AdminPage
+      trail={[
+        { label: "Admin", href: "/admin/dashboard" },
+        { label: "Tools", href: "/admin/tools" },
+        { label: "Gallery" },
+      ]}
+    >
+      <AdminPageTitle
+        title="Gallery"
+        description="Screenshots posted in the Discord submissions channel wait here for review. Approved ones are published on the website with credit, rewarded, and announced in the gallery channel."
+        actions={
+          <>
+            <LabeledSwitch
+              id={INTAKE_FLAG.id}
+              label={INTAKE_FLAG.label}
+              checked={intakeEnabled}
+              disabled={
+                flagsQuery.isLoading ||
+                !!flagsQuery.error ||
+                setFlagMutation.isPending
+              }
+              onCheckedChange={(checked) =>
+                setFlagMutation.mutate({
+                  name: INTAKE_FLAG.name,
+                  enabled: checked,
+                  description: INTAKE_FLAG.description,
+                })
+              }
+            />
+            <Button variant="outline" onClick={() => setSettingsOpen(true)}>
+              <Settings2 className="mr-2 size-4" />
+              Rewards
+            </Button>
+          </>
+        }
       />
 
-      <div className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-4 px-4 pb-4">
-        <AdminPageTitle
-          title="Gallery"
-          description="Screenshots posted in the Discord submissions channel wait here for review. Approved ones are published on the website with credit, rewarded, and announced in the gallery channel."
-          actions={
-            <>
-              <LabeledSwitch
-                id={INTAKE_FLAG.id}
-                label={INTAKE_FLAG.label}
-                checked={intakeEnabled}
-                disabled={
-                  flagsQuery.isLoading ||
-                  !!flagsQuery.error ||
-                  setFlagMutation.isPending
-                }
-                onCheckedChange={(checked) =>
-                  setFlagMutation.mutate({
-                    name: INTAKE_FLAG.name,
-                    enabled: checked,
-                    description: INTAKE_FLAG.description,
-                  })
-                }
-              />
-              <Button variant="outline" onClick={() => setSettingsOpen(true)}>
-                <Settings2 className="mr-2 size-4" />
-                Rewards
-              </Button>
-            </>
-          }
-        />
+      {!flagsQuery.isLoading && !flagsQuery.error && !intakeEnabled && (
+        <p className="rounded-md border border-yellow-500/20 bg-yellow-500/10 px-3 py-2 text-sm text-yellow-400">
+          Discord intake is off. New posts in the submissions channel are
+          ignored until it is switched on.
+        </p>
+      )}
 
-        {!flagsQuery.isLoading && !flagsQuery.error && !intakeEnabled && (
-          <p className="rounded-md border border-yellow-500/20 bg-yellow-500/10 px-3 py-2 text-sm text-yellow-400">
-            Discord intake is off. New posts in the submissions channel are
-            ignored until it is switched on.
-          </p>
-        )}
-
-        <Tabs
-          value={tab}
-          onValueChange={(value) => setTab(value as GalleryStatus)}
-        >
-          <TabsList>
-            {TABS.map((entry) => (
-              <TabsTrigger
-                key={entry.value}
-                value={entry.value}
-                className="cursor-pointer"
-              >
-                {entry.label}
-                {counts && (
-                  <span className="ml-1.5 tabular-nums text-muted-foreground">
-                    {counts[entry.value]}
-                  </span>
-                )}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-
-          <TabsContent value="pending" className="mt-2">
-            {queueQuery.error ? (
-              <Card>
-                <ErrorState
-                  message={queueQuery.error.message}
-                  onRetry={() => queueQuery.refetch()}
-                />
-              </Card>
-            ) : queueQuery.isLoading ? (
-              <ReviewSkeleton />
-            ) : !current ? (
-              <EmptyQueue />
-            ) : detail ? (
-              <ReviewPanel
-                key={detail.id}
-                item={detail}
-                position={index + 1}
-                total={total}
-                onPrev={() => setCursor(index - 1)}
-                onNext={() => setCursor(index + 1)}
-                onDecided={() => setCursor(index)}
-              />
-            ) : detailQuery.error ? (
-              <Card>
-                <ErrorState
-                  message={detailQuery.error.message}
-                  onRetry={() => detailQuery.refetch()}
-                />
-              </Card>
-            ) : (
-              <ReviewSkeleton />
-            )}
-          </TabsContent>
-
-          {GRID_TABS.map((entry) => (
-            <TabsContent key={entry.value} value={entry.value} className="mt-2">
-              <SubmissionGrid key={entry.value} status={entry.value} />
-            </TabsContent>
+      <Tabs
+        value={tab}
+        onValueChange={(value) => setTab(value as GalleryStatus)}
+      >
+        <TabsList>
+          {TABS.map((entry) => (
+            <TabsTrigger
+              key={entry.value}
+              value={entry.value}
+              className="cursor-pointer"
+            >
+              {entry.label}
+              {counts && (
+                <span className="ml-1.5 tabular-nums text-muted-foreground">
+                  {counts[entry.value]}
+                </span>
+              )}
+            </TabsTrigger>
           ))}
-        </Tabs>
-      </div>
+        </TabsList>
+
+        <TabsContent value="pending" className="mt-2">
+          {queueQuery.error ? (
+            <Card>
+              <ErrorState
+                message={queueQuery.error.message}
+                onRetry={() => queueQuery.refetch()}
+              />
+            </Card>
+          ) : queueQuery.isLoading ? (
+            <ReviewSkeleton />
+          ) : !current ? (
+            <EmptyQueue />
+          ) : detail ? (
+            <ReviewPanel
+              key={detail.id}
+              item={detail}
+              position={index + 1}
+              total={total}
+              onPrev={() => setCursor(index - 1)}
+              onNext={() => setCursor(index + 1)}
+              onDecided={() => setCursor(index)}
+            />
+          ) : detailQuery.error ? (
+            <Card>
+              <ErrorState
+                message={detailQuery.error.message}
+                onRetry={() => detailQuery.refetch()}
+              />
+            </Card>
+          ) : (
+            <ReviewSkeleton />
+          )}
+        </TabsContent>
+
+        {GRID_TABS.map((entry) => (
+          <TabsContent key={entry.value} value={entry.value} className="mt-2">
+            <SubmissionGrid key={entry.value} status={entry.value} />
+          </TabsContent>
+        ))}
+      </Tabs>
 
       <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
-    </div>
+    </AdminPage>
   );
 }
 

@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { SearchInput } from "@/components/search-input";
 import { Badge } from "@/components/ui/badge";
-import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
+import { AdminPage } from "@/features/admin/components/AdminPage";
 import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import {
   Card,
@@ -174,184 +174,177 @@ export function StatSearch() {
   ];
 
   return (
-    <div className="flex flex-1 flex-col gap-4">
-      <AdminPageHeader
-        trail={[
-          { label: "Admin", href: "/admin/dashboard" },
-          { label: "Tools", href: "/admin/tools" },
-          { label: "Stat Search" },
-        ]}
-      />
+    <AdminPage
+      trail={[
+        { label: "Admin", href: "/admin/dashboard" },
+        { label: "Tools", href: "/admin/tools" },
+        { label: "Stat Search" },
+      ]}
+    >
+      <AdminPageTitle title="Stat Search" />
 
-      <div className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-4 px-4 pb-4">
-        <AdminPageTitle title="Stat Search" />
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Search className="size-4 text-muted-foreground" />
+            Compare Player Stats
+          </CardTitle>
+          <CardDescription>
+            Search for an item and compare stats across categories. For example,
+            see who picked up an item vs. who crafted it.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-muted-foreground">
+              Item
+            </label>
+            <form onSubmit={handleSubmit}>
+              <SearchInput
+                placeholder="Search for an item (e.g. targeting_computer, diamond)..."
+                value={itemInput}
+                onValueChange={(value) => {
+                  setItemInput(value);
+                  setShowSuggestions(true);
+                }}
+                onFocus={() => setShowSuggestions(true)}
+                onBlur={() => {
+                  setTimeout(() => setShowSuggestions(false), 200);
+                }}
+                inputClassName="pr-9"
+              >
+                {itemInput && (
+                  <button
+                    type="button"
+                    onClick={handleClearItem}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="size-4" />
+                  </button>
+                )}
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Search className="size-4 text-muted-foreground" />
-              Compare Player Stats
-            </CardTitle>
-            <CardDescription>
-              Search for an item and compare stats across categories. For
-              example, see who picked up an item vs. who crafted it.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-muted-foreground">
-                Item
-              </label>
-              <form onSubmit={handleSubmit}>
-                <SearchInput
-                  placeholder="Search for an item (e.g. targeting_computer, diamond)..."
-                  value={itemInput}
-                  onValueChange={(value) => {
-                    setItemInput(value);
-                    setShowSuggestions(true);
-                  }}
-                  onFocus={() => setShowSuggestions(true)}
-                  onBlur={() => {
-                    setTimeout(() => setShowSuggestions(false), 200);
-                  }}
-                  inputClassName="pr-9"
-                >
-                  {itemInput && (
-                    <button
-                      type="button"
-                      onClick={handleClearItem}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    >
-                      <X className="size-4" />
-                    </button>
+                {showSuggestions &&
+                  debouncedItemInput.length >= 2 &&
+                  itemsQuery.data &&
+                  itemsQuery.data.length > 0 && (
+                    <div className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-md border border-border bg-popover shadow-lg">
+                      {itemsQuery.data.map((item) => (
+                        <button
+                          key={item}
+                          type="button"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            handleSelectItem(item);
+                          }}
+                          className={cn(
+                            "flex w-full items-center px-3 py-2 text-left text-sm transition-colors hover:bg-accent",
+                            selectedItem === item && "bg-accent/50",
+                          )}
+                        >
+                          <span className="font-medium">
+                            {formatStatItem(nameCategory, item)}
+                          </span>
+                          <span className="ml-2 text-xs text-muted-foreground">
+                            {item}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
                   )}
+              </SearchInput>
+            </form>
+            {selectedItem && (
+              <p className="text-xs text-muted-foreground">
+                Selected:{" "}
+                <span className="font-mono text-foreground">
+                  {selectedItem}
+                </span>
+              </p>
+            )}
+          </div>
 
-                  {showSuggestions &&
-                    debouncedItemInput.length >= 2 &&
-                    itemsQuery.data &&
-                    itemsQuery.data.length > 0 && (
-                      <div className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-md border border-border bg-popover shadow-lg">
-                        {itemsQuery.data.map((item) => (
-                          <button
-                            key={item}
-                            type="button"
-                            onMouseDown={(e) => {
-                              e.preventDefault();
-                              handleSelectItem(item);
-                            }}
-                            className={cn(
-                              "flex w-full items-center px-3 py-2 text-left text-sm transition-colors hover:bg-accent",
-                              selectedItem === item && "bg-accent/50",
-                            )}
-                          >
-                            <span className="font-medium">
-                              {formatStatItem(nameCategory, item)}
-                            </span>
-                            <span className="ml-2 text-xs text-muted-foreground">
-                              {item}
-                            </span>
-                          </button>
-                        ))}
-                      </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-muted-foreground">
+              Categories to compare
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {CATEGORY_KEYS.map((key) => {
+                const active = selectedCategories.has(key);
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => toggleCategory(key)}
+                    className={cn(
+                      "cursor-pointer rounded-md border px-3 py-1.5 text-sm transition-colors",
+                      active
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground",
                     )}
-                </SearchInput>
-              </form>
-              {selectedItem && (
-                <p className="text-xs text-muted-foreground">
-                  Selected:{" "}
-                  <span className="font-mono text-foreground">
-                    {selectedItem}
-                  </span>
-                </p>
+                  >
+                    {formatStatCategory(key)}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {selectedItem && categories.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+              <span>Comparing</span>
+              <Badge variant="outline" className="font-mono">
+                {selectedItem}
+              </Badge>
+              <span>across</span>
+              {categoryLabels.map((label) => (
+                <Badge key={label} variant="secondary">
+                  {label}
+                </Badge>
+              ))}
+              {results.length > 0 && (
+                <span className="ml-auto">
+                  {pluralize(results.length, "player")} found
+                </span>
               )}
             </div>
-
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-muted-foreground">
-                Categories to compare
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {CATEGORY_KEYS.map((key) => {
-                  const active = selectedCategories.has(key);
-                  return (
-                    <button
-                      key={key}
-                      type="button"
-                      onClick={() => toggleCategory(key)}
-                      className={cn(
-                        "cursor-pointer rounded-md border px-3 py-1.5 text-sm transition-colors",
-                        active
-                          ? "border-primary bg-primary/10 text-primary"
-                          : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground",
-                      )}
-                    >
-                      {formatStatCategory(key)}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {selectedItem && categories.length > 0 && (
-              <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                <span>Comparing</span>
-                <Badge variant="outline" className="font-mono">
-                  {selectedItem}
-                </Badge>
-                <span>across</span>
-                {categoryLabels.map((label) => (
-                  <Badge key={label} variant="secondary">
-                    {label}
-                  </Badge>
-                ))}
-                {results.length > 0 && (
-                  <span className="ml-auto">
-                    {pluralize(results.length, "player")} found
-                  </span>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="gap-0">
-          <CardHeader className="gap-0 border-b">
-            <CardTitle>Results</CardTitle>
-          </CardHeader>
-
-          {!selectedItem ? (
-            <EmptyState
-              icon={BarChart3}
-              message="Search for an item to compare stats across players"
-            />
-          ) : compareQuery.error ? (
-            <ErrorState
-              message={compareQuery.error.message}
-              onRetry={() => compareQuery.refetch()}
-            />
-          ) : !compareQuery.isLoading && results.length === 0 ? (
-            <EmptyState
-              icon={Search}
-              message="No players found with this item"
-            />
-          ) : (
-            <CardContent className="px-0">
-              <DataTable
-                columns={columns}
-                rows={results}
-                loading={compareQuery.isLoading}
-                rowKey={(result) => result.minecraftUuid}
-                onRowClick={(result) =>
-                  navigate(`/admin/players/${result.minecraftUuid}`)
-                }
-                rowClassName={(result) =>
-                  isSuspicious(result) ? "bg-yellow-500/5" : undefined
-                }
-              />
-            </CardContent>
           )}
-        </Card>
-      </div>
-    </div>
+        </CardContent>
+      </Card>
+
+      <Card className="gap-0">
+        <CardHeader className="gap-0 border-b">
+          <CardTitle>Results</CardTitle>
+        </CardHeader>
+
+        {!selectedItem ? (
+          <EmptyState
+            icon={BarChart3}
+            message="Search for an item to compare stats across players"
+          />
+        ) : compareQuery.error ? (
+          <ErrorState
+            message={compareQuery.error.message}
+            onRetry={() => compareQuery.refetch()}
+          />
+        ) : !compareQuery.isLoading && results.length === 0 ? (
+          <EmptyState icon={Search} message="No players found with this item" />
+        ) : (
+          <CardContent className="px-0">
+            <DataTable
+              columns={columns}
+              rows={results}
+              loading={compareQuery.isLoading}
+              rowKey={(result) => result.minecraftUuid}
+              onRowClick={(result) =>
+                navigate(`/admin/players/${result.minecraftUuid}`)
+              }
+              rowClassName={(result) =>
+                isSuspicious(result) ? "bg-yellow-500/5" : undefined
+              }
+            />
+          </CardContent>
+        )}
+      </Card>
+    </AdminPage>
   );
 }

@@ -10,7 +10,7 @@ import {
   BreadcrumbPage,
 } from "@/components/ui/breadcrumb";
 
-type Crumb = { label: string; href?: string };
+export type Crumb = { label: string; href?: string };
 
 export function AdminPageHeader({
   trail,

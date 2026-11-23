@@ -1,6 +1,6 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router";
-import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
+import { AdminPage } from "@/features/admin/components/AdminPage";
 import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { Button } from "@/components/ui/button";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
@@ -107,75 +107,69 @@ export function AdminChatHistory() {
   ];
 
   return (
-    <div className="flex flex-1 flex-col gap-4">
-      <AdminPageHeader
-        trail={[
-          { label: "Admin", href: "/admin/dashboard" },
-          { label: "Tools", href: "/admin/tools" },
-          { label: "Chat History" },
-        ]}
+    <AdminPage
+      trail={[
+        { label: "Admin", href: "/admin/dashboard" },
+        { label: "Tools", href: "/admin/tools" },
+        { label: "Chat History" },
+      ]}
+    >
+      <AdminPageTitle
+        title="Assistant Chat History"
+        actions={
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={reload}
+            disabled={refreshing}
+            title="Refresh"
+          >
+            <RefreshCw
+              className={refreshing ? "size-4 animate-spin" : "size-4"}
+            />
+          </Button>
+        }
       />
 
-      <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
-        <AdminPageTitle
-          title="Assistant Chat History"
-          actions={
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={reload}
-              disabled={refreshing}
-              title="Refresh"
-            >
-              <RefreshCw
-                className={refreshing ? "size-4 animate-spin" : "size-4"}
-              />
-            </Button>
-          }
-        />
-
-        {error ? (
-          <ErrorState message={error} onRetry={reload} bordered />
-        ) : !loading && sessions.length === 0 ? (
+      {error ? (
+        <ErrorState message={error} onRetry={reload} bordered />
+      ) : !loading && sessions.length === 0 ? (
+        <div className="rounded-lg border border-border bg-card">
+          <EmptyState
+            icon={History}
+            message="No past sessions yet."
+            hint="End a chat in the assistant drawer and it'll show up here."
+            className="py-16"
+          />
+        </div>
+      ) : (
+        <>
           <div className="rounded-lg border border-border bg-card">
-            <EmptyState
-              icon={History}
-              message="No past sessions yet."
-              hint="End a chat in the assistant drawer and it'll show up here."
-              className="py-16"
+            <DataTable
+              columns={columns}
+              rows={sessions}
+              loading={loading}
+              rowKey={(s) => s.id}
+              onRowClick={(s) => navigate(`/admin/tools/chat-history/${s.id}`)}
             />
           </div>
-        ) : (
-          <>
-            <div className="rounded-lg border border-border bg-card">
-              <DataTable
-                columns={columns}
-                rows={sessions}
-                loading={loading}
-                rowKey={(s) => s.id}
-                onRowClick={(s) =>
-                  navigate(`/admin/tools/chat-history/${s.id}`)
-                }
-              />
-            </div>
 
-            {historyQuery.hasNextPage && (
-              <div className="flex flex-col items-center gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => void historyQuery.fetchNextPage()}
-                  loading={historyQuery.isFetchingNextPage}
-                >
-                  Load more
-                </Button>
-                {loadMoreError && (
-                  <p className="text-sm text-destructive">{loadMoreError}</p>
-                )}
-              </div>
-            )}
-          </>
-        )}
-      </div>
-    </div>
+          {historyQuery.hasNextPage && (
+            <div className="flex flex-col items-center gap-2">
+              <Button
+                variant="outline"
+                onClick={() => void historyQuery.fetchNextPage()}
+                loading={historyQuery.isFetchingNextPage}
+              >
+                Load more
+              </Button>
+              {loadMoreError && (
+                <p className="text-sm text-destructive">{loadMoreError}</p>
+              )}
+            </div>
+          )}
+        </>
+      )}
+    </AdminPage>
   );
 }

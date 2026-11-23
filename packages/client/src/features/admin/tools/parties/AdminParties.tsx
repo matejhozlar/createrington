@@ -15,7 +15,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
+import { AdminPage } from "@/features/admin/components/AdminPage";
 import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { FilterBar } from "@/features/admin/components/FilterBar";
 import { formatRelativeDateSafe } from "@/features/admin/format";
@@ -147,106 +147,102 @@ export function AdminParties() {
   const claimsSyncedAt = statsQuery.data?.claimsSyncedAt ?? null;
 
   return (
-    <div className="flex flex-1 flex-col gap-4">
-      <AdminPageHeader
-        trail={[
-          { label: "Admin", href: "/admin/dashboard" },
-          { label: "Tools", href: "/admin/tools" },
-          { label: PAGE_COPY.title },
-        ]}
+    <AdminPage
+      trail={[
+        { label: "Admin", href: "/admin/dashboard" },
+        { label: "Tools", href: "/admin/tools" },
+        { label: PAGE_COPY.title },
+      ]}
+    >
+      <AdminPageTitle
+        title={PAGE_COPY.title}
+        actions={
+          <Button variant="outline" onClick={() => setPurgeOpen(true)}>
+            <UserMinus className="mr-2 size-4" />
+            {PURGE_COPY.button}
+          </Button>
+        }
+        description={
+          <>
+            <p>{PAGE_COPY.description}</p>
+            {lastSyncedAt && (
+              <p className="text-xs">
+                Last synced {formatRelativeDateSafe(lastSyncedAt)}
+                {claimsSyncedAt &&
+                  ` · Claims synced ${formatRelativeDateSafe(claimsSyncedAt)}`}
+              </p>
+            )}
+          </>
+        }
       />
 
-      <div className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-4 px-4 pb-4">
-        <AdminPageTitle
-          title={PAGE_COPY.title}
-          actions={
-            <Button variant="outline" onClick={() => setPurgeOpen(true)}>
-              <UserMinus className="mr-2 size-4" />
-              {PURGE_COPY.button}
-            </Button>
-          }
-          description={
-            <>
-              <p>{PAGE_COPY.description}</p>
-              {lastSyncedAt && (
-                <p className="text-xs">
-                  Last synced {formatRelativeDateSafe(lastSyncedAt)}
-                  {claimsSyncedAt &&
-                    ` · Claims synced ${formatRelativeDateSafe(claimsSyncedAt)}`}
-                </p>
-              )}
-            </>
-          }
+      {statsQuery.isLoading ? (
+        <LoadingState
+          text="Loading party totals..."
+          className="flex-none p-0"
         />
-
-        {statsQuery.isLoading ? (
-          <LoadingState
-            text="Loading party totals..."
-            className="flex-none p-0"
-          />
-        ) : statsQuery.isError ? (
-          <ErrorState
-            message={`Failed to load the party totals: ${statsQuery.error.message}`}
-            onRetry={() => statsQuery.refetch()}
-            className="flex-none py-8"
-          />
-        ) : statsQuery.data ? (
-          <PartiesStatsCards
-            stats={statsQuery.data}
-            onBrowseClaims={() => setClaimsDialog({ partyId: null })}
-          />
-        ) : null}
-
-        <FilterBar
-          search={search}
-          onSearchChange={setSearch}
-          placeholder={PAGE_COPY.search}
-          activeCount={search ? 1 : 0}
+      ) : statsQuery.isError ? (
+        <ErrorState
+          message={`Failed to load the party totals: ${statsQuery.error.message}`}
+          onRetry={() => statsQuery.refetch()}
+          className="flex-none py-8"
         />
+      ) : statsQuery.data ? (
+        <PartiesStatsCards
+          stats={statsQuery.data}
+          onBrowseClaims={() => setClaimsDialog({ partyId: null })}
+        />
+      ) : null}
 
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              {PAGE_COPY.title}
-              {!listQuery.isLoading && ` (${shown.length})`}
-            </CardTitle>
-            <CardDescription>{PAGE_COPY.table}</CardDescription>
-          </CardHeader>
-          <CardContent className="p-0">
-            {listQuery.isError ? (
-              <ErrorState
-                message={`Failed to load the parties: ${listQuery.error.message}`}
-                onRetry={() => listQuery.refetch()}
-                compact
-              />
-            ) : !listQuery.isLoading && parties.length === 0 ? (
-              <EmptyState
-                icon={Users}
-                message={PAGE_COPY.empty}
-                className="py-8"
-              />
-            ) : !listQuery.isLoading && shown.length === 0 ? (
-              <EmptyState
-                icon={Search}
-                message={PAGE_COPY.noMatch}
-                className="py-8"
-              />
-            ) : (
-              <PartiesTable
-                parties={shown}
-                loading={listQuery.isLoading}
-                sort={sort}
-                onSort={toggleSort}
-                expandedId={expandedId}
-                onToggle={(id) =>
-                  setExpandedId((prev) => (prev === id ? null : id))
-                }
-                onShowClaims={(partyId) => setClaimsDialog({ partyId })}
-              />
-            )}
-          </CardContent>
-        </Card>
-      </div>
+      <FilterBar
+        search={search}
+        onSearchChange={setSearch}
+        placeholder={PAGE_COPY.search}
+        activeCount={search ? 1 : 0}
+      />
+
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            {PAGE_COPY.title}
+            {!listQuery.isLoading && ` (${shown.length})`}
+          </CardTitle>
+          <CardDescription>{PAGE_COPY.table}</CardDescription>
+        </CardHeader>
+        <CardContent className="p-0">
+          {listQuery.isError ? (
+            <ErrorState
+              message={`Failed to load the parties: ${listQuery.error.message}`}
+              onRetry={() => listQuery.refetch()}
+              compact
+            />
+          ) : !listQuery.isLoading && parties.length === 0 ? (
+            <EmptyState
+              icon={Users}
+              message={PAGE_COPY.empty}
+              className="py-8"
+            />
+          ) : !listQuery.isLoading && shown.length === 0 ? (
+            <EmptyState
+              icon={Search}
+              message={PAGE_COPY.noMatch}
+              className="py-8"
+            />
+          ) : (
+            <PartiesTable
+              parties={shown}
+              loading={listQuery.isLoading}
+              sort={sort}
+              onSort={toggleSort}
+              expandedId={expandedId}
+              onToggle={(id) =>
+                setExpandedId((prev) => (prev === id ? null : id))
+              }
+              onShowClaims={(partyId) => setClaimsDialog({ partyId })}
+            />
+          )}
+        </CardContent>
+      </Card>
 
       <ClaimsDialog
         open={claimsDialog !== null}
@@ -268,6 +264,6 @@ export function AdminParties() {
           purgeMutation.mutateAsync({ serverId: MAIN_SERVER_ID })
         }
       />
-    </div>
+    </AdminPage>
   );
 }

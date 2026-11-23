@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
+import { AdminPage } from "@/features/admin/components/AdminPage";
+import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { FilterBar } from "@/features/admin/components/FilterBar";
 import { TableCard } from "@/components/paged-table";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
@@ -133,130 +134,124 @@ export function OwnerDonations() {
   const stats = statsQuery.data;
 
   return (
-    <div className="flex flex-1 flex-col gap-4">
-      <AdminPageHeader
-        trail={[
-          { label: "Home", href: "/" },
-          { label: "Owner" },
-          { label: "Donations" },
-        ]}
-      />
-
-      <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
-        {statsQuery.isLoading ? (
-          <LoadingState
-            text="Loading statistics..."
-            className="flex-none py-8"
-          />
-        ) : statsQuery.isError ? (
-          <ErrorState
-            message={`Failed to load donation statistics: ${statsQuery.error.message}`}
-            onRetry={() => statsQuery.refetch()}
-            className="flex-none py-8"
-          />
-        ) : stats ? (
-          <div className="grid gap-4 md:grid-cols-3">
-            <StatCard
-              label="Total Raised"
-              value={formatAmount(stats.totalRaisedCents, "EUR")}
-              icon={Euro}
-              tone="primary"
-            />
-            <StatCard
-              label="Unique Donors"
-              value={stats.donorCount}
-              icon={Users}
-              tone="chart-2"
-            />
-            <StatCard
-              label="Total Donations"
-              value={stats.donationCount}
-              icon={Heart}
-              tone="chart-3"
-            />
-          </div>
-        ) : null}
-
-        {subStatsQuery.isError ? (
-          <ErrorState
-            message={`Failed to load subscription statistics: ${subStatsQuery.error.message}`}
-            onRetry={() => subStatsQuery.refetch()}
-            className="flex-none py-8"
-          />
-        ) : subStatsQuery.data ? (
-          <div className="grid gap-4 md:grid-cols-3">
-            <StatCard
-              label="Monthly Recurring Revenue"
-              value={formatAmount(subStatsQuery.data.mrrCents, "EUR")}
-              icon={Euro}
-              tone="primary"
-            />
-            <StatCard
-              label="Active Subscriptions"
-              value={subStatsQuery.data.activeCount}
-              icon={Repeat}
-              tone="chart-2"
-            />
-            <StatCard
-              label="Cancelling"
-              value={subStatsQuery.data.cancellingCount}
-              icon={CalendarX}
-              tone="chart-3"
-            />
-          </div>
-        ) : null}
-
-        <FilterBar
-          search={discordIdInput}
-          onSearchChange={setDiscordIdInput}
-          placeholder="Search by Discord ID..."
-          activeCount={
-            (discordIdInput ? 1 : 0) +
-            (statusFilter !== "all" ? 1 : 0) +
-            (typeFilter !== "all" ? 1 : 0)
-          }
-        >
-          <Select
-            value={statusFilter}
-            onValueChange={(v) => setStatusFilter(v as DonationStatus | "all")}
-          >
-            <SelectTrigger className="min-w-[150px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              {DONATION_STATUSES.map((status) => (
-                <SelectItem key={status} value={status}>
-                  {STATUS_DISPLAY[status].label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select
-            value={typeFilter}
-            onValueChange={(v) => setTypeFilter(v as DonationType | "all")}
-          >
-            <SelectTrigger className="min-w-[130px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="one_time">One-time</SelectItem>
-              <SelectItem value="monthly">Monthly</SelectItem>
-            </SelectContent>
-          </Select>
-        </FilterBar>
-
-        <TableCard
-          title="Donations"
-          paged={donations}
-          empty={{ icon: Heart, message: "No donations found" }}
-          itemLabel="donation"
-          columns={DONATION_COLUMNS}
-          rowKey={(d) => d.id}
+    <AdminPage
+      trail={[
+        { label: "Home", href: "/" },
+        { label: "Owner" },
+        { label: "Donations" },
+      ]}
+    >
+      <AdminPageTitle title="Donations" />
+      {statsQuery.isLoading ? (
+        <LoadingState text="Loading statistics..." className="flex-none py-8" />
+      ) : statsQuery.isError ? (
+        <ErrorState
+          message={`Failed to load donation statistics: ${statsQuery.error.message}`}
+          onRetry={() => statsQuery.refetch()}
+          className="flex-none py-8"
         />
-      </div>
-    </div>
+      ) : stats ? (
+        <div className="grid gap-4 md:grid-cols-3">
+          <StatCard
+            label="Total Raised"
+            value={formatAmount(stats.totalRaisedCents, "EUR")}
+            icon={Euro}
+            tone="primary"
+          />
+          <StatCard
+            label="Unique Donors"
+            value={stats.donorCount}
+            icon={Users}
+            tone="chart-2"
+          />
+          <StatCard
+            label="Total Donations"
+            value={stats.donationCount}
+            icon={Heart}
+            tone="chart-3"
+          />
+        </div>
+      ) : null}
+
+      {subStatsQuery.isError ? (
+        <ErrorState
+          message={`Failed to load subscription statistics: ${subStatsQuery.error.message}`}
+          onRetry={() => subStatsQuery.refetch()}
+          className="flex-none py-8"
+        />
+      ) : subStatsQuery.data ? (
+        <div className="grid gap-4 md:grid-cols-3">
+          <StatCard
+            label="Monthly Recurring Revenue"
+            value={formatAmount(subStatsQuery.data.mrrCents, "EUR")}
+            icon={Euro}
+            tone="primary"
+          />
+          <StatCard
+            label="Active Subscriptions"
+            value={subStatsQuery.data.activeCount}
+            icon={Repeat}
+            tone="chart-2"
+          />
+          <StatCard
+            label="Cancelling"
+            value={subStatsQuery.data.cancellingCount}
+            icon={CalendarX}
+            tone="chart-3"
+          />
+        </div>
+      ) : null}
+
+      <FilterBar
+        search={discordIdInput}
+        onSearchChange={setDiscordIdInput}
+        placeholder="Search by Discord ID..."
+        activeCount={
+          (discordIdInput ? 1 : 0) +
+          (statusFilter !== "all" ? 1 : 0) +
+          (typeFilter !== "all" ? 1 : 0)
+        }
+      >
+        <Select
+          value={statusFilter}
+          onValueChange={(v) => setStatusFilter(v as DonationStatus | "all")}
+        >
+          <SelectTrigger className="min-w-[150px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Statuses</SelectItem>
+            {DONATION_STATUSES.map((status) => (
+              <SelectItem key={status} value={status}>
+                {STATUS_DISPLAY[status].label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select
+          value={typeFilter}
+          onValueChange={(v) => setTypeFilter(v as DonationType | "all")}
+        >
+          <SelectTrigger className="min-w-[130px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Types</SelectItem>
+            <SelectItem value="one_time">One-time</SelectItem>
+            <SelectItem value="monthly">Monthly</SelectItem>
+          </SelectContent>
+        </Select>
+      </FilterBar>
+
+      <TableCard
+        title="Donations"
+        paged={donations}
+        empty={{ icon: Heart, message: "No donations found" }}
+        itemLabel="donation"
+        columns={DONATION_COLUMNS}
+        rowKey={(d) => d.id}
+      />
+    </AdminPage>
   );
 }

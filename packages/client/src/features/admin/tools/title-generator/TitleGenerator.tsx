@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
+import { AdminPage } from "@/features/admin/components/AdminPage";
 import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { LayerEditor } from "./components/LayerEditor";
 import { LayerList } from "./components/LayerList";
@@ -55,100 +55,96 @@ export function TitleGenerator() {
   );
 
   return (
-    <div className="flex flex-1 flex-col gap-4">
-      <AdminPageHeader
-        trail={[
-          { label: "Admin", href: "/admin/dashboard" },
-          { label: "Tools", href: "/admin/tools" },
-          { label: "Title Generator" },
-        ]}
+    <AdminPage
+      trail={[
+        { label: "Admin", href: "/admin/dashboard" },
+        { label: "Tools", href: "/admin/tools" },
+        { label: "Title Generator" },
+      ]}
+    >
+      <AdminPageTitle
+        title="Title Generator"
+        description="Build Minecraft-style 3D titles like the Createrington wordmark."
+        actions={
+          <Button variant="outline" onClick={project.resetProject}>
+            <RotateCcw className="size-4" />
+            Reset to wordmark
+          </Button>
+        }
       />
 
-      <div className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-4 px-4 pb-4">
-        <AdminPageTitle
-          title="Title Generator"
-          description="Build Minecraft-style 3D titles like the Createrington wordmark."
-          actions={
-            <Button variant="outline" onClick={project.resetProject}>
-              <RotateCcw className="size-4" />
-              Reset to wordmark
+      {catalog.error ? (
+        <Card>
+          <CardContent className="py-8 text-center">
+            <p className="text-destructive">
+              Unable to load the fonts and textures.
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              They are served from the Minecraft Title Generator repository on
+              GitHub. Check that raw.githubusercontent.com or cdn.jsdelivr.net
+              is reachable.
+            </p>
+            <Button
+              variant="outline"
+              className="mt-4"
+              onClick={() => catalog.refetch()}
+            >
+              Try again
             </Button>
-          }
-        />
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          <PreviewCard
+            output={result.output}
+            current={result.current}
+            rendering={result.rendering}
+            error={result.error}
+            loading={catalog.isLoading}
+            fileName={fileNameFor(project.layers.map((layer) => layer.text))}
+          />
 
-        {catalog.error ? (
-          <Card>
-            <CardContent className="py-8 text-center">
-              <p className="text-destructive">
-                Unable to load the fonts and textures.
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                They are served from the Minecraft Title Generator repository on
-                GitHub. Check that raw.githubusercontent.com or cdn.jsdelivr.net
-                is reachable.
-              </p>
-              <Button
-                variant="outline"
-                className="mt-4"
-                onClick={() => catalog.refetch()}
-              >
-                Try again
-              </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          <>
-            <PreviewCard
-              output={result.output}
-              current={result.current}
-              rendering={result.rendering}
-              error={result.error}
-              loading={catalog.isLoading}
-              fileName={fileNameFor(project.layers.map((layer) => layer.text))}
-            />
-
-            <div className="grid items-start gap-4 lg:grid-cols-[22rem_minmax(0,1fr)]">
-              <div className="flex flex-col gap-4">
-                <LayerList
-                  layers={project.layers}
-                  selectedId={project.selectedLayer.id}
-                  catalog={catalog.data}
-                  onSelect={project.selectLayer}
-                  onAdd={project.addLayer}
-                  onDuplicate={project.duplicateLayer}
-                  onRemove={project.removeLayer}
-                  onMove={project.moveLayer}
-                />
-                <RenderCard
-                  key={project.revision}
-                  render={project.render}
-                  onChange={project.setRender}
-                />
-                <OutputCard
-                  output={project.output}
-                  onChange={project.setOutput}
-                />
-              </div>
-
-              {catalog.data?.fonts[project.selectedLayer.font] ? (
-                <LayerEditor
-                  layer={project.selectedLayer}
-                  catalog={catalog.data}
-                  onChange={(update) =>
-                    project.updateLayer(project.selectedLayer.id, update)
-                  }
-                />
-              ) : (
-                <Card>
-                  <CardContent className="py-8 text-center text-sm text-muted-foreground">
-                    Loading fonts and textures...
-                  </CardContent>
-                </Card>
-              )}
+          <div className="grid items-start gap-4 lg:grid-cols-[22rem_minmax(0,1fr)]">
+            <div className="flex flex-col gap-4">
+              <LayerList
+                layers={project.layers}
+                selectedId={project.selectedLayer.id}
+                catalog={catalog.data}
+                onSelect={project.selectLayer}
+                onAdd={project.addLayer}
+                onDuplicate={project.duplicateLayer}
+                onRemove={project.removeLayer}
+                onMove={project.moveLayer}
+              />
+              <RenderCard
+                key={project.revision}
+                render={project.render}
+                onChange={project.setRender}
+              />
+              <OutputCard
+                output={project.output}
+                onChange={project.setOutput}
+              />
             </div>
-          </>
-        )}
-      </div>
-    </div>
+
+            {catalog.data?.fonts[project.selectedLayer.font] ? (
+              <LayerEditor
+                layer={project.selectedLayer}
+                catalog={catalog.data}
+                onChange={(update) =>
+                  project.updateLayer(project.selectedLayer.id, update)
+                }
+              />
+            ) : (
+              <Card>
+                <CardContent className="py-8 text-center text-sm text-muted-foreground">
+                  Loading fonts and textures...
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </>
+      )}
+    </AdminPage>
   );
 }

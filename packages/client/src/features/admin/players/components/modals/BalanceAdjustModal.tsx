@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { ADMIN_REASON_MAX_LENGTH } from "@createrington/shared/admin-reason";
 import { Equal, Minus, Plus, type LucideIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -10,6 +9,7 @@ import {
 } from "@/components/ui/field";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
+import { useDialogDraft } from "@/hooks/use-dialog-draft";
 import { formatMoney } from "@createrington/shared/format";
 import { trpc, queryClient } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
@@ -54,6 +54,12 @@ const MODES: {
 
 const AMOUNT_PATTERN = /^\d{0,9}(\.\d{0,2})?$/;
 
+const EMPTY_DRAFT: { mode: Mode; amountInput: string; reason: string } = {
+  mode: "add",
+  amountInput: "",
+  reason: "",
+};
+
 interface BalanceAdjustModalProps {
   open: boolean;
   onClose: () => void;
@@ -69,9 +75,8 @@ export function BalanceAdjustModal({
   playerName,
   currentBalance,
 }: BalanceAdjustModalProps) {
-  const [mode, setMode] = useState<Mode>("add");
-  const [amountInput, setAmountInput] = useState("");
-  const [reason, setReason] = useState("");
+  const [draft, update] = useDialogDraft(open, EMPTY_DRAFT);
+  const { mode, amountInput, reason } = draft;
 
   const adjust = useMutation(
     trpc.admin.players.balance.adjust.mutationOptions(
@@ -140,7 +145,10 @@ export function BalanceAdjustModal({
       disabled={!canSubmit}
       asForm
     >
-      <Tabs value={mode} onValueChange={(value) => setMode(value as Mode)}>
+      <Tabs
+        value={mode}
+        onValueChange={(value) => update({ mode: value as Mode })}
+      >
         <TabsList className="grid w-full grid-cols-3">
           {MODES.map(({ value, label, icon: Icon }) => (
             <TabsTrigger key={value} value={value} className="cursor-pointer">
@@ -167,7 +175,7 @@ export function BalanceAdjustModal({
             aria-invalid={!!amountError}
             onChange={(e) => {
               const next = e.target.value.replace(/[,\s$]/g, "");
-              if (AMOUNT_PATTERN.test(next)) setAmountInput(next);
+              if (AMOUNT_PATTERN.test(next)) update({ amountInput: next });
             }}
             className="h-11 pl-7 font-mono text-lg tabular-nums md:text-lg"
           />
@@ -190,7 +198,7 @@ export function BalanceAdjustModal({
           placeholder="e.g. Refund for items lost in a server crash"
           value={reason}
           maxLength={ADMIN_REASON_MAX_LENGTH}
-          onChange={(e) => setReason(e.target.value)}
+          onChange={(e) => update({ reason: e.target.value })}
         />
         <FieldDescription className="text-xs">
           Shown as the transaction description.

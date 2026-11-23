@@ -3,7 +3,8 @@ import { Badge } from "@/components/ui/badge";
 import { Ban, Clock } from "lucide-react";
 import type { RouterOutput } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
-import { WorkshopBansSection } from "../WorkshopBansSection";
+import { WorkshopBansSection } from "@/features/admin/players/components/WorkshopBansSection";
+import { TabSectionHeader } from "@/features/admin/players/components/TabSectionHeader";
 import { EmptyState } from "@/components/query-states";
 import { formatDate } from "@createrington/shared/format";
 
@@ -37,13 +38,15 @@ export function BansTab({ player, onIssueBan, onUnban }: BansTabProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">Bans</h3>
-        <Button size="sm" onClick={onIssueBan}>
-          <Ban className="size-4" />
-          Issue Ban
-        </Button>
-      </div>
+      <TabSectionHeader
+        title="Bans"
+        actions={
+          <Button size="sm" onClick={onIssueBan}>
+            <Ban className="size-4" />
+            Issue Ban
+          </Button>
+        }
+      />
 
       {currentBan && !isExpired(currentBan.expiresAt) && (
         <div className="rounded-lg border border-destructive bg-destructive/10 p-4">

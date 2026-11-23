@@ -10,16 +10,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DataTable, type DataTableColumn } from "@/components/data-table";
-import {
-  BarChart3,
-  ChevronDown,
-  ChevronRight,
-  RefreshCw,
-  Search,
-  X,
-} from "lucide-react";
+import { TabSectionHeader } from "@/features/admin/players/components/TabSectionHeader";
+import { BarChart3, ChevronDown, ChevronRight, Search, X } from "lucide-react";
 import { formatNumber } from "@/lib/format";
-import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import {
@@ -202,26 +195,19 @@ export function StatsTab({ playerId, getServerName }: StatsTabProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold">Minecraft Stats</h3>
-          <p className="text-sm text-muted-foreground">
+      <TabSectionHeader
+        title="Minecraft Stats"
+        description={
+          <>
             {filteredStats.length.toLocaleString()} stats
             {debouncedSearch || selectedCategory !== "all"
               ? ` (filtered from ${flatStats.length.toLocaleString()})`
               : ""}
-          </p>
-        </div>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => statsQuery.refetch()}
-          disabled={loading}
-        >
-          <RefreshCw className={cn("size-4", loading && "animate-spin")} />
-          Refresh
-        </Button>
-      </div>
+          </>
+        }
+        onRefresh={() => statsQuery.refetch()}
+        refreshing={loading}
+      />
 
       {loading ? (
         <LoadingState text="Loading stats..." />

@@ -6,7 +6,7 @@ import {
 } from "@/components/data-table";
 import { PagedTable } from "@/components/paged-table";
 import { usePagedQuery } from "@/hooks/use-paged-query";
-import { Button } from "@/components/ui/button";
+import { TabSectionHeader } from "@/features/admin/players/components/TabSectionHeader";
 import { Badge } from "@/components/ui/badge";
 import { Clock } from "lucide-react";
 import { trpc, type RouterOutput } from "@/lib/trpc";
@@ -86,23 +86,12 @@ export function SessionsTab({ playerId, getServerName }: SessionsTabProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold">Session History</h3>
-          <p className="text-sm text-muted-foreground">
-            {sessions.total.toLocaleString()} total
-          </p>
-        </div>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={sessions.retry}
-          loading={sessions.loading}
-        >
-          <Clock className="size-4" />
-          Refresh
-        </Button>
-      </div>
+      <TabSectionHeader
+        title="Session History"
+        description={`${sessions.total.toLocaleString()} total`}
+        onRefresh={sessions.retry}
+        refreshing={sessions.loading}
+      />
 
       <PagedTable
         paged={sessions}

@@ -2,7 +2,8 @@ import { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { LoadingState } from "@/components/query-states";
 import { StatCard } from "@/components/stat-card";
-import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
+import { AdminPage } from "@/features/admin/components/AdminPage";
+import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { FilterBar } from "@/features/admin/components/FilterBar";
 import { TableCard } from "@/components/paged-table";
 import { useAdminPlayers } from "@/contexts/admin";
@@ -208,125 +209,119 @@ export function AdminPlayers() {
   ];
 
   return (
-    <div className="flex flex-1 flex-col gap-4">
-      <AdminPageHeader
-        trail={[
-          { label: "Admin", href: "/admin/dashboard" },
-          { label: "Players" },
-        ]}
-      />
-
-      <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
-        {statsLoading ? (
-          <LoadingState
-            text="Loading statistics..."
-            className="flex-none py-8"
+    <AdminPage
+      trail={[
+        { label: "Admin", href: "/admin/dashboard" },
+        { label: "Players" },
+      ]}
+    >
+      <AdminPageTitle title="Players" />
+      {statsLoading ? (
+        <LoadingState text="Loading statistics..." className="flex-none py-8" />
+      ) : stats ? (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <StatCard
+            label="Total Players"
+            value={stats.total}
+            icon={Users}
+            tone="primary"
+            footer={`${stats.online} currently online`}
           />
-        ) : stats ? (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <StatCard
-              label="Total Players"
-              value={stats.total}
-              icon={Users}
-              tone="primary"
-              footer={`${stats.online} currently online`}
-            />
-            <StatCard
-              label="New This Week"
-              value={stats.registered.thisWeek}
-              icon={UserPlus}
-              tone="chart-2"
-              footer={`${stats.registered.today} today`}
-            />
-            <StatCard
-              label="Total Balance"
-              value={formatMoney(Number(stats.balance.total))}
-              icon={Coins}
-              tone="chart-3"
-              footer={`Avg: ${formatMoney(Number(stats.balance.average))}`}
-            />
-            <StatCard
-              label="Monthly Growth"
-              value={stats.registered.thisMonth}
-              icon={TrendingUp}
-              tone="chart-4"
-              footer="New registrations"
-            />
-          </div>
-        ) : null}
+          <StatCard
+            label="New This Week"
+            value={stats.registered.thisWeek}
+            icon={UserPlus}
+            tone="chart-2"
+            footer={`${stats.registered.today} today`}
+          />
+          <StatCard
+            label="Total Balance"
+            value={formatMoney(Number(stats.balance.total))}
+            icon={Coins}
+            tone="chart-3"
+            footer={`Avg: ${formatMoney(Number(stats.balance.average))}`}
+          />
+          <StatCard
+            label="Monthly Growth"
+            value={stats.registered.thisMonth}
+            icon={TrendingUp}
+            tone="chart-4"
+            footer="New registrations"
+          />
+        </div>
+      ) : null}
 
-        <FilterBar
-          search={searchQuery}
-          onSearchChange={setSearchQuery}
-          placeholder="Search by username, Discord ID, or UUID..."
-          activeCount={
-            (searchQuery ? 1 : 0) +
-            (onlineFilter !== undefined ? 1 : 0) +
-            (violationFilter !== "all" ? 1 : 0)
+      <FilterBar
+        search={searchQuery}
+        onSearchChange={setSearchQuery}
+        placeholder="Search by username, Discord ID, or UUID..."
+        activeCount={
+          (searchQuery ? 1 : 0) +
+          (onlineFilter !== undefined ? 1 : 0) +
+          (violationFilter !== "all" ? 1 : 0)
+        }
+      >
+        <Select
+          value={
+            onlineFilter === undefined
+              ? "all"
+              : onlineFilter
+                ? "online"
+                : "offline"
+          }
+          onValueChange={(v) =>
+            setOnlineFilter(v === "all" ? undefined : v === "online")
           }
         >
-          <Select
-            value={
-              onlineFilter === undefined
-                ? "all"
-                : onlineFilter
-                  ? "online"
-                  : "offline"
-            }
-            onValueChange={(v) =>
-              setOnlineFilter(v === "all" ? undefined : v === "online")
-            }
-          >
-            <SelectTrigger className="min-w-[120px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="online">Online</SelectItem>
-              <SelectItem value="offline">Offline</SelectItem>
-            </SelectContent>
-          </Select>
+          <SelectTrigger className="min-w-[120px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Statuses</SelectItem>
+            <SelectItem value="online">Online</SelectItem>
+            <SelectItem value="offline">Offline</SelectItem>
+          </SelectContent>
+        </Select>
 
-          <Select
-            value={violationFilter}
-            onValueChange={(v) => setViolationFilter(v as ViolationFilter)}
-          >
-            <SelectTrigger className="min-w-[160px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Players</SelectItem>
-              <SelectItem value="any">Any Violations</SelectItem>
-              <SelectItem value="strikes">With Strikes</SelectItem>
-              <SelectItem value="bans">With Bans</SelectItem>
-            </SelectContent>
-          </Select>
-        </FilterBar>
+        <Select
+          value={violationFilter}
+          onValueChange={(v) => setViolationFilter(v as ViolationFilter)}
+        >
+          <SelectTrigger className="min-w-[160px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Players</SelectItem>
+            <SelectItem value="any">Any Violations</SelectItem>
+            <SelectItem value="strikes">With Strikes</SelectItem>
+            <SelectItem value="bans">With Bans</SelectItem>
+          </SelectContent>
+        </Select>
+      </FilterBar>
 
-        <TableCard
-          title="Players"
-          paged={players}
-          empty={{
-            icon: Users,
-            message: "No players found",
-            hint:
-              violationFilter !== "all" && "Try changing the violation filter",
-          }}
-          itemLabel="player"
-          columns={columns}
-          rowKey={(player) => player.minecraftUuid}
-          onRowClick={(player) =>
-            navigate(`/admin/players/${player.minecraftUuid}`)
-          }
-          rowClassName={(player) => {
-            const badgeInfo = getPlayerBadgeInfo(player);
-            if (!badgeInfo.hasIssues) return undefined;
-            return badgeInfo.color === "red"
-              ? "bg-destructive/5"
-              : "bg-yellow-500/5";
-          }}
-        />
-      </div>
-    </div>
+      <TableCard
+        title="Players"
+        paged={players}
+        empty={{
+          icon: Users,
+          message: "No players found",
+          hint:
+            violationFilter !== "all" && "Try changing the violation filter",
+        }}
+        itemLabel="player"
+        columns={columns}
+        rowKey={(player) => player.minecraftUuid}
+        onRowClick={(player) =>
+          navigate(`/admin/players/${player.minecraftUuid}`)
+        }
+        rowClassName={(player) => {
+          const badgeInfo = getPlayerBadgeInfo(player);
+          if (!badgeInfo.hasIssues) return undefined;
+          return badgeInfo.color === "red"
+            ? "bg-destructive/5"
+            : "bg-yellow-500/5";
+        }}
+      />
+    </AdminPage>
   );
 }

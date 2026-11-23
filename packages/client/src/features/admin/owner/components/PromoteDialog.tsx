@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { FormDialog } from "@/components/form-dialog";
 import { SearchInput } from "@/components/search-input";
 import { Field, FieldLabel } from "@/components/ui/field";
@@ -10,6 +9,7 @@ import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Textarea } from "@/components/ui/textarea";
+import { useDialogDraft } from "@/hooks/use-dialog-draft";
 
 interface PromoteDialogProps {
   open: boolean;
@@ -25,13 +25,16 @@ export function PromoteDialog({
   onClose,
   onSuccess,
 }: PromoteDialogProps) {
-  const [query, setQuery] = useState("");
-  const [reason, setReason] = useState("");
-  const [selected, setSelected] = useState<{
-    discordId: string;
-    minecraftUsername: string;
-    minecraftUuid: string;
-  } | null>(null);
+  const [draft, update] = useDialogDraft<{
+    query: string;
+    reason: string;
+    selected: {
+      discordId: string;
+      minecraftUsername: string;
+      minecraftUuid: string;
+    } | null;
+  }>(open, () => ({ query: "", reason: "", selected: null }));
+  const { query, reason, selected } = draft;
 
   const debouncedQuery = useDebouncedValue(query);
   const searchQuery = useQuery(
@@ -51,20 +54,10 @@ export function PromoteDialog({
             minecraftUsername:
               result.minecraftUsername ?? selected?.minecraftUsername ?? null,
           });
-          setQuery("");
-          setReason("");
-          setSelected(null);
         },
       }),
     ),
   );
-
-  const handleClose = () => {
-    setQuery("");
-    setReason("");
-    setSelected(null);
-    onClose();
-  };
 
   const handlePromote = () => {
     if (!selected) return;
@@ -79,7 +72,7 @@ export function PromoteDialog({
   return (
     <FormDialog
       open={open}
-      onClose={handleClose}
+      onClose={onClose}
       title={
         <span className="flex items-center gap-2">
           <UserPlus className="size-5" />
@@ -112,7 +105,11 @@ export function PromoteDialog({
                 </span>
               </div>
             </div>
-            <Button size="sm" variant="ghost" onClick={() => setSelected(null)}>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => update({ selected: null })}
+            >
               Change
             </Button>
           </div>
@@ -120,7 +117,7 @@ export function PromoteDialog({
           <div>
             <SearchInput
               value={query}
-              onValueChange={setQuery}
+              onValueChange={(value: string) => update({ query: value })}
               placeholder="Search by Minecraft username or Discord ID"
               autoFocus
             />
@@ -140,10 +137,12 @@ export function PromoteDialog({
                       key={p.discordId}
                       type="button"
                       onClick={() =>
-                        setSelected({
-                          discordId: p.discordId,
-                          minecraftUsername: p.minecraftUsername,
-                          minecraftUuid: p.minecraftUuid,
+                        update({
+                          selected: {
+                            discordId: p.discordId,
+                            minecraftUsername: p.minecraftUsername,
+                            minecraftUuid: p.minecraftUuid,
+                          },
                         })
                       }
                       className="flex w-full items-center gap-2 border-b px-3 py-2 text-left last:border-b-0 hover:bg-muted/50"
@@ -175,7 +174,7 @@ export function PromoteDialog({
         <Textarea
           id="promote-reason"
           value={reason}
-          onChange={(e) => setReason(e.target.value)}
+          onChange={(e) => update({ reason: e.target.value })}
           placeholder="e.g. Trusted moderator, handles Discord tickets"
           maxLength={500}
           rows={3}

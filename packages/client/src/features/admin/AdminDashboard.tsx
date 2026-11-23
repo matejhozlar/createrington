@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { useAuth } from "@/contexts/auth";
 import { trpc } from "@/lib/trpc";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
@@ -8,9 +8,11 @@ import {
   LoadingState,
 } from "@/components/query-states";
 import { StatCard } from "@/components/stat-card";
-import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
+import { AdminPage } from "@/features/admin/components/AdminPage";
+import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import {
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -41,6 +43,11 @@ import { formatDate } from "@createrington/shared/format";
 
 import { formatRelativeDate } from "@/lib/format";
 import { useQuery } from "@tanstack/react-query";
+
+const TRAIL = [
+  { label: "Admin", href: "/admin/dashboard" },
+  { label: "Dashboard" },
+];
 
 export function AdminDashboard() {
   const { user } = useAuth();
@@ -80,15 +87,9 @@ export function AdminDashboard() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-1 flex-col gap-4">
-        <AdminPageHeader
-          trail={[
-            { label: "Admin", href: "/admin/dashboard" },
-            { label: "Dashboard" },
-          ]}
-        />
+      <AdminPage trail={TRAIL}>
         <LoadingState text="Loading dashboard..." />
-      </div>
+      </AdminPage>
     );
   }
 
@@ -101,13 +102,7 @@ export function AdminDashboard() {
 
   if (coreError) {
     return (
-      <div className="flex flex-1 flex-col gap-4">
-        <AdminPageHeader
-          trail={[
-            { label: "Admin", href: "/admin/dashboard" },
-            { label: "Dashboard" },
-          ]}
-        />
+      <AdminPage trail={TRAIL}>
         <ErrorState
           message={coreError.message}
           onRetry={() => {
@@ -117,7 +112,7 @@ export function AdminDashboard() {
             void waitlistStatsQuery.refetch();
           }}
         />
-      </div>
+      </AdminPage>
     );
   }
 
@@ -178,356 +173,336 @@ export function AdminDashboard() {
   const recentLogs = recentLogsQuery.data?.items ?? [];
 
   return (
-    <div className="flex flex-1 flex-col gap-4">
-      <AdminPageHeader
-        trail={[
-          { label: "Admin", href: "/admin/dashboard" },
-          { label: "Dashboard" },
-        ]}
-      />
+    <AdminPage trail={TRAIL}>
+      <AdminPageTitle title="Dashboard" />
 
-      <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
-        {user && (
-          <Card>
-            <CardContent className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <MinecraftAvatar
-                  username={user.minecraftUsername}
-                  uuid={user.minecraftUuid}
-                  size={64}
-                />
-                <div>
-                  <h2 className="text-xl font-semibold">
-                    {user.minecraftUsername}
-                  </h2>
-                  <p className="text-sm text-muted-foreground">
-                    {user.username}
+      {user && (
+        <Card>
+          <CardContent className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <MinecraftAvatar
+                username={user.minecraftUsername}
+                uuid={user.minecraftUuid}
+                size={64}
+              />
+              <div>
+                <h2 className="text-xl font-semibold">
+                  {user.minecraftUsername}
+                </h2>
+                <p className="text-sm text-muted-foreground">{user.username}</p>
+                {profile?.adminSince && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Admin since {formatDate(profile.adminSince)}
                   </p>
-                  {profile?.adminSince && (
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Admin since {formatDate(profile.adminSince)}
-                    </p>
-                  )}
-                </div>
+                )}
               </div>
-              <div className="flex items-center gap-6">
-                <div className="text-center">
-                  <p className="text-2xl font-bold">
-                    {profile?.totalActions ?? 0}
-                  </p>
-                  <p className="text-xs text-muted-foreground">Total Actions</p>
-                </div>
-                <Separator orientation="vertical" className="h-12" />
-                <div className="text-center">
-                  <p className="text-2xl font-bold">
-                    {profile?.recentActions ?? 0}
-                  </p>
-                  <p className="text-xs text-muted-foreground">Last 7 Days</p>
-                </div>
+            </div>
+            <div className="flex items-center gap-6">
+              <div className="text-center">
+                <p className="text-2xl font-bold">
+                  {profile?.totalActions ?? 0}
+                </p>
+                <p className="text-xs text-muted-foreground">Total Actions</p>
               </div>
-            </CardContent>
-          </Card>
-        )}
-
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <StatCard
-            label="Total Players"
-            value={playerStats?.total ?? 0}
-            icon={Users}
-            tone="primary"
-            footer={`${playerStats?.online ?? 0} online`}
-          />
-          <StatCard
-            label="Servers"
-            value={`${serversData?.totals.onlineServers ?? 0}/${serversData?.totals.totalServers ?? 0}`}
-            icon={Server}
-            tone="chart-2"
-            footer={`${serversData?.totals.totalPlayersOnline ?? 0} players online`}
-          />
-          <StatCard
-            label="Waitlist Queue"
-            value={waitlistStats?.queued ?? 0}
-            icon={UserPlus}
-            tone="chart-3"
-            footer={`${waitlistStats?.signups.thisWeek ?? 0} new this week`}
-          />
-          <StatCard
-            label="New This Week"
-            value={playerStats?.registered.thisWeek ?? 0}
-            icon={TrendingUp}
-            tone="chart-4"
-            footer={`${playerStats?.registered.today ?? 0} today`}
-          />
-        </div>
-
-        <div className="grid gap-4 lg:grid-cols-3">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Shield className="size-4 text-muted-foreground" />
-                Recent Bans
-              </CardTitle>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate("/admin/players")}
-              >
-                View All
-                <ArrowRight className="ml-1 size-3.5" />
-              </Button>
-            </CardHeader>
-            <CardContent>
-              {recentBansQuery.isError ? (
-                <ErrorState
-                  message={recentBansQuery.error.message}
-                  onRetry={() => recentBansQuery.refetch()}
-                  compact
-                />
-              ) : !recentBansQuery.isLoading && recentBans.length === 0 ? (
-                <EmptyState
-                  icon={Shield}
-                  message="No recent bans"
-                  className="px-0 py-4"
-                />
-              ) : (
-                <DataTable
-                  columns={recentBanColumns}
-                  rows={recentBans}
-                  loading={recentBansQuery.isLoading}
-                  loadingRows={5}
-                  rowKey={(ban) => ban.id}
-                />
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Activity className="size-4 text-muted-foreground" />
-                Recent Activity
-              </CardTitle>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate("/admin/logs")}
-              >
-                View All
-                <ArrowRight className="ml-1 size-3.5" />
-              </Button>
-            </CardHeader>
-            <CardContent>
-              {recentLogsQuery.isLoading ? (
-                <LoadingState
-                  size="small"
-                  text="Loading activity..."
-                  className="p-0"
-                />
-              ) : recentLogsQuery.isError ? (
-                <ErrorState
-                  message={recentLogsQuery.error.message}
-                  onRetry={() => recentLogsQuery.refetch()}
-                  compact
-                />
-              ) : recentLogs.length === 0 ? (
-                <EmptyState
-                  icon={Activity}
-                  message="No recent activity"
-                  className="px-0 py-4"
-                />
-              ) : (
-                <div className="space-y-0">
-                  {recentLogs.map((action, i) => (
-                    <div key={action.id}>
-                      <div className="flex items-center justify-between py-3">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className="text-sm font-medium shrink-0">
-                            {action.adminUsername}
-                          </span>
-                          <Badge variant="outline" className="shrink-0">
-                            {action.actionType}
-                          </Badge>
-                          <span className="text-sm text-muted-foreground truncate">
-                            {action.targetPlayerName}
-                          </span>
-                        </div>
-                        <span className="text-xs text-muted-foreground shrink-0 ml-2">
-                          {formatRelativeDate(
-                            typeof action.performedAt === "string"
-                              ? action.performedAt
-                              : new Date(action.performedAt).toISOString(),
-                          )}
-                        </span>
-                      </div>
-                      {i < recentLogs.length - 1 && <Separator />}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Terminal className="size-4 text-muted-foreground" />
-                Top Commands
-              </CardTitle>
-              <CardDescription>
-                {commandStatsQuery.data?.totalToday ?? 0} executions today
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {commandStatsQuery.isLoading ? (
-                <LoadingState
-                  size="small"
-                  text="Loading stats..."
-                  className="p-0"
-                />
-              ) : commandStatsQuery.isError ? (
-                <ErrorState
-                  message={commandStatsQuery.error.message}
-                  onRetry={() => commandStatsQuery.refetch()}
-                  compact
-                />
-              ) : !commandStatsQuery.data?.topCommands.length ? (
-                <EmptyState
-                  icon={Terminal}
-                  message="No command usage yet"
-                  className="px-0 py-4"
-                />
-              ) : (
-                <div className="space-y-3">
-                  {commandStatsQuery.data.topCommands.map((cmd) => {
-                    const maxCount =
-                      commandStatsQuery.data.topCommands[0].count;
-                    const pct = maxCount > 0 ? (cmd.count / maxCount) * 100 : 0;
-                    return (
-                      <div key={cmd.commandName} className="space-y-1">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="font-medium">
-                            /{cmd.commandName}
-                          </span>
-                          <span className="text-muted-foreground">
-                            {cmd.count}
-                          </span>
-                        </div>
-                        <Progress
-                          className="bg-muted"
-                          indicatorClassName="bg-sidebar-primary"
-                          value={pct}
-                        />
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="grid gap-4 lg:grid-cols-2">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Server className="size-4 text-muted-foreground" />
-                Server Overview
-              </CardTitle>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate("/admin/servers")}
-              >
-                View All
-                <ArrowRight className="ml-1 size-3.5" />
-              </Button>
-            </CardHeader>
-            <CardContent>
-              {serversData?.servers.length === 0 ? (
-                <EmptyState
-                  icon={Server}
-                  message="No servers configured"
-                  className="px-0 py-4"
-                />
-              ) : (
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {serversData?.servers.map((server) => (
-                    <button
-                      key={server.serverId}
-                      type="button"
-                      onClick={() =>
-                        navigate(`/admin/servers/${server.serverId}`)
-                      }
-                      className="flex items-center justify-between rounded-lg border p-3 text-left transition-colors hover:bg-muted/50"
-                    >
-                      <div className="flex items-center gap-2">
-                        <div
-                          className={`size-2 rounded-full ${
-                            server.status === "online"
-                              ? "bg-green-500"
-                              : "bg-muted-foreground"
-                          }`}
-                        />
-                        <span className="text-sm font-medium">
-                          {server.serverName}
-                        </span>
-                      </div>
-                      <span className="text-xs text-muted-foreground">
-                        {server.playerCount}/{server.maxPlayers}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <UserPlus className="size-4 text-muted-foreground" />
-                Waitlist Summary
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="rounded-lg border p-3 text-center">
-                  <p className="text-2xl font-bold">
-                    {waitlistStats?.queued ?? 0}
-                  </p>
-                  <p className="text-xs text-muted-foreground">Queued</p>
-                </div>
-                <div className="rounded-lg border p-3 text-center">
-                  <p className="text-2xl font-bold">
-                    {waitlistStats?.promoted ?? 0}
-                  </p>
-                  <p className="text-xs text-muted-foreground">Promoted</p>
-                </div>
-                <div className="rounded-lg border p-3 text-center">
-                  <p className="text-2xl font-bold">
-                    {waitlistStats?.registered ?? 0}
-                  </p>
-                  <p className="text-xs text-muted-foreground">Registered</p>
-                </div>
-                <div className="rounded-lg border p-3 text-center">
-                  <p className="text-2xl font-bold">
-                    {waitlistStats?.joinedMinecraft ?? 0}
-                  </p>
-                  <p className="text-xs text-muted-foreground">In-Game</p>
-                </div>
+              <Separator orientation="vertical" className="h-12" />
+              <div className="text-center">
+                <p className="text-2xl font-bold">
+                  {profile?.recentActions ?? 0}
+                </p>
+                <p className="text-xs text-muted-foreground">Last 7 Days</p>
               </div>
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={() => navigate("/admin/waitlist")}
-              >
-                Manage Waitlist
-                <ArrowRight className="ml-1 size-3.5" />
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          label="Total Players"
+          value={playerStats?.total ?? 0}
+          icon={Users}
+          tone="primary"
+          footer={`${playerStats?.online ?? 0} online`}
+        />
+        <StatCard
+          label="Servers"
+          value={`${serversData?.totals.onlineServers ?? 0}/${serversData?.totals.totalServers ?? 0}`}
+          icon={Server}
+          tone="chart-2"
+          footer={`${serversData?.totals.totalPlayersOnline ?? 0} players online`}
+        />
+        <StatCard
+          label="Waitlist Queue"
+          value={waitlistStats?.queued ?? 0}
+          icon={UserPlus}
+          tone="chart-3"
+          footer={`${waitlistStats?.signups.thisWeek ?? 0} new this week`}
+        />
+        <StatCard
+          label="New This Week"
+          value={playerStats?.registered.thisWeek ?? 0}
+          icon={TrendingUp}
+          tone="chart-4"
+          footer={`${playerStats?.registered.today ?? 0} today`}
+        />
       </div>
-    </div>
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Shield className="size-4 text-muted-foreground" />
+              Recent Bans
+            </CardTitle>
+            <ViewAllAction to="/admin/players" />
+          </CardHeader>
+          <CardContent>
+            {recentBansQuery.isError ? (
+              <ErrorState
+                message={recentBansQuery.error.message}
+                onRetry={() => recentBansQuery.refetch()}
+                compact
+              />
+            ) : !recentBansQuery.isLoading && recentBans.length === 0 ? (
+              <EmptyState
+                icon={Shield}
+                message="No recent bans"
+                className="px-0 py-4"
+              />
+            ) : (
+              <DataTable
+                columns={recentBanColumns}
+                rows={recentBans}
+                loading={recentBansQuery.isLoading}
+                loadingRows={5}
+                rowKey={(ban) => ban.id}
+              />
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Activity className="size-4 text-muted-foreground" />
+              Recent Activity
+            </CardTitle>
+            <ViewAllAction to="/admin/logs" />
+          </CardHeader>
+          <CardContent>
+            {recentLogsQuery.isLoading ? (
+              <LoadingState
+                size="small"
+                text="Loading activity..."
+                className="p-0"
+              />
+            ) : recentLogsQuery.isError ? (
+              <ErrorState
+                message={recentLogsQuery.error.message}
+                onRetry={() => recentLogsQuery.refetch()}
+                compact
+              />
+            ) : recentLogs.length === 0 ? (
+              <EmptyState
+                icon={Activity}
+                message="No recent activity"
+                className="px-0 py-4"
+              />
+            ) : (
+              <div className="space-y-0">
+                {recentLogs.map((action, i) => (
+                  <div key={action.id}>
+                    <div className="flex items-center justify-between py-3">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-sm font-medium shrink-0">
+                          {action.adminUsername}
+                        </span>
+                        <Badge variant="outline" className="shrink-0">
+                          {action.actionType}
+                        </Badge>
+                        <span className="text-sm text-muted-foreground truncate">
+                          {action.targetPlayerName}
+                        </span>
+                      </div>
+                      <span className="text-xs text-muted-foreground shrink-0 ml-2">
+                        {formatRelativeDate(
+                          typeof action.performedAt === "string"
+                            ? action.performedAt
+                            : new Date(action.performedAt).toISOString(),
+                        )}
+                      </span>
+                    </div>
+                    {i < recentLogs.length - 1 && <Separator />}
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Terminal className="size-4 text-muted-foreground" />
+              Top Commands
+            </CardTitle>
+            <CardDescription>
+              {commandStatsQuery.data?.totalToday ?? 0} executions today
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {commandStatsQuery.isLoading ? (
+              <LoadingState
+                size="small"
+                text="Loading stats..."
+                className="p-0"
+              />
+            ) : commandStatsQuery.isError ? (
+              <ErrorState
+                message={commandStatsQuery.error.message}
+                onRetry={() => commandStatsQuery.refetch()}
+                compact
+              />
+            ) : !commandStatsQuery.data?.topCommands.length ? (
+              <EmptyState
+                icon={Terminal}
+                message="No command usage yet"
+                className="px-0 py-4"
+              />
+            ) : (
+              <div className="space-y-3">
+                {commandStatsQuery.data.topCommands.map((cmd) => {
+                  const maxCount = commandStatsQuery.data.topCommands[0].count;
+                  const pct = maxCount > 0 ? (cmd.count / maxCount) * 100 : 0;
+                  return (
+                    <div key={cmd.commandName} className="space-y-1">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="font-medium">/{cmd.commandName}</span>
+                        <span className="text-muted-foreground">
+                          {cmd.count}
+                        </span>
+                      </div>
+                      <Progress
+                        className="bg-muted"
+                        indicatorClassName="bg-sidebar-primary"
+                        value={pct}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Server className="size-4 text-muted-foreground" />
+              Server Overview
+            </CardTitle>
+            <ViewAllAction to="/admin/servers" />
+          </CardHeader>
+          <CardContent>
+            {serversData?.servers.length === 0 ? (
+              <EmptyState
+                icon={Server}
+                message="No servers configured"
+                className="px-0 py-4"
+              />
+            ) : (
+              <div className="grid gap-2 sm:grid-cols-2">
+                {serversData?.servers.map((server) => (
+                  <button
+                    key={server.serverId}
+                    type="button"
+                    onClick={() =>
+                      navigate(`/admin/servers/${server.serverId}`)
+                    }
+                    className="flex items-center justify-between rounded-lg border p-3 text-left transition-colors hover:bg-muted/50"
+                  >
+                    <div className="flex items-center gap-2">
+                      <div
+                        className={`size-2 rounded-full ${
+                          server.status === "online"
+                            ? "bg-green-500"
+                            : "bg-muted-foreground"
+                        }`}
+                      />
+                      <span className="text-sm font-medium">
+                        {server.serverName}
+                      </span>
+                    </div>
+                    <span className="text-xs text-muted-foreground">
+                      {server.playerCount}/{server.maxPlayers}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <UserPlus className="size-4 text-muted-foreground" />
+              Waitlist Summary
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="rounded-lg border p-3 text-center">
+                <p className="text-2xl font-bold">
+                  {waitlistStats?.queued ?? 0}
+                </p>
+                <p className="text-xs text-muted-foreground">Queued</p>
+              </div>
+              <div className="rounded-lg border p-3 text-center">
+                <p className="text-2xl font-bold">
+                  {waitlistStats?.promoted ?? 0}
+                </p>
+                <p className="text-xs text-muted-foreground">Promoted</p>
+              </div>
+              <div className="rounded-lg border p-3 text-center">
+                <p className="text-2xl font-bold">
+                  {waitlistStats?.registered ?? 0}
+                </p>
+                <p className="text-xs text-muted-foreground">Registered</p>
+              </div>
+              <div className="rounded-lg border p-3 text-center">
+                <p className="text-2xl font-bold">
+                  {waitlistStats?.joinedMinecraft ?? 0}
+                </p>
+                <p className="text-xs text-muted-foreground">In-Game</p>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => navigate("/admin/waitlist")}
+            >
+              Manage Waitlist
+              <ArrowRight className="ml-1 size-3.5" />
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    </AdminPage>
+  );
+}
+
+function ViewAllAction({ to }: { to: string }) {
+  return (
+    <CardAction className="self-center">
+      <Button variant="ghost" size="sm" asChild>
+        <Link to={to}>
+          View All
+          <ArrowRight className="ml-1 size-3.5" />
+        </Link>
+      </Button>
+    </CardAction>
   );
 }

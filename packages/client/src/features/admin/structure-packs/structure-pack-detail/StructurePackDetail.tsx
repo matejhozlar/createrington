@@ -8,7 +8,7 @@ import {
 } from "@/components/query-states";
 import { trpc, queryClient } from "@/lib/trpc";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
-import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
+import { AdminPage } from "@/features/admin/components/AdminPage";
 import { PackHeader } from "./components/PackHeader";
 import { ModsList } from "./components/ModsList";
 import { EditPackDialog } from "./components/EditPackDialog";
@@ -94,45 +94,40 @@ export function StructurePackDetail() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-4">
-      <AdminPageHeader
-        trail={[
-          { label: "Admin", href: "/admin/dashboard" },
-          { label: "Tools", href: "/admin/tools" },
-          { label: "Structure Packs", href: "/admin/tools/structure-packs" },
-          { label: pack.name },
-        ]}
+    <AdminPage
+      trail={[
+        { label: "Admin", href: "/admin/dashboard" },
+        { label: "Tools", href: "/admin/tools" },
+        { label: "Structure Packs", href: "/admin/tools/structure-packs" },
+        { label: pack.name },
+      ]}
+    >
+      <PackHeader
+        pack={pack}
+        onEdit={() => setEditing(true)}
+        onDelete={() => deleteMutation.mutateAsync({ id: packId })}
+        onToggleEnabled={(enabled) =>
+          toggleEnabledMutation.mutate({ id: packId, enabled })
+        }
       />
 
-      <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
-        <PackHeader
-          pack={pack}
-          onEdit={() => setEditing(true)}
-          onDelete={() => deleteMutation.mutateAsync({ id: packId })}
-          onToggleEnabled={(enabled) =>
-            toggleEnabledMutation.mutate({ id: packId, enabled })
-          }
-        />
-
-        {pack.description && (
-          <p className="text-sm text-muted-foreground">{pack.description}</p>
-        )}
-
-        <ModsList
-          mods={pack.mods}
-          onAdd={() => setAddModOpen(true)}
-          onRemove={setRemoveTarget}
-        />
-      </div>
-
-      {editing && (
-        <EditPackDialog
-          onClose={() => setEditing(false)}
-          packId={packId}
-          initialName={pack.name}
-          initialDescription={pack.description ?? ""}
-        />
+      {pack.description && (
+        <p className="text-sm text-muted-foreground">{pack.description}</p>
       )}
+
+      <ModsList
+        mods={pack.mods}
+        onAdd={() => setAddModOpen(true)}
+        onRemove={setRemoveTarget}
+      />
+
+      <EditPackDialog
+        open={editing}
+        onClose={() => setEditing(false)}
+        packId={packId}
+        initialName={pack.name}
+        initialDescription={pack.description ?? ""}
+      />
 
       <AddModDialog
         open={addModOpen}
@@ -149,6 +144,6 @@ export function StructurePackDetail() {
         packId={packId}
         packMods={pack.mods}
       />
-    </div>
+    </AdminPage>
   );
 }

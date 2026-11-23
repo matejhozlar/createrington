@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
+import { AdminPage } from "@/features/admin/components/AdminPage";
 import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { FilterBar } from "@/features/admin/components/FilterBar";
 import { TableCard } from "@/components/paged-table";
@@ -55,11 +55,10 @@ export function AdminFaq() {
     newFieldDirection: "desc",
   });
 
-  const [entryDialog, setEntryDialog] = useState<{
-    open: boolean;
+  const [entryTarget, setEntryTarget] = useState<{
     entry: FaqEntry | null;
-  }>({ open: false, entry: null });
-  const openCreate = () => setEntryDialog({ open: true, entry: null });
+  } | null>(null);
+  const openCreate = () => setEntryTarget({ entry: null });
   const [deleteTarget, setDeleteTarget] = useState<FaqEntry | null>(null);
 
   const debouncedSearch = useDebouncedValue(searchQuery);
@@ -156,7 +155,7 @@ export function AdminFaq() {
     {
       label: "Edit",
       icon: Pencil,
-      onClick: () => setEntryDialog({ open: true, entry }),
+      onClick: () => setEntryTarget({ entry }),
     },
     {
       label: "Delete",
@@ -167,97 +166,90 @@ export function AdminFaq() {
   ];
 
   return (
-    <div className="flex flex-1 flex-col gap-4">
-      <AdminPageHeader
-        trail={[
-          { label: "Admin", href: "/admin/dashboard" },
-          { label: "Tools", href: "/admin/tools" },
-          { label: "FAQ" },
-        ]}
+    <AdminPage
+      trail={[
+        { label: "Admin", href: "/admin/dashboard" },
+        { label: "Tools", href: "/admin/tools" },
+        { label: "FAQ" },
+      ]}
+    >
+      <AdminPageTitle
+        title="FAQ Auto-Responder"
+        actions={
+          <>
+            <Button
+              variant="outline"
+              onClick={handleRepostWelcome}
+              disabled={repostWelcome.isPending}
+            >
+              <RefreshCw
+                className={cn(
+                  "mr-2 size-4",
+                  repostWelcome.isPending && "animate-spin",
+                )}
+              />
+              Repost Welcome
+            </Button>
+            <Button onClick={openCreate}>
+              <Plus className="mr-2 size-4" />
+              New Entry
+            </Button>
+          </>
+        }
       />
 
-      <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
-        <AdminPageTitle
-          title="FAQ Auto-Responder"
-          actions={
-            <>
-              <Button
-                variant="outline"
-                onClick={handleRepostWelcome}
-                disabled={repostWelcome.isPending}
-              >
-                <RefreshCw
-                  className={cn(
-                    "mr-2 size-4",
-                    repostWelcome.isPending && "animate-spin",
-                  )}
-                />
-                Repost Welcome
-              </Button>
-              <Button onClick={openCreate}>
-                <Plus className="mr-2 size-4" />
-                New Entry
-              </Button>
-            </>
-          }
-        />
-
-        <FilterBar
-          search={searchQuery}
-          onSearchChange={setSearchQuery}
-          placeholder="Search by title..."
-          activeCount={
-            (searchQuery ? 1 : 0) + (enabledFilter !== "all" ? 1 : 0)
-          }
+      <FilterBar
+        search={searchQuery}
+        onSearchChange={setSearchQuery}
+        placeholder="Search by title..."
+        activeCount={(searchQuery ? 1 : 0) + (enabledFilter !== "all" ? 1 : 0)}
+      >
+        <Select
+          value={enabledFilter}
+          onValueChange={(v) => setEnabledFilter(v as EnabledFilter)}
         >
-          <Select
-            value={enabledFilter}
-            onValueChange={(v) => setEnabledFilter(v as EnabledFilter)}
-          >
-            <SelectTrigger className="min-w-[130px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {ENABLED_FILTER_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </FilterBar>
+          <SelectTrigger className="min-w-[130px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {ENABLED_FILTER_OPTIONS.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </FilterBar>
 
-        <TableCard
-          title="FAQ Entries"
-          paged={entries}
-          empty={{
-            icon: MessageCircleQuestion,
-            message: "No FAQ entries found",
-            children: (
-              <Button onClick={openCreate}>
-                <Plus className="mr-2 size-4" />
-                Create First Entry
-              </Button>
-            ),
-          }}
-          itemLabel="entry"
-          columns={columns}
-          rowKey={(entry) => entry.id}
-          actions={entryActions}
-        />
-      </div>
+      <TableCard
+        title="FAQ Entries"
+        paged={entries}
+        empty={{
+          icon: MessageCircleQuestion,
+          message: "No FAQ entries found",
+          children: (
+            <Button onClick={openCreate}>
+              <Plus className="mr-2 size-4" />
+              Create First Entry
+            </Button>
+          ),
+        }}
+        itemLabel="entry"
+        columns={columns}
+        rowKey={(entry) => entry.id}
+        actions={entryActions}
+      />
 
       <FaqEntryDialog
-        key={entryDialog.entry?.id ?? "new"}
-        open={entryDialog.open}
-        onClose={() => setEntryDialog({ open: false, entry: null })}
-        entry={entryDialog.entry}
+        open={entryTarget !== null}
+        onClose={() => setEntryTarget(null)}
+        entry={entryTarget?.entry}
       />
 
       <DeleteFaqModal
         entry={deleteTarget}
         onClose={() => setDeleteTarget(null)}
       />
-    </div>
+    </AdminPage>
   );
 }

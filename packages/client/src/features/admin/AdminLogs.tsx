@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
+import { AdminPage } from "@/features/admin/components/AdminPage";
+import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { FilterBar } from "@/features/admin/components/FilterBar";
 import { TableCard } from "@/components/paged-table";
 import { Badge } from "@/components/ui/badge";
@@ -151,62 +152,56 @@ export function AdminLogs() {
   ];
 
   return (
-    <div className="flex flex-1 flex-col gap-4">
-      <AdminPageHeader
-        trail={[
-          { label: "Admin", href: "/admin/dashboard" },
-          { label: "Logs" },
-        ]}
-      />
-
-      <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
-        <FilterBar
-          search={searchQuery}
-          onSearchChange={setSearchQuery}
-          placeholder="Search logs..."
-          activeCount={
-            (searchQuery ? 1 : 0) + (adminFilter !== undefined ? 1 : 0)
-          }
+    <AdminPage
+      trail={[{ label: "Admin", href: "/admin/dashboard" }, { label: "Logs" }]}
+    >
+      <AdminPageTitle title="Logs" />
+      <FilterBar
+        search={searchQuery}
+        onSearchChange={setSearchQuery}
+        placeholder="Search logs..."
+        activeCount={
+          (searchQuery ? 1 : 0) + (adminFilter !== undefined ? 1 : 0)
+        }
+      >
+        <Select
+          value={adminFilter ?? "all"}
+          onValueChange={(v) => setAdminFilter(v === "all" ? undefined : v)}
         >
-          <Select
-            value={adminFilter ?? "all"}
-            onValueChange={(v) => setAdminFilter(v === "all" ? undefined : v)}
-          >
-            <SelectTrigger className="min-w-[150px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Admins</SelectItem>
-              {adminList.map((name) => (
-                <SelectItem key={name} value={name}>
-                  {name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </FilterBar>
+          <SelectTrigger className="min-w-[150px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Admins</SelectItem>
+            {adminList.map((name) => (
+              <SelectItem key={name} value={name}>
+                {name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </FilterBar>
 
-        <TableCard
-          title="Audit Logs"
-          paged={logs}
-          empty={{ icon: FileText, message: "No log entries found" }}
-          itemLabel="entry"
-          columns={columns}
-          rowKey={(action) => action.id}
-          actions={(action) =>
-            action.metadata != null
-              ? [
-                  {
-                    label: "View metadata",
-                    icon: Info,
-                    onClick: () => setMetadataAction(action),
-                  },
-                ]
-              : []
-          }
-          actionSlots={1}
-        />
-      </div>
+      <TableCard
+        title="Audit Logs"
+        paged={logs}
+        empty={{ icon: FileText, message: "No log entries found" }}
+        itemLabel="entry"
+        columns={columns}
+        rowKey={(action) => action.id}
+        actions={(action) =>
+          action.metadata != null
+            ? [
+                {
+                  label: "View metadata",
+                  icon: Info,
+                  onClick: () => setMetadataAction(action),
+                },
+              ]
+            : []
+        }
+        actionSlots={1}
+      />
 
       <Dialog
         open={metadataAction !== null}
@@ -234,6 +229,6 @@ export function AdminLogs() {
           <DialogFooter showCloseButton />
         </DialogContent>
       </Dialog>
-    </div>
+    </AdminPage>
   );
 }
