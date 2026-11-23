@@ -1,8 +1,13 @@
-import { findAttachmentRef } from "@createrington/shared/api/embed";
+import {
+  COMPONENTS_V2_MAX_COMPONENTS,
+  COMPONENTS_V2_MAX_TEXT,
+  findAttachmentRef,
+  measureComponentsV2,
+} from "@createrington/shared/api/embed";
 import type {
   ComponentButton,
   ComponentNode,
-  PresetKind,
+  MessagePayload,
 } from "@createrington/shared/api/embed";
 
 function getIncompleteFieldIndexes(fields: { name: string; value: string }[]) {
@@ -23,6 +28,17 @@ function incompleteFieldsMessage(indexes: number[]): string {
 function checkComponentButton(button: ComponentButton): string | null {
   if (!button.label.trim()) return "A button is missing a label.";
   if (!button.url.trim()) return "A button is missing a URL.";
+  return null;
+}
+
+function findSizeIssue(nodes: ComponentNode[]): string | null {
+  const { count, text } = measureComponentsV2(nodes);
+  if (count > COMPONENTS_V2_MAX_COMPONENTS) {
+    return `The message has ${count} components. Discord allows at most ${COMPONENTS_V2_MAX_COMPONENTS}, counting nested ones.`;
+  }
+  if (text > COMPONENTS_V2_MAX_TEXT) {
+    return `The message has ${text} characters of text. Discord allows at most ${COMPONENTS_V2_MAX_TEXT}.`;
+  }
   return null;
 }
 
@@ -73,14 +89,11 @@ function findComponentIssue(nodes: ComponentNode[]): string | null {
   return null;
 }
 
-export function findPayloadIssue(
-  kind: PresetKind,
-  fields: { name: string; value: string }[],
-  components: ComponentNode[],
-): string | null {
-  if (kind === "embed") {
-    const incomplete = getIncompleteFieldIndexes(fields);
+export function findPayloadIssue(payload: MessagePayload): string | null {
+  if (payload.kind === "embed") {
+    const incomplete = getIncompleteFieldIndexes(payload.embed.fields);
     return incomplete.length > 0 ? incompleteFieldsMessage(incomplete) : null;
   }
-  return findComponentIssue(components);
+  const nodes = payload.components.components;
+  return findSizeIssue(nodes) ?? findComponentIssue(nodes);
 }

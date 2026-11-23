@@ -6,9 +6,9 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { ChoiceField } from "@/components/choice-field";
 import { useToastActions } from "@/hooks/use-toast";
 import { sessionStore } from "@/lib/storage";
-import { cn } from "@/lib/utils";
 import {
   INSERT_EMBED_EVENT,
   PENDING_EMBED_KEY,
@@ -16,9 +16,8 @@ import {
   PENDING_COMPONENTS_KEY,
 } from "@/features/admin-chat/actions";
 import {
-  componentsDataSchema,
-  type ComponentNode,
-  type EmbedData,
+  EMBED_MAX_BUTTONS,
+  EMBED_MAX_FIELDS,
   type PresetKind,
 } from "@createrington/shared/api/embed";
 import { useEmbedBuilder } from "./hooks/use-embed-builder";
@@ -29,179 +28,114 @@ import { EmbedPreview } from "./components/EmbedPreview";
 import { LinkedMessages } from "./components/LinkedMessages";
 import { ComponentsPreview } from "./components-v2/ComponentsPreview";
 import { ComponentTreeEditor } from "./components-v2/ComponentTreeEditor";
+import { parsePayload } from "./payload";
 import type { FocusTarget } from "./focus";
 
-function normalizePartialEmbed(raw: unknown): Partial<EmbedData> {
-  if (!raw || typeof raw !== "object") return {};
-  const r = raw as Record<string, unknown>;
-  const out: Partial<EmbedData> = {};
+const MODE_LABELS: Record<PresetKind, string> = {
+  embed: "Classic embed",
+  components: "Components V2",
+};
 
-  const stringish = (v: unknown): string | undefined => {
-    if (typeof v === "string") return v;
-    if (v && typeof v === "object" && "text" in v) {
-      const t = (v as { text?: unknown }).text;
-      if (typeof t === "string") return t;
-    }
-    return undefined;
-  };
+const ASSISTANT_INSERTS = [
+  {
+    kind: "embed",
+    storageKey: PENDING_EMBED_KEY,
+    event: INSERT_EMBED_EVENT,
+    inserted: "Embed inserted from Createrington Assistant",
+    invalid: "Assistant sent an invalid embed payload",
+  },
+  {
+    kind: "components",
+    storageKey: PENDING_COMPONENTS_KEY,
+    event: INSERT_COMPONENTS_EVENT,
+    inserted: "Components inserted from Createrington Assistant",
+    invalid: "Assistant sent an invalid components payload",
+  },
+] as const;
 
-  const urlish = (v: unknown): string | undefined => {
-    if (typeof v === "string") return v;
-    if (v && typeof v === "object" && "url" in v) {
-      const u = (v as { url?: unknown }).url;
-      if (typeof u === "string") return u;
-    }
-    return undefined;
-  };
-
-  if ("content" in r && typeof r.content === "string") out.content = r.content;
-  if ("title" in r) out.title = stringish(r.title);
-  if ("description" in r)
-    out.description =
-      typeof r.description === "string" ? r.description : undefined;
-  if ("url" in r && typeof r.url === "string") out.url = r.url;
-  if ("color" in r && typeof r.color === "number") out.color = r.color;
-  if ("timestamp" in r && typeof r.timestamp === "boolean")
-    out.timestamp = r.timestamp;
-
-  if ("footer" in r) out.footer = stringish(r.footer);
-
-  if ("author" in r) {
-    const a = r.author;
-    if (typeof a === "string") {
-      out.author = a;
-    } else if (a && typeof a === "object") {
-      const obj = a as Record<string, unknown>;
-      if (typeof obj.name === "string") out.author = obj.name;
-      if (typeof obj.url === "string") out.authorUrl = obj.url;
-      if (typeof obj.icon_url === "string") out.authorIconUrl = obj.icon_url;
-    }
-  }
-  if ("authorUrl" in r && typeof r.authorUrl === "string")
-    out.authorUrl = r.authorUrl;
-  if ("authorIconUrl" in r && typeof r.authorIconUrl === "string")
-    out.authorIconUrl = r.authorIconUrl;
-
-  const imageUrl = urlish(r.image) ?? r.imageUrl;
-  if (typeof imageUrl === "string") out.imageUrl = imageUrl;
-  const thumbnailUrl = urlish(r.thumbnail) ?? r.thumbnailUrl;
-  if (typeof thumbnailUrl === "string") out.thumbnailUrl = thumbnailUrl;
-
-  if ("fields" in r && Array.isArray(r.fields)) {
-    out.fields = r.fields
-      .filter((f): f is Record<string, unknown> => !!f && typeof f === "object")
-      .map((f) => ({
-        name: typeof f.name === "string" ? f.name : "",
-        value: typeof f.value === "string" ? f.value : "",
-        inline: f.inline === true,
-      }));
-  }
-
-  return out;
+function parseAssistantInsert(kind: PresetKind, raw: unknown) {
+  if (!raw || typeof raw !== "object") return null;
+  return parsePayload(kind, kind === "components" ? { components: raw } : raw);
 }
 
-function applyInsertedComponents(
-  raw: unknown,
-  importComponents: (nodes: ComponentNode[]) => void,
-): boolean {
-  const result = componentsDataSchema.safeParse({ components: raw });
-  if (!result.success) return false;
-  importComponents(result.data.components);
-  return true;
+function parseJson(raw: string): unknown {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
 }
 
 export function EmbedBuilder() {
   const builder = useEmbedBuilder();
+  const { state, setEmbed, importPayload } = builder;
   const toast = useToastActions();
   const [focused, setFocused] = useState<FocusTarget | null>(null);
   const [presetsOpen, setPresetsOpen] = useState(false);
 
   const handleEdit = (target: FocusTarget) => {
+    const { fields, buttons, actionButtons, author } = state.embed;
     if (target === "fields:add") {
-      if (builder.data.fields.length >= 25) return;
-      const newIndex = builder.data.fields.length;
-      builder.setEmbedData((prev) => ({
+      if (fields.length >= EMBED_MAX_FIELDS) return;
+      setEmbed((prev) => ({
         ...prev,
         fields: [...prev.fields, { name: "", value: "", inline: false }],
       }));
-      setFocused(`field:${newIndex}` as FocusTarget);
+      setFocused(`field:${fields.length}`);
       return;
     }
     if (target === "buttons:add") {
-      const total =
-        (builder.data.buttons?.length ?? 0) +
-        (builder.data.actionButtons?.length ?? 0);
-      if (total >= 5) return;
-      const newIndex = builder.data.buttons?.length ?? 0;
-      builder.setEmbedData((prev) => ({
+      if (buttons.length + actionButtons.length >= EMBED_MAX_BUTTONS) return;
+      setEmbed((prev) => ({
         ...prev,
-        buttons: [...(prev.buttons ?? []), { label: "New button", url: "" }],
+        buttons: [...prev.buttons, { label: "New button", url: "" }],
       }));
-      setFocused(`button:link:${newIndex}` as FocusTarget);
+      setFocused(`button:link:${buttons.length}`);
       return;
     }
-    if (target === "author" && builder.data.author === undefined) {
-      builder.setEmbedData((prev) => ({ ...prev, author: "" }));
+    if (target === "author" && author === undefined) {
+      setEmbed((prev) => ({ ...prev, author: "" }));
     }
     setFocused(target);
   };
 
-  const handleImportEmbed = builder.handleImportEmbed;
-  const handleImportComponents = builder.handleImportComponents;
   useEffect(() => {
-    const pendingEmbed = sessionStore.get(PENDING_EMBED_KEY);
-    if (pendingEmbed) {
-      try {
-        const parsed = JSON.parse(pendingEmbed) as unknown;
-        handleImportEmbed(normalizePartialEmbed(parsed));
-        toast.success("Embed inserted from Createrington Assistant");
-      } catch {
-        toast.error("Assistant sent an invalid embed payload");
-      } finally {
-        sessionStore.remove(PENDING_EMBED_KEY);
+    const insert = (
+      { kind, inserted, invalid }: (typeof ASSISTANT_INSERTS)[number],
+      raw: unknown,
+    ) => {
+      const payload = parseAssistantInsert(kind, raw);
+      if (!payload) {
+        toast.error(invalid);
+        return;
       }
-    }
+      importPayload(payload);
+      toast.success(inserted);
+    };
 
-    const pendingComponents = sessionStore.get(PENDING_COMPONENTS_KEY);
-    if (pendingComponents) {
-      try {
-        const parsed = JSON.parse(pendingComponents);
-        if (applyInsertedComponents(parsed, handleImportComponents)) {
-          toast.success("Components inserted from Createrington Assistant");
-        } else {
-          toast.error("Assistant sent an invalid components payload");
-        }
-      } catch {
-        toast.error("Assistant sent an invalid components payload");
-      } finally {
-        sessionStore.remove(PENDING_COMPONENTS_KEY);
+    const cleanups = ASSISTANT_INSERTS.map((source) => {
+      const pending = sessionStore.get(source.storageKey);
+      if (pending) {
+        sessionStore.remove(source.storageKey);
+        insert(source, parseJson(pending));
       }
-    }
+      const handler = (e: Event) => {
+        const detail = (e as CustomEvent<unknown>).detail;
+        if (detail) insert(source, detail);
+      };
+      window.addEventListener(source.event, handler);
+      return () => window.removeEventListener(source.event, handler);
+    });
+    return () => cleanups.forEach((cleanup) => cleanup());
+  }, [importPayload, toast]);
 
-    const embedHandler = (e: Event): void => {
-      const detail = (e as CustomEvent<Partial<EmbedData>>).detail;
-      if (!detail) return;
-      handleImportEmbed(normalizePartialEmbed(detail));
-      toast.success("Embed inserted from Createrington Assistant");
-    };
-    const componentsHandler = (e: Event): void => {
-      const detail = (e as CustomEvent<ComponentNode[]>).detail;
-      if (!detail) return;
-      if (applyInsertedComponents(detail, handleImportComponents)) {
-        toast.success("Components inserted from Createrington Assistant");
-      } else {
-        toast.error("Assistant sent an invalid components payload");
-      }
-    };
-    window.addEventListener(INSERT_EMBED_EVENT, embedHandler);
-    window.addEventListener(INSERT_COMPONENTS_EVENT, componentsHandler);
-    return () => {
-      window.removeEventListener(INSERT_EMBED_EVENT, embedHandler);
-      window.removeEventListener(INSERT_COMPONENTS_EVENT, componentsHandler);
-    };
-  }, [handleImportEmbed, handleImportComponents, toast]);
-
-  const externalData = builder.externalData;
+  const sidebarProps = {
+    activePresetId: state.activePreset?.id,
+    isDirty: builder.isDirty,
+    onLoad: builder.loadPreset,
+    onNew: builder.reset,
+    actions: builder.presetActions,
+  };
 
   return (
     <div className="@container flex h-[calc(100svh-var(--mobile-nav-height))] min-h-0 flex-col">
@@ -209,7 +143,7 @@ export function EmbedBuilder() {
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <div className="hidden @3xl:flex">
-          <PresetSidebar builder={builder} />
+          <PresetSidebar {...sidebarProps} />
         </div>
 
         <Sheet open={presetsOpen} onOpenChange={setPresetsOpen}>
@@ -225,7 +159,7 @@ export function EmbedBuilder() {
               </SheetDescription>
             </SheetHeader>
             <PresetSidebar
-              builder={builder}
+              {...sidebarProps}
               forceExpanded
               className="min-h-0 w-full flex-1 border-r-0"
               onNavigate={() => setPresetsOpen(false)}
@@ -236,36 +170,48 @@ export function EmbedBuilder() {
         <main className="flex min-w-0 flex-1 flex-col overflow-y-auto bg-card @3xl:flex-row @3xl:overflow-hidden">
           <section className="flex flex-col gap-3 bg-background p-4 @3xl:flex-1 @3xl:overflow-y-auto @3xl:p-6">
             <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-              <ModeToggle
-                kind={builder.kind}
+              <ChoiceField
+                value={state.kind}
                 onChange={builder.setKind}
-                disabled={!!builder.activePreset}
+                options={(["embed", "components"] as const).map((kind) => ({
+                  value: kind,
+                  label: MODE_LABELS[kind],
+                  disabled: !!state.activePreset && kind !== state.kind,
+                }))}
               />
               <span className="text-xs text-muted-foreground">
-                {builder.kind === "components"
+                {state.kind === "components"
                   ? "Components V2 message"
                   : "Click anything to edit"}
               </span>
             </div>
-            {builder.kind === "components" ? (
-              <ComponentsPreview components={builder.components} />
+            {state.kind === "components" ? (
+              <ComponentsPreview components={state.components} />
             ) : (
-              <EmbedPreview data={externalData} editable onEdit={handleEdit} />
+              <EmbedPreview data={state.embed} editable onEdit={handleEdit} />
             )}
-            {builder.activePreset && (
+            {state.activePreset && (
               <div className="mt-2">
-                <LinkedMessages builder={builder} />
+                <LinkedMessages
+                  presetId={state.activePreset.id}
+                  payload={builder.payload}
+                  bot={state.bot}
+                  validateOrToast={builder.validateOrToast}
+                />
               </div>
             )}
           </section>
 
           <aside className="flex w-full shrink-0 flex-col border-t border-border bg-card @3xl:w-[380px] @3xl:border-l @3xl:border-t-0">
-            {builder.kind === "components" ? (
-              <ComponentTreeEditor builder={builder} />
+            {state.kind === "components" ? (
+              <ComponentTreeEditor
+                components={state.components}
+                onChange={builder.setComponents}
+              />
             ) : (
               <FormPanel
-                data={externalData}
-                onChange={builder.setEmbedData}
+                data={state.embed}
+                onChange={setEmbed}
                 focused={focused}
                 setFocused={setFocused}
               />
@@ -273,43 +219,6 @@ export function EmbedBuilder() {
           </aside>
         </main>
       </div>
-    </div>
-  );
-}
-
-const MODE_LABELS: Record<PresetKind, string> = {
-  embed: "Classic embed",
-  components: "Components V2",
-};
-
-function ModeToggle({
-  kind,
-  onChange,
-  disabled,
-}: {
-  kind: PresetKind;
-  onChange: (kind: PresetKind) => void;
-  disabled?: boolean;
-}) {
-  return (
-    <div className="inline-flex rounded-md border border-border p-0.5">
-      {(["embed", "components"] as const).map((k) => (
-        <button
-          key={k}
-          type="button"
-          disabled={disabled && kind !== k}
-          onClick={() => onChange(k)}
-          className={cn(
-            "rounded px-2.5 py-1 text-xs font-medium transition-colors pointer-coarse:py-2",
-            kind === k
-              ? "bg-accent text-foreground"
-              : "text-muted-foreground hover:text-foreground",
-            disabled && kind !== k && "cursor-not-allowed opacity-40",
-          )}
-        >
-          {MODE_LABELS[k]}
-        </button>
-      ))}
     </div>
   );
 }

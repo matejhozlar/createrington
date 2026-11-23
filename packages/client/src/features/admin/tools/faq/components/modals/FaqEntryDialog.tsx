@@ -1,4 +1,3 @@
-import { useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Field, FieldLabel, FieldDescription } from "@/components/ui/field";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -7,14 +6,9 @@ import { FormDialog } from "@/components/form-dialog";
 import { useToastActions } from "@/hooks/use-toast";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { useDialogDraft } from "@/hooks/use-dialog-draft";
-import { insertAtCursor } from "@/lib/insertAtCursor";
 import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
-import { InsertMenu } from "@/features/admin/components/InsertMenu";
-import { CharCount } from "@/features/admin/components/CharCount";
-import { useMentionResolver } from "@/features/admin/hooks/use-mention-resolver";
-import { DiscordMarkdown } from "@/features/admin/tools/embed-builder/components/DiscordMarkdown";
+import { DiscordTextarea } from "@/features/admin/components/discord/DiscordTextarea";
 import { useMutation } from "@tanstack/react-query";
-import { Textarea } from "@/components/ui/textarea";
 import type { FaqMatchMode } from "@createrington/shared/faq";
 
 type FaqEntry = RouterOutput["admin"]["faq"]["list"]["items"][number];
@@ -74,8 +68,6 @@ export function FaqEntryDialog({
   const toast = useToastActions();
   const isEdit = !!entry;
 
-  const mentionResolver = useMentionResolver();
-  const responseRef = useRef<HTMLTextAreaElement>(null);
   const [draft, update] = useDialogDraft(open, () => toDraft(entry));
 
   const handleSaved = () => {
@@ -171,46 +163,15 @@ export function FaqEntryDialog({
         <FieldDescription>{modeCopy.description}</FieldDescription>
       </Field>
 
-      <Field>
-        <div className="flex items-center gap-1">
-          <FieldLabel htmlFor="faq-response">Response</FieldLabel>
-          <InsertMenu
-            onInsert={(mention) =>
-              insertAtCursor(
-                responseRef.current,
-                draft.response,
-                mention,
-                (response) => update({ response }),
-              )
-            }
-          />
-        </div>
-        <Textarea
-          ref={responseRef}
-          id="faq-response"
-          value={draft.response}
-          onChange={(e) => update({ response: e.target.value })}
-          placeholder="The auto-reply message..."
-          rows={4}
-        />
-        <div className="flex items-center justify-between">
-          <FieldDescription>
-            Supports Discord markdown and mentions
-          </FieldDescription>
-          <CharCount value={draft.response} max={2000} />
-        </div>
-        {draft.response.trim() && (
-          <div
-            className="rounded-md p-3 text-sm"
-            style={{ backgroundColor: "#313338", color: "#DBDEE1" }}
-          >
-            <DiscordMarkdown
-              text={draft.response}
-              mentionResolver={mentionResolver}
-            />
-          </div>
-        )}
-      </Field>
+      <DiscordTextarea
+        id="faq-response"
+        label="Response"
+        value={draft.response}
+        onChange={(response) => update({ response })}
+        placeholder="The auto-reply message..."
+        description="Supports Discord markdown and mentions"
+        max={4096}
+      />
 
       <div className="flex items-end gap-4">
         <Field className="flex-1">

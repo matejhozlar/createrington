@@ -1,20 +1,13 @@
-import { useRef } from "react";
 import { ArrowDown, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Field, FieldLabel, FieldDescription } from "@/components/ui/field";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { FormDialog } from "@/components/form-dialog";
 import { useToastActions } from "@/hooks/use-toast";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
-import { insertAtCursor } from "@/lib/insertAtCursor";
 import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
-import { InsertMenu } from "@/features/admin/components/InsertMenu";
-import { CharCount } from "@/features/admin/components/CharCount";
-import { useMentionResolver } from "@/features/admin/hooks/use-mention-resolver";
-import { DiscordMarkdown } from "@/features/admin/tools/embed-builder/components/DiscordMarkdown";
+import { DiscordTextarea } from "@/features/admin/components/discord/DiscordTextarea";
 import { useMutation } from "@tanstack/react-query";
-import { Textarea } from "@/components/ui/textarea";
 import { useDialogDraft } from "@/hooks/use-dialog-draft";
 
 type Message =
@@ -63,8 +56,6 @@ export function MessageDialog({
     ),
   );
 
-  const mentionResolver = useMentionResolver();
-  const contentRef = useRef<HTMLTextAreaElement>(null);
   const [draft, update] = useDialogDraft<{
     content: string;
     enabled: boolean;
@@ -163,45 +154,19 @@ export function MessageDialog({
       contentClassName="max-h-[90vh] overflow-y-auto sm:max-w-2xl"
       asForm
     >
-      <Field>
-        <div className="flex items-center gap-1">
-          <FieldLabel htmlFor="msg-content">Message</FieldLabel>
-          <InsertMenu
-            onInsert={(mention) =>
-              insertAtCursor(
-                contentRef.current,
-                content,
-                mention,
-                (value: string) => update({ content: value }),
-              )
-            }
-          />
-        </div>
-        <Textarea
-          ref={contentRef}
-          id="msg-content"
-          value={content}
-          onChange={(e) => update({ content: e.target.value })}
-          placeholder="The message the bot will send..."
-          rows={4}
-          maxLength={2000}
-        />
-        <div className="flex items-center justify-between">
-          <FieldDescription>
+      <DiscordTextarea
+        id="msg-content"
+        label="Message"
+        value={content}
+        onChange={(value) => update({ content: value })}
+        placeholder="The message the bot will send..."
+        description={
+          <>
             Supports Discord markdown, mentions, and variables:{" "}
             <code className="text-[11px]">{"{memberCount}"}</code>
-          </FieldDescription>
-          <CharCount value={content} max={2000} />
-        </div>
-        {content.trim() && (
-          <div
-            className="rounded-md p-3 text-sm"
-            style={{ backgroundColor: "#313338", color: "#DBDEE1" }}
-          >
-            <DiscordMarkdown text={content} mentionResolver={mentionResolver} />
-          </div>
-        )}
-      </Field>
+          </>
+        }
+      />
 
       <label className="flex cursor-pointer items-center gap-2">
         <Checkbox
@@ -238,7 +203,6 @@ export function MessageDialog({
                 key={index}
                 index={index}
                 followup={followup}
-                mentionResolver={mentionResolver}
                 onChange={(patch) => updateFollowup(index, patch)}
                 onRemove={() => removeFollowup(index)}
               />
@@ -253,7 +217,6 @@ export function MessageDialog({
 interface FollowupRowProps {
   index: number;
   followup: FollowupDraft;
-  mentionResolver: ReturnType<typeof useMentionResolver>;
   onChange: (patch: Partial<FollowupDraft>) => void;
   onRemove: () => void;
 }
@@ -261,7 +224,6 @@ interface FollowupRowProps {
 function FollowupRow({
   index,
   followup,
-  mentionResolver,
   onChange,
   onRemove,
 }: FollowupRowProps) {
@@ -275,28 +237,12 @@ function FollowupRow({
       </div>
 
       <div className="space-y-2">
-        <Textarea
+        <DiscordTextarea
           value={followup.content}
-          onChange={(e) => onChange({ content: e.target.value })}
+          onChange={(value) => onChange({ content: value })}
           placeholder={`Follow-up message content...`}
           rows={2}
-          maxLength={2000}
         />
-        <div className="flex justify-end">
-          <CharCount value={followup.content} max={2000} />
-        </div>
-
-        {followup.content.trim() && (
-          <div
-            className="rounded-md p-2 text-sm"
-            style={{ backgroundColor: "#313338", color: "#DBDEE1" }}
-          >
-            <DiscordMarkdown
-              text={followup.content}
-              mentionResolver={mentionResolver}
-            />
-          </div>
-        )}
 
         <div className="flex flex-wrap items-center gap-3">
           <label className="flex items-center gap-2 text-xs">

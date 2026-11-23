@@ -32,30 +32,25 @@ interface TopbarProps {
 
 export function Topbar({ builder, onOpenPresets }: TopbarProps) {
   const {
-    kind,
-    components,
-    presetName,
+    state,
+    payload,
     setPresetName,
-    activePreset,
     isDirty,
     hasContent,
     isPending,
     handleSave,
-    handleImportEmbed,
-    handleImportComponents,
-    externalData,
+    importPayload,
   } = builder;
+  const { presetName, activePreset } = state;
   const toast = useToastActions();
   const { copy } = useClipboard();
   const [sendOpen, setSendOpen] = useState(false);
   const [saveOpen, setSaveOpen] = useState(false);
 
   function handleCopyJson() {
-    const json =
-      kind === "components"
-        ? JSON.stringify({ components }, null, 2)
-        : JSON.stringify(externalData, null, 2);
-    void copy(json);
+    const data =
+      payload.kind === "components" ? payload.components : payload.embed;
+    void copy(JSON.stringify(data, null, 2));
   }
 
   async function handleImportJson() {
@@ -77,14 +72,14 @@ export function Topbar({ builder, onOpenPresets }: TopbarProps) {
 
     const componentsResult = componentsDataSchema.safeParse(raw);
     if (componentsResult.success) {
-      handleImportComponents(componentsResult.data.components);
+      importPayload({ kind: "components", components: componentsResult.data });
       toast.success("Components imported from clipboard");
       return;
     }
 
     const embedResult = embedDataSchema.safeParse(raw);
     if (embedResult.success) {
-      handleImportEmbed(embedResult.data);
+      importPayload({ kind: "embed", embed: embedResult.data });
       toast.success("Embed imported from clipboard");
       return;
     }

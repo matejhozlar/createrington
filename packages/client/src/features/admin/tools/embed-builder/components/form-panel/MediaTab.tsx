@@ -2,7 +2,11 @@ import { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { COMPACT_BUTTON, Field, Divider } from "../form-primitives";
+import {
+  COMPACT_BUTTON,
+  LabeledField,
+  Divider,
+} from "@/features/admin/tools/embed-builder/components/form-primitives";
 import type { TabProps } from "./types";
 
 export function MediaTab({ data, set, focused }: TabProps) {
@@ -16,7 +20,7 @@ export function MediaTab({ data, set, focused }: TabProps) {
 
   return (
     <>
-      <Field
+      <LabeledField
         label="Big image"
         right={
           data.imageUrl ? (
@@ -51,11 +55,11 @@ export function MediaTab({ data, set, focused }: TabProps) {
           placeholder="https://..."
           className="mt-2 h-9 text-[13px]"
         />
-      </Field>
+      </LabeledField>
 
       <Divider />
 
-      <Field
+      <LabeledField
         label="Thumbnail (top-right)"
         right={
           data.thumbnailUrl ? (
@@ -90,7 +94,7 @@ export function MediaTab({ data, set, focused }: TabProps) {
           placeholder="https://..."
           className="mt-2 h-9 text-[13px]"
         />
-      </Field>
+      </LabeledField>
     </>
   );
 }

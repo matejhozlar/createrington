@@ -1,41 +1,39 @@
 import { useEffect, useRef } from "react";
-import {
-  ArrowDown,
-  ArrowUp,
-  Copy,
-  GripVertical,
-  Plus,
-  Trash2,
-} from "lucide-react";
+import { ArrowDown, ArrowUp, Copy, Plus, Rows3, Trash2 } from "lucide-react";
 import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import {
   SortableContext,
   arrayMove,
-  useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { EmptyState } from "@/components/query-states";
 import { cn } from "@/lib/utils";
 import { insertAtCursor } from "@/lib/insertAtCursor";
-import type { EmbedField } from "@createrington/shared/api/embed";
+import { moveItem } from "@/lib/moveItem";
+import {
+  EMBED_MAX_FIELDS,
+  type EmbedField,
+} from "@createrington/shared/api/embed";
+import { InsertMenu } from "@/features/admin/components/InsertMenu";
 import {
   AIButton,
   COMPACT_BUTTON,
-  SectionHead,
-  EmptyState,
   RowIconButton,
+  SectionHead,
 } from "@/features/admin/tools/embed-builder/components/form-primitives";
-import { InsertMenu } from "@/features/admin/components/InsertMenu";
-import type { FocusTarget } from "@/features/admin/tools/embed-builder/focus";
-import { Textarea } from "@/components/ui/textarea";
-import type { TabProps } from "./types";
 import { useDragSensors } from "@/features/admin/tools/embed-builder/hooks/use-drag-sensors";
+import { useItemKeys } from "@/features/admin/tools/embed-builder/hooks/use-item-keys";
+import { SortableRow } from "./SortableRow";
+import type { TabProps } from "./types";
 
 export function FieldsTab({ data, set, focused, setFocused }: TabProps) {
   const fields = data.fields;
   const sensors = useDragSensors();
+  const rowKeys = useItemKeys(fields.length);
+  const full = fields.length >= EMBED_MAX_FIELDS;
 
   function update(i: number, updates: Partial<EmbedField>) {
     set({
@@ -43,48 +41,49 @@ export function FieldsTab({ data, set, focused, setFocused }: TabProps) {
     });
   }
   function remove(i: number) {
+    rowKeys.remove(i);
     set({ fields: fields.filter((_, j) => j !== i) });
   }
   function add() {
-    if (fields.length >= 25) return;
+    if (full) return;
     set({ fields: [...fields, { name: "", value: "", inline: false }] });
-    setFocused?.(`field:${fields.length}` as FocusTarget);
+    setFocused?.(`field:${fields.length}`);
   }
   function move(i: number, dir: -1 | 1) {
-    const next = [...fields];
-    const j = i + dir;
-    if (j < 0 || j >= next.length) return;
-    [next[i], next[j]] = [next[j], next[i]];
-    set({ fields: next });
+    rowKeys.move(i, dir);
+    set({ fields: moveItem(fields, i, dir) });
   }
   function duplicate(i: number) {
-    if (fields.length >= 25) return;
-    const next = [...fields];
-    next.splice(i + 1, 0, { ...fields[i] });
-    set({ fields: next });
+    if (full) return;
+    rowKeys.insert(i + 1);
+    set({
+      fields: [
+        ...fields.slice(0, i + 1),
+        { ...fields[i] },
+        ...fields.slice(i + 1),
+      ],
+    });
   }
-  function onDragEnd(event: DragEndEvent) {
-    const { active, over } = event;
+  function onDragEnd({ active, over }: DragEndEvent) {
     if (!over || active.id === over.id) return;
-    const from = Number(String(active.id).slice(2));
-    const to = Number(String(over.id).slice(2));
-    if (Number.isNaN(from) || Number.isNaN(to)) return;
+    const from = rowKeys.indexOf(active.id);
+    const to = rowKeys.indexOf(over.id);
+    if (from < 0 || to < 0) return;
+    rowKeys.reorder(from, to);
     set({ fields: arrayMove(fields, from, to) });
   }
-
-  const ids = fields.map((_, i) => `f-${i}`);
 
   return (
     <>
       <SectionHead
         title="Fields"
-        count={`${fields.length}/25`}
+        count={`${fields.length}/${EMBED_MAX_FIELDS}`}
         right={
           <Button
             variant="outline"
             size="sm"
             className={COMPACT_BUTTON}
-            disabled={fields.length >= 25}
+            disabled={full}
             onClick={add}
           >
             <Plus className="mr-1 size-3" />
@@ -95,15 +94,15 @@ export function FieldsTab({ data, set, focused, setFocused }: TabProps) {
 
       {fields.length === 0 && (
         <EmptyState
-          title="No fields yet"
+          icon={Rows3}
+          message="No fields yet"
           hint="Fields are name/value rows shown below the description. Use them for structured info like server stats, links, or rules."
-          actions={
-            <Button variant="outline" size="sm" onClick={add}>
-              <Plus className="mr-1 size-3.5" />
-              Add your first field
-            </Button>
-          }
-        />
+        >
+          <Button variant="outline" size="sm" onClick={add}>
+            <Plus className="mr-1 size-3.5" />
+            Add your first field
+          </Button>
+        </EmptyState>
       )}
 
       <DndContext
@@ -111,16 +110,20 @@ export function FieldsTab({ data, set, focused, setFocused }: TabProps) {
         collisionDetection={closestCenter}
         onDragEnd={onDragEnd}
       >
-        <SortableContext items={ids} strategy={verticalListSortingStrategy}>
+        <SortableContext
+          items={rowKeys.keys}
+          strategy={verticalListSortingStrategy}
+        >
           <div className="space-y-2">
             {fields.map((f, i) => (
               <FieldRow
-                key={ids[i]}
-                id={ids[i]}
+                key={rowKeys.keys[i]}
+                id={rowKeys.keys[i]}
                 field={f}
                 index={i}
                 count={fields.length}
                 focused={focused === `field:${i}`}
+                canDuplicate={!full}
                 onChange={(u) => update(i, u)}
                 onRemove={() => remove(i)}
                 onMove={(d) => move(i, d)}
@@ -140,16 +143,18 @@ function FieldRow({
   index,
   count,
   focused,
+  canDuplicate,
   onChange,
   onRemove,
   onMove,
   onDuplicate,
 }: {
-  id: string;
+  id: number;
   field: EmbedField;
   index: number;
   count: number;
   focused: boolean;
+  canDuplicate: boolean;
   onChange: (updates: Partial<EmbedField>) => void;
   onRemove: () => void;
   onMove: (dir: -1 | 1) => void;
@@ -157,15 +162,6 @@ function FieldRow({
 }) {
   const nameRef = useRef<HTMLInputElement | null>(null);
   const valueRef = useRef<HTMLTextAreaElement | null>(null);
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    setActivatorNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id });
   useEffect(() => {
     if (focused) nameRef.current?.focus();
   }, [focused]);
@@ -177,99 +173,83 @@ function FieldRow({
   }
 
   return (
-    <div
-      ref={setNodeRef}
-      style={{
-        transform: CSS.Transform.toString(transform),
-        transition,
-      }}
-      className={cn(
-        "flex gap-1 rounded-md border border-border bg-card p-2 transition-shadow max-sm:flex-wrap",
-        "hover:border-border-strong hover:shadow-sm",
-        isDragging && "z-10 shadow-lg",
-      )}
-    >
-      <button
-        ref={setActivatorNodeRef}
-        type="button"
-        title="Drag to reorder"
-        aria-label="Drag handle"
-        {...attributes}
-        {...listeners}
-        className="mt-1 flex size-6 shrink-0 cursor-grab items-center justify-center text-muted-foreground touch-none active:cursor-grabbing max-sm:order-2 max-sm:mt-0 pointer-coarse:size-9"
-      >
-        <GripVertical className="size-4" />
-      </button>
-      <div className="min-w-0 flex-1 space-y-1.5 max-sm:order-1 max-sm:basis-full">
-        <div className="flex items-center gap-1.5">
-          <Input
-            ref={nameRef}
-            value={field.name}
-            placeholder={`Field ${index + 1} name`}
-            maxLength={256}
-            onChange={(e) => onChange({ name: e.target.value })}
-            className="h-8 flex-1 text-[13px]"
+    <SortableRow
+      id={id}
+      actions={
+        <>
+          <RowIconButton
+            icon={ArrowUp}
+            label="Move up"
+            disabled={index === 0}
+            onClick={() => onMove(-1)}
           />
-          <label
-            className={cn(
-              "inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-[11px] font-medium transition-colors pointer-coarse:px-3 pointer-coarse:py-2 pointer-coarse:text-xs",
-              field.inline
-                ? "border-border-strong bg-accent text-foreground"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-            title="Render this field side-by-side with neighbors"
-          >
-            <input
-              type="checkbox"
-              checked={field.inline}
-              onChange={(e) => onChange({ inline: e.target.checked })}
-              className="size-3 accent-primary"
-            />
-            Inline
-          </label>
-        </div>
-        <Textarea
-          ref={valueRef}
-          value={field.value}
-          placeholder="Supports markdown and mentions"
-          rows={6}
-          maxLength={1024}
-          onChange={(e) => onChange({ value: e.target.value })}
-          className="resize-y px-2.5 py-1.5 text-[13px] md:text-[13px]"
+          <RowIconButton
+            icon={ArrowDown}
+            label="Move down"
+            disabled={index === count - 1}
+            onClick={() => onMove(1)}
+          />
+          <RowIconButton
+            icon={Copy}
+            label="Duplicate"
+            disabled={!canDuplicate}
+            onClick={onDuplicate}
+          />
+          <RowIconButton
+            icon={Trash2}
+            label="Delete"
+            onClick={onRemove}
+            destructive
+          />
+          <InsertMenu
+            onInsert={insertIntoValue}
+            triggerClassName="size-7 text-muted-foreground hover:bg-accent hover:text-foreground pointer-coarse:size-9"
+            tooltipSide="left"
+          />
+          <AIButton
+            iconOnly
+            value={field.value}
+            onApply={(next) => onChange({ value: next })}
+          />
+        </>
+      }
+    >
+      <div className="flex items-center gap-1.5">
+        <Input
+          ref={nameRef}
+          value={field.name}
+          placeholder={`Field ${index + 1} name`}
+          maxLength={256}
+          onChange={(e) => onChange({ name: e.target.value })}
+          className="h-8 flex-1 text-[13px]"
         />
-      </div>
-      <div className="flex shrink-0 flex-col gap-0.5 max-sm:order-3 max-sm:ml-auto max-sm:flex-row max-sm:gap-0">
-        <RowIconButton
-          title="Move up"
-          disabled={index === 0}
-          onClick={() => onMove(-1)}
+        <label
+          className={cn(
+            "inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-[11px] font-medium transition-colors pointer-coarse:px-3 pointer-coarse:py-2 pointer-coarse:text-xs",
+            field.inline
+              ? "border-border-strong bg-accent text-foreground"
+              : "text-muted-foreground hover:text-foreground",
+          )}
+          title="Render this field side-by-side with neighbors"
         >
-          <ArrowUp className="size-3.5" />
-        </RowIconButton>
-        <RowIconButton
-          title="Move down"
-          disabled={index === count - 1}
-          onClick={() => onMove(1)}
-        >
-          <ArrowDown className="size-3.5" />
-        </RowIconButton>
-        <RowIconButton title="Duplicate" onClick={onDuplicate}>
-          <Copy className="size-3.5" />
-        </RowIconButton>
-        <RowIconButton title="Delete" onClick={onRemove} destructive>
-          <Trash2 className="size-3.5" />
-        </RowIconButton>
-        <InsertMenu
-          onInsert={insertIntoValue}
-          triggerClassName="size-7 text-muted-foreground hover:bg-accent hover:text-foreground pointer-coarse:size-9"
-          tooltipSide="left"
-        />
-        <AIButton
-          iconOnly
-          value={field.value}
-          onApply={(next) => onChange({ value: next })}
-        />
+          <input
+            type="checkbox"
+            checked={field.inline}
+            onChange={(e) => onChange({ inline: e.target.checked })}
+            className="size-3 accent-primary"
+          />
+          Inline
+        </label>
       </div>
-    </div>
+      <Textarea
+        ref={valueRef}
+        value={field.value}
+        placeholder="Supports markdown and mentions"
+        rows={6}
+        maxLength={1024}
+        onChange={(e) => onChange({ value: e.target.value })}
+        className="resize-y px-2.5 py-1.5 text-[13px] md:text-[13px]"
+      />
+    </SortableRow>
   );
 }

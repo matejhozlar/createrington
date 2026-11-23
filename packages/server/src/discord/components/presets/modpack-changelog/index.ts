@@ -3,14 +3,13 @@ import {
   actionRow,
   container,
   linkButton,
-  measureComponentsV2,
   mediaGallery,
   section,
   separator,
   fullWidthSpacer,
   text,
   thumbnail,
-} from "../../component-builder";
+} from "@/discord/components/component-builder";
 import { EmbedColors } from "@/discord/embeds/colors";
 import { discordTimestamp, pluralize } from "@/utils/format";
 import {
@@ -20,6 +19,7 @@ import {
 import {
   COMPONENTS_V2_MAX_COMPONENTS,
   COMPONENTS_V2_MAX_TEXT,
+  measureComponentsV2,
   type ComponentContainer,
   type ComponentTextDisplay,
   type ComponentsData,
