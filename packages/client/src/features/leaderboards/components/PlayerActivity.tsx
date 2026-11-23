@@ -11,6 +11,7 @@ import {
   type HeatmapDay,
 } from "@/lib/activityHeatmap";
 import { useQuery } from "@tanstack/react-query";
+import { pluralize } from "@/lib/format";
 
 const NUM_WEEKS = 52;
 const CELL_PITCH = 14;
@@ -99,7 +100,7 @@ export function PlayerActivity({ minecraftUuid }: { minecraftUuid: string }) {
     { label: "Total", value: formatPlaytime(activity.totalSeconds) },
     {
       label: "Streak",
-      value: `${activity.currentStreak} day${activity.currentStreak === 1 ? "" : "s"}`,
+      value: pluralize(activity.currentStreak, "day"),
     },
     { label: "Most active", value: activity.mostActiveDay ?? "N/A" },
     activity.online && activity.currentSessionSeconds !== null

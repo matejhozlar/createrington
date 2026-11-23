@@ -1,5 +1,5 @@
 import { formatDate } from "@createrington/shared/format";
-import { formatRelativeDay } from "@/lib/format";
+import { formatRelativeDay, pluralize } from "@/lib/format";
 import { trpc } from "@/lib/trpc";
 import { LoadingState } from "@/components/query-states";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
@@ -663,9 +663,8 @@ function ReleaseBlock({
               </span>
             </div>
             <div className="font-mono text-xs text-muted-foreground">
-              {totalChanges} {totalChanges === 1 ? "change" : "changes"} across{" "}
-              {section.entries.length}{" "}
-              {section.entries.length === 1 ? "package" : "packages"}
+              {pluralize(totalChanges, "change")} across{" "}
+              {pluralize(section.entries.length, "package")}
             </div>
           </div>
         </div>
@@ -712,7 +711,7 @@ function PackageBlock({ entry }: { entry: PackageEntry }) {
           )}
         </div>
         <span className="font-mono text-[11px] text-muted-foreground">
-          {entry.items.length} {entry.items.length === 1 ? "change" : "changes"}
+          {pluralize(entry.items.length, "change")}
         </span>
       </header>
       <ul className="m-0 flex list-none flex-col gap-1 p-0">

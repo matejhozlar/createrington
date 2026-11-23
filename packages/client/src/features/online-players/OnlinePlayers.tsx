@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from "react";
+import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router";
 import { formatCompactDuration } from "@createrington/shared/format";
 import { usePlayerData, type OnlinePlayer } from "@/contexts/player-data";
@@ -18,21 +18,17 @@ import {
   Signal,
   WifiOff,
 } from "lucide-react";
+import { useNow } from "@/hooks/use-now";
 import { MAIN_SERVER_ID } from "@/lib/minecraft";
+import { plural, pluralize } from "@/lib/format";
 
-function getSessionSeconds(player: OnlinePlayer): number {
-  return Math.max(0, (Date.now() - player.sessionStart.getTime()) / 1000);
+function getSessionSeconds(player: OnlinePlayer, now: number): number {
+  return Math.max(0, (now - player.sessionStart.getTime()) / 1000);
 }
 
 function SessionTimer({ player }: { player: OnlinePlayer }) {
-  const [seconds, setSeconds] = useState(() => getSessionSeconds(player));
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setSeconds(getSessionSeconds(player));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [player]);
+  const now = useNow(1000);
+  const seconds = getSessionSeconds(player, now);
 
   return (
     <span className="tabular-nums text-muted-foreground text-sm font-mono">
@@ -152,21 +148,12 @@ export function OnlinePlayers() {
     [filteredPlayers],
   );
 
-  const computeAvg = useCallback(() => {
-    if (serverPlayers.length === 0) return 0;
-    const total = serverPlayers.reduce(
-      (sum, p) => sum + getSessionSeconds(p),
-      0,
-    );
-    return total / serverPlayers.length;
-  }, [serverPlayers]);
-
-  const [avgSession, setAvgSession] = useState(computeAvg);
-
-  useEffect(() => {
-    const interval = setInterval(() => setAvgSession(computeAvg()), 5000);
-    return () => clearInterval(interval);
-  }, [computeAvg]);
+  const now = useNow(5000);
+  const avgSession =
+    serverPlayers.length === 0
+      ? 0
+      : serverPlayers.reduce((sum, p) => sum + getSessionSeconds(p, now), 0) /
+        serverPlayers.length;
 
   const isOnline = server?.online ?? false;
   const serverName = server?.serverName ?? "Rails 'n Sails";
@@ -217,7 +204,7 @@ export function OnlinePlayers() {
           <p className="mt-4 text-base sm:text-lg md:text-xl text-muted-foreground max-w-2xl">
             {isOnline
               ? playerCount > 0
-                ? `${playerCount} player${playerCount !== 1 ? "s" : ""} currently exploring ${serverName}`
+                ? `${pluralize(playerCount, "player")} currently exploring ${serverName}`
                 : "No one is online right now — be the first to join!"
               : "The server is currently offline. Check back soon!"}
           </p>
@@ -311,8 +298,8 @@ export function OnlinePlayers() {
 
           {searchQuery.trim() && sortedPlayers.length > 0 && (
             <p className="text-sm text-muted-foreground">
-              Showing {sortedPlayers.length} of {playerCount} online player
-              {playerCount !== 1 ? "s" : ""}
+              Showing {sortedPlayers.length} of {playerCount} online{" "}
+              {plural(playerCount, "player")}
             </p>
           )}
         </div>

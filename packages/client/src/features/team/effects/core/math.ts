@@ -68,7 +68,3 @@ export function easeOutElastic(t: number): number {
   if (t >= 1) return 1;
   return 2 ** (-10 * t) * Math.sin(((t * 10 - 0.75) * Math.PI * 2) / 3) + 1;
 }
-
-export function prefersReducedMotion(): boolean {
-  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-}

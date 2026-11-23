@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Shield } from "lucide-react";
 import type { RouterOutput } from "@/lib/trpc";
 import { EmptyState } from "@/components/query-states";
+import { formatDate } from "@createrington/shared/format";
 
 type PlayerDetailed = RouterOutput["admin"]["players"]["players"]["get"];
 
@@ -46,7 +47,7 @@ export function StrikesTab({
                 <p className="mt-2 text-sm">{strike.description}</p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   Issued by {strike.issuedByDiscordId} on{" "}
-                  {new Date(strike.issuedAt).toLocaleDateString()}
+                  {formatDate(strike.issuedAt)}
                 </p>
               </div>
               <Button
@@ -82,7 +83,7 @@ export function StrikesTab({
                   <p className="mt-2 text-sm">{strike.description}</p>
                   <p className="mt-1 text-xs text-muted-foreground">
                     Removed by {strike.removedByUsername} on{" "}
-                    {new Date(strike.removedAt!).toLocaleDateString()}
+                    {formatDate(strike.removedAt)}
                   </p>
                 </div>
               ))}

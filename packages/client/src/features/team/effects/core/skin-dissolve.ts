@@ -1,4 +1,5 @@
 import type { SkinViewer } from "skinview3d";
+import { loadImage } from "@/lib/image";
 import { clamp01 } from "./math";
 
 const SKIN_SIZE = 64;
@@ -23,22 +24,14 @@ export function loadSkinPixels(url: string): Promise<ImageData> {
   const cached = pixelCache.get(url);
   if (cached) return cached;
 
-  const pending = new Promise<ImageData>((resolve, reject) => {
-    const image = new Image();
-    image.onload = () => {
-      const canvas = document.createElement("canvas");
-      canvas.width = SKIN_SIZE;
-      canvas.height = SKIN_SIZE;
-      const ctx = canvas.getContext("2d", { willReadFrequently: true });
-      if (!ctx) {
-        reject(new Error("2d context unavailable"));
-        return;
-      }
-      ctx.drawImage(image, 0, 0);
-      resolve(ctx.getImageData(0, 0, SKIN_SIZE, SKIN_SIZE));
-    };
-    image.onerror = () => reject(new Error(`failed to load ${url}`));
-    image.src = url;
+  const pending = loadImage(url).then((image) => {
+    const canvas = document.createElement("canvas");
+    canvas.width = SKIN_SIZE;
+    canvas.height = SKIN_SIZE;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    if (!ctx) throw new Error("2d context unavailable");
+    ctx.drawImage(image, 0, 0);
+    return ctx.getImageData(0, 0, SKIN_SIZE, SKIN_SIZE);
   });
   pending.catch(() => pixelCache.delete(url));
   pixelCache.set(url, pending);

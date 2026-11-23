@@ -25,6 +25,7 @@ import { FilterBar } from "@/features/admin/components/FilterBar";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { usePagedQuery } from "@/hooks/use-paged-query";
 import { trpc, type RouterOutput } from "@/lib/trpc";
+import { formatDateTime } from "@/lib/format";
 
 type Status = "all" | "paid" | "pending" | "unlinked";
 type VoteRow = RouterOutput["admin"]["votes"]["list"]["items"][number];
@@ -81,7 +82,7 @@ const COLUMNS: DataTableColumn<VoteRow>[] = [
     width: 190,
     render: (vote) => (
       <CellText
-        value={new Date(vote.votedAt).toLocaleString()}
+        value={formatDateTime(vote.votedAt)}
         className="text-sm tabular-nums"
       />
     ),

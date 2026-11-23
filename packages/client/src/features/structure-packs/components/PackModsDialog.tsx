@@ -6,6 +6,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Blocks, ExternalLink, Package } from "lucide-react";
+import { pluralize } from "@/lib/format";
 
 interface PackMod {
   id: number;
@@ -37,8 +38,7 @@ export function PackModsDialog({
         <DialogHeader>
           <DialogTitle className="text-white">{packName}</DialogTitle>
           <DialogDescription className="text-white/55">
-            {mods.length} {mods.length === 1 ? "mod" : "mods"} included in this
-            dimension
+            {pluralize(mods.length, "mod")} included in this dimension
           </DialogDescription>
         </DialogHeader>
 

@@ -7,6 +7,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { useToastActions } from "@/hooks/use-toast";
+import { sessionStore } from "@/lib/storage";
 import { cn } from "@/lib/utils";
 import {
   INSERT_EMBED_EVENT,
@@ -99,20 +100,6 @@ function normalizePartialEmbed(raw: unknown): Partial<EmbedData> {
   return out;
 }
 
-function readPending(key: string): string | null {
-  try {
-    return sessionStorage.getItem(key);
-  } catch {
-    return null;
-  }
-}
-
-function clearPending(key: string): void {
-  try {
-    sessionStorage.removeItem(key);
-  } catch {}
-}
-
 function applyInsertedComponents(
   raw: unknown,
   importComponents: (nodes: ComponentNode[]) => void,
@@ -162,7 +149,7 @@ export function EmbedBuilder() {
   const handleImportEmbed = builder.handleImportEmbed;
   const handleImportComponents = builder.handleImportComponents;
   useEffect(() => {
-    const pendingEmbed = readPending(PENDING_EMBED_KEY);
+    const pendingEmbed = sessionStore.get(PENDING_EMBED_KEY);
     if (pendingEmbed) {
       try {
         const parsed = JSON.parse(pendingEmbed) as unknown;
@@ -171,11 +158,11 @@ export function EmbedBuilder() {
       } catch {
         toast.error("Assistant sent an invalid embed payload");
       } finally {
-        clearPending(PENDING_EMBED_KEY);
+        sessionStore.remove(PENDING_EMBED_KEY);
       }
     }
 
-    const pendingComponents = readPending(PENDING_COMPONENTS_KEY);
+    const pendingComponents = sessionStore.get(PENDING_COMPONENTS_KEY);
     if (pendingComponents) {
       try {
         const parsed = JSON.parse(pendingComponents);
@@ -187,7 +174,7 @@ export function EmbedBuilder() {
       } catch {
         toast.error("Assistant sent an invalid components payload");
       } finally {
-        clearPending(PENDING_COMPONENTS_KEY);
+        sessionStore.remove(PENDING_COMPONENTS_KEY);
       }
     }
 

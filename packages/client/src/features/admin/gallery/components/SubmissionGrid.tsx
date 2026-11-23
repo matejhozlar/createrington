@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Coins, ExternalLink, ImageOff, Trash2 } from "lucide-react";
 import { trpc, queryClient } from "@/lib/trpc";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
-import { formatMoney, formatRelativeDate } from "@/lib/format";
+import { formatDateTime, formatMoney, formatRelativeDate } from "@/lib/format";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Paginator } from "@/components/paginator";
 import { PlayerLabel } from "@/components/player-label";
@@ -208,7 +208,7 @@ function SubmissionCard({
         )}
 
         <div className="mt-auto flex items-center justify-between gap-2 pt-1 text-xs text-muted-foreground">
-          <span title={reviewedAt?.toLocaleString()}>
+          <span title={reviewedAt ? formatDateTime(reviewedAt) : undefined}>
             {reviewedAt
               ? `Reviewed ${formatRelativeDate(reviewedAt)}`
               : `Submitted ${formatRelativeDate(new Date(item.createdAt))}`}

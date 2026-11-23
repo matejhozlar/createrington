@@ -14,6 +14,7 @@ import {
   ErrorState,
   LoadingState,
 } from "@/components/query-states";
+import { formatDateTime } from "@/lib/format";
 
 interface AuditTabProps {
   playerId: string;
@@ -147,7 +148,7 @@ export function AuditTab({ playerId }: AuditTabProps) {
 
                     <p className="mt-2 text-xs text-muted-foreground">
                       Performed by {action.adminUsername} on{" "}
-                      {new Date(action.performedAt).toLocaleString()}
+                      {formatDateTime(action.performedAt)}
                     </p>
                   </div>
                 </div>

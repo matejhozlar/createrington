@@ -12,6 +12,7 @@ import { ActiveSlots } from "./components/ActiveSlots";
 import { ModSearch } from "./components/ModSearch";
 import { SuggestionHistory } from "./components/SuggestionHistory";
 import { useQuery } from "@tanstack/react-query";
+import { formatDate } from "@createrington/shared/format";
 
 export function WorkshopSuggest() {
   const { slug } = useParams<{ slug: string }>();
@@ -156,7 +157,7 @@ export function WorkshopSuggest() {
                   ? "across every workshop"
                   : "in this workshop"}{" "}
                 {suggestBan.expiresAt
-                  ? `until ${new Date(suggestBan.expiresAt).toLocaleDateString()}`
+                  ? `until ${formatDate(suggestBan.expiresAt)}`
                   : "permanently"}
                 . Reason: {suggestBan.reason}
               </p>

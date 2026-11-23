@@ -11,6 +11,7 @@ import {
 } from "@/lib/activityHeatmap";
 import { useRenderData } from "./hooks/use-render-data";
 import { useRenderPlatesReady } from "./hooks/use-render-plates";
+import { pluralize } from "@/lib/format";
 
 interface ActivityData {
   username: string;
@@ -109,7 +110,7 @@ export function ActivityRender() {
             <StatPill label="Total" value={formatPlaytime(data.totalSeconds)} />
             <StatPill
               label="Streak"
-              value={`${data.currentStreak} day${data.currentStreak !== 1 ? "s" : ""}`}
+              value={pluralize(data.currentStreak, "day")}
             />
             <StatPill label="Most Active" value={data.mostActiveDay} />
             {data.online && data.currentSessionSeconds != null && (

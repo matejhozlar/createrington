@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 import { Hammer, PackagePlus, Settings2 } from "lucide-react";
+import { sessionStore } from "@/lib/storage";
 import { trpc, queryClient } from "@/lib/trpc";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { Button } from "@/components/ui/button";
@@ -118,13 +119,9 @@ export function AdminWorkshopDetail() {
   const [lingeringEnvItems, setLingeringEnvItems] = useState<
     Array<{ item: AttentionItem; environment: ModEnvironment }>
   >([]);
-  const [skipConfirms, setSkipConfirms] = useState(() => {
-    try {
-      return sessionStorage.getItem(SKIP_CONFIRM_SESSION_KEY) === "1";
-    } catch {
-      return false;
-    }
-  });
+  const [skipConfirms, setSkipConfirms] = useState(
+    () => sessionStore.get(SKIP_CONFIRM_SESSION_KEY) === "1",
+  );
 
   const setActiveTab = (tab: WorkshopTabId) => {
     if (tab === activeTab) return;
@@ -407,9 +404,7 @@ export function AdminWorkshopDetail() {
     }
     if (skipSession) {
       setSkipConfirms(true);
-      try {
-        sessionStorage.setItem(SKIP_CONFIRM_SESSION_KEY, "1");
-      } catch {}
+      sessionStore.set(SKIP_CONFIRM_SESSION_KEY, "1");
     }
   };
 

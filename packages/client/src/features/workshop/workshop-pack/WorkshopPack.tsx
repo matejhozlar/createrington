@@ -26,6 +26,7 @@ import { WorkshopDisabledState } from "../components/WorkshopEmptyState";
 import { WorkshopHero } from "../components/WorkshopHero";
 import { PackList } from "./components/PackList";
 import { useQuery } from "@tanstack/react-query";
+import { pluralize } from "@/lib/format";
 
 const FALLBACK_DESCRIPTION =
   "Everything running on the server right now: the base pack plus every mod players have voted in.";
@@ -202,8 +203,8 @@ export function WorkshopPack() {
             <>
               <h2 className="text-2xl font-semibold">
                 {filtering
-                  ? `${visible.length} ${visible.length === 1 ? "mod" : "mods"}`
-                  : `All ${mods.length} ${mods.length === 1 ? "mod" : "mods"}`}
+                  ? pluralize(visible.length, "mod")
+                  : `All ${pluralize(mods.length, "mod")}`}
               </h2>
 
               <div className="-mt-2 flex flex-wrap items-center gap-2.5">

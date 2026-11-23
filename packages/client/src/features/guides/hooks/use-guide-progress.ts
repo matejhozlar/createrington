@@ -1,32 +1,24 @@
 import { useState, useCallback } from "react";
+import { localStore } from "@/lib/storage";
 
 const STORAGE_PREFIX = "guide-progress:";
 
 export function useGuideProgress(slug: string) {
-  const [currentStep, setCurrentStepState] = useState<number>(() => {
-    try {
-      const stored = localStorage.getItem(`${STORAGE_PREFIX}${slug}`);
-      return stored ? Number(stored) : 0;
-    } catch {
-      return 0;
-    }
-  });
+  const [currentStep, setCurrentStepState] = useState(
+    () => Number(localStore.get(`${STORAGE_PREFIX}${slug}`)) || 0,
+  );
 
   const setCurrentStep = useCallback(
     (step: number) => {
       setCurrentStepState(step);
-      try {
-        localStorage.setItem(`${STORAGE_PREFIX}${slug}`, String(step));
-      } catch {}
+      localStore.set(`${STORAGE_PREFIX}${slug}`, String(step));
     },
     [slug],
   );
 
   const clearProgress = useCallback(() => {
     setCurrentStepState(0);
-    try {
-      localStorage.removeItem(`${STORAGE_PREFIX}${slug}`);
-    } catch {}
+    localStore.remove(`${STORAGE_PREFIX}${slug}`);
   }, [slug]);
 
   return { currentStep, setCurrentStep, clearProgress } as const;

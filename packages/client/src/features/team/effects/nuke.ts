@@ -1,3 +1,4 @@
+import { prefersReducedMotion } from "@/lib/motion";
 import { PlayerAnimation, type PlayerObject } from "skinview3d";
 import { TeamEffect, type EffectContext } from "./core/effect";
 import { fx } from "./core/fx-layer";
@@ -8,7 +9,6 @@ import {
   easeOutBack,
   easeOutCubic,
   lerp,
-  prefersReducedMotion,
   rand,
   span,
 } from "./core/math";

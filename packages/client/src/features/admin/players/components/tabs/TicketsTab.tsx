@@ -8,6 +8,7 @@ import {
   ErrorState,
   LoadingState,
 } from "@/components/query-states";
+import { formatDate } from "@createrington/shared/format";
 
 interface TicketsTabProps {
   playerId: string;
@@ -79,7 +80,7 @@ export function TicketsTab({ playerId }: TicketsTabProps) {
                       </div>
 
                       <p className="mt-1 text-xs text-muted-foreground">
-                        Created {new Date(t.createdAt).toLocaleDateString()}
+                        Created {formatDate(t.createdAt)}
                         {t.channelId ? <> • Channel {t.channelId}</> : null}
                       </p>
 

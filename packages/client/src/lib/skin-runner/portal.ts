@@ -1,6 +1,7 @@
 import portalUrl from "@/assets/parallel-worlds/pw-portal.png";
 import type { PortalKind } from "./levels";
-import { context2d, createCanvas, loadImage } from "./skin";
+import { loadImage } from "@/lib/image";
+import { context2d, createCanvas } from "./skin";
 import type { Sprite } from "./sprites";
 import { hash } from "./util";
 

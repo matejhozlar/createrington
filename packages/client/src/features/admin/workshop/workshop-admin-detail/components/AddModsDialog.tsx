@@ -22,6 +22,7 @@ import {
   projectKindLabel,
 } from "@/features/workshop/format";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { pluralize } from "@/lib/format";
 
 interface SelectedProject {
   id: number;
@@ -72,7 +73,7 @@ export function AddModsDialog({
     trpc.admin.workshops.addMods.mutationOptions(
       useMutationToast({
         success: (mods) =>
-          `Added ${mods.length} project${mods.length !== 1 ? "s" : ""} as approved`,
+          `Added ${pluralize(mods.length, "project")} as approved`,
         onSuccess: () => {
           onAdded();
           setSelected([]);

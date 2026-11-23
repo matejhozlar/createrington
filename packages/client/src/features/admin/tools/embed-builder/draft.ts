@@ -8,6 +8,7 @@ import type {
   EmbedData,
   PresetKind,
 } from "@createrington/shared/api/embed";
+import { localStore, sessionStore } from "@/lib/storage";
 import type { ActivePreset } from "./embed-data";
 
 const DRAFT_KEY = "embed-builder-draft";
@@ -25,40 +26,22 @@ interface DraftState {
 }
 
 export function loadDraft(): DraftState | null {
-  try {
-    const raw = localStorage.getItem(DRAFT_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as DraftState;
-    if (!parsed || typeof parsed !== "object" || !parsed.data) return null;
-    return parsed;
-  } catch {
-    return null;
-  }
+  const parsed = localStore.getJson(DRAFT_KEY) as DraftState | null;
+  if (!parsed || typeof parsed !== "object" || !parsed.data) return null;
+  return parsed;
 }
 
 export function saveDraft(state: DraftState): void {
-  try {
-    localStorage.setItem(DRAFT_KEY, JSON.stringify(state));
-  } catch {
-    return;
-  }
+  localStore.setJson(DRAFT_KEY, state);
 }
 
 export function clearDraft(): void {
-  try {
-    localStorage.removeItem(DRAFT_KEY);
-  } catch {
-    return;
-  }
+  localStore.remove(DRAFT_KEY);
 }
 
 export function hasPendingAssistantInsert(): boolean {
-  try {
-    return (
-      sessionStorage.getItem(PENDING_EMBED_KEY) !== null ||
-      sessionStorage.getItem(PENDING_COMPONENTS_KEY) !== null
-    );
-  } catch {
-    return false;
-  }
+  return (
+    sessionStore.get(PENDING_EMBED_KEY) !== null ||
+    sessionStore.get(PENDING_COMPONENTS_KEY) !== null
+  );
 }

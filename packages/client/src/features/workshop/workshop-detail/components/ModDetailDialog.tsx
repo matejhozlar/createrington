@@ -30,7 +30,6 @@ import { PlayerLabel } from "@/components/player-label";
 import { ProjectThumb } from "../../components/ProjectThumb";
 import {
   DEPENDENCY_COVERAGE_STYLES,
-  formatDate,
   formatDownloads,
   isHttpUrl,
   modCredit,
@@ -39,6 +38,7 @@ import {
   projectKindLabel,
   REJECT_REASON_LABELS,
 } from "../../format";
+import { formatDate } from "@createrington/shared/format";
 import { useQuery } from "@tanstack/react-query";
 
 interface ProjectCategory {

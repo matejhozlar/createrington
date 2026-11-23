@@ -8,7 +8,7 @@ import { MessageSquare, Lock, RefreshCw, Trash2 } from "lucide-react";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
 import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime, pluralize } from "@/lib/format";
 import { describeEntryRules, PROMPT_STATUS_DISPLAY } from "./format";
 import { DeletePromptModal } from "./components/DeletePromptModal";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -114,8 +114,8 @@ export function PromptDetail() {
     creator?.minecraftUsername ?? `Discord user ${prompt.createdBy}`;
   const groups = groupByResponder(responses);
   const countLabel = isMulti
-    ? `${responses.length} ${responses.length === 1 ? "entry" : "entries"} from ${groups.length} ${groups.length === 1 ? "player" : "players"}`
-    : `${responses.length} response${responses.length === 1 ? "" : "s"}`;
+    ? `${pluralize(responses.length, "entry", "entries")} from ${pluralize(groups.length, "player")}`
+    : pluralize(responses.length, "response");
 
   return (
     <div className="flex flex-1 flex-col gap-4">

@@ -1,5 +1,5 @@
 import type { PlateColumn } from "@createrington/shared/team-tag";
-import { loadImage } from "@/lib/skin-runner/skin";
+import { loadImage } from "@/lib/image";
 import { STEVE_SKIN_DATA_URI } from "@/lib/skin-runner/steve";
 
 export type Bitmap = {

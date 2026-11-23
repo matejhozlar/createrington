@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
 import { ArrowRight, ExternalLink, Package } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useCountdown } from "@/hooks/use-countdown";
+import { useNow } from "@/hooks/use-now";
+import { pluralize } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/query-states";
@@ -32,15 +33,6 @@ const VIGNETTE_STYLE: React.CSSProperties = {
     "radial-gradient(ellipse at 70% 50%, transparent 30%, oklch(0.13 0.005 285 / .92) 80%)",
 };
 
-function useMinuteTick(): number {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 60_000);
-    return () => clearInterval(id);
-  }, []);
-  return now;
-}
-
 function formatRotatedIn(ms: number): string {
   if (ms <= 0) return "just now";
   const totalSec = Math.floor(ms / 1000);
@@ -70,7 +62,7 @@ export function ActivePack({ onOpenPortal }: ActivePackProps) {
   );
 
   const countdown = useCountdown(rotationInfo?.nextRotationAt ?? null);
-  const now = useMinuteTick();
+  const now = useNow();
 
   if (isLoading) {
     return <ActivePackLoading />;
@@ -190,7 +182,7 @@ export function ActivePack({ onOpenPortal }: ActivePackProps) {
                     Loaded mods
                   </div>
                   <span className="font-mono text-xs tabular-nums text-white/70">
-                    {modCount} {modCount === 1 ? "item" : "items"}
+                    {pluralize(modCount, "item")}
                   </span>
                 </div>
                 {modCount === 0 ? (

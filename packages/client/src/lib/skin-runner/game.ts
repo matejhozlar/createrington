@@ -22,6 +22,8 @@ import {
   type Sprites,
 } from "./sprites";
 import { clamp } from "@/lib/math";
+import { REDUCED_MOTION_QUERY } from "@/lib/motion";
+import { localStore } from "@/lib/storage";
 import { pick, rand, smoothstep } from "./util";
 
 export type RunnerState = "loading" | "idle" | "running" | "dead";
@@ -272,19 +274,11 @@ function isInteractive(target: EventTarget | null): boolean {
 }
 
 function readBest(): number {
-  try {
-    return Number(localStorage.getItem(BEST_SCORE_KEY)) || 0;
-  } catch {
-    return 0;
-  }
+  return Number(localStore.get(BEST_SCORE_KEY)) || 0;
 }
 
 function writeBest(value: number): void {
-  try {
-    localStorage.setItem(BEST_SCORE_KEY, String(Math.floor(value)));
-  } catch {
-    return;
-  }
+  localStore.set(BEST_SCORE_KEY, String(Math.floor(value)));
 }
 
 function mixPose(a: Pose, b: Pose, t: number): Pose {
@@ -390,7 +384,7 @@ class Runner {
     this.sprites = buildSprites();
     this.playerCanvas = createCanvas(1, 1);
     this.playerCtx = context2d(this.playerCanvas);
-    this.motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    this.motionQuery = window.matchMedia(REDUCED_MOTION_QUERY);
     this.hoverQuery = window.matchMedia("(hover: none)");
     this.reducedMotion = this.motionQuery.matches;
     this.touchUi = this.hoverQuery.matches;

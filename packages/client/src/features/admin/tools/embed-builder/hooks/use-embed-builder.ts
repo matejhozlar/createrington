@@ -28,6 +28,7 @@ import {
 } from "../embed-data";
 import { findPayloadIssue } from "../validation";
 import { usePresetActions } from "./use-preset-actions";
+import { plural } from "@/lib/format";
 
 export function useEmbedBuilder() {
   const toast = useToastActions();
@@ -218,7 +219,7 @@ export function useEmbedBuilder() {
             );
           } else {
             toast.success(
-              `Updated ${result.updated} linked message${result.updated === 1 ? "" : "s"}`,
+              `Updated ${result.updated} linked ${plural(result.updated, "message")}`,
             );
           }
         },

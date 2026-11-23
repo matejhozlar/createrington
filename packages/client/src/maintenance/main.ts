@@ -4,6 +4,7 @@ import {
   readPlayerHint,
   type RunnerState,
 } from "@/lib/skin-runner";
+import { sessionStore } from "@/lib/storage";
 
 const POLL_INTERVAL_MS = 15000;
 const RELOAD_DELAY_MS = 1500;
@@ -24,23 +25,15 @@ let backOnline = false;
 let reloadTimer: number | null = null;
 
 function readReloads(): number {
-  try {
-    const raw = sessionStorage.getItem(RELOAD_KEY);
-    if (!raw) return 0;
-    const [count, at] = raw.split(":").map(Number);
-    if (!count || !at || Date.now() - at > RELOAD_WINDOW_MS) return 0;
-    return count;
-  } catch {
-    return 0;
-  }
+  const raw = sessionStore.get(RELOAD_KEY);
+  if (!raw) return 0;
+  const [count, at] = raw.split(":").map(Number);
+  if (!count || !at || Date.now() - at > RELOAD_WINDOW_MS) return 0;
+  return count;
 }
 
 function recordReload(): void {
-  try {
-    sessionStorage.setItem(RELOAD_KEY, `${readReloads() + 1}:${Date.now()}`);
-  } catch {
-    return;
-  }
+  sessionStore.set(RELOAD_KEY, `${readReloads() + 1}:${Date.now()}`);
 }
 
 function scheduleReload(): void {

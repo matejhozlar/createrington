@@ -1,11 +1,6 @@
+import { prefersReducedMotion } from "@/lib/motion";
 import { PlayerAnimation, type PlayerObject } from "skinview3d";
-import {
-  bump,
-  easeInOutCubic,
-  easeOutBack,
-  prefersReducedMotion,
-  span,
-} from "./math";
+import { bump, easeInOutCubic, easeOutBack, span } from "./math";
 import type { Point } from "./screen";
 import { stage, type GuestAnimation, type GuestHandle } from "./stage";
 

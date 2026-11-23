@@ -1,3 +1,4 @@
+import { prefersReducedMotion } from "@/lib/motion";
 import {
   PlayerAnimation,
   type PlayerObject,
@@ -14,7 +15,6 @@ import {
   easeOutBack,
   easeOutCubic,
   lerp,
-  prefersReducedMotion,
   rand,
   shortestAngle,
   span,

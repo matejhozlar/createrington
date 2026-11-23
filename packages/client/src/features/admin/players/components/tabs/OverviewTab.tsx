@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import type { RouterOutput } from "@/lib/trpc";
+import { formatDate } from "@createrington/shared/format";
 
 type PlayerDetailed = RouterOutput["admin"]["players"]["players"]["get"];
 
@@ -50,8 +51,7 @@ export function OverviewTab({ player, getServerName }: OverviewTabProps) {
               <div>
                 <p className="font-medium">Status: {player.waitlist.status}</p>
                 <p className="text-xs text-muted-foreground">
-                  Queued:{" "}
-                  {new Date(player.waitlist.queuedAt).toLocaleDateString()}
+                  Queued: {formatDate(player.waitlist.queuedAt)}
                 </p>
               </div>
               {player.waitlist.registeredAt && (

@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { StatCard } from "@/components/stat-card";
 import { Coins, Clock, AlertTriangle, Ticket, Users } from "lucide-react";
-import { formatMoney } from "@/lib/format";
+import { formatMoney, pluralize } from "@/lib/format";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { useQuery } from "@tanstack/react-query";
 import { MAIN_SERVER_ID } from "@/lib/minecraft";
@@ -36,9 +36,9 @@ export function PlayerStatsCards({
   const party = partyQuery.data?.party ?? null;
   const allyOfCount = partyQuery.data?.allyOf.length ?? 0;
   const partyDetail = party
-    ? `${party.rank.charAt(0).toUpperCase()}${party.rank.slice(1)} · ${party.memberCount} member${party.memberCount === 1 ? "" : "s"}`
+    ? `${party.rank.charAt(0).toUpperCase()}${party.rank.slice(1)} · ${pluralize(party.memberCount, "member")}`
     : allyOfCount > 0
-      ? `Ally of ${allyOfCount} part${allyOfCount === 1 ? "y" : "ies"}`
+      ? `Ally of ${pluralize(allyOfCount, "party", "parties")}`
       : "Not in a party";
 
   const totalOffenses = activeStrikes + activeBans;

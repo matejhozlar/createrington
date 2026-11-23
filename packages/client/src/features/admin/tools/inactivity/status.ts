@@ -1,6 +1,5 @@
 import type { DerivedStatus, StatText, StatWindows } from "./constants";
-
-const DAY_MS = 24 * 60 * 60 * 1000;
+import { DAY_MS } from "@/lib/time";
 
 export function resolveStatText(text: StatText, windows: StatWindows): string {
   return typeof text === "function" ? text(windows) : text;

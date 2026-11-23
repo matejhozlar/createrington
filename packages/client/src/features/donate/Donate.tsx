@@ -15,6 +15,7 @@ import { trpc, queryClient } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { formatDate } from "@createrington/shared/format";
 
 const DONATION_TIERS = [
   { amountCents: 300, label: "€3" },
@@ -183,8 +184,8 @@ export function Donate() {
                 <p className="text-sm text-muted-foreground">
                   €{(subscription.data.amountCents / 100).toFixed(2)}/mo
                   {subscription.data.cancelAtPeriodEnd
-                    ? ` — cancels on ${new Date(subscription.data.currentPeriodEnd).toLocaleDateString()}`
-                    : ` — renews on ${new Date(subscription.data.currentPeriodEnd).toLocaleDateString()}`}
+                    ? ` — cancels on ${formatDate(subscription.data.currentPeriodEnd)}`
+                    : ` — renews on ${formatDate(subscription.data.currentPeriodEnd)}`}
                 </p>
               </div>
               {subscription.data.cancelAtPeriodEnd ? (
@@ -388,7 +389,7 @@ export function Donate() {
                           {d.type === "monthly" ? "/mo" : ""}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {new Date(d.createdAt).toLocaleDateString()}
+                          {formatDate(d.createdAt)}
                         </p>
                       </div>
                     </div>

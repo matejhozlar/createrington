@@ -17,6 +17,7 @@ import { ChannelSelector } from "./ChannelSelector";
 import { BotSelector } from "./BotSelector";
 import type { UseEmbedBuilder } from "../hooks/use-embed-builder";
 import { useQuery } from "@tanstack/react-query";
+import { plural } from "@/lib/format";
 
 interface SendModalProps {
   open: boolean;
@@ -93,9 +94,9 @@ export function SendModal({ open, onOpenChange, builder }: SendModalProps) {
               <AlertTriangle />
               <AlertDescription>
                 This {noun} uses {appEmojiCount} bot{" "}
-                {appEmojiCount === 1 ? "emoji" : "emojis"} that only
-                Createrington can send. Discord rejects them on buttons and
-                shows raw text elsewhere. Switch the bot to keep them.
+                {plural(appEmojiCount, "emoji")} that only Createrington can
+                send. Discord rejects them on buttons and shows raw text
+                elsewhere. Switch the bot to keep them.
               </AlertDescription>
             </Alert>
           )}

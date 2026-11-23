@@ -6,6 +6,7 @@ import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { PartyRankBadge } from "./PartyRankBadge";
 import { useQuery } from "@tanstack/react-query";
+import { pluralize } from "@/lib/format";
 
 const SECTION_LABEL =
   "text-xs font-semibold uppercase tracking-wider text-muted-foreground";
@@ -87,7 +88,7 @@ export function PartyMembersPanel({
         <section className="flex flex-col gap-2">
           <div className="flex items-center justify-between gap-2">
             <h4 className={SECTION_LABEL}>
-              Territory · {claimTotal} chunk{claimTotal === 1 ? "" : "s"}
+              Territory · {pluralize(claimTotal, "chunk")}
             </h4>
             {onShowClaims && claimTotal > 0 && (
               <Button

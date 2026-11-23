@@ -6,6 +6,7 @@ import {
   type Backdrop,
   type GuiScale,
 } from "../presets";
+import { localStore } from "@/lib/storage";
 
 export type PreviewSettings = {
   guiScale: GuiScale;
@@ -22,37 +23,30 @@ const DEFAULT_SETTINGS: PreviewSettings = {
 };
 
 function readStoredSettings(): PreviewSettings {
-  try {
-    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null");
-    if (!stored || typeof stored !== "object") return DEFAULT_SETTINGS;
-    return {
-      guiScale: GUI_SCALES.includes(stored.guiScale)
-        ? stored.guiScale
-        : DEFAULT_SETTINGS.guiScale,
-      backdrop: BACKDROPS.some((option) => option.value === stored.backdrop)
-        ? stored.backdrop
-        : DEFAULT_SETTINGS.backdrop,
-      rank:
-        Number.isInteger(stored.rank) &&
-        stored.rank >= 0 &&
-        stored.rank < RANKS.length
-          ? stored.rank
-          : DEFAULT_SETTINGS.rank,
-    };
-  } catch {
-    return DEFAULT_SETTINGS;
-  }
+  const stored = localStore.getJson(
+    STORAGE_KEY,
+  ) as Partial<PreviewSettings> | null;
+  if (!stored || typeof stored !== "object") return DEFAULT_SETTINGS;
+  const rank = stored.rank ?? -1;
+  return {
+    guiScale:
+      GUI_SCALES.find((scale) => scale === stored.guiScale) ??
+      DEFAULT_SETTINGS.guiScale,
+    backdrop:
+      BACKDROPS.find((option) => option.value === stored.backdrop)?.value ??
+      DEFAULT_SETTINGS.backdrop,
+    rank:
+      Number.isInteger(rank) && rank >= 0 && rank < RANKS.length
+        ? rank
+        : DEFAULT_SETTINGS.rank,
+  };
 }
 
 export function usePreviewSettings() {
   const [settings, setSettings] = useState<PreviewSettings>(readStoredSettings);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-    } catch {
-      return;
-    }
+    localStore.setJson(STORAGE_KEY, settings);
   }, [settings]);
 
   const update = useCallback(

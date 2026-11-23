@@ -5,6 +5,7 @@ import {
   type PlanningCategory,
   type PlanningItemStatus,
 } from "@createrington/shared/planning";
+import { pluralize } from "@/lib/format";
 
 export interface HighlightAction {
   type: "highlight";
@@ -228,7 +229,7 @@ export function describeAction(action: AdminChatAction): string {
   }
   if (action.type === "insert_components") {
     const count = action.components.length;
-    return `Insert components message (${count} component${count === 1 ? "" : "s"})`;
+    return `Insert components message (${pluralize(count, "component")})`;
   }
   if (action.type === "plan_create") {
     return `New plan: ${action.title}`;

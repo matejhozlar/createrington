@@ -1,4 +1,5 @@
-import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef } from "react";
+import { useElementSize } from "@/hooks/use-element-size";
 import type { PlateDesign } from "@createrington/shared/team-tag";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PODIUM } from "@/features/team/data";
@@ -94,21 +95,7 @@ export const TabListPreview = memo(function TabListPreview({
   className?: string;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const frameRef = useRef<HTMLDivElement>(null);
-  const [frame, setFrame] = useState({ width: 0, height: 0 });
-
-  useEffect(() => {
-    const element = frameRef.current;
-    if (!element) return;
-    const observer = new ResizeObserver(([entry]) =>
-      setFrame({
-        width: entry.contentRect.width,
-        height: entry.contentRect.height,
-      }),
-    );
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, []);
+  const { ref: frameRef, size: frame } = useElementSize<HTMLDivElement>();
   const backdropImage = useLoadedImage(
     BACKDROPS.find((option) => option.value === backdrop)!.src,
   );
@@ -148,7 +135,7 @@ export const TabListPreview = memo(function TabListPreview({
   }, [assets, boardHeads, design, name, rank, head]);
 
   useEffect(() => {
-    if (!canvasRef.current || !assets || !rows || !frame.width) return;
+    if (!canvasRef.current || !assets || !rows || !frame?.width) return;
     renderTabList(canvasRef.current, {
       rows,
       guiScale: Number(guiScale),
