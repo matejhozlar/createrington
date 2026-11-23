@@ -1,17 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { trpc } from "@/lib/trpc";
-import { useAuth } from "@/contexts/auth";
 import { ActivePack } from "./components/ActivePack";
 import { PacksHero, type PacksHeroHandle } from "./components/hero/PacksHero";
 import { PortalZoomOverlay } from "./components/hero/PortalZoomOverlay";
 import "./structure-packs.css";
-import { useQuery } from "@tanstack/react-query";
-
-const DEFAULT_BOOST_UNIT_PRICE = 50;
 
 export function StructurePacks() {
-  const { user } = useAuth();
-
   const activePackRef = useRef<HTMLElement | null>(null);
   const heroRef = useRef<PacksHeroHandle>(null);
   const cancelPendingScrollRef = useRef<(() => void) | null>(null);
@@ -27,27 +20,6 @@ export function StructurePacks() {
     null,
   );
   const [overlayActive, setOverlayActive] = useState(false);
-
-  const {
-    data: pool,
-    isLoading: poolLoading,
-    isError: poolError,
-    refetch: refetchPool,
-  } = useQuery(trpc.public.structurePacks.pool.queryOptions());
-
-  const { data: myBoosts } = useQuery(
-    trpc.user.structurePacks.myBoosts.queryOptions(undefined, {
-      enabled: !!user,
-    }),
-  );
-
-  const { data: rotationInfo } = useQuery(
-    trpc.public.structurePacks.rotationInfo.queryOptions(),
-  );
-
-  const totalWeight = pool?.reduce((sum, entry) => sum + entry.weight, 0) ?? 0;
-
-  const myBoostMap = new Map((myBoosts ?? []).map((b) => [b.packId, b.units]));
 
   const handleEnterPortal = (getRect: () => DOMRect) => {
     setGetZoomSource(() => getRect);
@@ -107,19 +79,6 @@ export function StructurePacks() {
         onClose={handleExitPortal}
         onReblurring={() => setOverlayActive(false)}
         getSourceRect={getZoomSource}
-        pool={pool}
-        isLoading={poolLoading}
-        isError={poolError && !pool}
-        onRetry={() => void refetchPool()}
-        totalWeight={totalWeight}
-        myBoostMap={myBoostMap}
-        boostUnitPrice={
-          rotationInfo?.boostUnitPrice ?? DEFAULT_BOOST_UNIT_PRICE
-        }
-        nextRotationAt={rotationInfo?.nextRotationAt ?? null}
-        cycleNumber={rotationInfo?.cycle ?? null}
-        canBoost={!!user}
-        rotationPaused={rotationInfo?.enabled === false}
       />
     </div>
   );

@@ -1,11 +1,12 @@
-import { useMemo, useRef } from "react";
+import { useRef } from "react";
 import { Link, useNavigate } from "react-router";
-import { trpc, queryClient } from "@/lib/trpc";
+import { useQuery } from "@tanstack/react-query";
+import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/auth";
 import { useToastActions } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { ErrorState } from "@/components/query-states";
-import { categoryOptions, projectCategories } from "@/features/workshop/format";
+import { categoryOptions } from "@/features/workshop/format";
 import { useFilterParams } from "@/features/workshop/hooks/use-filter-params";
 import { usePagination } from "@/features/workshop/hooks/use-pagination";
 import { useViewMode } from "@/features/workshop/hooks/use-view-mode";
@@ -21,30 +22,19 @@ import {
   WorkshopPageHeader,
   WorkshopPageShell,
 } from "@/features/workshop/components/WorkshopPageShell";
-import {
-  Leaderboard,
-  type RaceItem,
-  type RaceMod,
-} from "./components/Leaderboard";
+import { Leaderboard, type RaceItem } from "./components/Leaderboard";
 import { ModDetailDialog } from "./components/ModDetailDialog";
 import { PackSearchResults } from "./components/PackSearchResults";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useRaceView, type SortMode } from "./hooks/use-race-view";
+import { useUpvoteMod } from "./hooks/use-upvote-mod";
 
-type SortMode = "top" | "new" | "votes";
+const LEADER_BAR_PCT = 92;
 
 const SORT_OPTIONS: Array<{ value: SortMode; label: string }> = [
   { value: "top", label: "Most upvoted" },
   { value: "new", label: "Newest first" },
   { value: "votes", label: "My votes" },
 ];
-
-function byRace(a: RaceMod, b: RaceMod): number {
-  return (
-    b.upvoteCount - a.upvoteCount ||
-    new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime() ||
-    a.id - b.id
-  );
-}
 
 export function WorkshopDetail() {
   const { slug, workshopId, gate } = useWorkshopBySlug("Loading workshop...");
@@ -89,176 +79,31 @@ export function WorkshopDetail() {
     ),
   );
 
-  const upvoteMutation = useMutation(
-    trpc.user.workshops.upvoteMod.mutationOptions({
-      onMutate: async ({ workshopModId }) => {
-        if (!slug || workshopId === undefined) return;
-        await Promise.all([
-          queryClient.cancelQueries(
-            trpc.user.workshops.get.queryFilter({ slug }),
-          ),
-          queryClient.cancelQueries(
-            trpc.user.workshops.myUpvotes.queryFilter({ workshopId }),
-          ),
-        ]);
-        const previousGet = queryClient.getQueryData(
-          trpc.user.workshops.get.queryKey({ slug }),
-        );
-        const previousUpvotes = queryClient.getQueryData(
-          trpc.user.workshops.myUpvotes.queryKey({
-            workshopId,
-          }),
-        );
-        const removing =
-          previousUpvotes?.modIds.includes(workshopModId) ?? false;
-        queryClient.setQueryData(
-          trpc.user.workshops.get.queryKey({ slug }),
-          (data) =>
-            data && {
-              ...data,
-              mods: data.mods.map((mod) =>
-                mod.id === workshopModId
-                  ? {
-                      ...mod,
-                      upvoteCount: Math.max(
-                        0,
-                        mod.upvoteCount + (removing ? -1 : 1),
-                      ),
-                    }
-                  : mod,
-              ),
-            },
-        );
-        queryClient.setQueryData(
-          trpc.user.workshops.myUpvotes.queryKey({ workshopId }),
-          (data) =>
-            data && {
-              ...data,
-              modIds: removing
-                ? data.modIds.filter((id) => id !== workshopModId)
-                : [...data.modIds, workshopModId],
-              votesRemaining: removing
-                ? Math.min(data.maxUpvotes, data.votesRemaining + 1)
-                : Math.max(0, data.votesRemaining - 1),
-            },
-        );
-        return { previousGet, previousUpvotes };
-      },
-      onError: (error, _input, context) => {
-        if (slug && context?.previousGet) {
-          queryClient.setQueryData(
-            trpc.user.workshops.get.queryKey({ slug }),
-            context.previousGet,
-          );
-        }
-        if (workshopId !== undefined && context?.previousUpvotes) {
-          queryClient.setQueryData(
-            trpc.user.workshops.myUpvotes.queryKey({ workshopId }),
-            context.previousUpvotes,
-          );
-        }
-        toast.error(error.message);
-      },
-      onSettled: () => {
-        if (slug)
-          void queryClient.invalidateQueries(
-            trpc.user.workshops.get.queryFilter({ slug }),
-          );
-        if (workshopId !== undefined) {
-          void queryClient.invalidateQueries(
-            trpc.user.workshops.myUpvotes.queryFilter({ workshopId }),
-          );
-        }
-        void queryClient.invalidateQueries(
-          trpc.user.workshops.list.pathFilter(),
-        );
-      },
-    }),
-  );
+  const upvoteMutation = useUpvoteMod(slug, workshopId);
 
   const page = gate();
-  const allMods = page.data?.mods;
-  const upvotedModIds = myUpvotesQuery.data?.modIds;
-  const rejectedMods = rejectedQuery.data;
-  const packRows = packQuery.data?.mods;
-
-  const race = useMemo(() => {
-    const mods = allMods ?? [];
-    const ranked = mods.filter((mod) => mod.status === "pending").sort(byRace);
-    return {
-      ranked,
-      rankById: new Map(ranked.map((mod, index) => [mod.id, index + 1])),
-      maxRaceCount: Math.max(1, ...ranked.map((mod) => mod.upvoteCount)),
-      categories: [
-        ...new Set(
-          mods.flatMap((mod) => projectCategories(mod.project.categories)),
-        ),
-      ].sort(),
-    };
-  }, [allMods]);
-
-  const upvotedIds = useMemo(
-    () => new Set(upvotedModIds ?? []),
-    [upvotedModIds],
-  );
-
-  const visible = useMemo(() => {
-    let result: RaceMod[] = searching
-      ? [...(allMods ?? []), ...(rejectedMods ?? [])].sort(byRace)
-      : race.ranked;
-    if (sortMode === "new") {
-      result = [...result].sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime() ||
-          b.id - a.id,
-      );
-    }
-    if (sortMode === "votes") {
-      result = result.filter((mod) => upvotedIds.has(mod.id));
-    }
-    if (category !== "all") {
-      result = result.filter((mod) =>
-        projectCategories(mod.project.categories).includes(category),
-      );
-    }
-    if (searching) {
-      result = result.filter((mod) =>
-        `${mod.project.name} ${mod.project.primaryAuthor ?? ""} ${mod.submitterName ?? ""}`
-          .toLowerCase()
-          .includes(query),
-      );
-    }
-    return result;
-  }, [
-    allMods,
-    rejectedMods,
-    race.ranked,
-    searching,
-    sortMode,
+  const {
+    rankById,
+    maxRaceCount,
+    categories,
     upvotedIds,
-    category,
+    visible,
+    packMatches,
+  } = useRaceView({
+    mods: page.data?.mods,
+    rejectedMods: rejectedQuery.data,
+    upvotedModIds: myUpvotesQuery.data?.modIds,
+    packRows: packQuery.data?.mods,
     query,
-  ]);
-
-  const packMatches = useMemo(() => {
-    if (!searching || sortMode === "votes") return [];
-    return (packRows ?? []).filter(
-      (row) =>
-        row.origin !== "suggestion" &&
-        `${row.project.name} ${row.project.primaryAuthor ?? ""}`
-          .toLowerCase()
-          .includes(query) &&
-        (category === "all" ||
-          projectCategories(row.project.categories).includes(category)),
-    );
-  }, [packRows, searching, sortMode, category, query]);
+    category,
+    sortMode,
+  });
 
   if (!page.data) return page.fallback;
 
   const { workshop, mods } = page.data;
   const isOpen = workshop.status === "open";
-  const { rankById, maxRaceCount, categories } = race;
-  const packMods = packRows ?? [];
+  const packMods = packQuery.data?.mods ?? [];
 
   const filtering = searching || sortMode === "votes" || category !== "all";
   const remaining = visible.length - shownCount;
@@ -278,7 +123,7 @@ export function WorkshopDetail() {
       rank: mod.status === "pending" ? (rankById.get(mod.id) ?? null) : null,
       barPct:
         mod.status === "pending"
-          ? Math.round((mod.upvoteCount / maxRaceCount) * 92)
+          ? Math.round((mod.upvoteCount / maxRaceCount) * LEADER_BAR_PCT)
           : 0,
       upvoted: upvotedIds.has(mod.id),
       canUpvote:
