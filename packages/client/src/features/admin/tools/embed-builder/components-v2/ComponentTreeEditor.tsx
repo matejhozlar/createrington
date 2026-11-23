@@ -1,5 +1,10 @@
 import type { LucideIcon } from "lucide-react";
-import type { Dispatch, SetStateAction } from "react";
+import {
+  createContext,
+  useContext,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 import {
   Box,
   ChevronDown,
@@ -35,6 +40,7 @@ import {
   MEDIA_GALLERY_MAX_ITEMS,
   SECTION_MAX_TEXTS,
   measureComponentsV2,
+  type AnyComponentNode,
   type ComponentActionRow,
   type ComponentButton,
   type ComponentContainer,
@@ -99,7 +105,6 @@ export function ComponentTreeEditor({
 }: ComponentTreeEditorProps) {
   const itemKeys = useItemKeys(components.length);
   const { count } = measureComponentsV2(components);
-  const full = count >= COMPONENTS_V2_MAX_COMPONENTS;
 
   const update = (i: number, node: ComponentNode) =>
     setComponents((prev) => prev.map((n, idx) => (idx === i ? node : n)));
@@ -114,49 +119,46 @@ export function ComponentTreeEditor({
   const add = (node: ComponentNode) => setComponents((prev) => [...prev, node]);
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="border-b border-border px-4 py-3">
-        <div className="flex items-baseline justify-between gap-2">
-          <h2 className="text-sm font-semibold">Components</h2>
-          <span
-            className={cn(
-              "text-[11px] tabular-nums text-muted-foreground",
-              count > COMPONENTS_V2_MAX_COMPONENTS && "text-destructive",
-            )}
-          >
-            {count}/{COMPONENTS_V2_MAX_COMPONENTS}
-          </span>
-        </div>
-        <p className="text-xs text-muted-foreground">
-          Build a Components V2 message. Containers without an accent color have
-          no left stripe.
-        </p>
-      </div>
-      <div className="flex-1 space-y-3 overflow-y-auto p-4">
-        {components.length === 0 && (
-          <p className="rounded-md border border-dashed border-border px-3 py-6 text-center text-xs text-muted-foreground">
-            No components yet. Add one to get started.
+    <RemainingContext value={COMPONENTS_V2_MAX_COMPONENTS - count}>
+      <div className="flex h-full flex-col">
+        <div className="border-b border-border px-4 py-3">
+          <div className="flex items-baseline justify-between gap-2">
+            <h2 className="text-sm font-semibold">Components</h2>
+            <span
+              className={cn(
+                "text-[11px] tabular-nums text-muted-foreground",
+                count > COMPONENTS_V2_MAX_COMPONENTS && "text-destructive",
+              )}
+            >
+              {count}/{COMPONENTS_V2_MAX_COMPONENTS}
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Build a Components V2 message. Containers without an accent color
+            have no left stripe.
           </p>
-        )}
-        {components.map((node, i) => (
-          <NodeCard
-            key={itemKeys.keys[i]}
-            node={node}
-            index={i}
-            total={components.length}
-            onChange={(n) => update(i, n)}
-            onRemove={() => remove(i)}
-            onMove={(d) => move(i, d)}
-          />
-        ))}
-        <AddMenu
-          label="Add component"
-          options={TOP_OPTIONS}
-          onAdd={add}
-          disabled={full}
-        />
+        </div>
+        <div className="flex-1 space-y-3 overflow-y-auto p-4">
+          {components.length === 0 && (
+            <p className="rounded-md border border-dashed border-border px-3 py-6 text-center text-xs text-muted-foreground">
+              No components yet. Add one to get started.
+            </p>
+          )}
+          {components.map((node, i) => (
+            <NodeCard
+              key={itemKeys.keys[i]}
+              node={node}
+              index={i}
+              total={components.length}
+              onChange={(n) => update(i, n)}
+              onRemove={() => remove(i)}
+              onMove={(d) => move(i, d)}
+            />
+          ))}
+          <AddMenu label="Add component" options={TOP_OPTIONS} onAdd={add} />
+        </div>
       </div>
-    </div>
+    </RemainingContext>
   );
 }
 
@@ -302,6 +304,7 @@ function MediaGalleryBody({
 }) {
   const items = node.items;
   const itemKeys = useItemKeys(items.length);
+  const remaining = useContext(RemainingContext);
   const setItems = (next: ComponentMediaGallery["items"]) =>
     onChange({ ...node, items: next });
 
@@ -364,7 +367,7 @@ function MediaGalleryBody({
           </label>
         </div>
       ))}
-      {items.length < MEDIA_GALLERY_MAX_ITEMS && (
+      {items.length < MEDIA_GALLERY_MAX_ITEMS && remaining > 0 && (
         <Button
           variant="outline"
           size="sm"
@@ -387,6 +390,7 @@ function SectionBody({
 }) {
   const texts = node.components;
   const textKeys = useItemKeys(texts.length);
+  const remaining = useContext(RemainingContext);
   const setTexts = (next: ComponentSection["components"]) =>
     onChange({ ...node, components: next });
 
@@ -427,7 +431,7 @@ function SectionBody({
             />
           </div>
         ))}
-        {texts.length < SECTION_MAX_TEXTS && (
+        {texts.length < SECTION_MAX_TEXTS && remaining > 0 && (
           <Button
             variant="outline"
             size="sm"
@@ -515,6 +519,7 @@ function ActionRowBody({
 }) {
   const buttons = node.components;
   const buttonKeys = useItemKeys(buttons.length);
+  const remaining = useContext(RemainingContext);
   const setButtons = (next: ComponentActionRow["components"]) =>
     onChange({ ...node, components: next });
 
@@ -548,7 +553,7 @@ function ActionRowBody({
           />
         </div>
       ))}
-      {buttons.length < ACTION_ROW_MAX_BUTTONS && (
+      {buttons.length < ACTION_ROW_MAX_BUTTONS && remaining > 0 && (
         <Button
           variant="outline"
           size="sm"
@@ -652,26 +657,30 @@ function ContainerBody({
   );
 }
 
+const RemainingContext = createContext(Infinity);
+
 interface AddOption<T> {
   label: string;
   icon: LucideIcon;
   make: () => T;
 }
 
-function AddMenu<T>({
+function AddMenu<T extends AnyComponentNode>({
   label,
   options,
   onAdd,
-  disabled,
 }: {
   label: string;
   options: AddOption<T>[];
   onAdd: (node: T) => void;
-  disabled?: boolean;
 }) {
+  const remaining = useContext(RemainingContext);
+  const fits = (opt: AddOption<T>) =>
+    measureComponentsV2([opt.make()]).count <= remaining;
+
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild disabled={disabled}>
+      <DropdownMenuTrigger asChild disabled={!options.some(fits)}>
         <Button variant="outline" size="sm" className="w-full justify-center">
           <Plus className="mr-1.5 size-3.5" />
           {label}
@@ -679,7 +688,11 @@ function AddMenu<T>({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-48">
         {options.map((opt) => (
-          <DropdownMenuItem key={opt.label} onClick={() => onAdd(opt.make())}>
+          <DropdownMenuItem
+            key={opt.label}
+            disabled={!fits(opt)}
+            onClick={() => onAdd(opt.make())}
+          >
             <opt.icon className="mr-2 size-3.5" />
             {opt.label}
           </DropdownMenuItem>
