@@ -28,7 +28,7 @@ import { usePagedQuery } from "@/hooks/use-paged-query";
 import { useTableSort } from "@/hooks/use-table-sort";
 import { useQuery } from "@tanstack/react-query";
 import { trpc, type RouterOutput } from "@/lib/trpc";
-import { formatMoney } from "@/lib/format";
+import { formatMoney } from "@createrington/shared/format";
 
 type PlayerRow =
   RouterOutput["admin"]["players"]["players"]["list"]["items"][number];
@@ -240,10 +240,10 @@ export function AdminPlayers() {
             />
             <StatCard
               label="Total Balance"
-              value={formatMoney(stats.balance.total)}
+              value={formatMoney(Number(stats.balance.total))}
               icon={Coins}
               tone="chart-3"
-              footer={`Avg: ${formatMoney(stats.balance.average)}`}
+              footer={`Avg: ${formatMoney(Number(stats.balance.average))}`}
             />
             <StatCard
               label="Monthly Growth"

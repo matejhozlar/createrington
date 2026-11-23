@@ -1,5 +1,6 @@
+import { cn } from "@/lib/utils";
 import { useState } from "react";
-import { formatMoney } from "@/lib/format";
+import { formatMoney } from "@createrington/shared/format";
 import { trpc, queryClient } from "@/lib/trpc";
 import { useAuth } from "@/contexts/auth";
 import {
@@ -159,9 +160,10 @@ export function BoostDialog({
             <div className="flex justify-between border-t border-white/10 pt-1.5">
               <span className="text-white/55">Your balance</span>
               <span
-                className={`font-mono tabular-nums ${
-                  canAfford ? "text-[var(--blue-bright)]" : "text-destructive"
-                }`}
+                className={cn(
+                  "font-mono tabular-nums",
+                  canAfford ? "text-[var(--blue-bright)]" : "text-destructive",
+                )}
               >
                 {formatMoney(balance)}
               </span>

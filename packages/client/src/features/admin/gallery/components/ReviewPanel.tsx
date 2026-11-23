@@ -9,12 +9,8 @@ import {
 } from "lucide-react";
 import { trpc, queryClient } from "@/lib/trpc";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
-import {
-  formatBytes,
-  formatDateTime,
-  formatMoney,
-  formatRelativeDate,
-} from "@/lib/format";
+import { formatBytes, formatDateTime, formatRelativeDate } from "@/lib/format";
+import { formatMoney } from "@createrington/shared/format";
 import { PlayerLabel } from "@/components/player-label";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,7 +22,7 @@ import {
   GALLERY_STATUS,
   type GalleryCredit,
   type GallerySubmissionDetail,
-} from "../format";
+} from "@/features/admin/gallery/format";
 import { ApproveDialog } from "./ApproveDialog";
 import { CreditsPicker } from "./CreditsPicker";
 import { RejectDialog } from "./RejectDialog";

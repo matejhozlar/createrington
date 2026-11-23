@@ -14,8 +14,9 @@ import { ErrorState } from "@/components/query-states";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/auth";
 import { useCountdown } from "@/hooks/use-countdown";
-import { BoostDialog } from "../BoostDialog";
-import { PackModsDialog } from "../PackModsDialog";
+import { useLockBodyScroll } from "@/hooks/use-lock-body-scroll";
+import { BoostDialog } from "@/features/structure-packs/components/BoostDialog";
+import { PackModsDialog } from "@/features/structure-packs/components/PackModsDialog";
 import { PortalFrame } from "./PortalFrame";
 
 interface PoolMod {
@@ -163,21 +164,7 @@ export function PortalZoomOverlay({
     }
   }, [phase]);
 
-  useEffect(() => {
-    if (phase === "closed") return;
-    const scrollbarWidth =
-      window.innerWidth - document.documentElement.clientWidth;
-    const prevOverflow = document.body.style.overflow;
-    const prevPadRight = document.body.style.paddingRight;
-    document.body.style.overflow = "hidden";
-    if (scrollbarWidth > 0) {
-      document.body.style.paddingRight = `${scrollbarWidth}px`;
-    }
-    return () => {
-      document.body.style.overflow = prevOverflow;
-      document.body.style.paddingRight = prevPadRight;
-    };
-  }, [phase]);
+  useLockBodyScroll(phase !== "closed");
 
   useEffect(() => {
     if (phase !== "open") return;

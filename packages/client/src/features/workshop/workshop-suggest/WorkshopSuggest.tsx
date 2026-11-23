@@ -1,30 +1,23 @@
-import { Link, useParams, useSearchParams } from "react-router";
-import { ArrowLeft } from "lucide-react";
+import { useSearchParams } from "react-router";
+import { useQuery } from "@tanstack/react-query";
+import { formatDate } from "@createrington/shared/format";
 import { trpc } from "@/lib/trpc";
 import { Badge } from "@/components/ui/badge";
-import { ErrorState, LoadingState } from "@/components/query-states";
-import { NotFound } from "@/components/not-found";
-import { loaderName } from "../format";
-import { PackStrip } from "../components/PackStrip";
-import { WorkshopDisabledState } from "../components/WorkshopEmptyState";
-import { WorkshopHero } from "../components/WorkshopHero";
+import { ErrorState } from "@/components/query-states";
+import { loaderName } from "@/features/workshop/format";
+import { useWorkshopBySlug } from "@/features/workshop/hooks/use-workshop-by-slug";
+import { PackStrip } from "@/features/workshop/components/PackStrip";
+import {
+  WorkshopPageHeader,
+  WorkshopPageShell,
+} from "@/features/workshop/components/WorkshopPageShell";
 import { ActiveSlots } from "./components/ActiveSlots";
 import { ModSearch } from "./components/ModSearch";
 import { SuggestionHistory } from "./components/SuggestionHistory";
-import { useQuery } from "@tanstack/react-query";
-import { formatDate } from "@createrington/shared/format";
 
 export function WorkshopSuggest() {
-  const { slug } = useParams<{ slug: string }>();
+  const { slug, workshopId, gate } = useWorkshopBySlug("Loading workshop...");
   const [searchParams] = useSearchParams();
-
-  const workshopQuery = useQuery(
-    trpc.user.workshops.get.queryOptions(
-      { slug: slug! },
-      { enabled: !!slug, retry: false },
-    ),
-  );
-  const workshopId = workshopQuery.data?.workshop.id;
 
   const suggestionsQuery = useQuery(
     trpc.user.workshops.mySuggestions.queryOptions(
@@ -45,48 +38,13 @@ export function WorkshopSuggest() {
     ),
   );
 
-  if (workshopQuery.error?.data?.code === "NOT_FOUND") {
-    return <NotFound />;
-  }
+  const page = gate({
+    failOn: [suggestionsQuery],
+    waitFor: [suggestBanQuery],
+  });
+  if (!page.data) return page.fallback;
 
-  const pageError = workshopQuery.error ?? suggestionsQuery.error;
-  if (pageError) {
-    return (
-      <div className="px-5 py-10 md:px-8">
-        <div className="mx-auto max-w-6xl">
-          {pageError.data?.code === "FORBIDDEN" ? (
-            <WorkshopDisabledState />
-          ) : (
-            <ErrorState
-              bordered
-              message={pageError.message}
-              onRetry={() => {
-                if (workshopQuery.error) void workshopQuery.refetch();
-                if (suggestionsQuery.error) void suggestionsQuery.refetch();
-              }}
-            />
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  if (
-    workshopQuery.isLoading ||
-    !workshopQuery.data ||
-    suggestionsQuery.isLoading ||
-    suggestBanQuery.isLoading
-  ) {
-    return (
-      <LoadingState
-        size="large"
-        text="Loading workshop..."
-        className="flex-none px-0 py-32"
-      />
-    );
-  }
-
-  const { workshop } = workshopQuery.data;
+  const { workshop } = page.data;
   const isOpen = workshop.status === "open";
   const suggestBan = suggestBanQuery.data;
   const suggestions = suggestionsQuery.data ?? [];
@@ -96,90 +54,72 @@ export function WorkshopSuggest() {
   );
 
   return (
-    <div className="relative overflow-hidden">
-      <WorkshopHero className="h-[260px]" />
+    <WorkshopPageShell
+      heroClassName="h-[260px]"
+      backTo={`/workshop/${slug}`}
+      backLabel={`Back to ${workshop.name}`}
+    >
+      <WorkshopPageHeader
+        title="Suggest mods"
+        description="Find a mod on CurseForge and tell us why it belongs in the pack. The team reviews every suggestion. Upvotes are the signal, not the verdict."
+      />
 
-      <div className="relative mx-auto max-w-6xl px-5 pt-8 pb-16 md:px-8">
-        <Link
-          to={`/workshop/${slug}`}
-          className="inline-flex items-center gap-1.5 text-[13px] text-muted-foreground transition-colors hover:text-foreground"
-        >
-          <ArrowLeft className="size-[15px]" />
-          Back to {workshop.name}
-        </Link>
+      {packQuery.error ? (
+        <div className="mt-7">
+          <ErrorState
+            bordered
+            compact
+            message={packQuery.error.message}
+            onRetry={() => packQuery.refetch()}
+          />
+        </div>
+      ) : (
+        <PackStrip slug={slug} mods={packMods} className="mt-7">
+          <span className="text-[13px] font-semibold whitespace-nowrap">
+            {workshop.name}
+          </span>
+          <Badge variant="outline">{workshop.gameVersion}</Badge>
+          <Badge variant="outline">{loaderName(workshop.modLoaderType)}</Badge>
+        </PackStrip>
+      )}
 
-        <header className="mt-5 max-w-[640px]">
-          <h1 className="text-4xl font-semibold text-shadow-[0_2px_8px_rgb(0_0_0/0.4)]">
-            Suggest mods
-          </h1>
-          <p className="mt-4 text-base text-zinc-200 text-shadow-[0_1px_4px_rgb(0_0_0/0.4)]">
-            Find a mod on CurseForge and tell us why it belongs in the pack. The
-            team reviews every suggestion. Upvotes are the signal, not the
-            verdict.
-          </p>
-        </header>
-
-        {packQuery.error ? (
-          <div className="mt-7">
-            <ErrorState
-              bordered
-              compact
-              message={packQuery.error.message}
-              onRetry={() => packQuery.refetch()}
-            />
-          </div>
+      <main className="mt-10 flex flex-col gap-12">
+        {!isOpen ? (
+          <section>
+            <h2 className="text-2xl font-semibold">Find a mod</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              This workshop is closed for suggestions.
+            </p>
+          </section>
+        ) : suggestBan ? (
+          <section>
+            <h2 className="text-2xl font-semibold">Find a mod</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              You are blocked from suggesting mods{" "}
+              {suggestBan.global ? "across every workshop" : "in this workshop"}{" "}
+              {suggestBan.expiresAt
+                ? `until ${formatDate(suggestBan.expiresAt)}`
+                : "permanently"}
+              . Reason: {suggestBan.reason}
+            </p>
+          </section>
         ) : (
-          <PackStrip slug={slug!} mods={packMods} className="mt-7">
-            <span className="text-[13px] font-semibold whitespace-nowrap">
-              {workshop.name}
-            </span>
-            <Badge variant="outline">{workshop.gameVersion}</Badge>
-            <Badge variant="outline">
-              {loaderName(workshop.modLoaderType)}
-            </Badge>
-          </PackStrip>
-        )}
-
-        <main className="mt-10 flex flex-col gap-12">
-          {!isOpen ? (
-            <section>
-              <h2 className="text-2xl font-semibold">Find a mod</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                This workshop is closed for suggestions.
-              </p>
-            </section>
-          ) : suggestBan ? (
-            <section>
-              <h2 className="text-2xl font-semibold">Find a mod</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                You are blocked from suggesting mods{" "}
-                {suggestBan.global
-                  ? "across every workshop"
-                  : "in this workshop"}{" "}
-                {suggestBan.expiresAt
-                  ? `until ${formatDate(suggestBan.expiresAt)}`
-                  : "permanently"}
-                . Reason: {suggestBan.reason}
-              </p>
-            </section>
-          ) : (
-            <ModSearch
-              workshop={workshop}
-              suggestions={suggestions}
-              packProjectIds={packProjectIds}
-              initialQuery={searchParams.get("q") ?? ""}
-            />
-          )}
-
-          <ActiveSlots
+          <ModSearch
             workshop={workshop}
             suggestions={suggestions}
-            isOpen={isOpen}
+            packProjectIds={packProjectIds}
+            initialQuery={searchParams.get("q") ?? ""}
           />
+        )}
 
-          <SuggestionHistory />
-        </main>
-      </div>
-    </div>
+        <ActiveSlots
+          workshop={workshop}
+          suggestions={suggestions}
+          isOpen={isOpen}
+        />
+
+        <SuggestionHistory />
+      </main>
+    </WorkshopPageShell>
   );
 }

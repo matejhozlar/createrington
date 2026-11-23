@@ -17,6 +17,7 @@ import {
   Radio,
   Signal,
   WifiOff,
+  type LucideIcon,
 } from "lucide-react";
 import { useNow } from "@/hooks/use-now";
 import { MAIN_SERVER_ID } from "@/lib/minecraft";
@@ -109,6 +110,24 @@ function PlayerCard({
           <SessionTimer player={player} />
         </div>
       </div>
+    </div>
+  );
+}
+
+function PlayersEmpty({
+  icon: Icon,
+  title,
+  description,
+}: {
+  icon: LucideIcon;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center py-16 text-center">
+      <Icon className="mb-4 size-12 text-muted-foreground" />
+      <p className="text-lg font-medium text-foreground">{title}</p>
+      <p className="mt-1 text-sm text-muted-foreground">{description}</p>
     </div>
   );
 }
@@ -264,36 +283,23 @@ export function OnlinePlayers() {
               ))}
             </div>
           ) : searchQuery.trim() ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <Search className="size-12 text-muted-foreground mb-4" />
-              <p className="text-lg font-medium text-foreground">
-                No players found
-              </p>
-              <p className="text-sm text-muted-foreground mt-1">
-                No online player matches "{searchQuery}"
-              </p>
-            </div>
+            <PlayersEmpty
+              icon={Search}
+              title="No players found"
+              description={`No online player matches "${searchQuery}"`}
+            />
           ) : !isOnline ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <WifiOff className="size-12 text-muted-foreground mb-4" />
-              <p className="text-lg font-medium text-foreground">
-                Server Offline
-              </p>
-              <p className="text-sm text-muted-foreground mt-1">
-                The server is currently offline. Players will appear here when
-                it's back up.
-              </p>
-            </div>
+            <PlayersEmpty
+              icon={WifiOff}
+              title="Server Offline"
+              description="The server is currently offline. Players will appear here when it's back up."
+            />
           ) : (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <Users className="size-12 text-muted-foreground mb-4" />
-              <p className="text-lg font-medium text-foreground">
-                No one is online
-              </p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Be the first to join and start building!
-              </p>
-            </div>
+            <PlayersEmpty
+              icon={Users}
+              title="No one is online"
+              description="Be the first to join and start building!"
+            />
           )}
 
           {searchQuery.trim() && sortedPlayers.length > 0 && (

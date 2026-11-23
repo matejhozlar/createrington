@@ -1,7 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { StatCard } from "@/components/stat-card";
 import { Coins, Clock, AlertTriangle, Ticket, Users } from "lucide-react";
-import { formatMoney, pluralize } from "@/lib/format";
+import { pluralize } from "@/lib/format";
+import { formatMoney } from "@createrington/shared/format";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { useQuery } from "@tanstack/react-query";
 import { MAIN_SERVER_ID } from "@/lib/minecraft";

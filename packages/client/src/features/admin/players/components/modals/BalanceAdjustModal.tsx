@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/field";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
-import { formatMoney } from "@/lib/format";
+import { formatMoney } from "@createrington/shared/format";
 import { trpc, queryClient } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { FormDialog } from "@/components/form-dialog";

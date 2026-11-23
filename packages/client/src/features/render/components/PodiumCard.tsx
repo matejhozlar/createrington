@@ -1,3 +1,5 @@
+import { RenderFrame } from "./RenderFrame";
+import { cn } from "@/lib/utils";
 import { RenderTeamTag } from "./RenderTeamTag";
 
 export interface PodiumPlayer {
@@ -57,23 +59,29 @@ function PodiumEntry({
   return (
     <div className="flex flex-col items-center w-[220px]">
       <span
-        className={`text-[18px] font-extrabold tracking-wider ${style.text}`}
+        className={cn("text-[18px] font-extrabold tracking-wider", style.text)}
       >
         {style.rank}
       </span>
       <div className="relative flex items-end justify-center mt-1">
         <div
-          className={`absolute bottom-0 w-20 h-20 rounded-full blur-[40px] opacity-30 ${style.glow}`}
+          className={cn(
+            "absolute bottom-0 h-20 w-20 rounded-full opacity-30 blur-[40px]",
+            style.glow,
+          )}
         />
         <img
           src={skinSrc}
           alt={player.username}
-          className={`relative ${style.height} drop-shadow-[0_4px_20px_rgba(0,0,0,0.6)]`}
+          className={cn(
+            "relative drop-shadow-[0_4px_20px_rgba(0,0,0,0.6)]",
+            style.height,
+          )}
         />
       </div>
       <div className="mt-2 flex flex-col items-center gap-1">
         <RenderTeamTag code={player.tagCode} height={18} />
-        <span className={`text-[15px] font-bold tracking-wide ${style.text}`}>
+        <span className={cn("text-[15px] font-bold tracking-wide", style.text)}>
           {player.username}
         </span>
       </div>
@@ -95,24 +103,15 @@ export function PodiumCard({
   formatValue,
 }: PodiumCardProps) {
   return (
-    <div
+    <RenderFrame
       id={containerId}
-      className="relative w-[900px] h-[500px] overflow-hidden bg-background text-foreground flex flex-col"
+      banner={banner}
+      glows={[
+        "-top-10 left-1/2 h-[400px] w-[400px] -translate-x-1/2 bg-amber-400 opacity-15",
+        "-left-16 bottom-0 h-[280px] w-[280px] bg-chart-3 opacity-10",
+        "-right-16 bottom-0 h-[280px] w-[280px] bg-chart-5 opacity-10",
+      ]}
     >
-      <div className="absolute inset-0 pointer-events-none render-bg-grid" />
-      <div className="absolute left-1/2 -translate-x-1/2 -top-10 w-[400px] h-[400px] rounded-full blur-[120px] opacity-15 pointer-events-none bg-amber-400" />
-      <div className="absolute -left-16 bottom-0 w-[280px] h-[280px] rounded-full blur-[120px] opacity-10 pointer-events-none bg-chart-3" />
-      <div className="absolute -right-16 bottom-0 w-[280px] h-[280px] rounded-full blur-[120px] opacity-10 pointer-events-none bg-chart-5" />
-
-      <div className="flex items-center gap-4 px-8 pt-5 z-10">
-        <div className="flex-1 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
-        <img
-          src={banner.src}
-          alt={banner.alt}
-          className="h-[44px] [image-rendering:pixelated]"
-        />
-        <div className="flex-1 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
-      </div>
       <div className="text-center pt-2 z-10">
         <h2 className="text-2xl font-bold tracking-wide text-foreground">
           {title}
@@ -146,12 +145,6 @@ export function PodiumCard({
           })
         )}
       </div>
-
-      <div className="pb-3.5 text-center z-10">
-        <span className="text-[11px] font-semibold tracking-[0.3em] uppercase text-foreground/15">
-          createrington.com
-        </span>
-      </div>
-    </div>
+    </RenderFrame>
   );
 }

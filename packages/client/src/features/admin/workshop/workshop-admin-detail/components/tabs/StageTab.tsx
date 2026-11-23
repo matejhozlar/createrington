@@ -1,3 +1,4 @@
+import { WORKSHOP_MOD_REJECT_REASON_LABELS } from "@createrington/shared/workshop";
 import { useMemo } from "react";
 import { Heart, Search } from "lucide-react";
 import { CellDate, CellText } from "@/components/cell-text";
@@ -11,16 +12,25 @@ import { useClientPagination } from "@/hooks/use-client-pagination";
 import type { ModEnvironment } from "@createrington/shared/db";
 import { PlayerLabel } from "@/components/player-label";
 import { FilterBar } from "@/features/admin/components/FilterBar";
-import { REJECT_REASON_LABELS } from "@/features/workshop/format";
-import { modReviewActions, type ModReviewHandlers } from "../../actions";
-import { STAGE_CONFIG, type StageColumn, type StageId } from "../../tabs";
-import type { AdminWorkshopMod } from "../../types";
+import {
+  modReviewActions,
+  type ModReviewHandlers,
+} from "@/features/admin/workshop/workshop-admin-detail/actions";
+import {
+  STAGE_CONFIG,
+  type StageColumn,
+  type StageId,
+} from "@/features/admin/workshop/workshop-admin-detail/tabs";
+import type { AdminWorkshopMod } from "@/features/admin/workshop/workshop-admin-detail/types";
 import {
   EnvironmentCell,
   type EnvironmentDisplay,
 } from "@/features/workshop/components/EnvironmentCell";
-import { DependencyCell } from "../DependencyCell";
-import { ModCell, ModCellSkeleton } from "../ModCell";
+import { DependencyCell } from "@/features/admin/workshop/workshop-admin-detail/components/DependencyCell";
+import {
+  ModCell,
+  ModCellSkeleton,
+} from "@/features/admin/workshop/workshop-admin-detail/components/ModCell";
 
 const MODS_PER_PAGE = 10;
 
@@ -73,7 +83,7 @@ const OPTIONAL_COLUMNS: Record<
       mod.rejectReason && (
         <>
           <CellText
-            value={REJECT_REASON_LABELS[mod.rejectReason]}
+            value={WORKSHOP_MOD_REJECT_REASON_LABELS[mod.rejectReason]}
             className="text-sm"
           />
           {mod.rejectNote && (

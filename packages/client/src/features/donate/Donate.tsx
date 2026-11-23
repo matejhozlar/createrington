@@ -10,6 +10,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { trpc, queryClient } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
@@ -24,6 +25,13 @@ const DONATION_TIERS = [
   { amountCents: 1500, label: "€15" },
   { amountCents: 2000, label: "€20" },
   { amountCents: 5000, label: "€50" },
+] as const;
+
+type DonationType = "one_time" | "monthly";
+
+const DONATION_TYPES = [
+  { value: "one_time", label: "One-time", icon: Zap },
+  { value: "monthly", label: "Monthly", icon: Repeat },
 ] as const;
 
 const PERKS = [
@@ -78,7 +86,7 @@ const FAQ = [
 export function Donate() {
   const toast = useToastActions();
 
-  const [type, setType] = useState<"one_time" | "monthly">("one_time");
+  const [type, setType] = useState<DonationType>("one_time");
   const [selectedCents, setSelectedCents] = useState<number>(500);
   const [isCustom, setIsCustom] = useState(false);
   const [customValue, setCustomValue] = useState("");
@@ -240,34 +248,19 @@ export function Donate() {
           </div>
         )}
 
-        <div className="flex gap-2 p-1 bg-muted rounded-lg w-fit">
-          <button
-            type="button"
-            onClick={() => setType("one_time")}
-            className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors",
-              type === "one_time"
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            <Zap className="size-4" />
-            One-time
-          </button>
-          <button
-            type="button"
-            onClick={() => setType("monthly")}
-            className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors",
-              type === "monthly"
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            <Repeat className="size-4" />
-            Monthly
-          </button>
-        </div>
+        <Tabs
+          value={type}
+          onValueChange={(value) => setType(value as DonationType)}
+        >
+          <TabsList>
+            {DONATION_TYPES.map(({ value, label, icon: Icon }) => (
+              <TabsTrigger key={value} value={value}>
+                <Icon />
+                {label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
 
         <div className="grid grid-cols-3 gap-3">
           {DONATION_TIERS.map((tier) => {
