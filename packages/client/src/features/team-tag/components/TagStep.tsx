@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 import { TAG_LENGTH, type PlateDesign } from "@createrington/shared/team-tag";
 import { cn } from "@/lib/utils";
-import { PLATE_PRESETS } from "../presets";
-import type { PlateDraft } from "../hooks/use-plate-draft";
-import type { PlateAssets } from "../render/assets";
+import { PLATE_PRESETS } from "@/features/team-tag/presets";
+import type { PlateDraft } from "@/features/team-tag/hooks/use-plate-draft";
+import type { PlateAssets } from "@/features/team-tag/render/assets";
 import { LoadCodeCard } from "./LoadCodeCard";
 import { PlateCanvas } from "./PlateCanvas";
 import { SectionLabel } from "./SectionLabel";
@@ -76,7 +76,7 @@ export function TagStep({
                 aria-pressed={active}
                 className={cn(
                   "flex min-h-16 min-w-0 cursor-pointer flex-col items-start gap-2 rounded-[10px] border bg-card px-3 py-2.5 text-left transition-colors hover:border-primary/40",
-                  active && "border-primary/60 bg-(--primary-glow)",
+                  active && "border-primary/60 bg-primary-glow",
                 )}
               >
                 <span className="text-sm font-medium">{preset.name}</span>

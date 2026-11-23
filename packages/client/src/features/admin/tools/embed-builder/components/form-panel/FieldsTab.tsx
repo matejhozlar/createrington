@@ -26,12 +26,12 @@ import {
   SectionHead,
   EmptyState,
   RowIconButton,
-} from "../form-primitives";
+} from "@/features/admin/tools/embed-builder/components/form-primitives";
 import { InsertMenu } from "@/features/admin/components/InsertMenu";
-import type { FocusTarget } from "../../focus";
+import type { FocusTarget } from "@/features/admin/tools/embed-builder/focus";
 import { Textarea } from "@/components/ui/textarea";
 import type { TabProps } from "./types";
-import { useDragSensors } from "../../hooks/use-drag-sensors";
+import { useDragSensors } from "@/features/admin/tools/embed-builder/hooks/use-drag-sensors";
 
 export function FieldsTab({ data, set, focused, setFocused }: TabProps) {
   const fields = data.fields;
@@ -185,7 +185,7 @@ function FieldRow({
       }}
       className={cn(
         "flex gap-1 rounded-md border border-border bg-card p-2 transition-shadow max-sm:flex-wrap",
-        "hover:border-[var(--border-strong)] hover:shadow-sm",
+        "hover:border-border-strong hover:shadow-sm",
         isDragging && "z-10 shadow-lg",
       )}
     >
@@ -214,7 +214,7 @@ function FieldRow({
             className={cn(
               "inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-[11px] font-medium transition-colors pointer-coarse:px-3 pointer-coarse:py-2 pointer-coarse:text-xs",
               field.inline
-                ? "border-[var(--border-strong)] bg-accent text-foreground"
+                ? "border-border-strong bg-accent text-foreground"
                 : "text-muted-foreground hover:text-foreground",
             )}
             title="Render this field side-by-side with neighbors"

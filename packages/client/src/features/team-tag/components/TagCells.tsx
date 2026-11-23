@@ -1,7 +1,7 @@
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { TAG_LENGTH } from "@createrington/shared/team-tag";
 import { cn } from "@/lib/utils";
-import { sanitizeTag } from "../hooks/use-plate-draft";
+import { sanitizeTag } from "@/features/team-tag/hooks/use-plate-draft";
 
 const CELLS = Array.from({ length: TAG_LENGTH }, (_, i) => i);
 
@@ -107,9 +107,7 @@ export function TagCells({
             aria-hidden
             className={cn(
               "flex h-16 items-center justify-center rounded-xl border font-[Minecraft] text-[28px] text-foreground transition-[border-color,box-shadow] duration-150",
-              char
-                ? "border-(--border-strong) bg-card"
-                : "border-input bg-white/3",
+              char ? "border-border-strong bg-card" : "border-input bg-white/3",
               i === cursor &&
                 "border-primary shadow-[0_0_0_3px_var(--primary-glow)]",
             )}

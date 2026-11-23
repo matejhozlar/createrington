@@ -71,7 +71,7 @@ export function PackModsDialog({
                     href={mod.modUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex shrink-0 items-center gap-1 text-xs text-white/55 transition-colors hover:text-[var(--blue-bright)]"
+                    className="flex shrink-0 items-center gap-1 text-xs text-white/55 transition-colors hover:text-blue-bright"
                   >
                     CurseForge
                     <ExternalLink className="size-3" />

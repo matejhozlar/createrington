@@ -36,7 +36,7 @@ export function CollapsedPresetList({
                 className={cn(
                   "flex size-8 items-center justify-center rounded-md text-[13px] font-semibold uppercase transition-colors",
                   active
-                    ? "border border-[var(--border-strong)] bg-card text-foreground"
+                    ? "border border-border-strong bg-card text-foreground"
                     : "text-muted-foreground hover:bg-accent hover:text-foreground",
                 )}
               >

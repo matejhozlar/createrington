@@ -162,7 +162,7 @@ export function BoostDialog({
               <span
                 className={cn(
                   "font-mono tabular-nums",
-                  canAfford ? "text-[var(--blue-bright)]" : "text-destructive",
+                  canAfford ? "text-blue-bright" : "text-destructive",
                 )}
               >
                 {formatMoney(balance)}
@@ -183,7 +183,7 @@ export function BoostDialog({
             onClick={handleConfirm}
             disabled={!canAfford}
             loading={boostMutation.isPending}
-            className="bg-[var(--blue)] text-white hover:bg-[var(--blue-bright)] disabled:opacity-50"
+            className="bg-blue text-white hover:bg-blue-bright disabled:opacity-50"
           >
             Confirm Boost
           </Button>

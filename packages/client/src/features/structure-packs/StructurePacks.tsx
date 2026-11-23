@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/auth";
 import { ActivePack } from "./components/ActivePack";
 import { PacksHero, type PacksHeroHandle } from "./components/hero/PacksHero";
 import { PortalZoomOverlay } from "./components/hero/PortalZoomOverlay";
+import "./structure-packs.css";
 import { useQuery } from "@tanstack/react-query";
 
 const DEFAULT_BOOST_UNIT_PRICE = 50;
