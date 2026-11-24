@@ -40,6 +40,11 @@ import { MAINTENANCE_MAX_LEAD_MS } from "@createrington/shared/maintenance";
 
 const DEFAULT_ESTIMATED_MINUTES = 30;
 
+function toLocalInputValue(ms: number) {
+  const offsetMs = new Date(ms).getTimezoneOffset() * 60_000;
+  return new Date(ms - offsetMs).toISOString().slice(0, 16);
+}
+
 function parseEstimatedMinutes(value: string) {
   const minutes = parseInt(value, 10);
   return Number.isNaN(minutes) || minutes < 1
@@ -76,12 +81,8 @@ export function MaintenanceToggle({
 
   const handleScheduleDialogOpenChange = (open: boolean) => {
     if (open) {
-      setMinDatetime(new Date(Date.now() + 60000).toISOString().slice(0, 16));
-      setMaxDatetime(
-        new Date(Date.now() + MAINTENANCE_MAX_LEAD_MS)
-          .toISOString()
-          .slice(0, 16),
-      );
+      setMinDatetime(toLocalInputValue(Date.now() + 60_000));
+      setMaxDatetime(toLocalInputValue(Date.now() + MAINTENANCE_MAX_LEAD_MS));
     }
     setDialogOpen(open);
   };
