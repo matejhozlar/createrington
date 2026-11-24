@@ -458,4 +458,24 @@ describe("StructurePackRotationService", () => {
     ]);
     expect(boostDeletes).toHaveLength(0);
   });
+
+  it("waits for a monthly rotation 30 days out instead of firing at once", async () => {
+    vi.setSystemTime(new Date("2026-08-02T12:00:00Z"));
+    rotationConfig.period = "monthly";
+    rotationConfig.dayOfMonth = 1;
+    packs = [makePack(3)];
+    eligiblePacks = packs;
+    const service = makeService();
+
+    await service.initialize();
+    await vi.advanceTimersByTimeAsync(60 * 1000);
+    expect(eligibleCalls).toBe(0);
+
+    await vi.advanceTimersByTimeAsync(
+      new Date("2026-09-01T12:00:00Z").getTime() - Date.now(),
+    );
+    expect(rotationCreates).toHaveLength(1);
+    expect(eligibleCalls).toBe(1);
+    service.shutdown();
+  });
 });

@@ -5,6 +5,7 @@ import type { DiscordMessageService } from "@/services/discord/message/message.s
 import type { ServerMaintenanceSchedule } from "@createrington/shared/db/server_maintenance_schedule.types";
 import type { MaintenanceService } from "./maintenance.service";
 import { formatEta } from "./presets";
+import { setLongTimeout, type LongTimeout } from "@/utils/long-timeout";
 
 const WARNING_INTERVALS_MINUTES = [60, 30, 15, 10, 5, 1] as const;
 const MISSED_ACTIVATION_GRACE_MS = 5 * 60 * 1000;
@@ -14,16 +15,17 @@ const MISSED_ACTIVATION_GRACE_MS = 5 * 60 * 1000;
  *
  * Owns the `server_maintenance_schedule` rows: one per window, moving through
  * scheduled → active → completed | cancelled. For scheduled windows it arms
- * setTimeout handles that post Discord warnings at fixed intervals and hand
- * the window to MaintenanceService.apply at the start time; instant windows
+ * long timeouts (safe past setTimeout's 24.8-day limit) that post Discord
+ * warnings at fixed intervals and hand the window to MaintenanceService.apply
+ * at the start time; instant windows
  * are created directly as active. Restores pending windows on startup,
  * activating ones missed by less than five minutes and cancelling older ones.
  * Keeps an in-memory copy of each server's scheduled or active row so status
  * reads never hit the database.
  */
 export class MaintenanceScheduler {
-  private warningTimers = new Map<number, NodeJS.Timeout[]>();
-  private activationTimers = new Map<number, NodeJS.Timeout>();
+  private warningTimers = new Map<number, LongTimeout[]>();
+  private activationTimers = new Map<number, LongTimeout>();
   private windows = new Map<number, ServerMaintenanceSchedule>();
 
   constructor(
@@ -211,7 +213,7 @@ export class MaintenanceScheduler {
   }
 
   private setupTimers(schedule: ServerMaintenanceSchedule): void {
-    const timers: NodeJS.Timeout[] = [];
+    const timers: LongTimeout[] = [];
     const scheduledMs = schedule.scheduledAt.getTime();
 
     for (const minutes of WARNING_INTERVALS_MINUTES) {
@@ -219,7 +221,7 @@ export class MaintenanceScheduler {
       if (delay <= 0) continue;
 
       timers.push(
-        setTimeout(() => {
+        setLongTimeout(() => {
           this.sendWarning(schedule, minutes).catch((err) =>
             logger.error(
               `Failed to send ${minutes}min warning for maintenance #${schedule.id}: ${err}`,
@@ -233,7 +235,7 @@ export class MaintenanceScheduler {
 
     const activationDelay = scheduledMs - Date.now();
     if (activationDelay > 0) {
-      const timer = setTimeout(() => {
+      const timer = setLongTimeout(() => {
         this.activateMaintenance(schedule).catch((err) =>
           logger.error(
             `Failed to activate maintenance #${schedule.id}: ${err}`,
@@ -247,13 +249,13 @@ export class MaintenanceScheduler {
   private clearTimers(scheduleId: number): void {
     const warnings = this.warningTimers.get(scheduleId);
     if (warnings) {
-      for (const timer of warnings) clearTimeout(timer);
+      for (const timer of warnings) timer.clear();
       this.warningTimers.delete(scheduleId);
     }
 
     const activation = this.activationTimers.get(scheduleId);
     if (activation) {
-      clearTimeout(activation);
+      activation.clear();
       this.activationTimers.delete(scheduleId);
     }
   }
