@@ -18,6 +18,9 @@ interface AuthProviderProps {
   children: React.ReactNode;
 }
 
+const REFRESH_RETRY_BASE_MS = 5_000;
+const REFRESH_RETRY_MAX_MS = 5 * 60_000;
+
 const AUTH_ERROR_MESSAGES: Record<string, string> = {
   auth_failed: "Login failed. Please try again.",
   unverified: "You need to apply to join before logging in.",
@@ -27,6 +30,7 @@ const AUTH_ERROR_MESSAGES: Record<string, string> = {
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshFailures, setRefreshFailures] = useState(0);
 
   const login = useCallback(async () => {
     try {
@@ -110,20 +114,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, [clearSession]);
 
   const silentRefresh = useCallback(() => {
-    return refreshAccessToken()
-      .then((result) => {
-        if (result) {
-          setUser(result.user);
-        } else {
-          setAccessToken(null);
-          setUser(null);
-        }
-      })
-      .catch((error: unknown) => {
-        if (import.meta.env.DEV) console.error("Silent refresh error:", error);
+    return refreshAccessToken().then((result) => {
+      if (result.status === "transient") {
+        setRefreshFailures((failures) => failures + 1);
+        return;
+      }
+
+      setRefreshFailures(0);
+      if (result.status === "ok") {
+        setUser(result.session.user);
+      } else {
         setAccessToken(null);
         setUser(null);
-      });
+      }
+    });
   }, []);
 
   useEffect(() => {
@@ -177,6 +181,27 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, [user, silentRefresh]);
 
   useEffect(() => {
+    if (refreshFailures === 0) return;
+
+    const delay = Math.min(
+      REFRESH_RETRY_BASE_MS * 2 ** (refreshFailures - 1),
+      REFRESH_RETRY_MAX_MS,
+    );
+    const retryTimer = setTimeout(() => void silentRefresh(), delay);
+    const retryNow = () => {
+      if (document.visibilityState === "visible") void silentRefresh();
+    };
+
+    window.addEventListener("online", retryNow);
+    document.addEventListener("visibilitychange", retryNow);
+    return () => {
+      clearTimeout(retryTimer);
+      window.removeEventListener("online", retryNow);
+      document.removeEventListener("visibilitychange", retryNow);
+    };
+  }, [refreshFailures, silentRefresh]);
+
+  useEffect(() => {
     if (!user?.minecraftUuid) return;
     writePlayerHint({
       uuid: user.minecraftUuid,
@@ -185,14 +210,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, [user]);
 
   useEffect(() => {
-    const handleSessionExpired = () => {
-      void logout();
-    };
-
-    window.addEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired);
+    window.addEventListener(SESSION_EXPIRED_EVENT, clearSession);
     return () =>
-      window.removeEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired);
-  }, [logout]);
+      window.removeEventListener(SESSION_EXPIRED_EVENT, clearSession);
+  }, [clearSession]);
 
   const value: AuthContextType = {
     user,

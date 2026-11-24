@@ -7,9 +7,14 @@ const MAX_TIMER_MS = 2 ** 31 - 1;
 
 export const SESSION_EXPIRED_EVENT = "auth:session-expired";
 
+export type RefreshResult =
+  | { status: "ok"; session: AuthSession }
+  | { status: "unauthorized" }
+  | { status: "transient" };
+
 let accessToken: string | null = null;
 
-let refreshPromise: Promise<AuthSession | null> | null = null;
+let refreshPromise: Promise<RefreshResult> | null = null;
 
 export function getAccessToken(): string | null {
   return accessToken;
@@ -45,7 +50,7 @@ function readClaims(token: string): { iat: number; exp: number } | null {
   }
 }
 
-export async function refreshAccessToken(): Promise<AuthSession | null> {
+export async function refreshAccessToken(): Promise<RefreshResult> {
   if (refreshPromise) {
     return refreshPromise;
   }
@@ -71,40 +76,38 @@ export async function retryAfterRefresh(
   }
 
   const result = await refreshAccessToken();
-  if (!result) {
+  if (result.status === "unauthorized") {
     window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT));
-    return response;
   }
+  if (result.status !== "ok") return response;
 
-  return retry(result.accessToken);
+  return retry(result.session.accessToken);
 }
 
-async function doRefresh(): Promise<AuthSession | null> {
+async function doRefresh(): Promise<RefreshResult> {
   try {
     const response = await fetch(REFRESH_PATH, {
       method: "POST",
       credentials: "include",
     });
 
-    if (!response.ok) {
+    if (response.status === 401) {
       accessToken = null;
-      return null;
+      return { status: "unauthorized" };
     }
+    if (!response.ok) return { status: "transient" };
 
     const data = (await response.json()) as {
       success?: boolean;
       data?: AuthSession;
     };
-
-    if (data.success && data.data?.accessToken) {
-      accessToken = data.data.accessToken;
-      return data.data;
+    if (!data.success || !data.data?.accessToken) {
+      return { status: "transient" };
     }
 
-    accessToken = null;
-    return null;
+    accessToken = data.data.accessToken;
+    return { status: "ok", session: data.data };
   } catch {
-    accessToken = null;
-    return null;
+    return { status: "transient" };
   }
 }
