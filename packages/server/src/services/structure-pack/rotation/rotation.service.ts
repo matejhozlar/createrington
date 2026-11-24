@@ -17,6 +17,7 @@ import type {
   StructurePackRotationConfig,
   StructurePackBoost,
 } from "@createrington/shared/db";
+import { setLongTimeout, type LongTimeout } from "@/utils/long-timeout";
 import { MODS_DIR } from "./constants";
 import { periodIntervalMs } from "./timezone";
 import {
@@ -87,7 +88,7 @@ async function installPackMods(pack: StructurePackWithMods): Promise<void> {
  * false; the rotation is still recorded in the database in that case.
  */
 export class StructurePackRotationService {
-  private nextRotationTimer: ReturnType<typeof setTimeout> | null = null;
+  private nextRotationTimer: LongTimeout | null = null;
   private rotationInProgress = false;
 
   constructor(private packService: StructurePackService) {}
@@ -134,14 +135,14 @@ export class StructurePackRotationService {
   /** Cancels the pending rotation timer, preventing any further automatic rotations. */
   shutdown(): void {
     if (this.nextRotationTimer) {
-      clearTimeout(this.nextRotationTimer);
+      this.nextRotationTimer.clear();
       this.nextRotationTimer = null;
     }
   }
 
   private scheduleNextRotation(rotationConfig: RotationConfig): void {
     if (this.nextRotationTimer) {
-      clearTimeout(this.nextRotationTimer);
+      this.nextRotationTimer.clear();
       this.nextRotationTimer = null;
     }
 
@@ -160,7 +161,7 @@ export class StructurePackRotationService {
       );
     }
 
-    this.nextRotationTimer = setTimeout(
+    this.nextRotationTimer = setLongTimeout(
       () => this.runScheduledRotation(),
       nextTime.getTime() - Date.now(),
     );

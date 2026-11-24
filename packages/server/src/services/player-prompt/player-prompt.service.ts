@@ -1,3 +1,4 @@
+import { setLongTimeout, type LongTimeout } from "@/utils/long-timeout";
 import { Q } from "@/db";
 import { discordTimestamp, pluralize } from "@/utils/format";
 import { PlayerPromptComponentPresets } from "@/discord/components/presets/player-prompt";
@@ -16,8 +17,6 @@ export type PlayerPromptEntryDecision =
       entryNumber: number;
     };
 
-const MAX_TIMER_MS = 2_000_000_000;
-
 /**
  * Player Prompt Service
  *
@@ -32,12 +31,12 @@ const MAX_TIMER_MS = 2_000_000_000;
  * modal opens) and the modal submit run the same gate, so a modal left open
  * past the limit still can't sneak an entry through.
  *
- * Uses setTimeout handles keyed by prompt id, mirroring MaintenanceScheduler.
+ * Uses long-timeout handles keyed by prompt id, mirroring MaintenanceScheduler.
  * On startup, `initialize()` reloads every active prompt and re-arms its
  * closure timer so a deploy doesn't lose pending closures.
  */
 export class PlayerPromptService {
-  private closureTimers = new Map<number, NodeJS.Timeout>();
+  private closureTimers = new Map<number, LongTimeout>();
 
   constructor(private messageService: DiscordMessageService) {}
 
@@ -79,7 +78,7 @@ export class PlayerPromptService {
   /** Clear every scheduled timer on shutdown. */
   shutdown(): void {
     for (const timer of this.closureTimers.values()) {
-      clearTimeout(timer);
+      timer.clear();
     }
     this.closureTimers.clear();
   }
@@ -244,7 +243,7 @@ export class PlayerPromptService {
   async closePrompt(promptId: number): Promise<void> {
     const timer = this.closureTimers.get(promptId);
     if (timer) {
-      clearTimeout(timer);
+      timer.clear();
       this.closureTimers.delete(promptId);
     }
 
@@ -300,7 +299,7 @@ export class PlayerPromptService {
 
     const timer = this.closureTimers.get(promptId);
     if (timer) {
-      clearTimeout(timer);
+      timer.clear();
       this.closureTimers.delete(promptId);
     }
 
@@ -413,23 +412,13 @@ export class PlayerPromptService {
   }
 
   private armClosureTimer(promptId: number, msUntil: number): void {
-    const existing = this.closureTimers.get(promptId);
-    if (existing) clearTimeout(existing);
+    this.closureTimers.get(promptId)?.clear();
 
-    if (msUntil <= MAX_TIMER_MS) {
-      const timer = setTimeout(() => {
-        this.closePrompt(promptId).catch((err) =>
-          logger.error(`Scheduled close failed for prompt #${promptId}:`, err),
-        );
-      }, msUntil);
-      this.closureTimers.set(promptId, timer);
-      return;
-    }
-
-    const timer = setTimeout(() => {
-      this.closureTimers.delete(promptId);
-      this.armClosureTimer(promptId, msUntil - MAX_TIMER_MS);
-    }, MAX_TIMER_MS);
+    const timer = setLongTimeout(() => {
+      this.closePrompt(promptId).catch((err) =>
+        logger.error(`Scheduled close failed for prompt #${promptId}:`, err),
+      );
+    }, msUntil);
     this.closureTimers.set(promptId, timer);
   }
 }

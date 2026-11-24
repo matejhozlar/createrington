@@ -7,6 +7,10 @@ import { getServerById, requireServer } from "@/services/mc-server/servers";
 import { trpcError, auditActor, serverIdInput } from "@/trpc/utils";
 import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
+import {
+  MAINTENANCE_MAX_LEAD_DAYS,
+  MAINTENANCE_MAX_LEAD_MS,
+} from "@createrington/shared/maintenance";
 
 const MOTD_MAX_LENGTH = 300;
 const MESSAGE_MAX_LENGTH = 600;
@@ -289,6 +293,11 @@ export const serverMaintenanceRouter = router({
       const scheduledAt = new Date(input.scheduledAt);
       if (scheduledAt.getTime() <= Date.now()) {
         throw trpcError.badRequest("Scheduled time must be in the future");
+      }
+      if (scheduledAt.getTime() - Date.now() > MAINTENANCE_MAX_LEAD_MS) {
+        throw trpcError.badRequest(
+          `Scheduled time must be within ${MAINTENANCE_MAX_LEAD_DAYS} days`,
+        );
       }
 
       const existing = maintenanceService.getScheduledMaintenance(
