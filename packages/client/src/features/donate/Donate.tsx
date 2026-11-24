@@ -86,7 +86,7 @@ const FAQ = [
 export function Donate() {
   const toast = useToastActions();
 
-  const [type, setType] = useState<DonationType>("one_time");
+  const [selectedType, setType] = useState<DonationType>("one_time");
   const [selectedCents, setSelectedCents] = useState<number>(500);
   const [isCustom, setIsCustom] = useState(false);
   const [customValue, setCustomValue] = useState("");
@@ -95,6 +95,9 @@ export function Donate() {
   const subscription = useQuery(
     trpc.user.donations.activeSubscription.queryOptions(),
   );
+
+  const hasSubscription = !!subscription.data;
+  const type: DonationType = hasSubscription ? "one_time" : selectedType;
 
   const isSupporter =
     history.data?.some((d) => d.status === "completed") ?? false;
@@ -254,7 +257,11 @@ export function Donate() {
         >
           <TabsList>
             {DONATION_TYPES.map(({ value, label, icon: Icon }) => (
-              <TabsTrigger key={value} value={value}>
+              <TabsTrigger
+                key={value}
+                value={value}
+                disabled={value === "monthly" && hasSubscription}
+              >
                 <Icon />
                 {label}
               </TabsTrigger>

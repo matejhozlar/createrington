@@ -7,7 +7,7 @@ const { donation } = vi.hoisted(() => ({
     find: vi.fn(),
     createAndReturn: vi.fn(),
     update: vi.fn(),
-    findActiveSubscription: vi.fn(),
+    getLatestPerSubscription: vi.fn(),
   },
 }));
 
@@ -30,6 +30,7 @@ vi.mock("@/discord/utils/roles/role-manager", () => ({
 
 import { DonationService } from "@/services/donation/donation.service";
 import { UniqueViolationError } from "@/db/utils";
+import { ConflictError } from "@/errors";
 import { RoleManager } from "@/discord/utils/roles/role-manager";
 
 const SESSION = {
@@ -121,49 +122,217 @@ describe("DonationService.handleSessionCompleted", () => {
   });
 });
 
-describe("DonationService.getActiveSubscription", () => {
-  function withRetrieve(retrieve: ReturnType<typeof vi.fn>) {
-    const { donations } = service();
-    (
-      donations as unknown as {
-        stripe: { subscriptions: { retrieve: typeof retrieve } };
-      }
-    ).stripe = { subscriptions: { retrieve } };
-    return donations;
-  }
+type StripeStub = {
+  subscriptions?: { retrieve?: unknown; update?: unknown };
+  checkout?: { sessions: { create: unknown } };
+};
 
+type StubSubscription = { status: string; cancel_at_period_end?: boolean };
+
+function withStripe(stripe: StripeStub) {
+  const { donations } = service();
+  (donations as unknown as { stripe: StripeStub }).stripe = stripe;
+  return donations;
+}
+
+function storedSubscriptions(...ids: string[]) {
+  donation.getLatestPerSubscription.mockResolvedValue(
+    ids.map((id, i) => ({ stripeSubscriptionId: id, amountCents: 500 + i })),
+  );
+}
+
+function stripeSubscriptions(subs: Record<string, StubSubscription>) {
+  return vi.fn(async (id: string) => {
+    const sub = subs[id];
+    if (!sub) {
+      throw new Stripe.errors.StripeInvalidRequestError({
+        type: "invalid_request_error",
+        code: "resource_missing",
+        message: "No such subscription",
+      });
+    }
+    return {
+      id,
+      cancel_at_period_end: false,
+      cancel_at: null,
+      billing_cycle_anchor: 1_700_000_000,
+      latest_invoice: { period_end: 1_800_000_000 },
+      ...sub,
+    };
+  });
+}
+
+describe("DonationService.getActiveSubscription", () => {
   beforeEach(() => {
-    donation.findActiveSubscription
-      .mockReset()
-      .mockResolvedValue({ stripeSubscriptionId: "sub_1", amountCents: 500 });
+    donation.getLatestPerSubscription.mockReset();
+    storedSubscriptions("sub_1");
+  });
+
+  it("looks up only the subscriptions of the player", async () => {
+    const donations = withStripe({
+      subscriptions: {
+        retrieve: stripeSubscriptions({ sub_1: { status: "active" } }),
+      },
+    });
+
+    await donations.getActiveSubscription("user-1");
+
+    expect(donation.getLatestPerSubscription).toHaveBeenCalledWith("user-1");
   });
 
   it("returns null when Stripe no longer knows the subscription", async () => {
-    const donations = withRetrieve(
-      vi.fn().mockRejectedValue(
-        new Stripe.errors.StripeInvalidRequestError({
-          type: "invalid_request_error",
-          code: "resource_missing",
-          message: "No such subscription",
-        }),
-      ),
-    );
+    const donations = withStripe({
+      subscriptions: { retrieve: stripeSubscriptions({}) },
+    });
 
     await expect(donations.getActiveSubscription("user-1")).resolves.toBeNull();
   });
 
   it("throws when Stripe cannot be reached", async () => {
-    const donations = withRetrieve(
-      vi.fn().mockRejectedValue(
-        new Stripe.errors.StripeConnectionError({
-          type: "api_error",
-          message: "connect ECONNREFUSED",
-        }),
-      ),
-    );
+    const donations = withStripe({
+      subscriptions: {
+        retrieve: vi.fn().mockRejectedValue(
+          new Stripe.errors.StripeConnectionError({
+            type: "api_error",
+            message: "connect ECONNREFUSED",
+          }),
+        ),
+      },
+    });
 
     await expect(donations.getActiveSubscription("user-1")).rejects.toThrow(
       "ECONNREFUSED",
     );
+  });
+
+  it("still shows an older live subscription once the newest one has ended", async () => {
+    storedSubscriptions("sub_new", "sub_old");
+    const donations = withStripe({
+      subscriptions: {
+        retrieve: stripeSubscriptions({
+          sub_new: { status: "canceled" },
+          sub_old: { status: "active" },
+        }),
+      },
+    });
+
+    await expect(
+      donations.getActiveSubscription("user-1"),
+    ).resolves.toMatchObject({ subscriptionId: "sub_old", amountCents: 501 });
+  });
+
+  it("prefers a renewing subscription over a newer one that is cancelling", async () => {
+    storedSubscriptions("sub_new", "sub_old");
+    const donations = withStripe({
+      subscriptions: {
+        retrieve: stripeSubscriptions({
+          sub_new: { status: "active", cancel_at_period_end: true },
+          sub_old: { status: "active" },
+        }),
+      },
+    });
+
+    await expect(
+      donations.getActiveSubscription("user-1"),
+    ).resolves.toMatchObject({
+      subscriptionId: "sub_old",
+      cancelAtPeriodEnd: false,
+    });
+  });
+
+  it("returns null when every subscription has ended", async () => {
+    storedSubscriptions("sub_a", "sub_b");
+    const donations = withStripe({
+      subscriptions: {
+        retrieve: stripeSubscriptions({
+          sub_a: { status: "canceled" },
+          sub_b: { status: "incomplete_expired" },
+        }),
+      },
+    });
+
+    await expect(donations.getActiveSubscription("user-1")).resolves.toBeNull();
+  });
+});
+
+describe("DonationService.cancelSubscription", () => {
+  beforeEach(() => {
+    donation.getLatestPerSubscription.mockReset();
+  });
+
+  it("cancels the subscription that is still renewing", async () => {
+    storedSubscriptions("sub_new", "sub_old");
+    const update = vi.fn(async (id: string) => ({
+      id,
+      cancel_at: 1_800_000_000,
+    }));
+    const donations = withStripe({
+      subscriptions: {
+        retrieve: stripeSubscriptions({
+          sub_new: { status: "canceled" },
+          sub_old: { status: "active" },
+        }),
+        update,
+      },
+    });
+
+    await donations.cancelSubscription("user-1");
+
+    expect(update).toHaveBeenCalledWith("sub_old", {
+      cancel_at_period_end: true,
+    });
+  });
+});
+
+describe("DonationService.createCheckoutSession", () => {
+  const OPTS = {
+    discordId: "user-1",
+    amountCents: 500,
+    successUrl: "https://createrington.com/donate/success",
+    cancelUrl: "https://createrington.com/donate/cancel",
+  };
+  const CHECKOUT = { id: "cs_1", url: "https://checkout.stripe.com/1" };
+
+  let create: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    donation.getLatestPerSubscription.mockReset();
+    storedSubscriptions("sub_1");
+    create = vi.fn().mockResolvedValue(CHECKOUT);
+  });
+
+  function withSubscription(sub: StubSubscription) {
+    return withStripe({
+      subscriptions: { retrieve: stripeSubscriptions({ sub_1: sub }) },
+      checkout: { sessions: { create } },
+    });
+  }
+
+  it("refuses a monthly checkout while a subscription is live", async () => {
+    const donations = withSubscription({
+      status: "active",
+      cancel_at_period_end: true,
+    });
+
+    await expect(
+      donations.createCheckoutSession({ ...OPTS, type: "monthly" }),
+    ).rejects.toThrow(ConflictError);
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it("opens a monthly checkout once the earlier subscription has ended", async () => {
+    const donations = withSubscription({ status: "canceled" });
+
+    await expect(
+      donations.createCheckoutSession({ ...OPTS, type: "monthly" }),
+    ).resolves.toEqual({ sessionId: CHECKOUT.id, url: CHECKOUT.url });
+  });
+
+  it("allows a one-time donation alongside a live subscription", async () => {
+    const donations = withSubscription({ status: "active" });
+
+    await donations.createCheckoutSession({ ...OPTS, type: "one_time" });
+
+    expect(create).toHaveBeenCalledOnce();
   });
 });
