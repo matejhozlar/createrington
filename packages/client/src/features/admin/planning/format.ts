@@ -1,3 +1,4 @@
+import type { PlanningCategory } from "@createrington/shared/planning";
 import { CATEGORY_CONFIG, STATUS_CONFIG } from "./constants";
 import type {
   PlanningPerson,
@@ -11,12 +12,26 @@ export function personName(person: PlanningPerson): string {
   return person.minecraftUsername ?? person.discordId;
 }
 
-export function subcategoryName(
+export function subcategoryNames(
   subcategories: PlanningSubcategory[],
-  id: number | null,
-): string | null {
-  if (id === null) return null;
-  return subcategories.find((s) => s.id === id)?.name ?? "Removed subcategory";
+  ids: number[],
+): string[] {
+  return ids.map(
+    (id) =>
+      subcategories.find((s) => s.id === id)?.name ?? "Removed subcategory",
+  );
+}
+
+function listNames(names: string[]): string {
+  if (names.length <= 1) return names.join("");
+  return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+}
+
+function difference<T>(from: T[], to: T[]): { added: T[]; removed: T[] } {
+  return {
+    added: to.filter((value) => !from.includes(value)),
+    removed: from.filter((value) => !to.includes(value)),
+  };
 }
 
 export function markdownPreview(markdown: string | null): string {
@@ -50,14 +65,23 @@ export function describeRevision(
     );
   }
   if (revision.title !== previous.title) changes.push("Renamed the plan");
-  if (revision.category !== previous.category) {
-    changes.push(
-      `Moved from ${CATEGORY_CONFIG[previous.category].label} to ${CATEGORY_CONFIG[revision.category].label}`,
-    );
+  const categories = difference(previous.categories, revision.categories);
+  const label = (values: PlanningCategory[]) =>
+    listNames(values.map((value) => CATEGORY_CONFIG[value].label));
+  if (categories.added.length > 0) {
+    changes.push(`Added to ${label(categories.added)}`);
   }
-  if (revision.subcategoryId !== previous.subcategoryId) {
-    const next = subcategoryName(subcategories, revision.subcategoryId);
-    changes.push(next ? `Filed under ${next}` : "Removed the subcategory");
+  if (categories.removed.length > 0) {
+    changes.push(`Removed from ${label(categories.removed)}`);
+  }
+  const filed = difference(previous.subcategoryIds, revision.subcategoryIds);
+  const names = (ids: number[]) =>
+    listNames(subcategoryNames(subcategories, ids));
+  if (filed.added.length > 0) {
+    changes.push(`Filed under ${names(filed.added)}`);
+  }
+  if (filed.removed.length > 0) {
+    changes.push(`Taken out of ${names(filed.removed)}`);
   }
   if (revision.body !== previous.body) {
     if (!previous.body) changes.push("Wrote the description");

@@ -1,35 +1,56 @@
 import { db } from "@/db/pool";
 import type { DatabaseQueries, PlanningItem } from "@/generated/db";
 import { BadRequestError, ConflictError } from "@/errors";
-import type {
-  PlanningCategory,
-  PlanningItemStatus,
+import type { PlanningItemFiling } from "@/db/queries/planning/item/filing";
+import {
+  PLANNING_CATEGORIES,
+  type PlanningCategory,
+  type PlanningItemStatus,
 } from "@createrington/shared/planning";
 
 export interface PlanningItemContent {
   title: string;
   body: string | null;
-  category: PlanningCategory;
-  subcategoryId: number | null;
+  categories: PlanningCategory[];
+  subcategoryIds: number[];
   status: PlanningItemStatus;
 }
 
-const CONTENT_FIELDS = [
-  "title",
-  "body",
-  "category",
-  "subcategoryId",
-  "status",
-] as const satisfies readonly (keyof PlanningItemContent)[];
-
-function contentOf(source: PlanningItemContent): PlanningItemContent {
+function contentOf(
+  source: Pick<PlanningItem, "title" | "body" | "status">,
+  filing: PlanningItemFiling | undefined,
+): PlanningItemContent {
   return {
     title: source.title,
     body: source.body,
-    category: source.category,
-    subcategoryId: source.subcategoryId,
     status: source.status,
+    categories: filing?.categories ?? [],
+    subcategoryIds: filing?.subcategoryIds ?? [],
   };
+}
+
+function normalized(content: PlanningItemContent): PlanningItemContent {
+  return {
+    ...content,
+    categories: PLANNING_CATEGORIES.filter((category) =>
+      content.categories.includes(category),
+    ),
+    subcategoryIds: [...new Set(content.subcategoryIds)].sort((a, b) => a - b),
+  };
+}
+
+function sameList<T>(a: T[], b: T[]): boolean {
+  return a.length === b.length && a.every((value, index) => value === b[index]);
+}
+
+function sameContent(a: PlanningItemContent, b: PlanningItemContent): boolean {
+  return (
+    a.title === b.title &&
+    a.body === b.body &&
+    a.status === b.status &&
+    sameList(a.categories, b.categories) &&
+    sameList(a.subcategoryIds, b.subcategoryIds)
+  );
 }
 
 function merge(
@@ -39,19 +60,21 @@ function merge(
   const defined = Object.fromEntries(
     Object.entries(patch).filter(([, value]) => value !== undefined),
   ) as Partial<PlanningItemContent>;
-  return { ...contentOf(current), ...defined };
+  return { ...current, ...defined };
 }
 
 /**
- * Planning item saves. Every change to an item's content goes through here so
- * the item row and its planning_item_revision copy are written in one
+ * Planning item saves. Every change to an item's content (title, body,
+ * status, categories and subcategories) goes through here so the item, its
+ * category rows and its planning_item_revision copy are written in one
  * transaction, under a row lock, and a save based on a stale revision is
  * refused instead of overwriting someone else's edit.
  */
 export class PlanningRepository {
   /**
    * Create an item with its first revision and, optionally, its assignees
-   * and the Discord message it was captured from.
+   * and the Discord message it was captured from. Every subcategory must
+   * belong to one of the item's categories.
    */
   async createItem(
     content: PlanningItemContent,
@@ -59,28 +82,18 @@ export class PlanningRepository {
     extra: { assigneeIds?: string[]; sourceUrl?: string | null } = {},
   ): Promise<PlanningItem> {
     return db.inTransaction(async (tx) => {
-      if (
-        content.subcategoryId !== null &&
-        !(await this.subcategoryFits(tx, content))
-      ) {
-        throw new BadRequestError(
-          "That subcategory belongs to a different category",
-        );
-      }
-
+      const next = await this.checked(tx, content, "strict");
       const created = await tx.planning.item.createAndReturn({
-        ...content,
+        title: next.title,
+        body: next.body,
+        status: next.status,
         revision: 1,
         sourceUrl: extra.sourceUrl ?? null,
         createdBy: actor,
         updatedBy: actor,
       });
-      await tx.planning.item.revision.create({
-        ...content,
-        itemId: created.id,
-        revision: 1,
-        editedBy: actor,
-      });
+      await this.writeFiling(tx, created.id, next);
+      await this.writeRevision(tx, created.id, 1, next, actor);
       await this.replaceAssignees(
         tx,
         created.id,
@@ -95,8 +108,8 @@ export class PlanningRepository {
   /**
    * Apply a patch as a new revision. Throws ConflictError when
    * `expectedRevision` is no longer the latest; returns the item untouched
-   * when the patch changes nothing. A subcategory left over from a category
-   * change is cleared.
+   * when the patch changes nothing. Subcategories left without their
+   * category by the patch are dropped.
    */
   async updateItem(
     id: number,
@@ -106,27 +119,20 @@ export class PlanningRepository {
   ): Promise<PlanningItem> {
     return db.inTransaction(async (tx) => {
       const current = await this.lockAtRevision(tx, id, expectedRevision);
-      const next = merge(current, patch);
+      const stored = await this.storedContent(tx, current);
+      const next = await this.checked(
+        tx,
+        merge(stored, patch),
+        patch.subcategoryIds === undefined ? "drop" : "strict",
+      );
 
-      if (
-        next.subcategoryId !== null &&
-        !(await this.subcategoryFits(tx, next))
-      ) {
-        if (patch.subcategoryId !== undefined) {
-          throw new BadRequestError(
-            "That subcategory belongs to a different category",
-          );
-        }
-        next.subcategoryId = null;
-      }
-
-      return this.save(tx, current, next, actor);
+      return this.save(tx, current, stored, next, actor);
     });
   }
 
   /**
    * Write an earlier revision's content back as a new revision, so the
-   * history only ever grows. A subcategory that no longer exists is cleared.
+   * history only ever grows. Subcategories that no longer exist are dropped.
    */
   async restoreItem(
     id: number,
@@ -141,15 +147,15 @@ export class PlanningRepository {
         throw new BadRequestError("That version does not belong to this plan");
       }
 
-      const next = contentOf(source);
-      if (
-        next.subcategoryId !== null &&
-        !(await this.subcategoryFits(tx, next))
-      ) {
-        next.subcategoryId = null;
-      }
+      const filings = await tx.planning.item.revision.getFilings([source.id]);
+      const next = await this.checked(
+        tx,
+        contentOf(source, filings.get(source.id)),
+        "drop",
+      );
+      const stored = await this.storedContent(tx, current);
 
-      return this.save(tx, current, next, actor);
+      return this.save(tx, current, stored, next, actor);
     });
   }
 
@@ -172,17 +178,22 @@ export class PlanningRepository {
    */
   async deleteSubcategory(id: number, actor: string): Promise<void> {
     await db.inTransaction(async (tx) => {
-      const filed = await tx.planning.item.findAll(
+      const filed = await tx.planning.item.subcategory.findAll(
         { subcategoryId: id },
-        { orderBy: "id", orderDirection: "asc" },
+        { orderBy: "itemId", orderDirection: "asc" },
       );
-      for (const { id: itemId } of filed) {
+      for (const { itemId } of filed) {
         const current = await tx.planning.item.getForUpdate(itemId);
-        if (current.subcategoryId !== id) continue;
+        const stored = await this.storedContent(tx, current);
+        if (!stored.subcategoryIds.includes(id)) continue;
         await this.save(
           tx,
           current,
-          { ...contentOf(current), subcategoryId: null },
+          stored,
+          {
+            ...stored,
+            subcategoryIds: stored.subcategoryIds.filter((sub) => sub !== id),
+          },
           actor,
         );
       }
@@ -204,40 +215,115 @@ export class PlanningRepository {
     return current;
   }
 
-  private async subcategoryFits(
+  private async storedContent(
+    tx: DatabaseQueries,
+    item: PlanningItem,
+  ): Promise<PlanningItemContent> {
+    const filings = await tx.planning.item.getFilings([item.id]);
+    return contentOf(item, filings.get(item.id));
+  }
+
+  private async checked(
     tx: DatabaseQueries,
     content: PlanningItemContent,
-  ): Promise<boolean> {
-    if (content.subcategoryId === null) return true;
-    const subcategory = await tx.planning.subcategory.find({
-      id: content.subcategoryId,
+    misfits: "strict" | "drop",
+  ): Promise<PlanningItemContent> {
+    const next = normalized(content);
+    if (next.categories.length === 0) {
+      throw new BadRequestError("A plan needs at least one category");
+    }
+    if (next.subcategoryIds.length === 0) return next;
+
+    const found = await tx.planning.subcategory.findAll({
+      id: { $in: next.subcategoryIds },
     });
-    return subcategory?.category === content.category;
+    const fitting = new Set(
+      found
+        .filter((subcategory) => next.categories.includes(subcategory.category))
+        .map((subcategory) => subcategory.id),
+    );
+    if (misfits === "strict" && fitting.size !== next.subcategoryIds.length) {
+      throw new BadRequestError(
+        "Every subcategory must belong to one of the plan's categories",
+      );
+    }
+    return {
+      ...next,
+      subcategoryIds: next.subcategoryIds.filter((sub) => fitting.has(sub)),
+    };
   }
 
   private async save(
     tx: DatabaseQueries,
     current: PlanningItem,
+    stored: PlanningItemContent,
     next: PlanningItemContent,
     actor: string,
   ): Promise<PlanningItem> {
-    if (CONTENT_FIELDS.every((field) => current[field] === next[field])) {
-      return current;
-    }
+    if (sameContent(stored, next)) return current;
 
     const revision = current.revision + 1;
     const updated = await tx.planning.item.updateAndReturn(
       { id: current.id },
-      { ...next, revision, updatedBy: actor },
+      {
+        title: next.title,
+        body: next.body,
+        status: next.status,
+        revision,
+        updatedBy: actor,
+      },
     );
-    await tx.planning.item.revision.create({
-      ...next,
-      itemId: current.id,
-      revision,
-      editedBy: actor,
-    });
+    await tx.planning.item.category.deleteAll({ itemId: current.id });
+    await tx.planning.item.subcategory.deleteAll({ itemId: current.id });
+    await this.writeFiling(tx, current.id, next);
+    await this.writeRevision(tx, current.id, revision, next, actor);
 
     return updated;
+  }
+
+  private async writeFiling(
+    tx: DatabaseQueries,
+    itemId: number,
+    content: PlanningItemContent,
+  ): Promise<void> {
+    await tx.planning.item.category.createMany(
+      content.categories.map((category) => ({ itemId, category })),
+    );
+    await tx.planning.item.subcategory.createMany(
+      content.subcategoryIds.map((subcategoryId) => ({
+        itemId,
+        subcategoryId,
+      })),
+    );
+  }
+
+  private async writeRevision(
+    tx: DatabaseQueries,
+    itemId: number,
+    revision: number,
+    content: PlanningItemContent,
+    actor: string,
+  ): Promise<void> {
+    const created = await tx.planning.item.revision.createAndReturn({
+      itemId,
+      revision,
+      title: content.title,
+      body: content.body,
+      status: content.status,
+      editedBy: actor,
+    });
+    await tx.planning.item.revision.category.createMany(
+      content.categories.map((category) => ({
+        revisionId: created.id,
+        category,
+      })),
+    );
+    await tx.planning.item.revision.subcategory.createMany(
+      content.subcategoryIds.map((subcategoryId) => ({
+        revisionId: created.id,
+        subcategoryId,
+      })),
+    );
   }
 
   private async replaceAssignees(

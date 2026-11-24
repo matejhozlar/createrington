@@ -2,6 +2,7 @@ import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q, planningRepo } from "@/db";
 import { PLANNING_UNASSIGNED } from "@/db/queries/planning/item";
+import type { PlanningItemFiling } from "@/db/queries/planning/item/filing";
 import {
   assertPatchNotEmpty,
   auditActor,
@@ -23,11 +24,20 @@ import {
 import { byName, loadPeople } from "./people";
 
 const MAX_ASSIGNEES = 20;
+const MAX_SUBCATEGORIES = 50;
 
 const category = z.enum(PLANNING_CATEGORIES);
+const categories = z.array(category).min(1).max(PLANNING_CATEGORIES.length);
 const status = z.enum(PLANNING_ITEM_STATUSES);
-const subcategoryId = id().nullable();
+const subcategoryIds = z.array(id()).max(MAX_SUBCATEGORIES);
 const assigneeIds = z.array(discordId).max(MAX_ASSIGNEES);
+
+function filingOf(
+  filings: Map<number, PlanningItemFiling>,
+  ownerId: number,
+): PlanningItemFiling {
+  return filings.get(ownerId) ?? { categories: [], subcategoryIds: [] };
+}
 
 export const planningItemsRouter = router({
   list: adminProcedure
@@ -65,15 +75,20 @@ export const planningItemsRouter = router({
       });
 
       const itemIds = items.map((item) => item.id);
-      const [assignees, commentCounts] =
+      const [assignees, commentCounts, filings] =
         itemIds.length > 0
           ? await Promise.all([
               Q.planning.item.assignee.findAll({ itemId: { $in: itemIds } }),
               Q.planning.item.comment.countBy("itemId", {
                 itemId: { $in: itemIds },
               }),
+              Q.planning.item.getFilings(itemIds),
             ])
-          : [[], new Map<number, number>()];
+          : [
+              [],
+              new Map<number, number>(),
+              new Map<number, PlanningItemFiling>(),
+            ];
 
       const person = await loadPeople([
         ...items.map((item) => item.createdBy),
@@ -91,8 +106,7 @@ export const planningItemsRouter = router({
           id: item.id,
           title: item.title,
           body: item.body,
-          category: item.category,
-          subcategoryId: item.subcategoryId,
+          ...filingOf(filings, item.id),
           status: item.status,
           revision: item.revision,
           createdAt: item.createdAt,
@@ -119,7 +133,7 @@ export const planningItemsRouter = router({
         Q.planning.item.find({ id: input.id }),
         "Planning item not found",
       );
-      const [assignees, comments, revisions] = await Promise.all([
+      const [assignees, comments, revisions, filings] = await Promise.all([
         Q.planning.item.assignee.findAll({ itemId: item.id }),
         Q.planning.item.comment.findAll(
           { itemId: item.id },
@@ -129,7 +143,11 @@ export const planningItemsRouter = router({
           { itemId: item.id },
           { orderBy: "revision", orderDirection: "desc" },
         ),
+        Q.planning.item.getFilings([item.id]),
       ]);
+      const revisionFilings = await Q.planning.item.revision.getFilings(
+        revisions.map((revision) => revision.id),
+      );
 
       const person = await loadPeople([
         item.createdBy,
@@ -144,8 +162,7 @@ export const planningItemsRouter = router({
           id: item.id,
           title: item.title,
           body: item.body,
-          category: item.category,
-          subcategoryId: item.subcategoryId,
+          ...filingOf(filings, item.id),
           status: item.status,
           revision: item.revision,
           sourceUrl: item.sourceUrl,
@@ -167,8 +184,7 @@ export const planningItemsRouter = router({
           revision: revision.revision,
           title: revision.title,
           body: revision.body,
-          category: revision.category,
-          subcategoryId: revision.subcategoryId,
+          ...filingOf(revisionFilings, revision.id),
           status: revision.status,
           createdAt: revision.createdAt,
           editedBy: person(revision.editedBy),
@@ -182,8 +198,8 @@ export const planningItemsRouter = router({
       z.object({
         title: planningTitleSchema,
         body: planningTextSchema.default(null),
-        category,
-        subcategoryId: subcategoryId.default(null),
+        categories,
+        subcategoryIds: subcategoryIds.default([]),
         status: status.default("draft"),
         assigneeIds: assigneeIds.default([]),
       }),
@@ -208,8 +224,8 @@ export const planningItemsRouter = router({
         revision: z.number().int().positive(),
         title: planningTitleSchema.optional(),
         body: planningTextSchema.optional(),
-        category: category.optional(),
-        subcategoryId: subcategoryId.optional(),
+        categories: categories.optional(),
+        subcategoryIds: subcategoryIds.optional(),
         status: status.optional(),
       }),
     )

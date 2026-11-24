@@ -41,7 +41,7 @@ import {
   STATUS_CONFIG,
   type SortValue,
 } from "./constants";
-import { subcategoryName } from "./format";
+import { subcategoryNames } from "./format";
 
 type StatusTab = "all" | PlanningItemStatus;
 type CategoryFilter = "all" | PlanningCategory;
@@ -309,7 +309,10 @@ export function AdminPlanning() {
               <PlanCard
                 key={item.id}
                 item={item}
-                subcategory={subcategoryName(subcategories, item.subcategoryId)}
+                subcategories={subcategoryNames(
+                  subcategories,
+                  item.subcategoryIds,
+                )}
               />
             ))}
           </div>

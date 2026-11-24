@@ -70,8 +70,8 @@ const PROPOSED = {
     action: "create",
     title: "Rework the shops",
     body: "Shops should sell claim upgrades.",
-    category: "modpack",
-    subcategoryId: null,
+    categories: ["modpack"],
+    subcategoryIds: [],
   },
   reason: null,
 };

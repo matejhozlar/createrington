@@ -36,8 +36,8 @@ export interface PlanCreateAction {
   type: "plan_create";
   title: string;
   body?: string;
-  category: PlanningCategory;
-  subcategoryId?: number | null;
+  categories: PlanningCategory[];
+  subcategoryIds?: number[];
   label?: string;
 }
 
@@ -46,8 +46,8 @@ export interface PlanUpdateAction {
   id: number;
   title?: string;
   body?: string;
-  category?: PlanningCategory;
-  subcategoryId?: number | null;
+  categories?: PlanningCategory[];
+  subcategoryIds?: number[];
   status?: PlanningItemStatus;
   label?: string;
 }
@@ -153,12 +153,12 @@ export function coerceAction(raw: unknown): AdminChatAction | null {
     }
     case "plan_create": {
       const fields = coercePlanFields(rec);
-      if (!fields?.title || !fields.category) return null;
+      if (!fields?.title || !fields.categories) return null;
       return {
         ...fields,
         type: "plan_create",
         title: fields.title,
-        category: fields.category,
+        categories: fields.categories,
         ...label,
       };
     }
@@ -190,16 +190,24 @@ function coercePlanFields(
     if (typeof rec.body !== "string") return null;
     fields.body = rec.body;
   }
-  if (rec.category !== undefined) {
-    const category = PLANNING_CATEGORIES.find((c) => c === rec.category);
-    if (!category) return null;
-    fields.category = category;
-  }
-  if (rec.subcategoryId !== undefined) {
-    if (rec.subcategoryId !== null && !isPositiveInteger(rec.subcategoryId)) {
+  if (rec.categories !== undefined) {
+    if (!Array.isArray(rec.categories) || rec.categories.length === 0) {
       return null;
     }
-    fields.subcategoryId = rec.subcategoryId;
+    const categories = rec.categories.map((value: unknown) =>
+      PLANNING_CATEGORIES.find((c) => c === value),
+    );
+    if (categories.some((category) => !category)) return null;
+    fields.categories = categories as PlanningCategory[];
+  }
+  if (rec.subcategoryIds !== undefined) {
+    if (
+      !Array.isArray(rec.subcategoryIds) ||
+      !rec.subcategoryIds.every(isPositiveInteger)
+    ) {
+      return null;
+    }
+    fields.subcategoryIds = rec.subcategoryIds;
   }
   if (rec.status !== undefined) {
     const status = PLANNING_ITEM_STATUSES.find((s) => s === rec.status);

@@ -3,7 +3,10 @@ import type {
   PlanningCategory,
   PlanningItemStatus,
 } from "@createrington/shared/planning";
-import { CATEGORY_CONFIG, STATUS_CONFIG } from "../constants";
+import {
+  CATEGORY_CONFIG,
+  STATUS_CONFIG,
+} from "@/features/admin/planning/constants";
 
 export function StatusBadge({ status }: { status: PlanningItemStatus }) {
   const { label, tone } = STATUS_CONFIG[status];
@@ -15,19 +18,27 @@ export function StatusBadge({ status }: { status: PlanningItemStatus }) {
 }
 
 export function CategoryBadges({
-  category,
-  subcategory,
+  categories,
+  subcategories,
 }: {
-  category: PlanningCategory;
-  subcategory: string | null;
+  categories: PlanningCategory[];
+  subcategories: string[];
 }) {
-  const { label, tone } = CATEGORY_CONFIG[category];
   return (
     <>
-      <Badge variant="outline" tone={tone}>
-        {label}
-      </Badge>
-      {subcategory && <Badge variant="outline">{subcategory}</Badge>}
+      {categories.map((category) => {
+        const { label, tone } = CATEGORY_CONFIG[category];
+        return (
+          <Badge key={category} variant="outline" tone={tone}>
+            {label}
+          </Badge>
+        );
+      })}
+      {subcategories.map((subcategory, index) => (
+        <Badge key={`${index}-${subcategory}`} variant="outline">
+          {subcategory}
+        </Badge>
+      ))}
     </>
   );
 }

@@ -3,7 +3,10 @@ import {
   STATUS_CONFIG,
 } from "@/features/admin/planning/constants";
 import { markdownPreview } from "@/features/admin/planning/format";
-import type { PlanCreateAction, PlanUpdateAction } from "../actions";
+import type {
+  PlanCreateAction,
+  PlanUpdateAction,
+} from "@/features/admin-chat/actions";
 
 interface PlanActionPreviewProps {
   action: PlanCreateAction | PlanUpdateAction;
@@ -16,7 +19,11 @@ export function PlanActionPreview({ action }: PlanActionPreviewProps) {
     action.type === "plan_update" && action.status
       ? `Status: ${STATUS_CONFIG[action.status].label}`
       : null,
-    action.category ? CATEGORY_CONFIG[action.category].label : null,
+    action.categories
+      ? action.categories
+          .map((category) => CATEGORY_CONFIG[category].label)
+          .join(", ")
+      : null,
   ].filter(Boolean);
 
   return (

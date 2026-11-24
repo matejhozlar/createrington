@@ -5,6 +5,7 @@ import {
   text,
   timestamp,
   index,
+  primaryKey,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { planningCategoryEnum, planningItemStatusEnum } from "./enums";
@@ -33,9 +34,11 @@ export const planningSubcategory = pgTable(
 );
 
 // --- planning_item ---
-// Current state of one planning item; body is markdown. Every save also writes a
-// planning_item_revision row with the same content; revision is the number
-// of the latest one and guards against two admins overwriting each other.
+// Current state of one planning item; body is markdown. Its categories and
+// subcategories live in planning_item_category and planning_item_subcategory.
+// Every save also writes a planning_item_revision row with the same content;
+// revision is the number of the latest one and guards against two admins
+// overwriting each other.
 
 export const planningItem = pgTable(
   "planning_item",
@@ -43,11 +46,6 @@ export const planningItem = pgTable(
     id: serial("id").primaryKey(),
     title: text("title").notNull(),
     body: text("body"),
-    category: planningCategoryEnum("category").notNull(),
-    subcategoryId: integer("subcategory_id").references(
-      () => planningSubcategory.id,
-      { onDelete: "set null" },
-    ),
     status: planningItemStatusEnum("status").notNull().default("draft"),
     revision: integer("revision").notNull().default(1),
     // Discord message the item was captured from by /idea; null when it was
@@ -62,16 +60,50 @@ export const planningItem = pgTable(
       .notNull()
       .defaultNow(),
   },
+  (table) => [index("idx_planning_item_status").on(table.status)],
+);
+
+// --- planning_item_category ---
+// The categories an item is filed under; every item has at least one.
+
+export const planningItemCategory = pgTable(
+  "planning_item_category",
+  {
+    itemId: integer("item_id")
+      .notNull()
+      .references(() => planningItem.id, { onDelete: "cascade" }),
+    category: planningCategoryEnum("category").notNull(),
+  },
   (table) => [
-    index("idx_planning_item_status").on(table.status),
-    index("idx_planning_item_category").on(table.category),
+    primaryKey({ columns: [table.itemId, table.category] }),
+    index("idx_planning_item_category_category").on(table.category),
+  ],
+);
+
+// --- planning_item_subcategory ---
+// The subcategories an item is filed under; each one belongs to one of the
+// item's categories.
+
+export const planningItemSubcategory = pgTable(
+  "planning_item_subcategory",
+  {
+    itemId: integer("item_id")
+      .notNull()
+      .references(() => planningItem.id, { onDelete: "cascade" }),
+    subcategoryId: integer("subcategory_id")
+      .notNull()
+      .references(() => planningSubcategory.id, { onDelete: "cascade" }),
+  },
+  (table) => [
+    primaryKey({ columns: [table.itemId, table.subcategoryId] }),
+    index("idx_planning_item_subcategory_subcategory").on(table.subcategoryId),
   ],
 );
 
 // --- planning_item_revision ---
-// Append-only full copy of a planning item per save, the first included.
-// Restoring an old revision writes a new one. subcategoryId is a plain int
-// (no FK) so history keeps the id after the subcategory is deleted.
+// Append-only full copy of a planning item per save, the first included, with
+// its categories and subcategories in planning_item_revision_category and
+// planning_item_revision_subcategory. Restoring an old revision writes a new one.
 
 export const planningItemRevision = pgTable(
   "planning_item_revision",
@@ -83,8 +115,6 @@ export const planningItemRevision = pgTable(
     revision: integer("revision").notNull(),
     title: text("title").notNull(),
     body: text("body"),
-    category: planningCategoryEnum("category").notNull(),
-    subcategoryId: integer("subcategory_id"),
     status: planningItemStatusEnum("status").notNull(),
     editedBy: text("edited_by").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
@@ -97,6 +127,34 @@ export const planningItemRevision = pgTable(
       table.revision,
     ),
   ],
+);
+
+// --- planning_item_revision_category ---
+
+export const planningItemRevisionCategory = pgTable(
+  "planning_item_revision_category",
+  {
+    revisionId: integer("revision_id")
+      .notNull()
+      .references(() => planningItemRevision.id, { onDelete: "cascade" }),
+    category: planningCategoryEnum("category").notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.revisionId, table.category] })],
+);
+
+// --- planning_item_revision_subcategory ---
+// subcategoryId is a plain int (no FK) so history keeps the id after the
+// subcategory is deleted.
+
+export const planningItemRevisionSubcategory = pgTable(
+  "planning_item_revision_subcategory",
+  {
+    revisionId: integer("revision_id")
+      .notNull()
+      .references(() => planningItemRevision.id, { onDelete: "cascade" }),
+    subcategoryId: integer("subcategory_id").notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.revisionId, table.subcategoryId] })],
 );
 
 // --- planning_item_comment ---

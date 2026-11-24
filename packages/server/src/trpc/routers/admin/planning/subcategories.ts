@@ -36,7 +36,7 @@ export const planningSubcategoriesRouter = router({
             ],
           },
         ),
-        Q.planning.item.countBy("subcategoryId"),
+        Q.planning.item.subcategory.countBy("subcategoryId"),
       ]);
 
       return {
@@ -84,7 +84,7 @@ export const planningSubcategoriesRouter = router({
   delete: adminProcedure
     .meta({
       description:
-        "Delete a planning subcategory; its items stay in the category without one, each with a new revision",
+        "Delete a planning subcategory; each item filed under it loses it in a new revision",
     })
     .input(z.object({ id: id() }))
     .mutation(async ({ input, ctx }) => {
