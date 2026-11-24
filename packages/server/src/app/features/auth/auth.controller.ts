@@ -22,7 +22,10 @@ import {
   toUserDto,
   withLiveAdminStatus,
 } from "@/services/auth/login/login";
-import { authenticatedUser } from "@/app/middleware/auth.middleware";
+import {
+  authenticatedUser,
+  presentedAccessToken,
+} from "@/app/middleware/auth.middleware";
 import {
   issueSsoState,
   peekSsoState,
@@ -303,7 +306,7 @@ export class AuthController {
       return;
     }
 
-    accessCookieService.setCookie(res, jwtService.generateFromPayload(user));
+    accessCookieService.setCookie(res, presentedAccessToken(req));
 
     logger.info(`User ${user.discordId} authorized SSO to ${returnTo}`);
 
