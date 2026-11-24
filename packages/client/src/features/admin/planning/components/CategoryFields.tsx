@@ -10,6 +10,7 @@ import {
   type PlanningCategory,
 } from "@createrington/shared/planning";
 import { CATEGORY_CONFIG } from "@/features/admin/planning/constants";
+import { subcategoriesWithin } from "@/features/admin/planning/format";
 import type { PlanningSubcategory } from "@/features/admin/planning/types";
 
 interface CategoryFieldsProps {
@@ -64,12 +65,7 @@ export function CategoryFields({
     );
     onChange({
       categories: next,
-      subcategoryIds: subcategoryIds.filter((id) =>
-        subcategories.some(
-          (subcategory) =>
-            subcategory.id === id && next.includes(subcategory.category),
-        ),
-      ),
+      subcategoryIds: subcategoriesWithin(next, subcategoryIds, subcategories),
     });
   };
 

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   describeRevision,
   markdownPreview,
+  subcategoriesWithin,
 } from "@/features/admin/planning/format";
 import type {
   PlanningRevision,
@@ -87,5 +88,17 @@ describe("describeRevision", () => {
     const next = revision({ categories: ["website", "modpack"] });
 
     expect(describeRevision(next, previous, SUBCATEGORIES)).toEqual([]);
+  });
+});
+
+describe("subcategoriesWithin", () => {
+  it("drops the subcategories of a category that is no longer chosen", () => {
+    expect(subcategoriesWithin(["website"], [4, 9], SUBCATEGORIES)).toEqual([
+      9,
+    ]);
+  });
+
+  it("keeps subcategories it cannot place yet, such as while the list loads", () => {
+    expect(subcategoriesWithin(["website"], [4, 9], [])).toEqual([4, 9]);
   });
 });

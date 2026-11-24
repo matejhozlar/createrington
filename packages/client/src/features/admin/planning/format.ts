@@ -22,6 +22,17 @@ export function subcategoryNames(
   );
 }
 
+export function subcategoriesWithin(
+  categories: PlanningCategory[],
+  subcategoryIds: number[],
+  subcategories: PlanningSubcategory[],
+): number[] {
+  return subcategoryIds.filter((id) => {
+    const owner = subcategories.find((s) => s.id === id)?.category;
+    return owner === undefined || categories.includes(owner);
+  });
+}
+
 function listNames(names: string[]): string {
   if (names.length <= 1) return names.join("");
   return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
