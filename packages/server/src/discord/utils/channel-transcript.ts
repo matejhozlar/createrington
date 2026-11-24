@@ -73,7 +73,13 @@ export async function fetchRecentMessages(
   }
   while (messages.length < count) {
     const budget = TRANSCRIPT_MAX_MESSAGES - scanned;
-    if (budget <= 0) return { messages: messages.sort(byAge), hasMore: true };
+    if (budget <= 0) {
+      const older = await channel.messages.fetch({
+        limit: 1,
+        ...(before && { before }),
+      });
+      return { messages: messages.sort(byAge), hasMore: older.size > 0 };
+    }
     const remaining = count - messages.length;
     const limit = Math.min(PAGE_SIZE, authorId ? budget : remaining);
     const batch = await channel.messages.fetch({

@@ -177,6 +177,20 @@ describe("fetchRecentMessages", () => {
     );
     expect(hasMore).toBe(true);
   });
+
+  it("does not report a cut-short search when the cap covers the whole channel", async () => {
+    const all = Array.from({ length: 500 }, (_, i) =>
+      fakeMessage(i, { authorId: i % 100 === 0 ? "steve" : "alex" }),
+    );
+    const { channel } = fakeChannel(all);
+
+    const { messages, hasMore } = await fetchRecentMessages(channel, 50, {
+      authorId: "steve",
+    });
+
+    expect(messages).toHaveLength(5);
+    expect(hasMore).toBe(false);
+  });
 });
 
 describe("fetchMessagesSince", () => {
