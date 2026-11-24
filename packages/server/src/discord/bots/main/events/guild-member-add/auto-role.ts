@@ -5,7 +5,7 @@ import { Q } from "@/db";
 import { waitlistCapacityService } from "@/services/waitlist/capacity.service";
 import { RoleManager } from "@/discord/utils/roles/role-manager";
 import { Discord } from "@/discord/constants";
-import { EmbedPresets } from "@/discord/embeds";
+import { cancelDeparture } from "@/services/discord/cleanup/member/departure";
 import { RegistrationComponentPresets } from "@/discord/components/presets/registration";
 import { WaitlistComponentPresets } from "@/discord/components/presets/waitlist";
 import { createVerificationChannel } from "@/discord/bots/main/registration/verification-channel";
@@ -30,41 +30,13 @@ export async function execute(
     logger.info(`Member ${member.user.tag} joined - Join #${joinNumber}`);
 
     try {
-      const activeDeparture = await Q.discord.guild.member.leave.findActive(
-        member.user.id,
-      );
+      const activeDepartures = await Q.discord.guild.member.leave.findAll({
+        discordId: member.user.id,
+        deletedAt: { $exists: false },
+      });
 
-      if (activeDeparture) {
-        await Q.discord.guild.member.leave.update(
-          { id: activeDeparture.id },
-          { deletedAt: new Date() },
-        );
-
-        logger.info(
-          `Cancelled departure record #${activeDeparture.id} for returning member ${member.user.tag}`,
-        );
-
-        if (activeDeparture.notificationMessageId) {
-          try {
-            const returnedEmbed = EmbedPresets.departed.returned({
-              minecraftUsername: activeDeparture.minecraftUsername,
-              departedAt: activeDeparture.departedAt,
-              returnedAt: new Date(),
-            });
-
-            await Discord.Messages.edit({
-              channelId: Discord.Channels.administration.NOTIFICATIONS,
-              messageId: activeDeparture.notificationMessageId,
-              embeds: returnedEmbed.build(),
-              components: null,
-            });
-          } catch (error) {
-            logger.warn(
-              `Could not update departure notification for ${activeDeparture.minecraftUsername}:`,
-              error,
-            );
-          }
-        }
+      for (const departure of activeDepartures) {
+        await cancelDeparture(departure, "returned");
       }
     } catch (error) {
       logger.error(

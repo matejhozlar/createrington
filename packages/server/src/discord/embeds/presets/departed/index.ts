@@ -68,6 +68,23 @@ export const DepartedEmbedPresets = {
       .timestamp();
   },
 
+  relinked(info: {
+    minecraftUsername: string;
+    departedAt: Date;
+    cancelledAt: Date;
+  }) {
+    return createEmbed()
+      .title("Departure Cancelled")
+      .description(
+        `**${info.minecraftUsername}** is now registered to a different Discord account. Scheduled deletion has been cancelled.`,
+      )
+      .color(EmbedColors.Info)
+      .field("Departed", discordTimestamp(info.departedAt, "R"), true)
+      .field("Cancelled", discordTimestamp(info.cancelledAt, "F"), true)
+      .footer("Departure record cancelled")
+      .timestamp();
+  },
+
   autoDeleted(info: {
     minecraftUsername: string;
     departedAt: Date;
