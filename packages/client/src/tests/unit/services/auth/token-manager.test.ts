@@ -184,17 +184,25 @@ describe("refreshAccessToken", () => {
     vi.resetAllMocks();
   });
 
-  it("reports a rejected refresh as unauthorized and drops the token", async () => {
-    fetchMock.mockResolvedValueOnce(responseFrom(REFRESH_URL, 401));
+  it.each([
+    ["a rejected refresh token", 401],
+    ["an untrusted origin", 403],
+    ["a deleted player", 404],
+  ])(
+    "reports %s as unauthorized and drops the token",
+    async (_label, status) => {
+      fetchMock.mockResolvedValueOnce(responseFrom(REFRESH_URL, status));
 
-    await expect(refreshAccessToken()).resolves.toEqual({
-      status: "unauthorized",
-    });
-    expect(getAccessToken()).toBeNull();
-  });
+      await expect(refreshAccessToken()).resolves.toEqual({
+        status: "unauthorized",
+      });
+      expect(getAccessToken()).toBeNull();
+    },
+  );
 
   it.each([
     ["a network error", () => Promise.reject(new TypeError("network down"))],
+    ["a 408", () => Promise.resolve(responseFrom(REFRESH_URL, 408))],
     ["a 429", () => Promise.resolve(responseFrom(REFRESH_URL, 429))],
     ["a 503", () => Promise.resolve(responseFrom(REFRESH_URL, 503))],
     [

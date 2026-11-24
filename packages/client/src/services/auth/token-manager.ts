@@ -14,6 +14,10 @@ export type RefreshResult =
 
 let accessToken: string | null = null;
 
+function isTransientStatus(status: number): boolean {
+  return status >= 500 || status === 408 || status === 429;
+}
+
 let refreshPromise: Promise<RefreshResult> | null = null;
 
 export function getAccessToken(): string | null {
@@ -91,11 +95,11 @@ async function doRefresh(): Promise<RefreshResult> {
       credentials: "include",
     });
 
-    if (response.status === 401) {
+    if (!response.ok) {
+      if (isTransientStatus(response.status)) return { status: "transient" };
       accessToken = null;
       return { status: "unauthorized" };
     }
-    if (!response.ok) return { status: "transient" };
 
     const data = (await response.json()) as {
       success?: boolean;
