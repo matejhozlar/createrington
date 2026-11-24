@@ -3,6 +3,7 @@ import type { GuildMember } from "discord.js";
 
 const mocks = vi.hoisted(() => ({
   players: new Set<string>(),
+  accounts: new Set<string>(),
   whitelist: vi.fn(),
   failSave: false,
   releaseReservation: vi.fn(),
@@ -12,7 +13,9 @@ vi.mock("@/db", () => ({
   Q: {
     player: {
       exists: async (filter: { discordId?: string; minecraftUuid?: string }) =>
-        filter.discordId ? mocks.players.has(filter.discordId) : false,
+        filter.discordId
+          ? mocks.players.has(filter.discordId)
+          : mocks.accounts.has(filter.minecraftUuid ?? ""),
     },
     waitlist: { entry: { find: async () => null } },
   },
@@ -23,8 +26,12 @@ vi.mock("@/db", () => ({
       if (mocks.failSave) throw new Error("duplicate key");
       const tx = {
         player: {
-          create: async ({ discordId }: { discordId: string }) => {
-            mocks.players.add(discordId);
+          create: async (row: { discordId: string; minecraftUuid: string }) => {
+            if (mocks.accounts.has(row.minecraftUuid)) {
+              throw new Error("duplicate key on minecraft_uuid");
+            }
+            mocks.players.add(row.discordId);
+            mocks.accounts.add(row.minecraftUuid);
           },
           balance: { create: async () => {} },
           vote: { linkUsername: async () => {} },
@@ -144,6 +151,7 @@ describe("runRegistration", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     mocks.players.clear();
+    mocks.accounts.clear();
     mocks.whitelist.mockReset().mockResolvedValue(new Map());
     mocks.failSave = false;
     mocks.releaseReservation.mockReset();
@@ -151,6 +159,7 @@ describe("runRegistration", () => {
 
   afterEach(() => {
     vi.useRealTimers();
+    vi.restoreAllMocks();
   });
 
   it("removes the name from the whitelist when saving the player fails", async () => {
@@ -197,5 +206,19 @@ describe("runRegistration", () => {
 
     expect(results.map((r) => r.ok)).toEqual([true, false]);
     expect(whitelistCalls()).toEqual(["add Alt"]);
+  });
+
+  it("keeps the name whitelisted for the member who won a race for the same Minecraft account", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0);
+
+    const results = await settle(
+      Promise.all([
+        register("Steve", "member-1"),
+        register("Steve", "member-2"),
+      ]),
+    );
+
+    expect(results.map((r) => r.ok)).toEqual([true, false]);
+    expect(whitelistCalls()).toEqual(["add Steve", "add Steve"]);
   });
 });

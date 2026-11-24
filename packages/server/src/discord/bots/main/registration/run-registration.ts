@@ -40,6 +40,31 @@ class RegistrationError extends Error {}
 
 const withRegistrationLock = createKeyedLock<string>();
 
+interface WhitelistedAccount {
+  name: string;
+  uuid: string;
+}
+
+async function undoWhitelist({
+  name,
+  uuid,
+}: WhitelistedAccount): Promise<void> {
+  try {
+    if (await Q.player.exists({ minecraftUuid: uuid })) {
+      logger.warn(
+        `Keeping ${name} on the whitelist after the failed registration: a player already owns ${uuid}`,
+      );
+      return;
+    }
+    await minecraftRcon.whitelistAll(WhitelistAction.REMOVE, name);
+  } catch (error) {
+    logger.error(
+      `Could not remove ${name} from the whitelist after the failed registration:`,
+      error,
+    );
+  }
+}
+
 interface RegistrationStep {
   name: string;
   completed: boolean;
@@ -112,7 +137,7 @@ async function register(
 
   let entry: WaitlistEntry | null = null;
   let reservedHere = false;
-  let whitelistedName: string | null = null;
+  let whitelisted: WhitelistedAccount | null = null;
 
   try {
     await randomDelay();
@@ -191,7 +216,7 @@ async function register(
     );
 
     await randomDelay();
-    whitelistedName = correctName;
+    whitelisted = { name: correctName, uuid };
     try {
       await minecraftRcon.whitelistAll(WhitelistAction.ADD, correctName);
     } catch (error) {
@@ -223,7 +248,7 @@ async function register(
       );
     });
     reservedHere = false;
-    whitelistedName = null;
+    whitelisted = null;
 
     await updateProgressEmbed(entryId);
 
@@ -289,19 +314,7 @@ async function register(
     const failedStep = steps[currentStep]?.name ?? "Unknown step";
     logger.error("registration failed:", error);
 
-    if (whitelistedName) {
-      try {
-        await minecraftRcon.whitelistAll(
-          WhitelistAction.REMOVE,
-          whitelistedName,
-        );
-      } catch (removeError) {
-        logger.error(
-          `Could not remove ${whitelistedName} from the whitelist after the failed registration:`,
-          removeError,
-        );
-      }
-    }
+    if (whitelisted) await undoWhitelist(whitelisted);
 
     if (reservedHere && entry) {
       try {
