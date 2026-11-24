@@ -8,6 +8,8 @@ vi.mock("@/services/redis", () => ({
 
 import express from "express";
 import {
+  authLimiter,
+  authRefreshLimiter,
   launcherPackLimiter,
   messageSendLimiter,
   skinPoseLimiter,
@@ -44,6 +46,10 @@ beforeAll(async () => {
     packStandIn,
   );
   app.get("/api/skin/:player/pose/:pose", skinPoseLimiter, poseStandIn);
+  app.use("/api/auth", authLimiter);
+  app.use("/api/auth/refresh", authRefreshLimiter);
+  app.post("/api/auth/refresh", (_req, res) => res.status(200).end());
+  app.get("/api/auth/discord", (_req, res) => res.status(200).end());
   server = app.listen(0);
   await new Promise((resolve) => server.once("listening", resolve));
   baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
@@ -113,5 +119,21 @@ describe("skinPoseLimiter", () => {
       expect((await askPose()).status).toBe(200);
     }
     expect(poseStandIn).toHaveBeenCalledTimes(125);
+  });
+});
+
+describe("authLimiter", () => {
+  it("keeps the 20-per-window login limit while page-load refreshes count separately", async () => {
+    for (let i = 0; i < 40; i++) {
+      const refresh = await fetch(`${baseUrl}/api/auth/refresh`, {
+        method: "POST",
+      });
+      expect(refresh.status).toBe(200);
+    }
+
+    for (let i = 0; i < 20; i++) {
+      expect((await fetch(`${baseUrl}/api/auth/discord`)).status).toBe(200);
+    }
+    expect((await fetch(`${baseUrl}/api/auth/discord`)).status).toBe(429);
   });
 });

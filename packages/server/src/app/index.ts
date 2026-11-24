@@ -9,6 +9,7 @@ import {
   notFoundHandler,
   globalLimiter,
   authLimiter,
+  authRefreshLimiter,
   modpacksLimiter,
   requestLogger,
 } from "./middleware";
@@ -70,6 +71,7 @@ export function createApp(): Express {
   app.use(requestLogger);
   app.use(globalLimiter);
   app.use("/api/auth", authLimiter);
+  app.use("/api/auth/refresh", authRefreshLimiter);
   app.use("/api/modpacks", modpacksLimiter);
 
   registerHealthRoute(app);
