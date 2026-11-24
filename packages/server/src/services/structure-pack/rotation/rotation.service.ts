@@ -8,6 +8,7 @@ import {
   fileExists,
 } from "@/services/mc-server/file-ops";
 import { getModFileDownloadUrl } from "@/services/curseforge/downloads";
+import type { DatabaseQueries } from "@/generated/db";
 import type { StructurePackService } from "../structure-pack.service";
 import type { StructurePackWithMods } from "@/db/queries/structure/pack";
 import type {
@@ -75,7 +76,9 @@ async function installPackMods(pack: StructurePackWithMods): Promise<void> {
  *   auditing; attempts with no eligible packs are log-only and leave no history row
  * - Handles player-purchased boost units that increase a pack's selection weight: a boost
  *   stays open until the next successful draw counts it, whenever that draw runs (on
- *   schedule, after a missed rotation at boot, or manually), and is deleted by that draw
+ *   schedule, after a missed rotation at boot, or manually), and is deleted by that draw;
+ *   a boost the draw could not count (on a pack outside the draw, or bought mid-draw for
+ *   the pack that won) is refunded instead
  * - Can be disabled entirely via the `enabled` flag on the rotation config: no scheduling,
  *   no automatic rotations, and no boost purchases while disabled (manual rotation still
  *   works); disabling refunds all open boosts
@@ -182,7 +185,8 @@ export class StructurePackRotationService {
    * 4. Download and cache any uncached mod files from CurseForge
    * 5. Remove outgoing pack's mods and install the incoming pack's mods on the server
    * 6. Swap the active pack flag and record the rotation in the database
-   * 7. Delete the boosts the draw counted (a boost bought during the draw stays open)
+   * 7. Delete the boosts the draw counted and refund the ones it could not count; a boost
+   *    bought during the draw for another eligible pack stays open for the next one
    * 8. Schedule the next rotation
    *
    * On any file-operations failure the rotation is recorded as failed and the
@@ -269,9 +273,7 @@ export class StructurePackRotationService {
         { id: selectedPackId },
         { isActive: true, lastActivatedAt: new Date() },
       );
-      if (boostIds.length > 0) {
-        await tx.structure.pack.boost.deleteAll({ id: { $in: boostIds } });
-      }
+      await this.settleBoosts(tx, eligible, selectedPackId, boostIds);
     });
     await this.recordRotation(
       activePack?.id ?? null,
@@ -477,31 +479,11 @@ export class StructurePackRotationService {
       );
 
       if (disabling) {
-        const openBoosts = await tx.structure.pack.boost.findAll({});
-        for (const boost of openBoosts) {
-          await balanceRepo.add(
-            { discordId: boost.discordId },
-            boost.currencySpent,
-            `Structure pack boost refund: ${boost.units} unit(s), rotations disabled`,
-            "refund",
-            {
-              metadata: {
-                packId: boost.packId,
-                units: boost.units,
-                boostId: boost.id,
-              },
-              tx,
-            },
-          );
-        }
-        if (openBoosts.length > 0) {
-          await tx.structure.pack.boost.deleteAll({
-            id: { $in: openBoosts.map((boost) => boost.id) },
-          });
-          logger.info(
-            `Refunded ${openBoosts.length} open structure pack boost(s) after disabling rotation`,
-          );
-        }
+        await this.refundBoosts(
+          tx,
+          await tx.structure.pack.boost.findAll({}),
+          "rotations disabled",
+        );
       }
 
       return toRotationConfig(next);
@@ -556,6 +538,55 @@ export class StructurePackRotationService {
     }
   }
 
+  private async settleBoosts(
+    tx: DatabaseQueries,
+    eligible: StructurePack[],
+    selectedPackId: number,
+    countedIds: number[],
+  ): Promise<void> {
+    const counted = new Set(countedIds);
+    const eligibleIds = new Set(eligible.map((pack) => pack.id));
+    const uncounted = (await tx.structure.pack.boost.findAll({})).filter(
+      (boost) =>
+        !counted.has(boost.id) &&
+        (boost.packId === selectedPackId || !eligibleIds.has(boost.packId)),
+    );
+
+    if (countedIds.length > 0) {
+      await tx.structure.pack.boost.deleteAll({ id: { $in: countedIds } });
+    }
+    await this.refundBoosts(tx, uncounted, "not counted by the draw");
+  }
+
+  private async refundBoosts(
+    tx: DatabaseQueries,
+    boosts: StructurePackBoost[],
+    reason: string,
+  ): Promise<void> {
+    if (boosts.length === 0) return;
+
+    for (const boost of boosts) {
+      await balanceRepo.add(
+        { discordId: boost.discordId },
+        boost.currencySpent,
+        `Structure pack boost refund: ${boost.units} unit(s), ${reason}`,
+        "refund",
+        {
+          metadata: {
+            packId: boost.packId,
+            units: boost.units,
+            boostId: boost.id,
+          },
+          tx,
+        },
+      );
+    }
+    await tx.structure.pack.boost.deleteAll({
+      id: { $in: boosts.map((boost) => boost.id) },
+    });
+    logger.info(`Refunded ${boosts.length} structure pack boost(s): ${reason}`);
+  }
+
   private async weighPool(
     eligible: StructurePack[],
     rotationConfig: RotationConfig,
@@ -574,7 +605,11 @@ export class StructurePackRotationService {
       rotationConfig.timeWeightMultiplier,
       rotationConfig.boostWeightPerUnit,
     );
-    return { weights, boostUnits, boostIds: boosts.map((boost) => boost.id) };
+    const eligibleIds = new Set(eligible.map((pack) => pack.id));
+    const boostIds = boosts
+      .filter((boost) => eligibleIds.has(boost.packId))
+      .map((boost) => boost.id);
+    return { weights, boostUnits, boostIds };
   }
 
   private async getLastRotation() {

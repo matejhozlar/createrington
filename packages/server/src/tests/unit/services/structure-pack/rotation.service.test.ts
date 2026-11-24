@@ -189,6 +189,7 @@ describe("StructurePackRotationService", () => {
 
   afterEach(() => {
     vi.useRealTimers();
+    vi.restoreAllMocks();
   });
 
   it("skips automatic rotation while disabled and schedules nothing", async () => {
@@ -378,11 +379,10 @@ describe("StructurePackRotationService", () => {
     service.shutdown();
   });
 
-  it("keeps a boost bought while the draw is running open for the next one", async () => {
-    packs = [makePack(3), makePack(4)];
-    eligiblePacks = packs;
-    openBoosts = [makeBoost(40, 3, 1)];
-    const service = makeService();
+  function buyDuringDraw(
+    service: StructurePackRotationService,
+    boost: StructurePackBoost,
+  ) {
     const packService = (
       service as unknown as {
         packService: { getPack: (id: number) => Promise<unknown> };
@@ -390,13 +390,58 @@ describe("StructurePackRotationService", () => {
     ).packService;
     const getPack = packService.getPack;
     packService.getPack = async (id) => {
-      openBoosts.push(makeBoost(41, 4, 1));
+      openBoosts.push(boost);
       return getPack(id);
     };
+  }
+
+  it("keeps a boost bought during the draw for another eligible pack open for the next one", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0);
+    packs = [makePack(3), makePack(4)];
+    eligiblePacks = packs;
+    openBoosts = [makeBoost(40, 3, 1)];
+    const service = makeService();
+    buyDuringDraw(service, makeBoost(41, 4, 1));
 
     await service.executeRotation(true);
 
+    expect(rotationCreates[0]).toMatchObject({ incomingPackId: 3 });
     expect(boostDeletes).toEqual([40]);
+    expect(balanceAdds).toHaveLength(0);
+    service.shutdown();
+  });
+
+  it("refunds a boost bought during the draw for the pack that wins it", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0);
+    packs = [makePack(3), makePack(4)];
+    eligiblePacks = packs;
+    openBoosts = [makeBoost(42, 3, 1)];
+    const service = makeService();
+    buyDuringDraw(service, makeBoost(43, 3, 2));
+
+    await service.executeRotation(true);
+
+    expect(rotationCreates[0]).toMatchObject({ incomingPackId: 3 });
+    expect(boostDeletes.sort()).toEqual([42, 43]);
+    expect(balanceAdds).toEqual([
+      { identifier: { discordId: "111" }, amount: 100, type: "refund" },
+    ]);
+    service.shutdown();
+  });
+
+  it("refunds boosts on a pack that is not in the draw", async () => {
+    packs = [makePack(3), makePack(9, { enabled: false })];
+    eligiblePacks = [packs[0]];
+    openBoosts = [makeBoost(44, 3, 1), makeBoost(45, 9, 3)];
+    const service = makeService();
+
+    await service.executeRotation(true);
+
+    expect(boostFactors()).toEqual({ 3: 1 });
+    expect(boostDeletes.sort()).toEqual([44, 45]);
+    expect(balanceAdds).toEqual([
+      { identifier: { discordId: "111" }, amount: 150, type: "refund" },
+    ]);
     service.shutdown();
   });
 
