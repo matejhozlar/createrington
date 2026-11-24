@@ -7,34 +7,17 @@ import {
   afterAll,
   vi,
 } from "vitest";
-import pg from "pg";
+import type pg from "pg";
 import { DatabaseQueries } from "@/generated/db/db";
 import { logPoolErrors } from "@/db/pool-errors";
-import { getTestPool, cleanupTestPool } from "@/tests/helpers/db";
-
-function subjectPool(): pg.Pool {
-  const pool = new pg.Pool({
-    host: process.env.DB_HOST ?? "localhost",
-    port: Number(process.env.DB_PORT ?? 5432),
-    user: process.env.DB_USER ?? "postgres",
-    password: process.env.DB_PASSWORD ?? "test_password",
-    database: process.env.DB_DATABASE ?? "test_db",
-    ssl: false,
-  });
-  logPoolErrors(pool);
-  return pool;
-}
+import {
+  cleanupTestPool,
+  createTestPool,
+  getTestPool,
+} from "@/tests/helpers/db";
 
 async function terminateBackend(pid: number): Promise<void> {
   await getTestPool().query("SELECT pg_terminate_backend($1)", [pid]);
-}
-
-async function until(condition: () => boolean): Promise<void> {
-  const deadline = Date.now() + 5000;
-  while (!condition()) {
-    if (Date.now() > deadline) throw new Error("condition not met in time");
-    await new Promise((resolve) => setTimeout(resolve, 20));
-  }
 }
 
 describe("PostgreSQL connection errors", () => {
@@ -42,7 +25,8 @@ describe("PostgreSQL connection errors", () => {
   let warn: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
-    pool = subjectPool();
+    pool = createTestPool();
+    logPoolErrors(pool);
     warn = vi.spyOn(logger, "warn");
   });
 
@@ -63,7 +47,9 @@ describe("PostgreSQL connection errors", () => {
     client.release();
 
     await terminateBackend(rows[0].pid);
-    await until(() => warn.mock.calls.length > 0);
+    await vi.waitFor(() => expect(warn).toHaveBeenCalled(), {
+      timeout: 5000,
+    });
 
     const next = await pool.query<{ ok: number }>("SELECT 1 AS ok");
     expect(next.rows[0].ok).toBe(1);
@@ -79,7 +65,9 @@ describe("PostgreSQL connection errors", () => {
           "SELECT pg_backend_pid() AS pid",
         );
         await terminateBackend(rows[0].pid);
-        await until(() => warn.mock.calls.length > 0);
+        await vi.waitFor(() => expect(warn).toHaveBeenCalled(), {
+          timeout: 5000,
+        });
         throw new Error("original failure");
       }),
     ).rejects.toThrow("original failure");

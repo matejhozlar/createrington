@@ -7,20 +7,27 @@ import { registerPgTypeParsers } from "@/db/utils/pg-types";
 let testPool: pg.Pool | null = null;
 
 /**
- * Get or create a test database pool from environment variables.
+ * Create a new pool on the test database from environment variables.
  * Defaults match the CI PostgreSQL service configuration.
+ */
+export function createTestPool(): pg.Pool {
+  return new pg.Pool({
+    host: process.env.DB_HOST ?? "localhost",
+    port: Number(process.env.DB_PORT ?? 5432),
+    user: process.env.DB_USER ?? "postgres",
+    password: process.env.DB_PASSWORD ?? "test_password",
+    database: process.env.DB_DATABASE ?? "test_db",
+    ssl: false,
+  });
+}
+
+/**
+ * Get or create the shared test database pool.
  */
 export function getTestPool(): pg.Pool {
   if (!testPool) {
     registerPgTypeParsers();
-    testPool = new pg.Pool({
-      host: process.env.DB_HOST ?? "localhost",
-      port: Number(process.env.DB_PORT ?? 5432),
-      user: process.env.DB_USER ?? "postgres",
-      password: process.env.DB_PASSWORD ?? "test_password",
-      database: process.env.DB_DATABASE ?? "test_db",
-      ssl: false,
-    });
+    testPool = createTestPool();
   }
   return testPool;
 }
