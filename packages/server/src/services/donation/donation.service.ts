@@ -33,7 +33,7 @@ function customerId(subscription: Stripe.Subscription): string {
  * stored subscription of theirs is still live in Stripe, and the lookup, cancel and
  * reactivate calls resolve the subscription across all of them, preferring one that is
  * still renewing. Deleting a player cancels all of their live subscriptions at once,
- * and alerts the admins about any Stripe refuses. Supporter
+ * and alerts the admins about any cancellation Stripe refuses. Supporter
  * role assignment is best-effort; a missing role or absent guild member is logged but
  * does not block the donation from completing. Webhook handlers are idempotent against
  * replays via the `stripeSessionId` lookup, and its unique constraint turns a concurrent
