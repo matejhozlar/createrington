@@ -8,6 +8,7 @@ import {
   fileExists,
 } from "@/services/mc-server/file-ops";
 import { getModFileDownloadUrl } from "@/services/curseforge/downloads";
+import type { DatabaseQueries } from "@/generated/db";
 import type { StructurePackService } from "../structure-pack.service";
 import type { StructurePackWithMods } from "@/db/queries/structure/pack";
 import type {
@@ -21,7 +22,7 @@ import { periodIntervalMs } from "./timezone";
 import {
   checkMissedRotation,
   describeSchedule,
-  occurrence,
+  nextOccurrence,
 } from "./scheduling";
 import { computeWeights, selectWeightedRandom } from "./weights";
 import { ensureModsCached, getCachePath } from "./mod-cache";
@@ -31,9 +32,10 @@ import {
   type WeightEntry,
 } from "./types";
 
-interface RotationCycle {
-  config: RotationConfig;
-  cycleStart: Date;
+interface WeighedPool {
+  weights: WeightEntry[];
+  boostUnits: Map<number, number>;
+  boostIds: number[];
 }
 
 async function removePackMods(
@@ -72,7 +74,11 @@ async function installPackMods(pack: StructurePackWithMods): Promise<void> {
  * - Downloads and caches mod files from CurseForge before installing them on the server
  * - Records every rotation attempt (success or failure) with a weights snapshot for
  *   auditing; attempts with no eligible packs are log-only and leave no history row
- * - Handles player-purchased boost units that increase a pack's selection weight for a cycle
+ * - Handles player-purchased boost units that increase a pack's selection weight: a boost
+ *   stays open until the next successful draw counts it, whenever that draw runs (on
+ *   schedule, after a missed rotation at boot, or manually), and is deleted by that draw;
+ *   a boost the draw could not count (on a pack outside the draw, or bought mid-draw for
+ *   the pack that won) is refunded instead
  * - Can be disabled entirely via the `enabled` flag on the rotation config: no scheduling,
  *   no automatic rotations, and no boost purchases while disabled (manual rotation still
  *   works); disabling refunds all open boosts
@@ -144,7 +150,7 @@ export class StructurePackRotationService {
       return;
     }
 
-    let nextTime = occurrence(rotationConfig, new Date(), "next");
+    let nextTime = nextOccurrence(rotationConfig, new Date());
     if (nextTime.getTime() <= Date.now()) {
       logger.warn(
         "Computed next rotation time is in the past, scheduling for next period",
@@ -179,7 +185,8 @@ export class StructurePackRotationService {
    * 4. Download and cache any uncached mod files from CurseForge
    * 5. Remove outgoing pack's mods and install the incoming pack's mods on the server
    * 6. Swap the active pack flag and record the rotation in the database
-   * 7. Clear boost units consumed during this cycle
+   * 7. Delete the boosts the draw counted and refund the ones it could not count; a boost
+   *    bought during the draw for another eligible pack stays open for the next one
    * 8. Schedule the next rotation
    *
    * On any file-operations failure the rotation is recorded as failed and the
@@ -217,8 +224,8 @@ export class StructurePackRotationService {
 
   private async rotate(manual: boolean): Promise<string | null> {
     const startTime = Date.now();
-    const cycle = await this.loadCycle();
-    if (!cycle.config.enabled && !manual) {
+    const rotationConfig = await this.getConfig();
+    if (!rotationConfig.enabled && !manual) {
       logger.info("Structure pack rotation is disabled, skipping rotation");
       return null;
     }
@@ -229,11 +236,14 @@ export class StructurePackRotationService {
     );
     if (eligible.length === 0) {
       logger.warn("No eligible packs for rotation, skipping");
-      this.scheduleNextRotation(cycle.config);
+      this.scheduleNextRotation(rotationConfig);
       return "No eligible packs for rotation";
     }
 
-    const { weights } = await this.weighPool(eligible, cycle);
+    const { weights, boostIds } = await this.weighPool(
+      eligible,
+      rotationConfig,
+    );
     const selectedPackId = selectWeightedRandom(weights);
     const incomingPack = await this.packService.getPack(selectedPackId);
     logger.info(
@@ -248,7 +258,7 @@ export class StructurePackRotationService {
         false,
         fileFailure,
       );
-      this.scheduleNextRotation(cycle.config);
+      this.scheduleNextRotation(rotationConfig);
       return `Rotation failed: ${fileFailure}`;
     }
 
@@ -263,6 +273,7 @@ export class StructurePackRotationService {
         { id: selectedPackId },
         { isActive: true, lastActivatedAt: new Date() },
       );
+      await this.settleBoosts(tx, eligible, selectedPackId, boostIds);
     });
     await this.recordRotation(
       activePack?.id ?? null,
@@ -271,13 +282,12 @@ export class StructurePackRotationService {
       null,
       weights,
     );
-    await Q.structure.pack.boost.clearCycleBoosts(cycle.cycleStart);
 
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
     logger.info(
       `Rotation complete in ${elapsed}s: ${activePack?.name ?? "(none)"} → ${incomingPack.name}`,
     );
-    this.scheduleNextRotation(cycle.config);
+    this.scheduleNextRotation(rotationConfig);
     return null;
   }
 
@@ -309,7 +319,7 @@ export class StructurePackRotationService {
   }
 
   /**
-   * Records a player's boost purchase for a structure pack in the current cycle.
+   * Records a player's boost purchase for a structure pack, counted in the next successful draw.
    *
    * Validates that the target pack is available and not currently active, then
    * deducts the cost from the player's balance and creates the boost record in
@@ -328,7 +338,7 @@ export class StructurePackRotationService {
       throw new BadRequestError("Cannot boost the currently active pack");
     }
 
-    const { config: rotationConfig, cycleStart } = await this.loadCycle();
+    const rotationConfig = await this.getConfig();
     if (!rotationConfig.enabled) {
       throw new BadRequestError("Rotations are currently disabled");
     }
@@ -348,23 +358,21 @@ export class StructurePackRotationService {
         packId,
         units,
         currencySpent: cost,
-        cycleStart,
       });
     });
   }
 
-  /** Returns all boost records placed by a player during the current rotation cycle. */
+  /** Returns a player's open boosts (not yet counted by a draw), newest first. */
   async getPlayerBoosts(discordId: string): Promise<StructurePackBoost[]> {
-    const { cycleStart } = await this.loadCycle();
-    return Q.structure.pack.boost.getPlayerBoostsForCycle(
-      discordId,
-      cycleStart,
+    return Q.structure.pack.boost.findAll(
+      { discordId },
+      { orderBy: "createdAt", orderDirection: "desc" },
     );
   }
 
   /**
    * Returns each eligible pack together with its current computed weight and
-   * accumulated boost units for the active cycle. Each pack also includes its
+   * open boost units for the next draw. Each pack also includes its
    * full mod list so the UI can display mod counts and a detailed inspect view.
    *
    * Intended for UI display so players can see how their boosts affect selection odds.
@@ -396,7 +404,7 @@ export class StructurePackRotationService {
 
     const { weights, boostUnits } = await this.weighPool(
       eligible,
-      await this.loadCycle(),
+      await this.getConfig(),
     );
 
     return eligible.map((pack) => {
@@ -431,7 +439,7 @@ export class StructurePackRotationService {
     return {
       enabled: cfg.enabled,
       nextRotationAt: cfg.enabled
-        ? occurrence(cfg, new Date(), "next").toISOString()
+        ? nextOccurrence(cfg, new Date()).toISOString()
         : null,
       boostUnitPrice: cfg.boostUnitPrice,
       cycle: pastRotations + 1,
@@ -471,31 +479,11 @@ export class StructurePackRotationService {
       );
 
       if (disabling) {
-        const openBoosts = await tx.structure.pack.boost.findAll({});
-        for (const boost of openBoosts) {
-          await balanceRepo.add(
-            { discordId: boost.discordId },
-            boost.currencySpent,
-            `Structure pack boost refund: ${boost.units} unit(s), rotations disabled`,
-            "refund",
-            {
-              metadata: {
-                packId: boost.packId,
-                units: boost.units,
-                boostId: boost.id,
-              },
-              tx,
-            },
-          );
-        }
-        if (openBoosts.length > 0) {
-          await tx.structure.pack.boost.deleteAll({
-            id: { $in: openBoosts.map((boost) => boost.id) },
-          });
-          logger.info(
-            `Refunded ${openBoosts.length} open structure pack boost(s) after disabling rotation`,
-          );
-        }
+        await this.refundBoosts(
+          tx,
+          await tx.structure.pack.boost.findAll({}),
+          "rotations disabled",
+        );
       }
 
       return toRotationConfig(next);
@@ -509,7 +497,7 @@ export class StructurePackRotationService {
 
   /**
    * Clears the current rotation by deactivating the active pack and removing
-   * its mod files from the server. Cycle boosts are also cleared.
+   * its mod files from the server. Open boosts are kept for the next draw.
    *
    * This is a manual admin action: it does not record a rotation history entry
    * since there is no incoming pack.
@@ -529,9 +517,6 @@ export class StructurePackRotationService {
     }
 
     await Q.structure.pack.update({ id: activePack.id }, { isActive: false });
-
-    const { cycleStart } = await this.loadCycle();
-    await Q.structure.pack.boost.clearCycleBoosts(cycleStart);
 
     logger.info(`Rotation cleared: deactivated pack "${activePack.name}"`);
   }
@@ -553,26 +538,78 @@ export class StructurePackRotationService {
     }
   }
 
-  private async loadCycle(): Promise<RotationCycle> {
-    const cfg = await this.getConfig();
-    return { config: cfg, cycleStart: occurrence(cfg, new Date(), "previous") };
+  private async settleBoosts(
+    tx: DatabaseQueries,
+    eligible: StructurePack[],
+    selectedPackId: number,
+    countedIds: number[],
+  ): Promise<void> {
+    const counted = new Set(countedIds);
+    const eligibleIds = new Set(eligible.map((pack) => pack.id));
+    const uncounted = (await tx.structure.pack.boost.findAll({})).filter(
+      (boost) =>
+        !counted.has(boost.id) &&
+        (boost.packId === selectedPackId || !eligibleIds.has(boost.packId)),
+    );
+
+    if (countedIds.length > 0) {
+      await tx.structure.pack.boost.deleteAll({ id: { $in: countedIds } });
+    }
+    await this.refundBoosts(tx, uncounted, "not counted by the draw");
+  }
+
+  private async refundBoosts(
+    tx: DatabaseQueries,
+    boosts: StructurePackBoost[],
+    reason: string,
+  ): Promise<void> {
+    if (boosts.length === 0) return;
+
+    for (const boost of boosts) {
+      await balanceRepo.add(
+        { discordId: boost.discordId },
+        boost.currencySpent,
+        `Structure pack boost refund: ${boost.units} unit(s), ${reason}`,
+        "refund",
+        {
+          metadata: {
+            packId: boost.packId,
+            units: boost.units,
+            boostId: boost.id,
+          },
+          tx,
+        },
+      );
+    }
+    await tx.structure.pack.boost.deleteAll({
+      id: { $in: boosts.map((boost) => boost.id) },
+    });
+    logger.info(`Refunded ${boosts.length} structure pack boost(s): ${reason}`);
   }
 
   private async weighPool(
     eligible: StructurePack[],
-    cycle: RotationCycle,
-  ): Promise<{ weights: WeightEntry[]; boostUnits: Map<number, number> }> {
-    const boosts = await Q.structure.pack.boost.getBoostsByPackForCycle(
-      cycle.cycleStart,
-    );
-    const boostUnits = new Map(boosts.map((b) => [b.packId, b.totalUnits]));
+    rotationConfig: RotationConfig,
+  ): Promise<WeighedPool> {
+    const boosts = await Q.structure.pack.boost.findAll({});
+    const boostUnits = new Map<number, number>();
+    for (const boost of boosts) {
+      boostUnits.set(
+        boost.packId,
+        (boostUnits.get(boost.packId) ?? 0) + boost.units,
+      );
+    }
     const weights = computeWeights(
       eligible,
       boostUnits,
-      cycle.config.timeWeightMultiplier,
-      cycle.config.boostWeightPerUnit,
+      rotationConfig.timeWeightMultiplier,
+      rotationConfig.boostWeightPerUnit,
     );
-    return { weights, boostUnits };
+    const eligibleIds = new Set(eligible.map((pack) => pack.id));
+    const boostIds = boosts
+      .filter((boost) => eligibleIds.has(boost.packId))
+      .map((boost) => boost.id);
+    return { weights, boostUnits, boostIds };
   }
 
   private async getLastRotation() {
