@@ -17,6 +17,7 @@ import {
 import { discordId, mcUsername } from "@/utils/zod-schemas";
 import type { Player, PlayerFilters } from "@createrington/shared/db";
 import { violationFilterInput, violationRequirement } from "./violation-filter";
+import { requireOwnerForAdminTarget } from "./admin-target";
 
 export const playersRouter = router({
   stats: adminProcedure
@@ -187,6 +188,14 @@ export const playersRouter = router({
         throw trpcError.badRequest("At least one field to update is required");
       }
 
+      if (input.discordId) {
+        await requireOwnerForAdminTarget(
+          input.id,
+          ctx.user.discordId,
+          "change the Discord ID of",
+        );
+      }
+
       const updates: { minecraftUsername?: string; discordId?: string } = {};
       if (input.minecraftUsername)
         updates.minecraftUsername = input.minecraftUsername;
@@ -217,6 +226,7 @@ export const playersRouter = router({
       }),
     )
     .mutation(async ({ input, ctx }) => {
+      await requireOwnerForAdminTarget(input.id, ctx.user.discordId, "delete");
       await playerDeletionService.delete(input.id, {
         actor: {
           type: "admin",
