@@ -153,7 +153,18 @@ export class DonationService {
 
   /** Cancels every live subscription of the player immediately (not at period end); ones Stripe refuses are logged and reported to the admins. */
   async cancelAllSubscriptions(discordId: string): Promise<void> {
-    const donations = await Q.donation.getLatestPerSubscription(discordId);
+    let donations: Donation[];
+    try {
+      donations = await Q.donation.getLatestPerSubscription(discordId);
+    } catch (error) {
+      logger.error(
+        `Failed to look up the subscriptions of deleted player ${discordId}:`,
+        error,
+      );
+      await this.alertUncancelledSubscriptions(discordId, null);
+      return;
+    }
+
     const failed: string[] = [];
 
     for (const donation of donations) {
@@ -190,12 +201,18 @@ export class DonationService {
 
   private async alertUncancelledSubscriptions(
     discordId: string,
-    subscriptionIds: string[],
+    subscriptionIds: string[] | null,
   ): Promise<void> {
-    const embed = EmbedPresets.error(
-      "Subscription Still Billing",
-      `A deleted player (${userMention(discordId)}, \`${discordId}\`) still has a live Stripe subscription that could not be cancelled. Cancel it in the Stripe dashboard:\n${subscriptionIds.map((id) => `- \`${id}\``).join("\n")}`,
-    );
+    const player = `${userMention(discordId)}, \`${discordId}\``;
+    const embed = subscriptionIds
+      ? EmbedPresets.error(
+          "Subscription Still Billing",
+          `A deleted player (${player}) still has a live Stripe subscription that could not be cancelled. Cancel it in the Stripe dashboard:\n${subscriptionIds.map((id) => `- \`${id}\``).join("\n")}`,
+        )
+      : EmbedPresets.error(
+          "Subscriptions Not Checked",
+          `The subscriptions of a deleted player (${player}) could not be looked up, so none were cancelled. Check the Stripe dashboard for a live subscription of theirs and cancel it.`,
+        );
 
     try {
       await Discord.Messages.send({

@@ -328,6 +328,22 @@ describe("DonationService.cancelAllSubscriptions", () => {
     expect(messages.send).not.toHaveBeenCalled();
   });
 
+  it("alerts the admins when the player's subscriptions cannot be looked up", async () => {
+    donation.getLatestPerSubscription.mockRejectedValue(
+      new Error("connection terminated"),
+    );
+    const cancel = vi.fn();
+    const donations = withStripe({ subscriptions: { cancel } });
+
+    await donations.cancelAllSubscriptions("user-1");
+
+    expect(cancel).not.toHaveBeenCalled();
+    expect(messages.send).toHaveBeenCalledOnce();
+    expect(messages.send.mock.calls[0][0].embeds.description).toContain(
+      "user-1",
+    );
+  });
+
   it("still cancels the others and alerts the admins when Stripe refuses one", async () => {
     storedSubscriptions("sub_a", "sub_b");
     const cancel = vi.fn(async (id: string) => {
