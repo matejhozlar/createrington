@@ -171,6 +171,18 @@ export const waitlistMocks: Record<
         Object.assign(found, data);
         return found;
       },
+      updateAll: async (
+        data: Partial<Entry>,
+        filters: { id: number; status?: Entry["status"] },
+      ) => {
+        const matched = state.entries.filter(
+          (e) =>
+            e.id === filters.id &&
+            (filters.status === undefined || e.status === filters.status),
+        );
+        for (const entry of matched) Object.assign(entry, data);
+        return matched.length;
+      },
       createAndReturn: async (data: Partial<Entry>) => {
         if (state.entries.some((e) => e.discordId === data.discordId)) {
           throw new state.UniqueViolationError("duplicate key");

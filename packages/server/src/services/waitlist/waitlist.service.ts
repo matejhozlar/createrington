@@ -264,10 +264,14 @@ export class WaitlistService {
     return { entry: result.entry, reserved: result.reserved };
   }
 
-  /** Return a slot reserved by a direct registration attempt that failed before a player row was written. */
+  /** Return a slot reserved by a direct registration attempt that failed before a player row was written; a no-op once the entry has left `promoted`. */
   async releaseReservation(entryId: number): Promise<void> {
-    await expireEntry(entryId, "registration attempt failed before completing");
-    waitlistPromotionService.schedulePromotionPass();
+    const released = await expireEntry(
+      entryId,
+      "registration attempt failed before completing",
+      { onlyFrom: "promoted" },
+    );
+    if (released) waitlistPromotionService.schedulePromotionPass();
   }
 }
 

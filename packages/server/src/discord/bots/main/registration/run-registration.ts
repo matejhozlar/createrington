@@ -17,6 +17,7 @@ import { minecraftRcon, WhitelistAction } from "@/utils/rcon";
 import { getSkinApiClient } from "@/services/skin-api/client";
 import { BadRequestError, errorMessage } from "@/errors";
 import { MC_USERNAME_REGEX } from "@/utils/zod-schemas";
+import { createKeyedLock } from "@/utils/keyed-lock";
 import { SkinApiError, type ResolvedPlayer } from "createrington-skin-api";
 import type { GuildMember, GuildTextBasedChannel } from "discord.js";
 import type { WaitlistEntry } from "@createrington/shared/db";
@@ -37,6 +38,33 @@ function randomDelay(min = 1000, max = 3000): Promise<void> {
 
 class RegistrationError extends Error {}
 
+const withRegistrationLock = createKeyedLock<string>();
+
+interface WhitelistedAccount {
+  name: string;
+  uuid: string;
+}
+
+async function undoWhitelist({
+  name,
+  uuid,
+}: WhitelistedAccount): Promise<void> {
+  try {
+    if (await Q.player.exists({ minecraftUuid: uuid })) {
+      logger.warn(
+        `Keeping ${name} on the whitelist after the failed registration: a player already owns ${uuid}`,
+      );
+      return;
+    }
+    await minecraftRcon.whitelistAll(WhitelistAction.REMOVE, name);
+  } catch (error) {
+    logger.error(
+      `Could not remove ${name} from the whitelist after the failed registration:`,
+      error,
+    );
+  }
+}
+
 interface RegistrationStep {
   name: string;
   completed: boolean;
@@ -56,7 +84,7 @@ export interface RegistrationResult {
   errorMessage?: string;
 }
 
-export async function runRegistration(params: {
+interface RegistrationParams {
   member: GuildMember;
   discordId: string;
   userTag: string;
@@ -64,7 +92,17 @@ export async function runRegistration(params: {
   mcName: string;
   channel: GuildTextBasedChannel | null;
   render: RegistrationRenderer;
-}): Promise<RegistrationResult> {
+}
+
+export function runRegistration(
+  params: RegistrationParams,
+): Promise<RegistrationResult> {
+  return withRegistrationLock(params.discordId, () => register(params));
+}
+
+async function register(
+  params: RegistrationParams,
+): Promise<RegistrationResult> {
   const { member, discordId, userTag, username, mcName, channel, render } =
     params;
   const verifyChannel = isVerificationChannel(channel) ? channel : null;
@@ -99,9 +137,16 @@ export async function runRegistration(params: {
 
   let entry: WaitlistEntry | null = null;
   let reservedHere = false;
+  let whitelisted: WhitelistedAccount | null = null;
 
   try {
     await randomDelay();
+    if (await Q.player.exists({ discordId })) {
+      throw new RegistrationError(
+        "This Discord account is already registered.",
+      );
+    }
+
     entry = await Q.waitlist.entry.find({ discordId });
 
     if (entry?.status === "queued") {
@@ -171,6 +216,7 @@ export async function runRegistration(params: {
     );
 
     await randomDelay();
+    whitelisted = { name: correctName, uuid };
     try {
       await minecraftRcon.whitelistAll(WhitelistAction.ADD, correctName);
     } catch (error) {
@@ -202,6 +248,7 @@ export async function runRegistration(params: {
       );
     });
     reservedHere = false;
+    whitelisted = null;
 
     await updateProgressEmbed(entryId);
 
@@ -266,6 +313,8 @@ export async function runRegistration(params: {
         : GENERIC_FAILURE_MESSAGE;
     const failedStep = steps[currentStep]?.name ?? "Unknown step";
     logger.error("registration failed:", error);
+
+    if (whitelisted) await undoWhitelist(whitelisted);
 
     if (reservedHere && entry) {
       try {

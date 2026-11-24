@@ -42,7 +42,10 @@ vi.mock("@/errors", async () =>
 );
 
 import { WaitlistService } from "@/services/waitlist/waitlist.service";
-import { WaitlistPromotionService } from "@/services/waitlist/promotion.service";
+import {
+  WaitlistPromotionService,
+  waitlistPromotionService,
+} from "@/services/waitlist/promotion.service";
 import {
   fakeEntry,
   resetWaitlistState,
@@ -157,5 +160,35 @@ describe("WaitlistService.reserveForDirectRegistration", () => {
     expect(promotedCount).toBe(1);
     expect(promoted + (reservation ? 1 : 0)).toBe(1);
     expect(state.free).toBe(0);
+  });
+});
+
+describe("WaitlistService.releaseReservation", () => {
+  it("expires the entry a failed registration reserved and runs a promotion pass", async () => {
+    const entry = fakeEntry({ discordId: "u1", status: "promoted" });
+    state.entries.push(entry);
+    const pass = vi
+      .spyOn(waitlistPromotionService, "schedulePromotionPass")
+      .mockImplementation(() => {});
+
+    await new WaitlistService().releaseReservation(entry.id);
+
+    expect(entry.status).toBe("expired");
+    expect(pass).toHaveBeenCalledOnce();
+    pass.mockRestore();
+  });
+
+  it("leaves an entry alone that another registration already completed", async () => {
+    const entry = fakeEntry({ discordId: "u1", status: "registered" });
+    state.entries.push(entry);
+    const pass = vi
+      .spyOn(waitlistPromotionService, "schedulePromotionPass")
+      .mockImplementation(() => {});
+
+    await new WaitlistService().releaseReservation(entry.id);
+
+    expect(entry.status).toBe("registered");
+    expect(pass).not.toHaveBeenCalled();
+    pass.mockRestore();
   });
 });
