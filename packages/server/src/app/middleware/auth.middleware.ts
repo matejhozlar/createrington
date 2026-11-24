@@ -21,6 +21,14 @@ export function authenticatedUser(req: Request): JWTPayload {
   return req.user;
 }
 
+export function presentedAccessToken(req: Request): string {
+  const token = extractAccessToken(req);
+  if (!token) {
+    throw new UnauthorizedError("Authentication required");
+  }
+  return token;
+}
+
 export const authenticate = (
   req: Request,
   res: Response,
