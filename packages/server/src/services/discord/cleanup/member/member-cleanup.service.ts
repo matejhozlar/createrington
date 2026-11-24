@@ -2,11 +2,18 @@ import { Q } from "@/db";
 import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
 import { playerDeletionService } from "@/services/player/deletion";
+import {
+  cancelDeparture,
+  checkDeparture,
+} from "@/services/discord/cleanup/member/departure";
 
 /**
  * Sweeps player data for Discord members who left more than 30 days ago.
- * Runs an immediate pass on init, then repeats every 6 hours. For each
- * expired row it deletes the player record, removes the player from every
+ * Runs an immediate pass on init, then repeats every 6 hours. Each expired
+ * row is re-checked first: a member back in the guild, or a player now
+ * registered to another Discord account, cancels the row instead; a failed
+ * Discord lookup skips it until the next pass. Otherwise it deletes the
+ * player record, removes the player from every
  * Minecraft whitelist via RCON, stamps the departed_member row as deleted,
  * and updates the original administration notification embed. RCON failures
  * during whitelist removal are logged but do not abort the rest of the
@@ -57,6 +64,20 @@ export class MemberCleanupService {
 
       for (const member of expiredMembers) {
         try {
+          const check = await checkDeparture(member);
+
+          if (check.action === "unavailable") {
+            logger.warn(
+              `Skipping auto-deletion of ${member.minecraftUsername}: could not confirm they are still gone from Discord`,
+            );
+            continue;
+          }
+
+          if (check.action === "cancel") {
+            await cancelDeparture(member, check.reason);
+            continue;
+          }
+
           await playerDeletionService.delete(
             { minecraftUuid: member.minecraftUuid },
             {

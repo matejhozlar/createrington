@@ -1,13 +1,36 @@
 import { Q } from "@/db";
 import { isAdmin } from "@/discord/utils/admin-guard";
 import { EmbedPresets } from "@/discord/embeds";
-import { replyError } from "@/discord/utils/interaction-reply";
 import { playerDeletionService } from "@/services/player/deletion";
+import {
+  cancelDeparture,
+  checkDeparture,
+  type CancelReason,
+} from "@/services/discord/cleanup/member/departure";
 import { type ButtonInteraction, MessageFlags } from "discord.js";
 import type { ButtonModule } from "@/discord/bots/common/loaders/component-loader";
 import { CustomIds } from "@/discord/custom-ids";
 
 const permissionDeniedMessage = "You must be an admin to do that.";
+
+const CANCEL_MESSAGES: Record<CancelReason, (username: string) => string> = {
+  returned: (username) =>
+    `**${username}** is back in the Discord server, so they were not deleted.`,
+  relinked: (username) =>
+    `**${username}** is now registered to a different Discord account, so they were not deleted.`,
+};
+
+async function followUpEmbed(
+  interaction: ButtonInteraction,
+  kind: "error" | "info",
+  title: string,
+  description: string,
+): Promise<void> {
+  await interaction.followUp({
+    embeds: [EmbedPresets[kind](title, description).build()],
+    flags: MessageFlags.Ephemeral,
+  });
+}
 
 async function checkPermission(
   interaction: ButtonInteraction,
@@ -40,13 +63,36 @@ async function handleDeleteNow(
     id: departedId,
   });
 
-  if (!departed) {
-    await replyError(
+  if (!departed || departed.deletedAt) {
+    await followUpEmbed(
       interaction,
+      "error",
       "Not Found",
-      "This member has already been deleted or the record doesn't exist.",
+      "This member has already been deleted, returned, or the record doesn't exist.",
     );
+    return;
+  }
 
+  const check = await checkDeparture(departed);
+
+  if (check.action === "unavailable") {
+    await followUpEmbed(
+      interaction,
+      "error",
+      "Discord Unavailable",
+      "Could not confirm the member is still gone from Discord. Try again in a moment.",
+    );
+    return;
+  }
+
+  if (check.action === "cancel") {
+    await cancelDeparture(departed, check.reason);
+    await followUpEmbed(
+      interaction,
+      "info",
+      "Departure Cancelled",
+      CANCEL_MESSAGES[check.reason](departed.minecraftUsername),
+    );
     return;
   }
 
@@ -62,6 +108,7 @@ async function handleDeleteNow(
         username: adminUsername ?? "Unknown",
       },
       reason: "Departed member deleted via admin button",
+      ignoreMissing: true,
     },
   );
 
