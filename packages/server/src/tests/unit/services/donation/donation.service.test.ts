@@ -2,7 +2,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import Stripe from "stripe";
 import type { Client } from "discord.js";
 
-const { donation } = vi.hoisted(() => ({
+const { donation, messages } = vi.hoisted(() => ({
+  messages: { send: vi.fn() },
   donation: {
     find: vi.fn(),
     createAndReturn: vi.fn(),
@@ -19,6 +20,22 @@ vi.mock("@/config", () => ({
 }));
 
 vi.mock("@/db", () => ({ Q: { donation } }));
+
+vi.mock("@/discord/constants", () => ({
+  Discord: {
+    Channels: { administration: { NOTIFICATIONS: "900" } },
+    Roles: { ADMIN: "admin-role" },
+    Messages: messages,
+  },
+}));
+
+vi.mock("@/discord/embeds", () => ({
+  EmbedPresets: {
+    error: (title: string, description?: string) => ({
+      build: () => ({ title, description }),
+    }),
+  },
+}));
 
 vi.mock("@/discord/constants/roles", () => ({
   DiscordRolesNamespace: { SUPPORTER: "supporter-role" },
@@ -123,7 +140,7 @@ describe("DonationService.handleSessionCompleted", () => {
 });
 
 type StripeStub = {
-  subscriptions?: { retrieve?: unknown; update?: unknown };
+  subscriptions?: { retrieve?: unknown; update?: unknown; cancel?: unknown };
   checkout?: { sessions: { create: unknown } };
 };
 
@@ -281,6 +298,75 @@ describe("DonationService.cancelSubscription", () => {
     expect(update).toHaveBeenCalledWith("sub_old", {
       cancel_at_period_end: true,
     });
+  });
+});
+
+describe("DonationService.cancelAllSubscriptions", () => {
+  beforeEach(() => {
+    donation.getLatestPerSubscription.mockReset();
+    messages.send.mockReset().mockResolvedValue(undefined);
+  });
+
+  it("cancels every live subscription of the player immediately", async () => {
+    storedSubscriptions("sub_a", "sub_b", "sub_ended", "sub_gone");
+    const cancel = vi.fn().mockResolvedValue({});
+    const donations = withStripe({
+      subscriptions: {
+        retrieve: stripeSubscriptions({
+          sub_a: { status: "active" },
+          sub_b: { status: "past_due", cancel_at_period_end: true },
+          sub_ended: { status: "canceled" },
+        }),
+        cancel,
+      },
+    });
+
+    await donations.cancelAllSubscriptions("user-1");
+
+    expect(donation.getLatestPerSubscription).toHaveBeenCalledWith("user-1");
+    expect(cancel.mock.calls.map(([id]) => id)).toEqual(["sub_a", "sub_b"]);
+    expect(messages.send).not.toHaveBeenCalled();
+  });
+
+  it("alerts the admins when the player's subscriptions cannot be looked up", async () => {
+    donation.getLatestPerSubscription.mockRejectedValue(
+      new Error("connection terminated"),
+    );
+    const cancel = vi.fn();
+    const donations = withStripe({ subscriptions: { cancel } });
+
+    await donations.cancelAllSubscriptions("user-1");
+
+    expect(cancel).not.toHaveBeenCalled();
+    expect(messages.send).toHaveBeenCalledOnce();
+    expect(messages.send.mock.calls[0][0].embeds.description).toContain(
+      "user-1",
+    );
+  });
+
+  it("still cancels the others and alerts the admins when Stripe refuses one", async () => {
+    storedSubscriptions("sub_a", "sub_b");
+    const cancel = vi.fn(async (id: string) => {
+      if (id === "sub_a") throw new Error("Stripe is down");
+      return {};
+    });
+    const donations = withStripe({
+      subscriptions: {
+        retrieve: stripeSubscriptions({
+          sub_a: { status: "active" },
+          sub_b: { status: "active" },
+        }),
+        cancel,
+      },
+    });
+
+    await donations.cancelAllSubscriptions("user-1");
+
+    expect(cancel).toHaveBeenCalledWith("sub_b");
+    expect(messages.send).toHaveBeenCalledOnce();
+    expect(messages.send.mock.calls[0][0].embeds.description).toContain(
+      "sub_a",
+    );
   });
 });
 

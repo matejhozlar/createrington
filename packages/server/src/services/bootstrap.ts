@@ -368,6 +368,10 @@ export function registerServices(): void {
       }
       await waitlistPromotionService.promoteEligible();
     });
+    playerDeletionService.onDeleted(async (player) => {
+      const donations = await container.getOptional(Services.DONATION_SERVICE);
+      await donations?.cancelAllSubscriptions(player.discordId);
+    });
     if (isPartyPurgeAllowed()) {
       playerDeletionService.onDeleted((player, actor) =>
         partyPurgeService.removePlayer(player, actor),

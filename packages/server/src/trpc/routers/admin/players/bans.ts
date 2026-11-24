@@ -7,6 +7,7 @@ import {
   BAN_REASON_MAX_LENGTH,
 } from "@createrington/shared/admin-reason";
 import { id, playerId } from "@/trpc/utils";
+import { requireOwnerForAdminTarget } from "./admin-target";
 
 const banMetadata = z
   .record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()]))
@@ -55,6 +56,7 @@ export const bansRouter = router({
     )
     .mutation(async ({ input, ctx }) => {
       const { id: identifier, ...details } = input;
+      await requireOwnerForAdminTarget(identifier, ctx.user.discordId, "ban");
       const ban = await playerBanService.issueTemporary(
         identifier,
         details,
@@ -81,6 +83,7 @@ export const bansRouter = router({
     )
     .mutation(async ({ input, ctx }) => {
       const { id: identifier, ...details } = input;
+      await requireOwnerForAdminTarget(identifier, ctx.user.discordId, "ban");
       const ban = await playerBanService.issuePermanent(
         identifier,
         details,
