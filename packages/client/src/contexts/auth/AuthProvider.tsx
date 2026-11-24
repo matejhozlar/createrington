@@ -91,6 +91,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setAccessToken(null);
     writePlayerHint(null);
     setUser(null);
+    setRefreshFailures(0);
   }, []);
 
   const logout = useCallback(async () => {
