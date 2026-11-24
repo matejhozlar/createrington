@@ -3,11 +3,20 @@ import type { Client } from "discord.js";
 import config from "@/config";
 import { Q } from "@/db";
 import { UniqueViolationError } from "@/db/utils";
+import { ConflictError } from "@/errors";
 import { DiscordRolesNamespace as DiscordRoles } from "@/discord/constants/roles";
 import { RoleManager } from "@/discord/utils/roles/role-manager";
 import type { Donation, DonationType } from "@createrington/shared/db";
 
 const SESSION_ID_CONSTRAINT = "donation_stripe_session_id_unique";
+
+const ENDED_SUBSCRIPTION_STATUSES: ReadonlySet<Stripe.Subscription.Status> =
+  new Set(["canceled", "incomplete_expired"]);
+
+interface LiveSubscription {
+  donation: Donation;
+  subscription: Stripe.Subscription;
+}
 
 function customerId(subscription: Stripe.Subscription): string {
   const { customer } = subscription;
@@ -17,7 +26,11 @@ function customerId(subscription: Stripe.Subscription): string {
 /**
  * Stripe-backed donation flow: creates checkout sessions for one-time and monthly
  * support tiers, processes webhook events into donation records, and manages active
- * subscriptions (status lookup, cancel-at-period-end, reactivate, MRR stats). Supporter
+ * subscriptions (status lookup, cancel-at-period-end, reactivate, MRR stats). A player
+ * has at most one monthly subscription: a second monthly checkout is refused while any
+ * stored subscription of theirs is still live in Stripe, and the lookup, cancel and
+ * reactivate calls resolve the subscription across all of them, preferring one that is
+ * still renewing. Supporter
  * role assignment is best-effort; a missing role or absent guild member is logged but
  * does not block the donation from completing. Webhook handlers are idempotent against
  * replays via the `stripeSessionId` lookup, and its unique constraint turns a concurrent
@@ -30,7 +43,7 @@ export class DonationService {
     this.stripe = new Stripe(config.stripe.secretKey);
   }
 
-  /** Opens a Stripe checkout session in payment or subscription mode and returns the hosted URL. */
+  /** Opens a Stripe checkout session in payment or subscription mode and returns the hosted URL; throws `ConflictError` for a monthly checkout while a subscription is live. */
   async createCheckoutSession(opts: {
     discordId: string;
     type: DonationType;
@@ -39,6 +52,12 @@ export class DonationService {
     cancelUrl: string;
   }): Promise<{ sessionId: string; url: string }> {
     const isMonthly = opts.type === "monthly";
+
+    if (isMonthly && (await this.findLiveSubscription(opts.discordId))) {
+      throw new ConflictError(
+        "You already have a monthly subscription. Cancel it and wait for it to end before starting a new one.",
+      );
+    }
 
     const session = await this.stripe.checkout.sessions.create({
       mode: isMonthly ? "subscription" : "payment",
@@ -80,51 +99,27 @@ export class DonationService {
     currentPeriodEnd: Date;
     cancelAtPeriodEnd: boolean;
   } | null> {
-    const donation = await Q.donation.findActiveSubscription(discordId);
-    if (!donation?.stripeSubscriptionId) return null;
+    const live = await this.findLiveSubscription(discordId);
+    if (!live) return null;
 
-    try {
-      const sub = await this.stripe.subscriptions.retrieve(
-        donation.stripeSubscriptionId,
-        { expand: ["latest_invoice"] },
-      );
-
-      if (sub.status === "canceled") return null;
-
-      const periodEnd = this.getSubscriptionPeriodEnd(sub);
-
-      return {
-        subscriptionId: sub.id,
-        amountCents: donation.amountCents,
-        currentPeriodEnd: periodEnd,
-        cancelAtPeriodEnd: sub.cancel_at_period_end,
-      };
-    } catch (error) {
-      if (
-        error instanceof Stripe.errors.StripeError &&
-        error.code === "resource_missing"
-      ) {
-        return null;
-      }
-      logger.error(
-        `Failed to look up Stripe subscription ${donation.stripeSubscriptionId} for discord ${discordId}:`,
-        error,
-      );
-      throw error;
-    }
+    return {
+      subscriptionId: live.subscription.id,
+      amountCents: live.donation.amountCents,
+      currentPeriodEnd: this.getSubscriptionPeriodEnd(live.subscription),
+      cancelAtPeriodEnd: live.subscription.cancel_at_period_end,
+    };
   }
 
   /** Marks the subscription to cancel at period end; perks remain until the date returned. */
   async cancelSubscription(
     discordId: string,
   ): Promise<{ cancelAt: Date } | null> {
-    const donation = await Q.donation.findActiveSubscription(discordId);
-    if (!donation?.stripeSubscriptionId) return null;
+    const live = await this.findLiveSubscription(discordId);
+    if (!live) return null;
 
-    const sub = await this.stripe.subscriptions.update(
-      donation.stripeSubscriptionId,
-      { cancel_at_period_end: true },
-    );
+    const sub = await this.stripe.subscriptions.update(live.subscription.id, {
+      cancel_at_period_end: true,
+    });
 
     logger.info(
       `Subscription ${sub.id} set to cancel at period end for discord ${discordId}`,
@@ -139,22 +134,66 @@ export class DonationService {
 
   /** Clears `cancel_at_period_end` on a still-active subscription. Returns false if already ended. */
   async reactivateSubscription(discordId: string): Promise<boolean> {
-    const donation = await Q.donation.findActiveSubscription(discordId);
-    if (!donation?.stripeSubscriptionId) return false;
+    const live = await this.findLiveSubscription(discordId);
+    if (!live?.subscription.cancel_at_period_end) return false;
 
-    const sub = await this.stripe.subscriptions.retrieve(
-      donation.stripeSubscriptionId,
-    );
-
-    if (sub.status === "canceled" || !sub.cancel_at_period_end) return false;
-
-    await this.stripe.subscriptions.update(donation.stripeSubscriptionId, {
+    await this.stripe.subscriptions.update(live.subscription.id, {
       cancel_at_period_end: false,
     });
 
-    logger.info(`Subscription ${sub.id} reactivated for discord ${discordId}`);
+    logger.info(
+      `Subscription ${live.subscription.id} reactivated for discord ${discordId}`,
+    );
 
     return true;
+  }
+
+  private async findLiveSubscription(
+    discordId: string,
+  ): Promise<LiveSubscription | null> {
+    const donations = await Q.donation.getLatestPerSubscription(discordId);
+    const resolved = await Promise.all(
+      donations.map(async (donation) => {
+        const subscription = await this.retrieveSubscription(
+          donation.stripeSubscriptionId!,
+          discordId,
+        );
+        return subscription &&
+          !ENDED_SUBSCRIPTION_STATUSES.has(subscription.status)
+          ? { donation, subscription }
+          : null;
+      }),
+    );
+    const live = resolved.filter((entry) => entry !== null);
+
+    return (
+      live.find((entry) => !entry.subscription.cancel_at_period_end) ??
+      live[0] ??
+      null
+    );
+  }
+
+  private async retrieveSubscription(
+    subscriptionId: string,
+    discordId: string,
+  ): Promise<Stripe.Subscription | null> {
+    try {
+      return await this.stripe.subscriptions.retrieve(subscriptionId, {
+        expand: ["latest_invoice"],
+      });
+    } catch (error) {
+      if (
+        error instanceof Stripe.errors.StripeError &&
+        error.code === "resource_missing"
+      ) {
+        return null;
+      }
+      logger.error(
+        `Failed to look up Stripe subscription ${subscriptionId} for discord ${discordId}:`,
+        error,
+      );
+      throw error;
+    }
   }
 
   /** Live subscription stats (active, cancelling, MRR cents), matched against one paged Stripe subscription listing. */
@@ -178,7 +217,11 @@ export class DonationService {
 
     for await (const sub of this.stripe.subscriptions.list({ limit: 100 })) {
       const amountCents = amountBySubscription.get(sub.id);
-      if (amountCents === undefined || sub.status === "canceled") continue;
+      if (
+        amountCents === undefined ||
+        ENDED_SUBSCRIPTION_STATUSES.has(sub.status)
+      )
+        continue;
 
       if (sub.cancel_at_period_end) {
         cancellingCount++;
