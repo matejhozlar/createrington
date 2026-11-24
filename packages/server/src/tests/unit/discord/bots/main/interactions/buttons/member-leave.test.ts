@@ -62,7 +62,11 @@ function givenPlayers(options: {
   playerFind.mockImplementation(
     async (filter: { minecraftUuid?: string; discordId?: string }) => {
       if (filter.minecraftUuid === DEPARTED.minecraftUuid) {
-        const owner = options.departedOwner ?? DEPARTED_DISCORD_ID;
+        const owner =
+          "departedOwner" in options
+            ? options.departedOwner
+            : DEPARTED_DISCORD_ID;
+        if (!owner) return null;
         return { discordId: owner, minecraftUuid: DEPARTED.minecraftUuid };
       }
       if (filter.discordId === ADMIN_DISCORD_ID) return options.admin ?? null;
@@ -194,6 +198,23 @@ describe("departed:delete-now button", () => {
     expect(messages.edit.mock.calls[0][0].embeds.data.title).toBe(
       "Departure Cancelled",
     );
+  });
+
+  it("clears a row whose player was already deleted", async () => {
+    givenPlayers({ departedOwner: null });
+    const { interaction, edit } = interactionStub();
+
+    await execute(interaction);
+
+    expect(deletePlayer).toHaveBeenCalledWith(
+      { minecraftUuid: DEPARTED.minecraftUuid },
+      expect.objectContaining({ ignoreMissing: true }),
+    );
+    expect(leaveUpdate).toHaveBeenCalledWith(
+      { id: DEPARTED.id },
+      { deletedAt: expect.any(Date) },
+    );
+    expect(edit.mock.calls[0][0].components).toEqual([]);
   });
 
   it("leaves the row active when discord cannot be reached", async () => {

@@ -108,6 +108,7 @@ async function handleDeleteNow(
         username: adminUsername ?? "Unknown",
       },
       reason: "Departed member deleted via admin button",
+      ignoreMissing: true,
     },
   );
 
