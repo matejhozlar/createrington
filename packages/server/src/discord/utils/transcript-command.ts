@@ -5,6 +5,7 @@ import {
   MessageFlags,
   type SlashCommandBuilder,
   type SlashCommandOptionsOnlyBuilder,
+  type User,
   channelMention,
   userMention,
 } from "discord.js";
@@ -21,6 +22,28 @@ import {
 } from "@/discord/utils/channel-transcript";
 
 const DEFAULT_MESSAGE_COUNT = 50;
+
+const RANGE_ERRORS = {
+  conflict: [
+    "Pick one option",
+    "Use `messages` to read the latest messages (or those up to `last_message`), or `first_message` to read from a linked message on.",
+  ],
+  invalidLink: [
+    "Invalid message link",
+    "Use a link to a message in this channel, or its ID, for `first_message` and `last_message`.",
+  ],
+  reversed: [
+    "Messages out of order",
+    "`first_message` has to be older than `last_message`.",
+  ],
+} as const;
+
+interface MessageRange {
+  count: number;
+  firstId?: string;
+  lastId?: string;
+  author: User | null;
+}
 
 interface MessageSelection {
   messages: Message[];
@@ -50,17 +73,29 @@ export function addTranscriptOptions(
       option
         .setName("messages")
         .setDescription(
-          `How many recent messages to read (default ${DEFAULT_MESSAGE_COUNT}, max ${TRANSCRIPT_MAX_MESSAGES})`,
+          `How many messages to read, ending now or at last_message (default ${DEFAULT_MESSAGE_COUNT}, max ${TRANSCRIPT_MAX_MESSAGES})`,
         )
         .setMinValue(1)
         .setMaxValue(TRANSCRIPT_MAX_MESSAGES),
     )
     .addStringOption((option) =>
       option
-        .setName("from")
+        .setName("first_message")
         .setDescription(
-          "Link to the first message to read; reads from there to now instead",
+          "Link to the first message to read; reads from there up to last_message or now",
         ),
+    )
+    .addStringOption((option) =>
+      option
+        .setName("last_message")
+        .setDescription(
+          "Link to the last message to read; reads up to it instead of up to now",
+        ),
+    )
+    .addUserOption((option) =>
+      option
+        .setName("user")
+        .setDescription("Only read messages from this user"),
     )
     .addStringOption((option) =>
       option.setName("note").setDescription(noteDescription).setMaxLength(1000),
@@ -75,46 +110,68 @@ function resolveChannel(
   return channel;
 }
 
-async function readMessages(
+function readRange(
   interaction: ChatInputCommandInteraction,
+  channelId: string,
+): MessageRange | keyof typeof RANGE_ERRORS {
+  const first = interaction.options.getString("first_message");
+  const last = interaction.options.getString("last_message");
+  const count = interaction.options.getInteger("messages");
+  if (first && count !== null) return "conflict";
+  const firstId = first ? parseMessageReference(first, channelId) : null;
+  const lastId = last ? parseMessageReference(last, channelId) : null;
+  if ((first && !firstId) || (last && !lastId)) return "invalidLink";
+  if (firstId && lastId && BigInt(firstId) > BigInt(lastId)) return "reversed";
+  return {
+    count: count ?? DEFAULT_MESSAGE_COUNT,
+    ...(firstId && { firstId }),
+    ...(lastId && { lastId }),
+    author: interaction.options.getUser("user"),
+  };
+}
+
+async function readMessages(
   channel: GuildTextBasedChannel,
-): Promise<MessageSelection | null> {
-  const from = interaction.options.getString("from");
-  if (!from) {
-    const count =
-      interaction.options.getInteger("messages") ?? DEFAULT_MESSAGE_COUNT;
-    const messages = await fetchRecentMessages(channel, count);
-    return { messages, keep: "newest", hasMore: false };
+  range: MessageRange,
+): Promise<MessageSelection> {
+  const filter = { untilId: range.lastId, authorId: range.author?.id };
+  if (!range.firstId) {
+    const fetched = await fetchRecentMessages(channel, range.count, filter);
+    return { ...fetched, keep: "newest" };
   }
-  const startId = parseMessageReference(from, channel.id);
-  if (!startId) return null;
-  const { messages, hasMore } = await fetchMessagesSince(
+  const fetched = await fetchMessagesSince(
     channel,
-    startId,
+    range.firstId,
     TRANSCRIPT_MAX_MESSAGES,
+    filter,
   );
-  return { messages, keep: "oldest", hasMore };
+  return { ...fetched, keep: "oldest" };
 }
 
 function readingSummary(
   selection: MessageSelection,
   messageCount: number,
+  author: User | null,
 ): string {
   const leftOut = selection.messages.length - messageCount;
+  const from = author ? ` from ${userMention(author.id)}` : "";
   const skipped =
     leftOut > 0
       ? ` (${leftOut} ${selection.keep === "newest" ? "older" : "newer"} or empty ones left out)`
       : "";
   const capped = selection.hasMore
-    ? ` Only the first ${TRANSCRIPT_MAX_MESSAGES} messages after the link were read.`
+    ? selection.keep === "oldest"
+      ? ` Only the first ${TRANSCRIPT_MAX_MESSAGES} messages after the link were read.`
+      : ` Only ${TRANSCRIPT_MAX_MESSAGES} messages back were searched.`
     : "";
-  return `Claude is reading ${messageCount} messages${skipped}.${capped} This usually takes a minute or two.`;
+  return `Claude is reading ${messageCount} messages${from}${skipped}.${capped} This usually takes a minute or two.`;
 }
 
 /**
- * Reads the messages a transcript command points at (its `messages`, `from`
- * and `note` options) and defers the reply as ephemeral. Resolves null after
- * answering the interaction itself when there is nothing usable to read.
+ * Reads the messages a transcript command points at (its `messages`,
+ * `first_message`, `last_message`, `user` and `note` options) and defers the
+ * reply as ephemeral. Resolves null after answering the interaction itself
+ * when there is nothing usable to read.
  */
 export async function captureDiscussion(
   interaction: ChatInputCommandInteraction,
@@ -129,37 +186,24 @@ export async function captureDiscussion(
     return null;
   }
 
-  if (
-    interaction.options.getString("from") &&
-    interaction.options.getInteger("messages") !== null
-  ) {
-    await replyError(
-      interaction,
-      "Pick one option",
-      "Use `messages` to read the latest messages, or `from` to read from a linked message up to now.",
-    );
+  const range = readRange(interaction, channel.id);
+  if (typeof range === "string") {
+    const [title, description] = RANGE_ERRORS[range];
+    await replyError(interaction, title, description);
     return null;
   }
 
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-  const selection = await readMessages(interaction, channel).catch(
+  const selection = await readMessages(channel, range).catch(
     (error: unknown) => {
       throw new InteractionError(
         "Could not read messages",
-        "Check that the link points to a message in this channel and that the bot can read its history.",
+        "Check that the links point to messages in this channel and that the bot can read its history.",
         { cause: error },
       );
     },
   );
-  if (!selection) {
-    await replyError(
-      interaction,
-      "Invalid message link",
-      "Use a link to a message in this channel, or its ID.",
-    );
-    return null;
-  }
 
   const transcript = buildChannelTranscript(selection.messages, {
     keep: selection.keep,
@@ -168,7 +212,9 @@ export async function captureDiscussion(
     await replyError(
       interaction,
       "Nothing to read",
-      "There are no messages with content to send.",
+      range.author
+        ? `${userMention(range.author.id)} has no messages with content in that range.`
+        : "There are no messages with content to send.",
     );
     return null;
   }
@@ -186,7 +232,7 @@ export async function captureDiscussion(
       }),
       ...(note && { note }),
     },
-    summary: readingSummary(selection, transcript.messageCount),
+    summary: readingSummary(selection, transcript.messageCount, range.author),
   };
 }
 
