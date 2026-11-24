@@ -1,6 +1,9 @@
 import { useMutation } from "@tanstack/react-query";
 import { queryClient, trpc } from "@/lib/trpc";
-import type { PlanCreateAction, PlanUpdateAction } from "../actions";
+import type {
+  PlanCreateAction,
+  PlanUpdateAction,
+} from "@/features/admin-chat/actions";
 
 export function usePlanAction() {
   const create = useMutation(
@@ -17,8 +20,8 @@ export function usePlanAction() {
       const { id } = await create.mutateAsync({
         title: action.title,
         body: action.body ?? null,
-        category: action.category,
-        subcategoryId: action.subcategoryId ?? null,
+        categories: action.categories,
+        subcategoryIds: action.subcategoryIds ?? [],
       });
       void queryClient.invalidateQueries(trpc.admin.planning.pathFilter());
       return id;
@@ -35,8 +38,8 @@ export function usePlanAction() {
       revision: current.item.revision,
       title: action.title,
       body: action.body,
-      category: action.category,
-      subcategoryId: action.subcategoryId,
+      categories: action.categories,
+      subcategoryIds: action.subcategoryIds,
       status: action.status,
     });
     void queryClient.invalidateQueries(trpc.admin.planning.pathFilter());

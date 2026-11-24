@@ -26,7 +26,7 @@ function openNewTab(): void {
 const createPlan: AdminChatAction = {
   type: "plan_create",
   title: "Rework the economy",
-  category: "modpack",
+  categories: ["modpack"],
 };
 const editPlan: AdminChatAction = {
   type: "plan_update",

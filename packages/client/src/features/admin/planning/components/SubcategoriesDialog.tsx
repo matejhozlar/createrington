@@ -234,8 +234,7 @@ export function SubcategoriesDialog({
             deleting && (
               <>
                 Delete <span className="font-semibold">{deleting.name}</span>?{" "}
-                {pluralize(deleting.itemCount, "plan")} will stay in{" "}
-                {CATEGORY_CONFIG[deleting.category].label} without a
+                {pluralize(deleting.itemCount, "plan")} will lose this
                 subcategory.
               </>
             )

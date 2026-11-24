@@ -13,11 +13,10 @@ const board = vi.hoisted(() => ({
       id: 7,
       title: "Give money a purpose",
       body: "x".repeat(500),
-      category: "modpack",
-      subcategoryId: 10,
       status: "open",
     },
   ],
+  filings: new Map([[7, { categories: ["modpack"], subcategoryIds: [10] }]]),
   createItem: vi.fn(),
   createComment: vi.fn(),
 }));
@@ -37,12 +36,19 @@ vi.mock("@/db", () => ({
   Q: {
     planning: {
       subcategory: {
-        findAll: async () => board.subcategories,
-        find: async ({ id }: { id: number }) =>
-          board.subcategories.find((s) => s.id === id) ?? null,
+        findAll: async (filters: {
+          id?: { $in: number[] };
+          category?: { $in: string[] };
+        }) =>
+          board.subcategories.filter(
+            (s) =>
+              (!filters.id || filters.id.$in.includes(s.id)) &&
+              (!filters.category || filters.category.$in.includes(s.category)),
+          ),
       },
       item: {
         findAll: async () => board.items,
+        getFilings: async () => board.filings,
         get: async ({ id }: { id: number }) => {
           const item = board.items.find((i) => i.id === id);
           if (!item) throw new Error("planning_item not found");
@@ -112,8 +118,8 @@ describe("PlanningIntakeService.start", () => {
       {
         id: 7,
         title: "Give money a purpose",
-        category: "modpack",
-        subcategory: "Economy",
+        categories: ["modpack"],
+        subcategories: ["Economy"],
         status: "open",
         details: "x".repeat(300),
       },
@@ -128,8 +134,8 @@ describe("PlanningIntakeService.apply", () => {
         action: "create",
         title: "Rework the shops",
         body: "Shops should sell claim upgrades.",
-        category: "modpack",
-        subcategoryId: 10,
+        categories: ["modpack", "website"],
+        subcategoryIds: [10, 20],
       },
       by,
     );
@@ -138,8 +144,8 @@ describe("PlanningIntakeService.apply", () => {
       {
         title: "Rework the shops",
         body: "Shops should sell claim upgrades.",
-        category: "modpack",
-        subcategoryId: 10,
+        categories: ["modpack", "website"],
+        subcategoryIds: [10, 20],
         status: "draft",
       },
       "555",
@@ -153,20 +159,23 @@ describe("PlanningIntakeService.apply", () => {
     });
   });
 
-  it("files the card without a subcategory when the proposed one belongs elsewhere", async () => {
+  it("leaves out unknown categories and subcategories outside the chosen ones", async () => {
     await planningIntakeService.apply(
       {
         action: "create",
         title: "Rework the shops",
         body: "Shops should sell claim upgrades.",
-        category: "modpack",
-        subcategoryId: 20,
+        categories: ["modpack", "economy"],
+        subcategoryIds: [10, 20],
       },
       by,
     );
 
     expect(board.createItem).toHaveBeenCalledWith(
-      expect.objectContaining({ category: "modpack", subcategoryId: null }),
+      expect.objectContaining({
+        categories: ["modpack"],
+        subcategoryIds: [10],
+      }),
       "555",
       { sourceUrl: SOURCE },
     );
@@ -178,8 +187,8 @@ describe("PlanningIntakeService.apply", () => {
         action: "create",
         title: "  Rework the shops  ",
         body: "   ",
-        category: "modpack",
-        subcategoryId: null,
+        categories: ["modpack"],
+        subcategoryIds: [],
       },
       by,
     );
@@ -198,8 +207,8 @@ describe("PlanningIntakeService.apply", () => {
           action: "create",
           title: "   ",
           body: "Shops should sell claim upgrades.",
-          category: "modpack",
-          subcategoryId: null,
+          categories: ["modpack"],
+          subcategoryIds: [],
         },
         by,
       ),
@@ -217,19 +226,19 @@ describe("PlanningIntakeService.apply", () => {
     expect(board.createComment).not.toHaveBeenCalled();
   });
 
-  it("refuses a category the board does not have", async () => {
+  it("refuses a card with no category the board has", async () => {
     await expect(
       planningIntakeService.apply(
         {
           action: "create",
           title: "Rework the shops",
           body: "Shops should sell claim upgrades.",
-          category: "economy",
-          subcategoryId: null,
+          categories: ["economy"],
+          subcategoryIds: [],
         },
         by,
       ),
-    ).rejects.toThrow('Unknown planning category "economy"');
+    ).rejects.toThrow('Unknown planning categories "economy"');
     expect(board.createItem).not.toHaveBeenCalled();
   });
 

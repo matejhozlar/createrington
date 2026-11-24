@@ -43,8 +43,12 @@ export { ModpackReleaseAnnouncementQueries } from "./modpack/release/announcemen
 export { ModpackReleaseModQueries } from "./modpack/release/mod";
 export { PlanningItemQueries } from "./planning/item";
 export { PlanningItemAssigneeQueries } from "./planning/item/assignee";
+export { PlanningItemCategoryQueries } from "./planning/item/category";
 export { PlanningItemCommentQueries } from "./planning/item/comment";
 export { PlanningItemRevisionQueries } from "./planning/item/revision";
+export { PlanningItemRevisionCategoryQueries } from "./planning/item/revision/category";
+export { PlanningItemRevisionSubcategoryQueries } from "./planning/item/revision/subcategory";
+export { PlanningItemSubcategoryQueries } from "./planning/item/subcategory";
 export { PlanningSubcategoryQueries } from "./planning/subcategory";
 export { PlayerQueries } from "./player";
 export { PlayerBalanceQueries } from "./player/balance";
