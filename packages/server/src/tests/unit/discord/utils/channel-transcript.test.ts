@@ -17,6 +17,7 @@ const BASE_TIME = Date.UTC(2026, 10, 10, 12, 0);
 interface FakeMessageOptions {
   content?: string;
   username?: string;
+  authorId?: string;
   displayName?: string;
   bot?: boolean;
   replyTo?: string;
@@ -34,7 +35,12 @@ function fakeMessage(index: number, options: FakeMessageOptions = {}): Message {
     attachments: new Collection(),
     embeds: [],
     member: options.displayName ? { displayName: options.displayName } : null,
-    author: { username, globalName: null, bot: options.bot ?? false },
+    author: {
+      id: options.authorId ?? `author${index}`,
+      username,
+      globalName: null,
+      bot: options.bot ?? false,
+    },
     reference: options.replyTo ? { messageId: options.replyTo } : null,
     url: `https://discord.com/channels/1/${CHANNEL_ID}/${id}`,
   } as unknown as Message;
@@ -108,22 +114,68 @@ describe("fetchRecentMessages", () => {
     const all = Array.from({ length: 250 }, (_, i) => fakeMessage(i));
     const { channel, fetch } = fakeChannel(all);
 
-    const result = await fetchRecentMessages(channel, 230);
+    const { messages, hasMore } = await fetchRecentMessages(channel, 230);
 
     expect(fetch).toHaveBeenCalledTimes(3);
-    expect(result).toHaveLength(230);
-    expect(result[0].id).toBe(all[20].id);
-    expect(result.at(-1)!.id).toBe(all[249].id);
+    expect(messages).toHaveLength(230);
+    expect(messages[0].id).toBe(all[20].id);
+    expect(messages.at(-1)!.id).toBe(all[249].id);
+    expect(hasMore).toBe(false);
   });
 
   it("stops when the channel has fewer messages than requested", async () => {
     const all = Array.from({ length: 30 }, (_, i) => fakeMessage(i));
     const { channel, fetch } = fakeChannel(all);
 
-    const result = await fetchRecentMessages(channel, 500);
+    const { messages } = await fetchRecentMessages(channel, 500);
 
     expect(fetch).toHaveBeenCalledTimes(1);
-    expect(result).toHaveLength(30);
+    expect(messages).toHaveLength(30);
+  });
+
+  it("ends at the last message when one is given, including it", async () => {
+    const all = Array.from({ length: 250 }, (_, i) => fakeMessage(i));
+    const { channel } = fakeChannel(all);
+
+    const { messages } = await fetchRecentMessages(channel, 150, {
+      untilId: all[199].id,
+    });
+
+    expect(messages).toHaveLength(150);
+    expect(messages[0].id).toBe(all[50].id);
+    expect(messages.at(-1)!.id).toBe(all[199].id);
+  });
+
+  it("counts only the given author's messages", async () => {
+    const all = Array.from({ length: 250 }, (_, i) =>
+      fakeMessage(i, { authorId: i % 10 === 0 ? "steve" : "alex" }),
+    );
+    const { channel } = fakeChannel(all);
+
+    const { messages, hasMore } = await fetchRecentMessages(channel, 12, {
+      authorId: "steve",
+    });
+
+    expect(messages.map((m) => m.id)).toEqual(
+      all.filter((_, i) => i % 10 === 0 && i >= 130).map((m) => m.id),
+    );
+    expect(hasMore).toBe(false);
+  });
+
+  it("stops searching for an author's messages at the message cap", async () => {
+    const all = Array.from({ length: 700 }, (_, i) =>
+      fakeMessage(i, { authorId: i % 100 === 0 ? "steve" : "alex" }),
+    );
+    const { channel } = fakeChannel(all);
+
+    const { messages, hasMore } = await fetchRecentMessages(channel, 50, {
+      authorId: "steve",
+    });
+
+    expect(messages.map((m) => m.id)).toEqual(
+      [200, 300, 400, 500, 600].map((i) => all[i].id),
+    );
+    expect(hasMore).toBe(true);
   });
 });
 
@@ -157,6 +209,50 @@ describe("fetchMessagesSince", () => {
     expect(messages).toHaveLength(120);
     expect(messages.at(-1)!.id).toBe(all[119].id);
     expect(hasMore).toBe(true);
+  });
+
+  it("ends at the last message when one is given", async () => {
+    const all = Array.from({ length: 250 }, (_, i) => fakeMessage(i));
+    const { channel } = fakeChannel(all);
+
+    const { messages, hasMore } = await fetchMessagesSince(
+      channel,
+      all[40].id,
+      500,
+      { untilId: all[180].id },
+    );
+
+    expect(messages).toHaveLength(141);
+    expect(messages[0].id).toBe(all[40].id);
+    expect(messages.at(-1)!.id).toBe(all[180].id);
+    expect(hasMore).toBe(false);
+  });
+
+  it("reads a single message when the first and last are the same", async () => {
+    const all = Array.from({ length: 20 }, (_, i) => fakeMessage(i));
+    const { channel } = fakeChannel(all);
+
+    const { messages } = await fetchMessagesSince(channel, all[5].id, 500, {
+      untilId: all[5].id,
+    });
+
+    expect(messages.map((m) => m.id)).toEqual([all[5].id]);
+  });
+
+  it("keeps only the given author's messages in the range", async () => {
+    const all = Array.from({ length: 50 }, (_, i) =>
+      fakeMessage(i, { authorId: i % 2 === 0 ? "steve" : "alex" }),
+    );
+    const { channel } = fakeChannel(all);
+
+    const { messages } = await fetchMessagesSince(channel, all[11].id, 500, {
+      untilId: all[20].id,
+      authorId: "alex",
+    });
+
+    expect(messages.map((m) => m.id)).toEqual(
+      [11, 13, 15, 17, 19].map((i) => all[i].id),
+    );
   });
 
   it("does not report more messages when the cap is met exactly", async () => {

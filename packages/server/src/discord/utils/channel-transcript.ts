@@ -39,43 +39,84 @@ export function parseMessageReference(
   return match[3];
 }
 
+export interface MessageFilter {
+  untilId?: string;
+  authorId?: string;
+}
+
+export interface FetchedMessages {
+  messages: Message[];
+  hasMore: boolean;
+}
+
+function byAuthor(authorId: string | undefined): (message: Message) => boolean {
+  return (message) => !authorId || message.author.id === authorId;
+}
+
+function isAtOrBefore(id: string, untilId: string | undefined): boolean {
+  return !untilId || BigInt(id) <= BigInt(untilId);
+}
+
 export async function fetchRecentMessages(
   channel: GuildTextBasedChannel,
   count: number,
-): Promise<Message[]> {
+  { untilId, authorId }: MessageFilter = {},
+): Promise<FetchedMessages> {
+  const wanted = byAuthor(authorId);
   const messages: Message[] = [];
-  let before: string | undefined;
+  let scanned = 0;
+  let before = untilId;
+  if (untilId) {
+    const last = await channel.messages.fetch(untilId);
+    scanned = 1;
+    if (wanted(last)) messages.push(last);
+  }
   while (messages.length < count) {
-    const limit = Math.min(PAGE_SIZE, count - messages.length);
+    const budget = TRANSCRIPT_MAX_MESSAGES - scanned;
+    if (budget <= 0) return { messages: messages.sort(byAge), hasMore: true };
+    const remaining = count - messages.length;
+    const limit = Math.min(PAGE_SIZE, authorId ? budget : remaining);
     const batch = await channel.messages.fetch({
       limit,
       ...(before && { before }),
     });
-    messages.push(...batch.values());
+    scanned += batch.size;
+    const newestFirst = [...batch.values()].sort(byAge).reverse();
+    messages.push(...newestFirst.filter(wanted).slice(0, remaining));
     if (batch.size < limit) break;
     before = oldestId(batch);
   }
-  return messages.sort(byAge);
+  return { messages: messages.sort(byAge), hasMore: false };
 }
 
 export async function fetchMessagesSince(
   channel: GuildTextBasedChannel,
   startId: string,
   cap: number,
-): Promise<{ messages: Message[]; hasMore: boolean }> {
-  const start = await channel.messages.fetch(startId);
-  const messages: Message[] = [start];
+  { untilId, authorId }: MessageFilter = {},
+): Promise<FetchedMessages> {
+  const [start] = await Promise.all([
+    channel.messages.fetch(startId),
+    untilId && channel.messages.fetch(untilId),
+  ]);
+  const scanned: Message[] = [start];
   const target = cap + 1;
   let after = start.id;
-  while (messages.length < target) {
-    const limit = Math.min(PAGE_SIZE, target - messages.length);
+  while (scanned.length < target) {
+    const limit = Math.min(PAGE_SIZE, target - scanned.length);
     const batch = await channel.messages.fetch({ limit, after });
-    messages.push(...batch.values());
-    if (batch.size < limit) break;
+    const inRange = [...batch.values()].filter((message) =>
+      isAtOrBefore(message.id, untilId),
+    );
+    scanned.push(...inRange);
+    if (batch.size < limit || inRange.length < batch.size) break;
     after = newestId(batch);
   }
-  messages.sort(byAge);
-  return { messages: messages.slice(0, cap), hasMore: messages.length > cap };
+  scanned.sort(byAge);
+  return {
+    messages: scanned.slice(0, cap).filter(byAuthor(authorId)),
+    hasMore: scanned.length > cap,
+  };
 }
 
 function authorName(message: Message): string {
