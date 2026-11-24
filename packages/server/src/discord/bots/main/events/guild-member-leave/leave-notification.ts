@@ -83,6 +83,7 @@ export async function execute(
       embeds: embed.build(),
       components: [actionRow],
       content: `${roleMention(Discord.Roles.ADMIN)} 👋 Member left`,
+      allowedMentions: { roles: [Discord.Roles.ADMIN] },
     });
 
     await Q.discord.guild.member.leave.update(
