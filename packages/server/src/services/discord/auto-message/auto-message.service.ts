@@ -77,7 +77,7 @@ export class AutoMessageService {
 
   /** Starts the timer for one config by ID; no-op if the config is missing or disabled. */
   async startConfig(configId: number): Promise<void> {
-    const config = await Q.discord.auto.message.config.get({ id: configId });
+    const config = await Q.discord.auto.message.config.find({ id: configId });
     if (!config || !config.enabled) return;
     this.startTimer(config);
   }
@@ -240,7 +240,7 @@ export class AutoMessageService {
   }
 
   private async sendNextMessage(configId: number): Promise<void> {
-    const config = await Q.discord.auto.message.config.get({ id: configId });
+    const config = await Q.discord.auto.message.config.find({ id: configId });
     if (!config || !config.enabled) {
       this.stopConfig(configId);
       return;

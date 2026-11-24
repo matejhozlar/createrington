@@ -24,7 +24,6 @@ const { Q, tx, db } = vi.hoisted(() => {
             find: vi.fn(),
             config: {
               find: vi.fn(),
-              get: vi.fn(),
               createAndReturn: vi.fn(),
               update: vi.fn(),
               delete: vi.fn(),
@@ -66,7 +65,6 @@ beforeEach(() => {
   vi.useFakeTimers();
   service = new AutoMessageService({} as DiscordMessageService);
   Q.discord.auto.message.config.find.mockResolvedValue(CONFIG);
-  Q.discord.auto.message.config.get.mockResolvedValue(CONFIG);
   Q.discord.auto.message.config.createAndReturn.mockResolvedValue(CONFIG);
   Q.discord.auto.message.find.mockResolvedValue({ id: 8, configId: 3 });
   tx.discord.auto.message.createAndReturn.mockResolvedValue({ id: 8 });
@@ -145,6 +143,28 @@ describe("AutoMessageService configs", () => {
     expect(Q.discord.auto.message.config.update).not.toHaveBeenCalled();
     expect(Q.discord.auto.message.config.delete).not.toHaveBeenCalled();
     expect(Q.admin.log.action.logAction).not.toHaveBeenCalled();
+  });
+});
+
+describe("AutoMessageService timers", () => {
+  const intervalMs = CONFIG.intervalMinutes * 60 * 1000;
+
+  it("does nothing when asked to start a missing config", async () => {
+    Q.discord.auto.message.config.find.mockResolvedValue(null);
+
+    await service.startConfig(CONFIG.id);
+
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("stops the timer on the first tick after its config is deleted", async () => {
+    await service.startConfig(CONFIG.id);
+    expect(vi.getTimerCount()).toBe(1);
+
+    Q.discord.auto.message.config.find.mockResolvedValue(null);
+    await vi.advanceTimersByTimeAsync(intervalMs);
+
+    expect(vi.getTimerCount()).toBe(0);
   });
 });
 
