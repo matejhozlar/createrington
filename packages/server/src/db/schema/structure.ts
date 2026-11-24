@@ -117,7 +117,8 @@ export const structurePackRotationConfig = pgTable(
 );
 
 // --- structure_pack_boost ---
-// Player-purchased weight increases for a pack in the current rotation cycle.
+// Player-purchased weight increases for a pack. A row is open until the next
+// successful rotation draw counts it and deletes it.
 
 export const structurePackBoost = pgTable(
   "structure_pack_boost",
@@ -129,13 +130,11 @@ export const structurePackBoost = pgTable(
       .references(() => structurePack.id, { onDelete: "cascade" }),
     units: integer("units").notNull(),
     currencySpent: integer("currency_spent").notNull(),
-    cycleStart: timestamp("cycle_start", { withTimezone: true }).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
   },
   (table) => [
-    index("idx_structure_pack_boost_cycle").on(table.cycleStart),
     index("idx_structure_pack_boost_player").on(table.discordId),
     index("idx_structure_pack_boost_pack").on(table.packId),
   ],

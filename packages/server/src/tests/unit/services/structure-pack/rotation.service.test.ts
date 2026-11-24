@@ -19,7 +19,7 @@ let balanceAdds: Array<{
   type: string;
 }>;
 let balanceDeducts: number;
-let cycleBoostClears: number;
+let lastRotations: Array<{ rotatedAt: Date }>;
 let eligibleCalls: number;
 
 const EIGHT_DAYS_MS = 8 * 24 * 60 * 60 * 1000;
@@ -58,7 +58,7 @@ vi.mock("@/db", () => {
           },
         },
         boost: {
-          findAll: async () => openBoosts,
+          findAll: async () => [...openBoosts],
           deleteAll: async ({ id }: { id: { $in: number[] } }) => {
             boostDeletes.push(...id.$in);
             return id.$in.length;
@@ -74,6 +74,9 @@ vi.mock("@/db", () => {
         pack: {
           find: async ({ id }: { id: number }) =>
             packs.find((p) => p.id === id) ?? null,
+          update: async (where: unknown, data: unknown) => {
+            packUpdates.push({ where, data });
+          },
           getEligibleForRotation: async () => {
             eligibleCalls += 1;
             return eligiblePacks;
@@ -83,16 +86,17 @@ vi.mock("@/db", () => {
               rotationCreates.push(data);
             },
             count: async () => rotationCreates.length,
-            findAll: async () => [],
+            findAll: async () => lastRotations,
             config: {
               getOrCreateDefault: async () => rotationConfig,
             },
           },
           boost: {
-            getBoostsByPackForCycle: async () => [],
-            clearCycleBoosts: async () => {
-              cycleBoostClears += 1;
-            },
+            findAll: async (filter: { discordId?: string } = {}) =>
+              openBoosts.filter(
+                (boost) =>
+                  !filter.discordId || boost.discordId === filter.discordId,
+              ),
           },
         },
       },
@@ -179,7 +183,7 @@ describe("StructurePackRotationService", () => {
     boostDeletes = [];
     balanceAdds = [];
     balanceDeducts = 0;
-    cycleBoostClears = 0;
+    lastRotations = [];
     eligibleCalls = 0;
   });
 
@@ -216,7 +220,7 @@ describe("StructurePackRotationService", () => {
       incomingPackId: 2,
       success: true,
     });
-    expect(cycleBoostClears).toBe(1);
+    expect(boostDeletes).toHaveLength(0);
 
     await vi.advanceTimersByTimeAsync(EIGHT_DAYS_MS);
     expect(eligibleCalls).toBe(1);
@@ -269,7 +273,6 @@ describe("StructurePackRotationService", () => {
         packId: 3,
         units: 2,
         currencySpent: 100,
-        cycleStart: new Date("2026-08-24T12:00:00Z"),
         createdAt: new Date("2026-08-25T00:00:00Z"),
       },
       {
@@ -278,7 +281,6 @@ describe("StructurePackRotationService", () => {
         packId: 4,
         units: 1,
         currencySpent: 50,
-        cycleStart: new Date("2026-08-24T12:00:00Z"),
         createdAt: new Date("2026-08-25T00:00:00Z"),
       },
     ] as StructurePackBoost[];
@@ -305,7 +307,6 @@ describe("StructurePackRotationService", () => {
         packId: 3,
         units: 1,
         currencySpent: 50,
-        cycleStart: new Date("2026-08-24T12:00:00Z"),
         createdAt: new Date("2026-08-25T00:00:00Z"),
       },
     ] as StructurePackBoost[];
@@ -319,5 +320,97 @@ describe("StructurePackRotationService", () => {
     await vi.advanceTimersByTimeAsync(EIGHT_DAYS_MS);
     expect(eligibleCalls).toBeGreaterThanOrEqual(1);
     service.shutdown();
+  });
+
+  function makeBoost(id: number, packId: number, units: number) {
+    return {
+      id,
+      discordId: "111",
+      packId,
+      units,
+      currencySpent: units * 50,
+      createdAt: new Date("2026-08-25T00:00:00Z"),
+    } as StructurePackBoost;
+  }
+
+  function boostFactors() {
+    const snapshot = rotationCreates[0]?.weightsSnapshot as Array<{
+      packId: number;
+      boostFactor: number;
+    }>;
+    return Object.fromEntries(
+      snapshot.map((entry) => [entry.packId, entry.boostFactor]),
+    );
+  }
+
+  it("counts and deletes the ending cycle's boosts when the scheduled rotation fires at the boundary", async () => {
+    packs = [makePack(3), makePack(4)];
+    eligiblePacks = packs;
+    openBoosts = [makeBoost(20, 3, 5), makeBoost(21, 3, 2)];
+    const service = makeService();
+
+    await service.initialize();
+    expect(rotationCreates).toHaveLength(0);
+
+    await vi.advanceTimersByTimeAsync(
+      new Date("2026-08-31T12:00:00Z").getTime() - Date.now(),
+    );
+
+    expect(rotationCreates).toHaveLength(1);
+    expect(boostFactors()).toEqual({ 3: 7, 4: 0 });
+    expect(boostDeletes).toEqual([20, 21]);
+    service.shutdown();
+  });
+
+  it("counts open boosts in a missed rotation that runs at boot, after the boundary", async () => {
+    vi.setSystemTime(new Date("2026-09-01T08:00:00Z"));
+    lastRotations = [{ rotatedAt: new Date("2026-08-17T12:00:00Z") }];
+    packs = [makePack(3), makePack(4)];
+    eligiblePacks = packs;
+    openBoosts = [makeBoost(30, 4, 3)];
+    const service = makeService();
+
+    await service.initialize();
+
+    expect(rotationCreates).toHaveLength(1);
+    expect(boostFactors()).toEqual({ 3: 0, 4: 3 });
+    expect(boostDeletes).toEqual([30]);
+    service.shutdown();
+  });
+
+  it("keeps a boost bought while the draw is running open for the next one", async () => {
+    packs = [makePack(3), makePack(4)];
+    eligiblePacks = packs;
+    openBoosts = [makeBoost(40, 3, 1)];
+    const service = makeService();
+    const packService = (
+      service as unknown as {
+        packService: { getPack: (id: number) => Promise<unknown> };
+      }
+    ).packService;
+    const getPack = packService.getPack;
+    packService.getPack = async (id) => {
+      openBoosts.push(makeBoost(41, 4, 1));
+      return getPack(id);
+    };
+
+    await service.executeRotation(true);
+
+    expect(boostDeletes).toEqual([40]);
+    service.shutdown();
+  });
+
+  it("keeps open boosts when an admin clears the rotation", async () => {
+    packs = [makePack(1, { isActive: true }), makePack(3)];
+    activePack = packs[0];
+    openBoosts = [makeBoost(50, 3, 2)];
+    const service = makeService();
+
+    await service.clearRotation();
+
+    expect(packUpdates).toEqual([
+      { where: { id: 1 }, data: { isActive: false } },
+    ]);
+    expect(boostDeletes).toHaveLength(0);
   });
 });

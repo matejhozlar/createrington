@@ -3,8 +3,6 @@ import type { RotationConfig } from "./types";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 
-export type OccurrenceDirection = "next" | "previous";
-
 function wallClockDate(timezone: string, now: Date) {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: timezone,
@@ -31,25 +29,15 @@ function wrapWeek(days: number): number {
 }
 
 /**
- * Returns the configured rotation time nearest to `now` in the given
- * direction: the next one strictly after `now`, or the previous one at or
- * before it (the start of the current cycle, which scopes boost purchases).
+ * Returns the first configured rotation time strictly after `now`.
  *
  * Wall-clock dates are taken in the configured IANA timezone so that DST
  * transitions do not shift the scheduled time.
  */
-export function occurrence(
-  cfg: RotationConfig,
-  now: Date,
-  direction: OccurrenceDirection,
-): Date {
+export function nextOccurrence(cfg: RotationConfig, now: Date): Date {
   const [hours, minutes] = cfg.time.split(":").map(Number);
   const today = wallClockDate(cfg.timezone, now);
-  const step = direction === "next" ? 1 : -1;
-  const weekOffset =
-    direction === "next"
-      ? wrapWeek(cfg.dayOfWeek - today.weekday)
-      : -wrapWeek(today.weekday - cfg.dayOfWeek);
+  const weekOffset = wrapWeek(cfg.dayOfWeek - today.weekday);
 
   const at = (periods: number): Date => {
     switch (cfg.period) {
@@ -84,11 +72,7 @@ export function occurrence(
   };
 
   const candidate = at(0);
-  const onWrongSide =
-    direction === "next"
-      ? candidate.getTime() <= now.getTime()
-      : candidate.getTime() > now.getTime();
-  return onWrongSide ? at(step) : candidate;
+  return candidate.getTime() <= now.getTime() ? at(1) : candidate;
 }
 
 export function describeSchedule(cfg: RotationConfig): string {
