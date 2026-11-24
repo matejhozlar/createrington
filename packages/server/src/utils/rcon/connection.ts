@@ -11,7 +11,13 @@ export class ServerRconConnection {
     private readonly serverId: ServerId,
     private readonly serverName: string,
     private readonly cfg: RconConfig,
+    private readonly timeoutMs = 10_000,
   ) {}
+
+  private drop(rcon: Rcon): void {
+    if (this.connection === rcon) this.connection = null;
+    rcon.socket?.destroy();
+  }
 
   private async connect(): Promise<Rcon> {
     if (this.connection) {
@@ -42,13 +48,31 @@ export class ServerRconConnection {
         `[Server ${this.serverId} - ${this.serverName}] Connecting to RCON at ${this.cfg.host}:${this.cfg.port}`,
       );
 
-      this.connection = await Rcon.connect({
+      const rcon = new Rcon({
         host: this.cfg.host,
         port: this.cfg.port,
         password: this.cfg.password,
-        timeout: 10000,
+        timeout: this.timeoutMs,
+      });
+      rcon.on("error", (error) => {
+        logger.warn(
+          `[Server ${this.serverId} - ${this.serverName}] RCON connection error:`,
+          error,
+        );
+        this.drop(rcon);
+      });
+      rcon.on("end", () => {
+        if (this.connection === rcon) this.connection = null;
       });
 
+      try {
+        await rcon.connect();
+      } catch (error) {
+        this.drop(rcon);
+        throw error;
+      }
+
+      this.connection = rcon;
       this.lastUsed = Date.now();
       logger.info(
         `[Server ${this.serverId} - ${this.serverName}] RCON connection established`,
@@ -147,7 +171,15 @@ export class ServerRconConnection {
       `[Server ${this.serverId} - ${this.serverName}] Sending RCON: ${command}`,
     );
 
-    const response = await rcon.send(command);
+    let response: string;
+    try {
+      response = await rcon.send(command);
+    } catch (error) {
+      if (error instanceof Error && error.message.startsWith("Timeout")) {
+        this.drop(rcon);
+      }
+      throw error;
+    }
     logger.debug(
       `[Server ${this.serverId} - ${this.serverName}] RCON response: ${response}`,
     );
