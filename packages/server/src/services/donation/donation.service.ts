@@ -1,9 +1,11 @@
 import Stripe from "stripe";
-import type { Client } from "discord.js";
+import { roleMention, userMention, type Client } from "discord.js";
 import config from "@/config";
 import { Q } from "@/db";
 import { UniqueViolationError } from "@/db/utils";
 import { ConflictError } from "@/errors";
+import { Discord } from "@/discord/constants";
+import { EmbedPresets } from "@/discord/embeds";
 import { DiscordRolesNamespace as DiscordRoles } from "@/discord/constants/roles";
 import { RoleManager } from "@/discord/utils/roles/role-manager";
 import type { Donation, DonationType } from "@createrington/shared/db";
@@ -30,7 +32,8 @@ function customerId(subscription: Stripe.Subscription): string {
  * has at most one monthly subscription: a second monthly checkout is refused while any
  * stored subscription of theirs is still live in Stripe, and the lookup, cancel and
  * reactivate calls resolve the subscription across all of them, preferring one that is
- * still renewing. Supporter
+ * still renewing. Deleting a player cancels all of their live subscriptions at once,
+ * and alerts the admins about any Stripe refuses. Supporter
  * role assignment is best-effort; a missing role or absent guild member is logged but
  * does not block the donation from completing. Webhook handlers are idempotent against
  * replays via the `stripeSessionId` lookup, and its unique constraint turns a concurrent
@@ -146,6 +149,67 @@ export class DonationService {
     );
 
     return true;
+  }
+
+  /** Cancels every live subscription of the player immediately (not at period end); ones Stripe refuses are logged and reported to the admins. */
+  async cancelAllSubscriptions(discordId: string): Promise<void> {
+    const donations = await Q.donation.getLatestPerSubscription(discordId);
+    const failed: string[] = [];
+
+    for (const donation of donations) {
+      const subscriptionId = donation.stripeSubscriptionId!;
+      try {
+        const subscription = await this.retrieveSubscription(
+          subscriptionId,
+          discordId,
+        );
+        if (
+          !subscription ||
+          ENDED_SUBSCRIPTION_STATUSES.has(subscription.status)
+        ) {
+          continue;
+        }
+
+        await this.stripe.subscriptions.cancel(subscriptionId);
+        logger.info(
+          `Subscription ${subscriptionId} cancelled for deleted player ${discordId}`,
+        );
+      } catch (error) {
+        logger.error(
+          `Failed to cancel subscription ${subscriptionId} of deleted player ${discordId}:`,
+          error,
+        );
+        failed.push(subscriptionId);
+      }
+    }
+
+    if (failed.length > 0) {
+      await this.alertUncancelledSubscriptions(discordId, failed);
+    }
+  }
+
+  private async alertUncancelledSubscriptions(
+    discordId: string,
+    subscriptionIds: string[],
+  ): Promise<void> {
+    const embed = EmbedPresets.error(
+      "Subscription Still Billing",
+      `A deleted player (${userMention(discordId)}, \`${discordId}\`) still has a live Stripe subscription that could not be cancelled. Cancel it in the Stripe dashboard:\n${subscriptionIds.map((id) => `- \`${id}\``).join("\n")}`,
+    );
+
+    try {
+      await Discord.Messages.send({
+        channelId: Discord.Channels.administration.NOTIFICATIONS,
+        embeds: embed.build(),
+        content: roleMention(Discord.Roles.ADMIN),
+        allowedMentions: { roles: [Discord.Roles.ADMIN] },
+      });
+    } catch (error) {
+      logger.error(
+        `Failed to alert admins about uncancelled subscriptions of ${discordId}:`,
+        error,
+      );
+    }
   }
 
   private async findLiveSubscription(
