@@ -2,10 +2,12 @@ import pg from "pg";
 import config from "@/config";
 import { DatabaseQueries, createQueryInstances } from "@/generated/db";
 import { registerPgTypeParsers } from "./utils/pg-types";
+import { logPoolErrors } from "./pool-errors";
 
 registerPgTypeParsers();
 
 const pool = new pg.Pool(config.database.pool);
+logPoolErrors(pool);
 
 try {
   await pool.query("SELECT 1");

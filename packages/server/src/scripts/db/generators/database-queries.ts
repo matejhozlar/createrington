@@ -180,6 +180,14 @@ ${generateGetters(rootTables)}
     // Acquire dedicated client from pool for this transaction
     const client = await (this.db as Pool).connect();
 
+    // A connection that dies mid-transaction emits "error" on the client;
+    // without a listener that is an uncaught exception
+    const onConnectionError = (error: Error) => {
+      logger.warn("Transaction connection error:", error);
+    };
+    client.on("error", onConnectionError);
+    let brokenConnection: Error | undefined;
+
     try {
       await client.query("BEGIN");
       logger.debug("Transaction started");
@@ -193,13 +201,23 @@ ${generateGetters(rootTables)}
 
       return result;
     } catch (error) {
-      // Rollback on any error to maintain data integrity
-      await client.query("ROLLBACK");
-      logger.error("Transaction rolled back:", error);
+      // Rollback on any error to maintain data integrity; a failed ROLLBACK
+      // (broken connection) must not replace the original error
+      try {
+        await client.query("ROLLBACK");
+        logger.error("Transaction rolled back:", error);
+      } catch (rollbackError) {
+        brokenConnection =
+          rollbackError instanceof Error
+            ? rollbackError
+            : new Error(String(rollbackError));
+        logger.error("Transaction failed and could not be rolled back:", error);
+      }
       throw error;
     } finally {
-      // Always release client back to pool
-      client.release();
+      // Release the client, discarding it when its connection is broken
+      client.off("error", onConnectionError);
+      client.release(brokenConnection);
     }
   }
 
