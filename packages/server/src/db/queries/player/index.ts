@@ -140,7 +140,7 @@ export class PlayerQueries extends PlayerBaseQueries {
         "list players with violations",
         `SELECT * FROM ${this.table}
          WHERE ${where}
-         ORDER BY ${orderColumn} ${direction}
+         ORDER BY ${orderColumn} ${direction}, minecraft_uuid ${direction}
          LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
         [...params, options.limit, options.offset],
       ),

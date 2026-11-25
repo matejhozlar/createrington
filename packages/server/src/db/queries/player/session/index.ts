@@ -210,7 +210,7 @@ export class PlayerSessionQueries extends PlayerSessionBaseQueries {
          FROM ${this.table} s
          JOIN player p ON p.minecraft_uuid = s.player_minecraft_uuid
          WHERE s.server_id = $1
-         ORDER BY s.session_start DESC
+         ORDER BY s.session_start DESC, s.id DESC
          LIMIT $2 OFFSET $3`,
         [serverId, limit, offset],
       ),

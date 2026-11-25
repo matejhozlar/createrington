@@ -102,7 +102,7 @@ export class AdminLogActionQueries extends AdminLogActionBaseQueries {
     const [dataResult, countResult] = await Promise.all([
       this.runQuery<AdminLogActionRow>(
         "search admin log actions",
-        `SELECT * FROM ${this.table} ${where} ORDER BY ${sortCol} ${dir} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
+        `SELECT * FROM ${this.table} ${where} ORDER BY ${sortCol} ${dir}, id ${dir} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
         [...params, opts.limit, opts.offset],
       ),
       this.runQuery<{ count: number }>(

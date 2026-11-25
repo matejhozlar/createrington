@@ -251,7 +251,7 @@ export class PlayerInactivityWarningQueries extends PlayerInactivityWarningBaseQ
            ${from}
            ORDER BY ${PER_PLAYER}, w.warned_at DESC
          ) latest
-         ORDER BY latest.warned_at DESC
+         ORDER BY latest.warned_at DESC, latest.id DESC
          LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
         [...values, params.limit, params.offset],
       ),
