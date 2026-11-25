@@ -1,6 +1,16 @@
 import type { PlaytimeRepository } from "@/db/repositories/playtime";
+import { fetchGuildMember } from "@/discord/utils/fetch-guild-member";
 import { markJoinedMinecraft } from "@/services/waitlist/progress-embed";
 import type { PlaytimeService } from "./playtime.service";
+
+async function syncNickname(discordId: string, username: string) {
+  try {
+    const member = await fetchGuildMember(discordId);
+    await member?.setNickname(username, "Minecraft account renamed");
+  } catch (error) {
+    logger.warn(`Could not set the nickname of ${username}:`, error);
+  }
+}
 
 type SessionWriter = Pick<
   PlaytimeRepository,
@@ -13,7 +23,9 @@ type SessionWriter = Pick<
  * that fails to persist is returned to the service so the next heartbeat
  * credits it again, and `sessionAggregated` is emitted once a session end is
  * stored. A player's first session also completes the waitlist "joined
- * Minecraft" step. Every write is tracked so shutdown can wait for them.
+ * Minecraft" step, and a session that adopted a new Minecraft name renames
+ * the player's Discord nickname to it. Every write is tracked so shutdown
+ * can wait for them.
  */
 export class PlaytimePersistence {
   private pending = new Set<Promise<unknown>>();
@@ -29,6 +41,9 @@ export class PlaytimePersistence {
           .then(async (started) => {
             if (!started) return;
             service.setSessionId(event.uuid, started.sessionId);
+            if (started.renamedFrom) {
+              await syncNickname(started.discordId, event.username);
+            }
             await markJoinedMinecraft(started.discordId).catch((error) => {
               logger.warn(
                 `Failed to mark waitlist "joined Minecraft" for ${started.discordId}:`,
