@@ -16,6 +16,8 @@ import { WebSocketContext } from "./context";
 import { useAuth } from "@/contexts/auth";
 import { getAccessToken } from "@/services/auth/token-manager";
 
+const INITIAL_DATA_TIMEOUT_MS = 10_000;
+
 interface WebSocketProviderProps {
   children: React.ReactNode;
 }
@@ -229,20 +231,25 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
           return;
         }
 
-        socket.emit(
+        socket.timeout(INITIAL_DATA_TIMEOUT_MS).emit(
           SocketEvent.REQUEST_INITIAL_DATA,
           {
             serverId,
             includeMessages: options?.includeMessages ?? true,
             messageLimit: options?.messageLimit ?? 50,
           },
-          (data: InitialDataPayload | ServerInitialDataPayload) => {
+          (
+            error: Error | null,
+            data: InitialDataPayload | ServerInitialDataPayload | null,
+          ) => {
             if (import.meta.env.DEV) {
               console.log(
-                `Received initial data${serverId ? ` for server ${serverId}` : ""}`,
+                error || !data
+                  ? "Initial data request was not answered"
+                  : `Received initial data${serverId ? ` for server ${serverId}` : ""}`,
               );
             }
-            resolve(data);
+            resolve(error ? null : data);
           },
         );
       });
@@ -253,9 +260,15 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
   const requestSnapshot = useCallback(
     (fresh = false): Promise<InitialDataPayload | null> => {
       if (fresh || !snapshotRef.current) {
-        snapshotRef.current = requestInitialData(undefined, {
+        const request = requestInitialData(undefined, {
           includeMessages: false,
         }).then((data) => (data && "servers" in data ? data : null));
+        snapshotRef.current = request;
+        void request.then((snapshot) => {
+          if (!snapshot && snapshotRef.current === request) {
+            snapshotRef.current = null;
+          }
+        });
       }
       return snapshotRef.current;
     },
