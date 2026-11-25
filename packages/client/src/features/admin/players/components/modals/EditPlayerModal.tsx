@@ -18,6 +18,7 @@ import {
 } from "@/lib/trpc";
 import { FormDialog } from "@/components/form-dialog";
 import { useMutation } from "@tanstack/react-query";
+import { useNavigate } from "react-router";
 import { Textarea } from "@/components/ui/textarea";
 
 type PlayerDetailed = RouterOutput["admin"]["players"]["players"]["get"];
@@ -54,15 +55,19 @@ export function EditPlayerModal({
   }));
   const { minecraftUsername, discordId, reason, errors } = draft;
   const setErrors = (next: FieldErrors) => update({ errors: next });
+  const navigate = useNavigate();
 
   const updatePlayer = useMutation(
     trpc.admin.players.players.update.mutationOptions(
       useMutationToast({
         success: "Player updated",
         error: (err) => err.message || "Failed to update player",
-        onSuccess: () => {
+        onSuccess: ({ player: updated }) => {
           void queryClient.invalidateQueries(trpc.admin.players.pathFilter());
           onClose();
+          void navigate(`/admin/players/${updated.minecraftUuid}`, {
+            replace: true,
+          });
         },
       }),
     ),
@@ -172,7 +177,8 @@ export function EditPlayerModal({
             disabled={updatePlayer.isPending}
           />
           <FieldDescription>
-            1-16 characters, letters, numbers, and underscores only
+            Looked up on save. The player's UUID and whitelist entry move to
+            this account.
           </FieldDescription>
           {errors.minecraftUsername && (
             <FieldError>{errors.minecraftUsername}</FieldError>
