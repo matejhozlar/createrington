@@ -57,9 +57,15 @@ export async function refreezeReleaseMods(
   if (modCount <= release.modCount) return release;
 
   return db.inTransaction(async (tx) => {
-    await tx.modpack.release.mod.deleteAll({ releaseId: release.id });
-    await tx.modpack.release.mod.insertMany(release.id, rows);
-    return tx.modpack.release.updateAndReturn({ id: release.id }, { modCount });
+    const claimed = await tx.modpack.release.updateAll(
+      { modCount },
+      { id: release.id, modCount: { $lt: modCount } },
+    );
+    if (claimed > 0) {
+      await tx.modpack.release.mod.deleteAll({ releaseId: release.id });
+      await tx.modpack.release.mod.insertMany(release.id, rows);
+    }
+    return tx.modpack.release.get({ id: release.id });
   });
 }
 
