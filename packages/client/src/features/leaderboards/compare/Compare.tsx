@@ -3,6 +3,7 @@ import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { useClipboard } from "@/hooks/use-clipboard";
 import { SkinApiPromo } from "@/components/skin-api-promo";
+import { Button } from "@/components/ui/button";
 import {
   HEADLINE_METRICS,
   SIDE_COLORS,
@@ -176,14 +177,25 @@ export function Compare() {
     seed,
   );
   const score = players ? scoreOf(players, now) : null;
-  const missing = sides.filter(
-    (username, index) => !!username && contenders[index].isError,
-  );
-  const failed = compareQuery.isError || missing.length > 0;
-  const loading = sides.map(
+  const sideErrors = sides.map(
     (username, index) =>
-      !!username && !stageSides[index] && !contenders[index].isError,
+      !!username && onStageAlone && contenders[index].isError,
+  );
+  const missing = sides.filter(
+    (_, index) =>
+      sideErrors[index] && contenders[index].error?.data?.code === "NOT_FOUND",
+  );
+  const failed = compareQuery.isError || sideErrors.some(Boolean);
+  const loading = sides.map(
+    (username, index) => !!username && !stageSides[index] && !sideErrors[index],
   ) as [boolean, boolean];
+
+  const retry = () => {
+    if (both && compareQuery.isError) void compareQuery.refetch();
+    contenders.forEach((query, index) => {
+      if (sideErrors[index]) void query.refetch();
+    });
+  };
 
   const run = (action: HeroAction, at: number) => {
     if (action === "reroll") {
@@ -230,13 +242,23 @@ export function Compare() {
           />
         )}
         <div className="mx-auto max-w-5xl space-y-10 px-5 py-12 md:px-8 md:py-16">
-          {failed && (
-            <p className="rounded-xl border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
-              {missing.length > 0
-                ? `Couldn't find ${missing.join(" or ")}. Pick someone else above.`
-                : "Couldn't load this matchup. Try again in a moment."}
-            </p>
-          )}
+          {failed &&
+            (missing.length > 0 ? (
+              <p className="rounded-xl border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
+                {`Couldn't find ${missing.join(" or ")}. Pick someone else above.`}
+              </p>
+            ) : (
+              <div className="flex flex-col items-center gap-3 rounded-xl border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
+                <p>
+                  {both
+                    ? "Couldn't load this matchup."
+                    : "Couldn't load this player."}
+                </p>
+                <Button variant="outline" size="sm" onClick={retry}>
+                  Try again
+                </Button>
+              </div>
+            ))}
           {samePlayer && (
             <p className="rounded-xl border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
               That's the same player twice. Pick a challenger above.
