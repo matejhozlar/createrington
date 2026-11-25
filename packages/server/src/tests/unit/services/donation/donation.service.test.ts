@@ -173,7 +173,7 @@ function stripeSubscriptions(subs: Record<string, StubSubscription>) {
       cancel_at_period_end: false,
       cancel_at: null,
       billing_cycle_anchor: 1_700_000_000,
-      latest_invoice: { period_end: 1_800_000_000 },
+      items: { data: [{ current_period_end: 1_800_000_000 }] },
       ...sub,
     };
   });
@@ -195,6 +195,21 @@ describe("DonationService.getActiveSubscription", () => {
     await donations.getActiveSubscription("user-1");
 
     expect(donation.getLatestPerSubscription).toHaveBeenCalledWith("user-1");
+  });
+
+  it("reports the end of the current billing period as the renewal date", async () => {
+    const donations = withStripe({
+      subscriptions: {
+        retrieve: stripeSubscriptions({ sub_1: { status: "active" } }),
+      },
+    });
+
+    await expect(
+      donations.getActiveSubscription("user-1"),
+    ).resolves.toMatchObject({
+      currentPeriodEnd: new Date(1_800_000_000 * 1000),
+      cancelAtPeriodEnd: false,
+    });
   });
 
   it("returns null when Stripe no longer knows the subscription", async () => {
