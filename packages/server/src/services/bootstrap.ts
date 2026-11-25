@@ -231,16 +231,6 @@ export function registerServices(): void {
   );
 
   container.register(
-    Services.MEMBER_CLEANUP_SERVICE,
-    [Services.DISCORD_MAIN_BOT],
-    () => {
-      const service = new MemberCleanupService();
-      service.initialize();
-      return service;
-    },
-  );
-
-  container.register(
     Services.GHOST_MEMBER_SERVICE,
     [Services.DISCORD_MAIN_BOT],
     () => new GhostMemberService(),
@@ -253,6 +243,16 @@ export function registerServices(): void {
   );
 
   if (config.envMode.isProductionDeployment) {
+    container.register(
+      Services.MEMBER_CLEANUP_SERVICE,
+      [Services.DISCORD_MAIN_BOT],
+      () => {
+        const service = new MemberCleanupService();
+        service.initialize();
+        return service;
+      },
+    );
+
     container.register(
       Services.INACTIVITY_CLEANUP_SERVICE,
       [Services.DISCORD_MAIN_BOT, Services.MESSAGE_SERVICE],

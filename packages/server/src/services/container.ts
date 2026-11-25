@@ -446,7 +446,6 @@ export interface RequiredServiceTypeMap {
   [Services.MESSAGE_CACHE]: MessageCacheService;
   [Services.TICKET_SERVICE]: TicketService;
   [Services.LEADERBOARD_SERVICE]: LeaderboardService;
-  [Services.MEMBER_CLEANUP_SERVICE]: MemberCleanupService;
   [Services.GHOST_MEMBER_SERVICE]: GhostMemberService;
   [Services.UNLINKED_MEMBER_SERVICE]: UnlinkedMemberService;
   [Services.SERVER_STATS_SERVICE]: ServerStatsService;
@@ -469,6 +468,7 @@ export interface RequiredServiceTypeMap {
 }
 
 export interface OptionalServiceTypeMap {
+  [Services.MEMBER_CLEANUP_SERVICE]: MemberCleanupService;
   [Services.INACTIVITY_CLEANUP_SERVICE]: InactivityCleanupService;
   [Services.PARTY_PURGE_SERVICE]: PartyPurgeService;
   [Services.STATS_IMPORT_SERVICE]: StatsImportService;

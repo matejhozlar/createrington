@@ -72,6 +72,7 @@ vi.mock("@/discord/utils/roles/role-manager", () => ({
 import type { Client } from "discord.js";
 import { Discord } from "@/discord/constants";
 import type { GameRankSyncService } from "@/services/discord/role/game-rank-sync.service";
+import type { PlaytimeService } from "@/services/playtime";
 import { RoleManagementService } from "@/services/discord/role/role-management.service";
 import { resetGuildMemberFetchCache } from "@/discord/utils/guild-members";
 
@@ -266,5 +267,29 @@ describe("RoleManagementService.recalculateTopRoles", () => {
     ]);
 
     expect(result).toMatchObject({ holder: null, failed: true });
+  });
+});
+
+describe("RoleManagementService outside the production deployment", () => {
+  it("schedules no daily pass and listens to no sessions", () => {
+    vi.useFakeTimers();
+    const service = new RoleManagementService(
+      {} as Client,
+      0,
+      gameRankSync as unknown as GameRankSyncService,
+      undefined,
+      () => false,
+    );
+    const playtime = { on: vi.fn() };
+
+    service.initialize();
+    service.setupRealtimeRoleChecking(
+      1,
+      playtime as unknown as PlaytimeService,
+    );
+
+    expect(vi.getTimerCount()).toBe(0);
+    expect(playtime.on).not.toHaveBeenCalled();
+    vi.useRealTimers();
   });
 });
