@@ -179,7 +179,7 @@ describe("recordRelease upgrade", () => {
 });
 
 describe("recordRelease changelog announcements", () => {
-  it("starts an announcement once a release is read with its server pack, then only resumes", async () => {
+  it("starts an announcement once a release is read with its server pack, keeps starting it for a day, then only resumes", async () => {
     const modpack = await seedModpack(ctx, {
       curseforgeProjectId: ctx.nextProjectId++,
     });
@@ -199,6 +199,16 @@ describe("recordRelease changelog announcements", () => {
 
     await modpackSyncService.reconcile(modpack.id);
     expect(announceReleaseChangelog).toHaveBeenCalledTimes(2);
+    expect(announceReleaseChangelog).toHaveBeenLastCalledWith(
+      expect.objectContaining({ releaseId: release.id, start: true }),
+    );
+
+    await Q.modpack.release.update(
+      { id: release.id },
+      { createdAt: new Date(Date.now() - 25 * 60 * 60 * 1000) },
+    );
+    await modpackSyncService.reconcile(modpack.id);
+    expect(announceReleaseChangelog).toHaveBeenCalledTimes(3);
     expect(announceReleaseChangelog).toHaveBeenLastCalledWith(
       expect.objectContaining({ releaseId: release.id, start: false }),
     );
