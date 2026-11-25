@@ -6,6 +6,7 @@ export class RconCommandError extends Error {
     public readonly command: string,
     public readonly serverId: ServerId,
     public readonly cause?: unknown,
+    public readonly mayHaveRun = false,
   ) {
     super(message);
     this.name = "RconCommandError";

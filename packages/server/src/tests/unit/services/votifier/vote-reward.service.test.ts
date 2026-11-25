@@ -38,6 +38,7 @@ import type {
   ServiceListener,
 } from "@/services/playtime/playtime-manager.service";
 import type { PlayerVote } from "@createrington/shared/db";
+import { RconCommandError } from "@/utils/rcon/errors";
 
 const ALICE = "aaaa0000-0000-4000-8000-000000000041";
 const SERVER = 1;
@@ -76,6 +77,25 @@ function sessionStart(serverId: number) {
 }
 
 const STAMPED = { rewardedAt: expect.any(Date), rewardError: null };
+
+function unreachable(command: string) {
+  return new RconCommandError(
+    `Failed to execute RCON command: ${command}`,
+    command,
+    SERVER,
+    new Error("connect ECONNREFUSED"),
+  );
+}
+
+function unanswered(command: string) {
+  return new RconCommandError(
+    `Failed to execute RCON command: ${command}`,
+    command,
+    SERVER,
+    new Error("Timeout for packet id 3"),
+    true,
+  );
+}
 
 let playtime: EventEmitter;
 let testPlaytime: EventEmitter;
@@ -211,19 +231,41 @@ describe("VoteRewardService.payout", () => {
 
   it("reverts the claim when RCON is unreachable", async () => {
     mocks.getPending.mockResolvedValue([vote(1, "2026-10-01T10:00:00Z")]);
-    send.mockRejectedValueOnce(new Error("connect ECONNREFUSED"));
+    send.mockRejectedValueOnce(unreachable(GIVE));
 
     await service.payout(ALICE, "Alice", SERVER);
 
     expect(updatedWith(1)).toEqual([
       STAMPED,
-      { rewardedAt: null, rewardError: `${GIVE}: connect ECONNREFUSED` },
+      {
+        rewardedAt: null,
+        rewardError: `${GIVE}: Failed to execute RCON command: ${GIVE}`,
+      },
     ]);
+  });
+
+  it("keeps the claim and stops when the server does not answer the first reward", async () => {
+    mocks.getPending.mockResolvedValue([
+      vote(1, "2026-10-01T10:00:00Z"),
+      vote(2, "2026-10-02T10:00:00Z"),
+    ]);
+    send.mockRejectedValueOnce(unanswered(GIVE));
+
+    await service.payout(ALICE, "Alice", SERVER);
+
+    expect(updatedWith(1)).toEqual([
+      STAMPED,
+      {
+        rewardError: `unconfirmed, check manually: ${GIVE}: Failed to execute RCON command: ${GIVE}`,
+      },
+    ]);
+    expect(updatedWith(2)).toEqual([]);
+    expect(send).toHaveBeenCalledTimes(1);
   });
 
   it("leaves the vote claimed and survives when the revert itself fails", async () => {
     mocks.getPending.mockResolvedValue([vote(1, "2026-10-01T10:00:00Z")]);
-    send.mockRejectedValueOnce(new Error("connect ECONNREFUSED"));
+    send.mockRejectedValueOnce(unreachable(GIVE));
     mocks.updateVote
       .mockResolvedValueOnce(undefined)
       .mockRejectedValueOnce(new Error("pool exhausted"));

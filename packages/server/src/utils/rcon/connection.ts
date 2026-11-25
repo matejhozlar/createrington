@@ -2,6 +2,14 @@ import { Rcon } from "rcon-client";
 import { RconCommandError } from "./errors";
 import type { RconConfig, ServerId } from "./types";
 
+function wasSent(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    (error.message.startsWith("Timeout for packet") ||
+      error.message === "Connection closed")
+  );
+}
+
 export class ServerRconConnection {
   private connection: Rcon | null = null;
   private isConnecting = false;
@@ -139,6 +147,7 @@ export class ServerRconConnection {
           trimmedCommand,
           this.serverId,
           error,
+          wasSent(error),
         );
       }
 
@@ -160,6 +169,7 @@ export class ServerRconConnection {
           trimmedCommand,
           this.serverId,
           retryError,
+          wasSent(retryError),
         );
       }
     }
