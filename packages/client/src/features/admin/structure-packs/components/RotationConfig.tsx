@@ -17,6 +17,7 @@ import {
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Field, FieldLabel } from "@/components/ui/field";
+import { TimezonePicker } from "@/features/admin/structure-packs/components/TimezonePicker";
 
 const DAYS_OF_WEEK = [
   "Sunday",
@@ -267,11 +268,10 @@ export function RotationConfig() {
           <div className="mt-4 grid grid-cols-2 gap-4">
             <Field>
               <FieldLabel htmlFor="rotation-timezone">Timezone</FieldLabel>
-              <Input
+              <TimezonePicker
                 id="rotation-timezone"
                 value={currentTimezone}
-                onChange={(e) => setTimezone(e.target.value)}
-                placeholder="UTC"
+                onChange={setTimezone}
               />
             </Field>
             <Field>

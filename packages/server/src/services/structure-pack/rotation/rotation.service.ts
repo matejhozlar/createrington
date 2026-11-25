@@ -9,7 +9,7 @@ import {
 } from "@/services/mc-server/file-ops";
 import { getModFileDownloadUrl } from "@/services/curseforge/downloads";
 import type { DatabaseQueries } from "@/generated/db";
-import type { StructurePackService } from "../structure-pack.service";
+import type { StructurePackService } from "@/services/structure-pack/structure-pack.service";
 import type { StructurePackWithMods } from "@/db/queries/structure/pack";
 import type {
   StructurePack,
@@ -19,7 +19,7 @@ import type {
 } from "@createrington/shared/db";
 import { setLongTimeout, type LongTimeout } from "@/utils/long-timeout";
 import { MODS_DIR } from "./constants";
-import { periodIntervalMs } from "./timezone";
+import { FALLBACK_TIMEZONE, isTimeZone, periodIntervalMs } from "./timezone";
 import {
   checkMissedRotation,
   describeSchedule,
@@ -109,7 +109,13 @@ export class StructurePackRotationService {
       return;
     }
 
-    const rotationConfig = await this.getConfig();
+    const row = await Q.structure.pack.rotation.config.getOrCreateDefault();
+    if (!isTimeZone(row.timezone)) {
+      logger.warn(
+        `Structure pack rotation timezone "${row.timezone}" is not a valid IANA zone, scheduling in ${FALLBACK_TIMEZONE}`,
+      );
+    }
+    const rotationConfig = toRotationConfig(row);
     if (!rotationConfig.enabled) {
       logger.info("Structure pack rotation is disabled, scheduler not started");
       return;
