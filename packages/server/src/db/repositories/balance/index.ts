@@ -553,7 +553,7 @@ export class BalanceRepository extends BasePlayerRepository {
     );
   }
 
-  /** Transaction history with amounts pre-formatted as comma-grouped strings. */
+  /** Transaction history with amounts pre-formatted as comma-grouped strings, without the internal metadata (it names the admin behind an adjustment). */
   async getFormattedHistory(
     identifier: PlayerIdentifier,
     limit: number = 50,
@@ -567,7 +567,6 @@ export class BalanceRepository extends BasePlayerRepository {
       transactionType: BalanceTransactionType;
       description: string | null;
       createdAt: Date;
-      metadata: Record<string, unknown>;
     }>
   > {
     const history = await this.getHistory(identifier, limit, offset);
@@ -580,7 +579,6 @@ export class BalanceRepository extends BasePlayerRepository {
       transactionType: tx.transactionType,
       description: tx.description,
       createdAt: tx.createdAt,
-      metadata: tx.metadata ?? {},
     }));
   }
 }
