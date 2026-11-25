@@ -5,6 +5,7 @@ interface FakeMember {
   id: string;
   user: { username: string };
   roleIds: Set<string>;
+  joinedTimestamp: number;
 }
 
 interface SummaryRow {
@@ -17,6 +18,7 @@ const db = vi.hoisted(() => ({
   players: vi.fn(),
   summaries: vi.fn(),
 }));
+const sendNotification = vi.hoisted(() => vi.fn(async () => undefined));
 
 vi.mock("@/db", () => ({
   Q: {
@@ -28,7 +30,7 @@ vi.mock("@/db", () => ({
 }));
 
 vi.mock("@/services/discord/role/role-notification.service", () => ({
-  roleNotificationService: { sendNotification: async () => undefined },
+  roleNotificationService: { sendNotification },
 }));
 
 vi.mock("@/discord/utils/roles/role-manager", () => ({
@@ -113,8 +115,17 @@ const guildMembers = new Collection<string, FakeMember>();
 const cache = new Collection<string, FakeMember>();
 const singleFetch = vi.fn();
 
-function member(id: string, roleIds: string[] = []): FakeMember {
-  const entry = { id, user: { username: id }, roleIds: new Set(roleIds) };
+function member(
+  id: string,
+  roleIds: string[] = [],
+  joinedDaysAgo = 400,
+): FakeMember {
+  const entry = {
+    id,
+    user: { username: id },
+    roleIds: new Set(roleIds),
+    joinedTimestamp: Date.now() - joinedDaysAgo * DAY_MS,
+  };
   guildMembers.set(id, entry);
   return entry;
 }
@@ -148,6 +159,7 @@ beforeEach(() => {
   guildMembers.clear();
   cache.clear();
   singleFetch.mockReset();
+  sendNotification.mockClear();
   db.players.mockReset();
   db.summaries.mockReset();
   resetGuildMemberFetchCache();
@@ -195,6 +207,63 @@ describe("RoleAssignmentService.processRoleHierarchy", () => {
 
     expect(db.summaries).not.toHaveBeenCalled();
     expect([...alice.roleIds]).toEqual(["age-30"]);
+  });
+});
+
+describe("rank-up announcements", () => {
+  const AGE_TIERS = [serverAgeRule("age-30", 30), serverAgeRule("age-60", 60)];
+
+  it("announces a rank earned by a member who joined before registering", async () => {
+    const alice = member(ALICE, [], 50);
+
+    await createService().processRoleHierarchy(player(ALICE, 45), AGE_TIERS);
+
+    expect([...alice.roleIds]).toEqual(["age-30"]);
+    expect(sendNotification).toHaveBeenCalledTimes(1);
+  });
+
+  it("restores a server-age rank reached before a rejoin without announcing it again", async () => {
+    const alice = member(ALICE, [], 2);
+
+    await createService().processRoleHierarchy(player(ALICE, 45), AGE_TIERS);
+
+    expect([...alice.roleIds]).toEqual(["age-30"]);
+    expect(sendNotification).not.toHaveBeenCalled();
+  });
+
+  it("announces a server-age rank reached after a rejoin", async () => {
+    const alice = member(ALICE, [], 20);
+
+    await createService().processRoleHierarchy(player(ALICE, 45), AGE_TIERS);
+
+    expect([...alice.roleIds]).toEqual(["age-30"]);
+    expect(sendNotification).toHaveBeenCalledTimes(1);
+  });
+
+  it("restores a playtime rank after a rejoin without announcing it again", async () => {
+    const alice = member(ALICE, [], 2);
+    db.summaries.mockResolvedValue([summary(ALICE, 1, 60)]);
+
+    await createService().processRoleHierarchy(
+      player(ALICE, 45),
+      PLAYTIME_TIERS,
+    );
+
+    expect([...alice.roleIds]).toEqual(["tier-50"]);
+    expect(sendNotification).not.toHaveBeenCalled();
+  });
+
+  it("announces an upgrade from a tier a rejoined member already holds", async () => {
+    const alice = member(ALICE, ["tier-10"], 2);
+    db.summaries.mockResolvedValue([summary(ALICE, 1, 60)]);
+
+    await createService().processRoleHierarchy(
+      player(ALICE, 45),
+      PLAYTIME_TIERS,
+    );
+
+    expect([...alice.roleIds]).toEqual(["tier-50"]);
+    expect(sendNotification).toHaveBeenCalledTimes(1);
   });
 });
 
