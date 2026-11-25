@@ -515,6 +515,30 @@ describe("LauncherPackFileService.openStorageFile", () => {
     ).rejects.toMatchObject({ statusCode: 404, code: "FILE_NOT_FOUND" });
   });
 
+  it("looks a file the sandbox pruned up again at the next recheck", async () => {
+    const file = await storeFromSandbox();
+    vi.mocked(openSandboxFile).mockResolvedValue(null);
+    serveFromSandbox([]);
+    serveFromModrinth([file]);
+
+    await expect(
+      launcherPackFileService.openStorageFile(
+        file.fileId,
+        new AbortController().signal,
+      ),
+    ).rejects.toMatchObject({ statusCode: 404, code: "FILE_NOT_FOUND" });
+    await launcherPackFileService.recheckStaleFiles();
+    const [served] = (await launcherPackFileService.resolveFiles([file.fileId]))
+      .files;
+
+    expect(served).toEqual(
+      expect.objectContaining({
+        source: "modrinth",
+        url: modrinthUrl(file.fileId),
+      }),
+    );
+  });
+
   it("says the file cannot be served while the sandbox fails", async () => {
     const file = await storeFromSandbox();
     vi.mocked(openSandboxFile).mockRejectedValue(

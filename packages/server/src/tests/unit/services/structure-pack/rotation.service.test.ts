@@ -363,6 +363,22 @@ describe("StructurePackRotationService", () => {
     service.shutdown();
   });
 
+  it("schedules in UTC when the stored timezone is not a valid zone", async () => {
+    rotationConfig.timezone = "Europe/Pargue";
+    packs = [makePack(3), makePack(4)];
+    eligiblePacks = packs;
+    const service = makeService();
+
+    await service.initialize();
+    await vi.advanceTimersByTimeAsync(
+      new Date("2026-08-31T12:00:00Z").getTime() - Date.now(),
+    );
+
+    expect(rotationCreates).toHaveLength(1);
+    expect((await service.getConfig()).timezone).toBe("UTC");
+    service.shutdown();
+  });
+
   it("counts open boosts in a missed rotation that runs at boot, after the boundary", async () => {
     vi.setSystemTime(new Date("2026-09-01T08:00:00Z"));
     lastRotations = [{ rotatedAt: new Date("2026-08-17T12:00:00Z") }];

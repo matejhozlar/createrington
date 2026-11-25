@@ -44,6 +44,32 @@ export async function createReleaseWithMods(
 }
 
 /**
+ * Replace the frozen file list of a release that is not offered yet when it
+ * now holds more projects than the one recorded, for a snapshot first
+ * recorded while some of its projects were not cached. Returns the release
+ * as stored afterwards.
+ */
+export async function refreezeReleaseMods(
+  release: ModpackRelease,
+  rows: ReleaseModInsert[],
+): Promise<ModpackRelease> {
+  const modCount = distinctProjectCount(rows);
+  if (modCount <= release.modCount) return release;
+
+  return db.inTransaction(async (tx) => {
+    const claimed = await tx.modpack.release.updateAll(
+      { modCount },
+      { id: release.id, modCount: { $lt: modCount } },
+    );
+    if (claimed > 0) {
+      await tx.modpack.release.mod.deleteAll({ releaseId: release.id });
+      await tx.modpack.release.mod.insertMany(release.id, rows);
+    }
+    return tx.modpack.release.get({ id: release.id });
+  });
+}
+
+/**
  * Freeze what a published pack file shipped. CurseForge stops serving files
  * once they are archived, so every column a diff needs is copied in here and
  * nothing in the history path ever reads CurseForge again.

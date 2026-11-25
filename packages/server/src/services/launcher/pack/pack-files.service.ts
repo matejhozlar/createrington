@@ -126,7 +126,9 @@ export class LauncherPackFileService {
    * to the launcher, with its name and size. Throws `FILE_NOT_FOUND` (404)
    * when no stored file is served from storage under the id or the sandbox
    * no longer keeps it, and `FILE_UNAVAILABLE` (502) when the sandbox cannot
-   * serve it. Aborting `signal` cancels the download.
+   * serve it. A file the sandbox no longer keeps turns manual and is due for
+   * `recheckStaleFiles`, which looks its source up again. Aborting `signal`
+   * cancels the download.
    */
   async openStorageFile(
     fileId: number,
@@ -137,12 +139,22 @@ export class LauncherPackFileService {
       { limit: 1 },
     );
     if (!row) throw fileNotFound();
-    return this.openFromSandbox(
+    const download = await this.openFromSandbox(
       String(fileId),
       row.fileName,
       row.fileSize,
       signal,
     );
+    if (download) return download;
+
+    logger.warn(
+      `Storage file ${fileId} is no longer kept by the sandbox, marking it manual for the next recheck`,
+    );
+    await Q.curseforge.file.updateAll(
+      { source: "manual", downloadUrl: null, resolvedAt: new Date(0) },
+      { id: fileId, source: "storage" },
+    );
+    throw fileNotFound();
   }
 
   /**
@@ -174,12 +186,14 @@ export class LauncherPackFileService {
     if (!release?.packFileName || release.packFileSize === null) {
       throw fileNotFound();
     }
-    return this.openFromSandbox(
+    const download = await this.openFromSandbox(
       `snapshot/${snapshotId}`,
       release.packFileName,
       release.packFileSize,
       signal,
     );
+    if (!download) throw fileNotFound();
+    return download;
   }
 
   private async openFromSandbox(
@@ -187,7 +201,7 @@ export class LauncherPackFileService {
     fileName: string,
     size: number,
     signal: AbortSignal,
-  ): Promise<StorageDownload> {
+  ): Promise<StorageDownload | null> {
     let download: SandboxDownload | null;
     try {
       download = await openSandboxFile(path, size, signal);
@@ -203,8 +217,7 @@ export class LauncherPackFileService {
       }
       throw error;
     }
-    if (!download) throw fileNotFound();
-    return { ...download, fileName };
+    return download && { ...download, fileName };
   }
 
   /**
