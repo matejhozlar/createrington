@@ -1,8 +1,12 @@
 import {
   ChannelType,
   type Client,
+  DiscordAPIError,
+  type Guild,
   type GuildTextBasedChannel,
   OverwriteType,
+  RESTJSONErrorCodes,
+  type TextChannel,
 } from "discord.js";
 import { Discord } from "@/discord/constants";
 import { RegistrationComponentPresets } from "@/discord/components/presets/registration";
@@ -50,6 +54,41 @@ async function deleteRegistrationChannel(
     logger.info(`Deleted registration channel ${channel.id}: ${reason}`);
   } catch (error) {
     logger.error(`Failed to delete registration channel ${channel.id}:`, error);
+  }
+}
+
+export async function deleteVerificationChannelsOf(
+  guild: Guild,
+  discordId: string,
+): Promise<void> {
+  const channels = guild.channels.cache.filter(
+    (channel): channel is TextChannel =>
+      channel.parentId === Discord.Categories.VERIFICATION &&
+      channel.type === ChannelType.GuildText &&
+      channel.permissionOverwrites.cache.some(
+        (overwrite) =>
+          overwrite.type === OverwriteType.Member && overwrite.id === discordId,
+      ),
+  );
+
+  for (const [, channel] of channels) {
+    try {
+      await channel.delete("Member left the server before registering");
+      logger.info(
+        `Deleted verification channel ${channel.id} of departed member ${discordId}`,
+      );
+    } catch (error) {
+      if (
+        error instanceof DiscordAPIError &&
+        error.code === RESTJSONErrorCodes.UnknownChannel
+      ) {
+        continue;
+      }
+      logger.warn(
+        `Could not delete verification channel ${channel.id} of departed member ${discordId}:`,
+        error,
+      );
+    }
   }
 }
 

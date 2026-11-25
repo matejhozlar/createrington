@@ -1,5 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { ChannelType, OverwriteType, type Client } from "discord.js";
+import {
+  ChannelType,
+  OverwriteType,
+  type Client,
+  type Guild,
+} from "discord.js";
 
 const { lookupMember } = vi.hoisted(() => ({ lookupMember: vi.fn() }));
 
@@ -24,6 +29,7 @@ vi.mock("@/discord/components/presets/registration", () => ({
 
 import {
   CLOSE_GRACE_MS,
+  deleteVerificationChannelsOf,
   sweepRegistrationChannels,
 } from "@/discord/bots/main/registration-cleanup";
 
@@ -104,5 +110,29 @@ describe("sweepRegistrationChannels", () => {
 
     expect(waiting.delete).not.toHaveBeenCalled();
     expect(done.delete).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("deleteVerificationChannelsOf", () => {
+  it("deletes only the leaving member's verification channel", async () => {
+    const leaving = verificationChannel("1");
+    const staying = verificationChannel("2");
+    const guild = botWith([leaving, staying]).guilds.cache.get(
+      "guild",
+    ) as Guild;
+
+    await deleteVerificationChannelsOf(guild, "1");
+
+    expect(leaving.delete).toHaveBeenCalledTimes(1);
+    expect(staying.delete).not.toHaveBeenCalled();
+  });
+
+  it("leaves channels outside the verification category alone", async () => {
+    const ticket = { ...verificationChannel("1"), parentId: "tickets" };
+    const guild = botWith([ticket]).guilds.cache.get("guild") as Guild;
+
+    await deleteVerificationChannelsOf(guild, "1");
+
+    expect(ticket.delete).not.toHaveBeenCalled();
   });
 });
