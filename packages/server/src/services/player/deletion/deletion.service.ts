@@ -63,7 +63,9 @@ export class PlayerDeletionService {
 
   /**
    * Delete a player and run the cross-cutting side effects. The audit row and
-   * the row delete share one transaction (with any caller `beforeDelete` work);
+   * the row delete share one transaction (with any caller `beforeDelete` work),
+   * which also deletes the player's inactivity warnings except a removed one,
+   * kept as history;
    * whitelist removal and post-deletion hooks run after commit and never abort
    * the deletion. Returns the deleted snapshot, or null when `ignoreMissing` is
    * set and no player existed.
@@ -122,6 +124,10 @@ export class PlayerDeletionService {
         });
       }
 
+      await tx.player.inactivity.warning.deleteAll({
+        playerMinecraftUuid: snapshot.minecraftUuid,
+        removedAt: { $exists: false },
+      });
       await tx.player.delete({ minecraftUuid: snapshot.minecraftUuid });
     });
 
