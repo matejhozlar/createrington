@@ -2,6 +2,12 @@ import type { RouterOutput } from "@/lib/trpc";
 
 export type AdminWorkshopMod =
   RouterOutput["admin"]["workshops"]["listMods"][number];
+export type RejectTarget = {
+  workshopModId: number;
+  name: string;
+  reason?: AdminWorkshopMod["rejectReason"];
+  note?: AdminWorkshopMod["rejectNote"];
+};
 export type PackMod =
   RouterOutput["admin"]["workshops"]["listPackMods"][number];
 export type AttentionItem =
