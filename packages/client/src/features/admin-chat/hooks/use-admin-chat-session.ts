@@ -8,7 +8,7 @@ import type {
 } from "@createrington/shared/admin-chat";
 import { useToastActions } from "@/hooks/use-toast";
 import { queryClient, trpc } from "@/lib/trpc";
-import { runStream } from "../stream";
+import { keepStreamOpen } from "../stream";
 import type { PageContext } from "../types";
 
 interface UseAdminChatSessionArgs {
@@ -192,14 +192,13 @@ export function useAdminChatSession({
     [location.pathname, location.search],
   );
 
-  useEffect(() => {
-    if (sessionId === null || !open) return;
-    const abort = new AbortController();
-    const lostConnection = (): void => {
-      toast.error("Lost connection to the assistant");
-    };
+  const sessionActive = sessionQuery.data?.active ?? false;
 
-    runStream(
+  useEffect(() => {
+    if (sessionId === null || !sessionActive) return;
+    const abort = new AbortController();
+
+    void keepStreamOpen(
       sessionId,
       {
         onMessage: (m) => {
@@ -208,22 +207,26 @@ export function useAdminChatSession({
         },
         onAction: (record) =>
           updateMessages(sessionId, (prev) => attachAction(prev, record)),
-        onSessionEnded: () => setSessionActive(sessionId, false),
-        onError: lostConnection,
+        onSessionEnded: () => {
+          setSessionActive(sessionId, false);
+          setAwaitingReply(false);
+        },
+        onReconnect: () =>
+          void queryClient.invalidateQueries({
+            queryKey: transcriptKey(sessionId),
+          }),
+        onLost: () => toast.error("Lost connection to the assistant"),
       },
       abort.signal,
-    ).catch((error: unknown) => {
-      if ((error as { name?: string }).name !== "AbortError") {
-        lostConnection();
-      }
-    });
+    );
 
     return () => abort.abort();
-  }, [sessionId, open, toast]);
+  }, [sessionId, sessionActive, toast]);
 
   const start = useCallback(
     async (prefillMessage?: string): Promise<void> => {
       if (!isAdmin) return;
+      setAwaitingReply(false);
       try {
         const { sessionId: id, model } = await startSession({
           pageContext: pageContext("admin-chat"),
@@ -287,6 +290,7 @@ export function useAdminChatSession({
     try {
       await endSession({ sessionId });
       setSessionActive(sessionId, false);
+      setAwaitingReply(false);
     } catch {
       toast.error("Couldn't end the chat");
     }
@@ -294,7 +298,7 @@ export function useAdminChatSession({
 
   return {
     sessionId,
-    sessionActive: sessionQuery.data?.active ?? false,
+    sessionActive,
     activeModel: sessionQuery.data?.model ?? null,
     messages: historyQuery.data?.messages ?? NO_MESSAGES,
     starting,
