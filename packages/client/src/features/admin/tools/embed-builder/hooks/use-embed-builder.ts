@@ -136,10 +136,24 @@ export function useEmbedBuilder() {
     createMutation.isPending ||
     updateMutation.isPending;
 
+  const hasActionButtons =
+    payload.kind === "embed" && payload.embed.actionButtons.length > 0;
+
   const validateOrToast = (): boolean => {
     const issue = findPayloadIssue(payload);
     if (issue) toast.error(issue);
     return !issue;
+  };
+
+  const validateForPublishOrToast = (): boolean => {
+    if (!validateOrToast()) return false;
+    if (hasActionButtons && isDirty) {
+      toast.error(
+        "Save the preset first: action buttons run what the saved preset holds.",
+      );
+      return false;
+    }
+    return true;
   };
 
   const handleSend = async (linkToPreset = true): Promise<boolean> => {
@@ -155,18 +169,16 @@ export function useEmbedBuilder() {
       );
       return false;
     }
-    if (!validateOrToast()) return false;
-
-    const needsPreset =
-      payload.kind === "embed" && payload.embed.actionButtons.length > 0;
-    if (needsPreset && !activePreset) {
+    if (hasActionButtons && !activePreset) {
       toast.error(
         "Save as a preset first: action buttons need a preset to function.",
       );
       return false;
     }
+    if (!validateForPublishOrToast()) return false;
 
-    const presetId = needsPreset || linkToPreset ? activePreset?.id : undefined;
+    const presetId =
+      hasActionButtons || linkToPreset ? activePreset?.id : undefined;
     try {
       await sendMutation.mutateAsync({ channelId, presetId, bot, ...payload });
     } catch {
@@ -285,6 +297,7 @@ export function useEmbedBuilder() {
     payload,
     isDirty,
     hasContent,
+    hasActionButtons,
     isPending,
 
     setKind: (next: PresetKind) => dispatch({ type: "setKind", kind: next }),
@@ -299,6 +312,7 @@ export function useEmbedBuilder() {
     setBot: (next: EmbedBot) => dispatch({ type: "setBot", bot: next }),
 
     validateOrToast,
+    validateForPublishOrToast,
     handleSend,
     handleSave,
     handleUpdateAll,
