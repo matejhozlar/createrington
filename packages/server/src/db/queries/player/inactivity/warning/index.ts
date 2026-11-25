@@ -68,6 +68,16 @@ const NOT_ADMIN_OR_EXEMPT = (uuidColumn: string) => `
     WHERE e.player_minecraft_uuid = ${uuidColumn}
   )`;
 
+const NOT_BANNED_WITHIN = (uuidColumn: string, daysParam: string) => `
+  NOT EXISTS (
+    SELECT 1 FROM player_ban b
+    WHERE b.player_minecraft_uuid = ${uuidColumn}
+      AND CASE
+            WHEN b.unbanned THEN LEAST(b.unbanned_at, b.expires_at)
+            ELSE COALESCE(b.expires_at, 'infinity'::timestamptz)
+          END > NOW() - (${daysParam} || ' days')::interval
+  )`;
+
 export class PlayerInactivityWarningQueries extends PlayerInactivityWarningBaseQueries {
   constructor(db: Pool | PoolClient) {
     super(db);
@@ -77,7 +87,9 @@ export class PlayerInactivityWarningQueries extends PlayerInactivityWarningBaseQ
    * Find players inactive for the given number of days who don't already
    * have an active (unresolved, unremoved) warning.
    * Also excludes players created within the inactivity window, registered
-   * admins (admins are never swept by inactivity), and exempted players.
+   * admins (admins are never swept by inactivity), exempted players, and
+   * players whose ban is active or ended within the inactivity window (a
+   * banned player cannot join, so the clock restarts when the ban ends).
    */
   async getInactivePlayers(inactiveDays: number) {
     const result = await this.runQuery<InactivePlayerRow>(
@@ -91,6 +103,7 @@ export class PlayerInactivityWarningQueries extends PlayerInactivityWarningBaseQ
            WHERE w.player_minecraft_uuid = p.minecraft_uuid AND ${OPEN}
          )
          AND ${NOT_ADMIN_OR_EXEMPT("p.minecraft_uuid")}
+         AND ${NOT_BANNED_WITHIN("p.minecraft_uuid", "$1")}
        ORDER BY p.last_seen ASC`,
       [inactiveDays],
     );
@@ -101,7 +114,9 @@ export class PlayerInactivityWarningQueries extends PlayerInactivityWarningBaseQ
    * Find active warnings whose grace period has expired.
    * Admins and exempted players are excluded defensively: even if a
    * warning row predates the exclusions in `getInactivePlayers`, it will
-   * never be acted on by the removal phase.
+   * never be acted on by the removal phase. Players whose ban is active or
+   * ended within the grace period are skipped too, so a warned player who
+   * is banned gets the full grace period back once the ban ends.
    */
   async getExpiredWarnings(graceDays: number) {
     const result = await this.runQuery<WarningWithPlayerRow>(
@@ -111,6 +126,7 @@ export class PlayerInactivityWarningQueries extends PlayerInactivityWarningBaseQ
        INNER JOIN player p ON p.minecraft_uuid = w.player_minecraft_uuid
        WHERE ${OPEN} AND ${PAST_GRACE}
          AND ${NOT_ADMIN_OR_EXEMPT("w.player_minecraft_uuid")}
+         AND ${NOT_BANNED_WITHIN("w.player_minecraft_uuid", "$1")}
        ORDER BY w.warned_at ASC`,
       [graceDays],
     );

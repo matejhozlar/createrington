@@ -8,6 +8,7 @@ import {
 
 const ALICE = "11111111-1111-1111-1111-111111111111";
 const BOB = "22222222-2222-2222-2222-222222222222";
+const CAROL = "33333333-3333-3333-3333-333333333333";
 
 const warning = Q.player.inactivity.warning;
 const exemption = Q.player.inactivity.exemption;
@@ -52,6 +53,36 @@ async function seedWarning(
         : daysAgo(fields.removedDaysAgo),
   });
   return row.id;
+}
+
+async function seedBan(
+  uuid: string,
+  fields: {
+    bannedDaysAgo: number;
+    expiresDaysAgo?: number;
+    unbannedDaysAgo?: number;
+  },
+): Promise<void> {
+  await Q.player.ban.create({
+    playerMinecraftUuid: uuid,
+    banType: fields.expiresDaysAgo === undefined ? "permanent" : "temporary",
+    reason: "griefing",
+    bannedByDiscordId: "900",
+    bannedByUsername: "mod",
+    bannedAt: daysAgo(fields.bannedDaysAgo),
+    expiresAt:
+      fields.expiresDaysAgo === undefined
+        ? null
+        : daysAgo(fields.expiresDaysAgo),
+    ...(fields.unbannedDaysAgo === undefined
+      ? {}
+      : {
+          unbanned: true,
+          unbannedByDiscordId: "900",
+          unbannedByUsername: "mod",
+          unbannedAt: daysAgo(fields.unbannedDaysAgo),
+        }),
+  });
 }
 
 async function exempt(uuid: string, reason?: string): Promise<void> {
@@ -127,6 +158,33 @@ describe("Q.player.inactivity.warning.getInactivePlayers", () => {
     const inactive = await warning.getInactivePlayers(60);
     expect(inactive.map((p) => p.minecraftUuid)).toEqual([ALICE]);
   });
+
+  it("skips players under an active temporary or permanent ban", async () => {
+    await seedPlayer(ALICE, "alice", "100", 90);
+    await seedPlayer(BOB, "bob", "101", 90);
+    await seedPlayer(CAROL, "carol", "102", 90);
+    await seedBan(BOB, { bannedDaysAgo: 95, expiresDaysAgo: -200 });
+    await seedBan(CAROL, { bannedDaysAgo: 95 });
+
+    const inactive = await warning.getInactivePlayers(60);
+    expect(inactive.map((p) => p.minecraftUuid)).toEqual([ALICE]);
+  });
+
+  it("restarts the inactivity clock when a ban ends", async () => {
+    await seedPlayer(ALICE, "alice", "100", 200);
+    await seedPlayer(BOB, "bob", "101", 200);
+    await seedPlayer(CAROL, "carol", "102", 200);
+    await seedBan(ALICE, { bannedDaysAgo: 195, expiresDaysAgo: 70 });
+    await seedBan(BOB, { bannedDaysAgo: 195, expiresDaysAgo: 10 });
+    await seedBan(CAROL, {
+      bannedDaysAgo: 195,
+      expiresDaysAgo: -100,
+      unbannedDaysAgo: 20,
+    });
+
+    const inactive = await warning.getInactivePlayers(60);
+    expect(inactive.map((p) => p.minecraftUuid)).toEqual([ALICE]);
+  });
 });
 
 describe("Q.player.inactivity.warning.getExpiredWarnings", () => {
@@ -136,6 +194,21 @@ describe("Q.player.inactivity.warning.getExpiredWarnings", () => {
     const aliceWarning = await seedWarning(ALICE, { warnedDaysAgo: 20 });
     await seedWarning(BOB, { warnedDaysAgo: 20 });
     await exempt(BOB);
+
+    const expired = await warning.getExpiredWarnings(14);
+    expect(expired.map((w) => w.id)).toEqual([aliceWarning]);
+  });
+
+  it("skips warned players who are banned or whose ban ended within the grace period", async () => {
+    await seedPlayer(ALICE, "alice", "100", 120);
+    await seedPlayer(BOB, "bob", "101", 120);
+    await seedPlayer(CAROL, "carol", "102", 120);
+    const aliceWarning = await seedWarning(ALICE, { warnedDaysAgo: 60 });
+    await seedWarning(BOB, { warnedDaysAgo: 60 });
+    await seedWarning(CAROL, { warnedDaysAgo: 60 });
+    await seedBan(ALICE, { bannedDaysAgo: 50, expiresDaysAgo: 20 });
+    await seedBan(BOB, { bannedDaysAgo: 50, expiresDaysAgo: 5 });
+    await seedBan(CAROL, { bannedDaysAgo: 50 });
 
     const expired = await warning.getExpiredWarnings(14);
     expect(expired.map((w) => w.id)).toEqual([aliceWarning]);
