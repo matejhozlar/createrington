@@ -146,10 +146,15 @@ export class AutoMessageService {
     );
   }
 
-  /** Adds a message with its follow-ups to a config in one transaction. */
+  /** Adds a message with its follow-ups to a config in one transaction; without a sort order it goes last. */
   async createMessage(
     configId: number,
-    fields: AutoMessageFields,
+    {
+      sortOrder,
+      ...fields
+    }: Omit<AutoMessageFields, "sortOrder"> & {
+      sortOrder?: number;
+    },
     followups: AutoMessageFollowupInput[],
   ): Promise<DiscordAutoMessage> {
     await this.requireConfig(configId);
@@ -158,6 +163,8 @@ export class AutoMessageService {
       const created = await tx.discord.auto.message.createAndReturn({
         configId,
         ...fields,
+        sortOrder:
+          sortOrder ?? (await tx.discord.auto.message.nextSortOrder(configId)),
       });
       await this.insertFollowups(tx, created.id, followups);
       return created;
@@ -248,7 +255,7 @@ export class AutoMessageService {
 
     const messages = await Q.discord.auto.message
       .where({ configId, enabled: true })
-      .orderBy("sortOrder", "asc")
+      .orderBy([{ field: "sortOrder" }, { field: "id" }])
       .all();
 
     if (messages.length === 0) {

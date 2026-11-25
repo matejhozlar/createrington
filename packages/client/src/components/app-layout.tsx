@@ -6,6 +6,7 @@ import { SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { Logo } from "@/components/logo";
 import { Footer } from "@/components/footer";
 import { LoadingScreen, LoadingState } from "@/components/query-states";
+import { RouteErrorBoundary } from "@/components/error-boundary";
 
 export function AppLayout({ children }: { children?: ReactNode }) {
   const { loading } = useAuth();
@@ -38,9 +39,11 @@ export function PageLayout({
   return (
     <>
       <div className="flex flex-1 flex-col gap-4">
-        <Suspense fallback={<LoadingState size="large" className="p-10" />}>
-          {children ?? <Outlet />}
-        </Suspense>
+        <RouteErrorBoundary>
+          <Suspense fallback={<LoadingState size="large" className="p-10" />}>
+            {children ?? <Outlet />}
+          </Suspense>
+        </RouteErrorBoundary>
       </div>
       {footer && <Footer />}
     </>

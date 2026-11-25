@@ -60,6 +60,7 @@ export function AssigneePicker({
                 <label className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 hover:bg-accent">
                   <Checkbox
                     checked={value.includes(admin.discordId)}
+                    disabled={disabled}
                     onCheckedChange={(checked) =>
                       toggle(admin.discordId, checked === true)
                     }

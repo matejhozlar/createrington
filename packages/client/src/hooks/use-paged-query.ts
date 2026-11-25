@@ -62,6 +62,14 @@ export function usePagedQuery<
   });
 
   const total = query.data?.pagination.total ?? 0;
+  const totalPages = query.data?.pagination.totalPages ?? 0;
+  const settledPastEnd =
+    query.isSuccess &&
+    !query.isPlaceholderData &&
+    page > 0 &&
+    page >= totalPages;
+  if (settledPastEnd) setPage(Math.max(0, totalPages - 1));
+
   const { refetch } = query;
   const retry = useCallback(() => void refetch(), [refetch]);
 
@@ -72,7 +80,7 @@ export function usePagedQuery<
     setPage,
     limit,
     total,
-    totalPages: query.data?.pagination.totalPages ?? 0,
+    totalPages,
     loading: query.isLoading || query.isPlaceholderData,
     loadingRows: loadingRowCount(page, limit, total),
     error: query.error?.message ?? null,

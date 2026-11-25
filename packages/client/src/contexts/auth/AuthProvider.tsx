@@ -12,6 +12,7 @@ import {
 } from "@/services/auth/token-manager";
 import { api, type ApiError } from "@/services/api/client";
 import { writePlayerHint } from "@/lib/playerHint";
+import { isInternalPath } from "@/lib/internalPath";
 import { toast } from "sonner";
 
 interface AuthProviderProps {
@@ -57,7 +58,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const savedState = sessionStorage.getItem("oauth_state");
     if (state && savedState && state !== savedState) {
       sessionStorage.removeItem("oauth_state");
-      window.location.href = "/?error=state_mismatch";
+      window.location.replace("/?error=state_mismatch");
       return;
     }
 
@@ -71,16 +72,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setUser(data.user);
 
         sessionStorage.removeItem("oauth_state");
-        const redirectPath = sessionStorage.getItem("oauth_redirect") || "/";
+        const stored = sessionStorage.getItem("oauth_redirect");
         sessionStorage.removeItem("oauth_redirect");
 
-        window.location.href = redirectPath;
+        window.location.replace(
+          stored && isInternalPath(stored) ? stored : "/",
+        );
       })
       .catch((error: ApiError) => {
         if (import.meta.env.DEV) console.error("Callback error:", error);
         const reason =
           error.code === "UNVERIFIED" ? "unverified" : "auth_failed";
-        window.location.href = `/?error=${reason}`;
+        window.location.replace(`/?error=${reason}`);
       })
       .finally(() => {
         setLoading(false);

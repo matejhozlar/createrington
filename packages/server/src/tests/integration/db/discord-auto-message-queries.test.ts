@@ -34,3 +34,21 @@ describe("Q.discord.auto.message.reorder", () => {
     expect(await Q.discord.auto.message.reorder([])).toBe(0);
   });
 });
+
+describe("Q.discord.auto.message.nextSortOrder", () => {
+  it("is 0 for an empty config and one past the highest sort order otherwise", async () => {
+    const config = await Q.discord.auto.message.config.createAndReturn({
+      channelId: CHANNEL,
+      name: "vitest next sort order",
+    });
+
+    expect(await Q.discord.auto.message.nextSortOrder(config.id)).toBe(0);
+
+    await Q.discord.auto.message.createManyAndReturn([
+      { configId: config.id, content: "first", sortOrder: 0 },
+      { configId: config.id, content: "second", sortOrder: 5 },
+    ]);
+
+    expect(await Q.discord.auto.message.nextSortOrder(config.id)).toBe(6);
+  });
+});

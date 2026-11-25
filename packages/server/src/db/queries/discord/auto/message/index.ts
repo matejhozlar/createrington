@@ -6,6 +6,18 @@ export class DiscordAutoMessageQueries extends DiscordAutoMessageBaseQueries {
     super(db);
   }
 
+  /** The sort order that places a new message after every existing one in its config. */
+  async nextSortOrder(configId: number): Promise<number> {
+    const result = await this.runQuery<{ next: number }>(
+      "next auto message sort order",
+      `SELECT COALESCE(MAX(sort_order) + 1, 0)::int AS next
+       FROM ${this.table}
+       WHERE config_id = $1`,
+      [configId],
+    );
+    return result.rows[0].next;
+  }
+
   /** Set the sort order of several messages in one statement; returns how many rows matched. */
   async reorder(
     items: Array<{ id: number; sortOrder: number }>,
