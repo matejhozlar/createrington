@@ -10,6 +10,7 @@ import express from "express";
 import {
   authLimiter,
   authRefreshLimiter,
+  globalLimiter,
   launcherPackLimiter,
   messageSendLimiter,
   skinPoseLimiter,
@@ -18,6 +19,7 @@ import {
 const uploadStandIn = vi.fn((_req, res) => res.status(201).end());
 const packStandIn = vi.fn((_req, res) => res.status(200).end());
 const poseStandIn = vi.fn((_req, res) => res.status(200).end());
+const pageStandIn = vi.fn((_req, res) => res.status(200).end());
 
 let server: Server;
 let baseUrl: string;
@@ -46,6 +48,7 @@ beforeAll(async () => {
     packStandIn,
   );
   app.get("/api/skin/:player/pose/:pose", skinPoseLimiter, poseStandIn);
+  app.get("/render/profile", globalLimiter, pageStandIn);
   app.use("/api/auth", authLimiter);
   app.use("/api/auth/refresh", authRefreshLimiter);
   app.post("/api/auth/refresh", (_req, res) => res.status(200).end());
@@ -122,18 +125,53 @@ describe("skinPoseLimiter", () => {
   });
 });
 
+describe("globalLimiter", () => {
+  it("caps proxied visitors at 600 requests per window and never limits the in-process render browser", async () => {
+    const proxied = { "x-forwarded-for": "203.0.113.8" };
+    for (let i = 0; i < 600; i++) {
+      expect(
+        (await fetch(`${baseUrl}/render/profile`, { headers: proxied })).status,
+      ).toBe(200);
+    }
+
+    expect(
+      (await fetch(`${baseUrl}/render/profile`, { headers: proxied })).status,
+    ).toBe(429);
+    for (let i = 0; i < 5; i++) {
+      expect((await fetch(`${baseUrl}/render/profile`)).status).toBe(200);
+    }
+    expect(pageStandIn).toHaveBeenCalledTimes(605);
+  });
+});
+
 describe("authLimiter", () => {
   it("keeps the 20-per-window login limit while page-load refreshes count separately", async () => {
+    const proxied = { "x-forwarded-for": "203.0.113.9" };
     for (let i = 0; i < 40; i++) {
       const refresh = await fetch(`${baseUrl}/api/auth/refresh`, {
         method: "POST",
+        headers: proxied,
       });
       expect(refresh.status).toBe(200);
     }
 
     for (let i = 0; i < 20; i++) {
-      expect((await fetch(`${baseUrl}/api/auth/discord`)).status).toBe(200);
+      expect(
+        (await fetch(`${baseUrl}/api/auth/discord`, { headers: proxied }))
+          .status,
+      ).toBe(200);
     }
-    expect((await fetch(`${baseUrl}/api/auth/discord`)).status).toBe(429);
+    expect(
+      (await fetch(`${baseUrl}/api/auth/discord`, { headers: proxied })).status,
+    ).toBe(429);
+  });
+
+  it("never limits the render browser's refreshes from loopback", async () => {
+    for (let i = 0; i < 301; i++) {
+      const refresh = await fetch(`${baseUrl}/api/auth/refresh`, {
+        method: "POST",
+      });
+      expect(refresh.status).toBe(200);
+    }
   });
 });

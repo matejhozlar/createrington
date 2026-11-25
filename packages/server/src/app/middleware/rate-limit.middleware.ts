@@ -25,6 +25,7 @@ export const globalLimiter = rateLimit({
   legacyHeaders: false,
   handler: rateLimitHandler,
   skip: (req) =>
+    isLoopbackRequest(req) ||
     req.path === "/api/claude-chat/stream" ||
     req.path === "/api/health" ||
     req.path.startsWith("/api/modpacks/") ||
@@ -54,7 +55,7 @@ export const authLimiter = rateLimit({
   standardHeaders: "draft-7",
   legacyHeaders: false,
   handler: rateLimitHandler,
-  skip: (req) => req.path === AUTH_REFRESH_PATH,
+  skip: (req) => req.path === AUTH_REFRESH_PATH || isLoopbackRequest(req),
   store: createRateLimitStore("auth"),
 });
 
@@ -64,6 +65,7 @@ export const authRefreshLimiter = rateLimit({
   standardHeaders: "draft-7",
   legacyHeaders: false,
   handler: rateLimitHandler,
+  skip: isLoopbackRequest,
   store: createRateLimitStore("auth-refresh"),
 });
 
