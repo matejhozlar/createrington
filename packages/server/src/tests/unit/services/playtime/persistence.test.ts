@@ -175,6 +175,54 @@ describe("PlaytimePersistence", () => {
     service.shutdown();
   });
 
+  it("persists the session start again on the next heartbeat after it failed", async () => {
+    const { service, writer, persistence } = startedService();
+    writer.startSession
+      .mockRejectedValueOnce(new Error("connection lost"))
+      .mockResolvedValue({ sessionId: 42, discordId: "discord-steve" });
+
+    service.handlePlayerJoinFromMod({
+      uuid: STEVE,
+      username: "steve",
+      playTimeTicks: ticks(1000),
+    });
+    await persistence.flush(1000);
+    expect(sessionOf(service, STEVE)?.sessionId).toBeUndefined();
+
+    vi.setSystemTime(new Date(T0.getTime() + 60_000));
+    service.reconcileWithHeartbeat([
+      { uuid: STEVE, username: "steve", playTimeTicks: ticks(1060) },
+    ]);
+    await persistence.flush(1000);
+
+    expect(writer.startSession).toHaveBeenCalledTimes(2);
+    expect(writer.startSession).toHaveBeenLastCalledWith(
+      expect.objectContaining({ sessionStart: T0, playTimeTicks: ticks(1000) }),
+    );
+    expect(sessionOf(service, STEVE)?.sessionId).toBe(42);
+    service.shutdown();
+  });
+
+  it("does not retry the session start of an unregistered player", async () => {
+    const { service, writer, persistence } = startedService();
+    writer.startSession.mockResolvedValue(null);
+
+    service.handlePlayerJoinFromMod({
+      uuid: STEVE,
+      username: "steve",
+      playTimeTicks: ticks(1000),
+    });
+    await persistence.flush(1000);
+    vi.setSystemTime(new Date(T0.getTime() + 60_000));
+    service.reconcileWithHeartbeat([
+      { uuid: STEVE, username: "steve", playTimeTicks: ticks(1060) },
+    ]);
+    await persistence.flush(1000);
+
+    expect(writer.startSession).toHaveBeenCalledTimes(1);
+    service.shutdown();
+  });
+
   it("hands a failed heartbeat write back to the service for the next heartbeat", async () => {
     const { service, writer, persistence } = startedService();
     writer.startSession.mockResolvedValue({

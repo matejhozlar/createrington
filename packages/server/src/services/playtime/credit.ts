@@ -22,22 +22,27 @@ export function computeCredit(input: CreditInput): PlaytimeCredit {
   const baseline = input.lastPlayTicks ?? undefined;
 
   let seconds: number;
+  let carriedTicks = observed;
   if (baseline === undefined) {
     seconds = wallclock;
   } else if (observed === undefined || observed < baseline) {
     seconds = 0;
   } else {
-    seconds = Math.min(
-      Math.floor((observed - baseline) / TICKS_PER_SECOND),
-      wallclock + CATCH_UP_SLACK_SECONDS,
-    );
+    const earned = Math.floor((observed - baseline) / TICKS_PER_SECOND);
+    const ceiling = wallclock + CATCH_UP_SLACK_SECONDS;
+    if (earned <= ceiling) {
+      seconds = earned;
+      carriedTicks = baseline + earned * TICKS_PER_SECOND;
+    } else {
+      seconds = ceiling;
+    }
   }
 
   return {
     periodStart: input.periodStart,
     periodEnd: input.periodEnd,
     seconds,
-    playTimeTicks: observed,
+    playTimeTicks: carriedTicks,
   };
 }
 

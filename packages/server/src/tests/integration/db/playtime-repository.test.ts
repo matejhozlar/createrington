@@ -243,6 +243,30 @@ describe("PlaytimeRepository (integration)", () => {
     expect(player.online).toBe(false);
   });
 
+  it("opens the session when an orphaned one started after the reported start", async () => {
+    const orphan = await playtimeRepo.startSession({
+      uuid: STEVE,
+      username: "steve",
+      serverId,
+      sessionStart: at(60),
+      playTimeTicks: ticks(100),
+    });
+
+    const started = await playtimeRepo.startSession({
+      uuid: STEVE,
+      username: "steve",
+      serverId,
+      sessionStart: T0,
+      playTimeTicks: ticks(100),
+    });
+
+    expect(started).not.toBeNull();
+    const closed = await Q.player.session.get({ id: orphan!.sessionId });
+    expect(closed.sessionEnd).toEqual(at(60));
+    const open = await Q.player.session.get({ id: started!.sessionId });
+    expect(open.sessionEnd).toBeNull();
+  });
+
   it("clamps a session end reported before the session start", async () => {
     const sessionId = (await playtimeRepo.startSession({
       uuid: STEVE,

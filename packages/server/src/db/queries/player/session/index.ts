@@ -74,6 +74,28 @@ export class PlayerSessionQueries extends PlayerSessionBaseQueries {
   }
 
   /**
+   * Closes every open session of a player on a server at the given instant,
+   * or at the session's own start when that instant lies before it, since
+   * session_end may never precede session_start.
+   *
+   * @returns Number of sessions closed
+   */
+  async closeOpen(
+    playerMinecraftUuid: string,
+    serverId: number,
+    at: Date,
+  ): Promise<number> {
+    const result = await this.runQuery(
+      "close open sessions",
+      `UPDATE ${this.table}
+       SET session_end = GREATEST(session_start, $3)
+       WHERE player_minecraft_uuid = $1 AND server_id = $2 AND session_end IS NULL`,
+      [playerMinecraftUuid, serverId, at],
+    );
+    return result.rowCount ?? 0;
+  }
+
+  /**
    * Records a presence observation on a session: advances last_seen_at,
    * stores the newest play_time tick reading when one was reported, adds the
    * credited seconds, and optionally closes the session.
