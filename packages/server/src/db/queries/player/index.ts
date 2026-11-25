@@ -191,9 +191,10 @@ export class PlayerQueries extends PlayerBaseQueries {
   /**
    * Moves the rows that refer to a player by Minecraft UUID without a foreign
    * key (admin log targets, departure records, top-role holders and reigns,
-   * maintenance allow lists) from one UUID to another, with the same unique-key rule as
-   * reassignDiscordId. Tables with a foreign key follow player.minecraft_uuid
-   * on their own. Run it in the transaction that changes the UUID.
+   * maintenance allow lists) from one UUID to another, with the same
+   * unique-key rule as reassignDiscordId. Tables with a foreign key follow
+   * player.minecraft_uuid on their own. Run it in the transaction that
+   * changes the UUID.
    */
   async reassignMinecraftUuid(from: string, to: string): Promise<void> {
     await this.reassign(MINECRAFT_UUID_REFERENCES, from, to);
