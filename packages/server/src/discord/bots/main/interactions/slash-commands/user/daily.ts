@@ -1,5 +1,9 @@
+import { Q } from "@/db";
 import { EmbedPresets } from "@/discord/embeds";
-import { replyError } from "@/discord/utils/interaction-reply";
+import {
+  replyError,
+  replyNotRegistered,
+} from "@/discord/utils/interaction-reply";
 import { CooldownType } from "@/discord/utils/cooldown";
 import { dailyRewardService } from "@/services/reward/daily-reward.service";
 import { discordTimestamp } from "@/utils/format";
@@ -29,9 +33,23 @@ async function execute(
 ): Promise<void> {
   const discordId = interaction.user.id;
 
-  const eligibility = await dailyRewardService.checkEligibility({
-    discordId,
-  });
+  const player = await Q.player.find({ discordId });
+  if (!player) {
+    await replyNotRegistered(interaction, interaction.user);
+    return;
+  }
+  const identifier = { minecraftUuid: player.minecraftUuid };
+
+  const eligibility = await dailyRewardService.checkEligibility(identifier);
+
+  if (!eligibility.eligible && !eligibility.nextClaimTime) {
+    await replyError(
+      interaction,
+      "Daily Reward Unavailable",
+      "Your daily reward could not be checked right now. Please try again in a moment.",
+    );
+    return;
+  }
 
   if (!eligibility.eligible) {
     const embed = EmbedPresets.error(
@@ -54,7 +72,7 @@ async function execute(
     return;
   }
 
-  const result = await dailyRewardService.claim({ discordId });
+  const result = await dailyRewardService.claim(identifier);
 
   if (!result.success) {
     await replyError(
