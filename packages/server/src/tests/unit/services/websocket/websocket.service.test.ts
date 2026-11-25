@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { createServer } from "node:http";
+import { EventEmitter } from "node:events";
 
 vi.mock("@/services/auth/jwt", () => ({ jwtService: { verify: vi.fn() } }));
 vi.mock("@/services/websocket/data-provider", () => ({
@@ -141,7 +142,7 @@ describe("WebSocketService inbound event handling", () => {
     expect(unhandled).not.toHaveBeenCalled();
   });
 
-  it("rejects a malformed initial data request with an error event", async () => {
+  it("rejects a malformed initial data request with an error event and an empty ack", async () => {
     const { socket, send } = connectFakeSocket(service);
     const ack = vi.fn();
 
@@ -157,7 +158,7 @@ describe("WebSocketService inbound event handling", () => {
     ).not.toThrow();
     await settle();
 
-    expect(ack).not.toHaveBeenCalled();
+    expect(ack.mock.calls).toEqual([[null], [null]]);
     expect(socket.emit).toHaveBeenCalledTimes(2);
     expect(socket.emit.mock.calls[0][0]).toBe(SocketEvent.ERROR);
     expect(socket.emit.mock.calls[0][1]).toMatchObject({
@@ -287,5 +288,93 @@ describe("request-validation helpers", () => {
     });
     expect(rejectedSubscription({ type: "players" }, "e").type).toBe("players");
     expect(rejectedSubscription({ type: 5 }, "e").type).toBe("");
+  });
+});
+
+describe("WebSocketService initial data failures", () => {
+  it("answers the ack with null when the snapshot cannot be built", async () => {
+    const service = new WebSocketService(
+      createServer(),
+      {} as MessageCacheService,
+      {} as PlaytimeManagerService,
+    );
+    (service as unknown as { dataProvider: unknown }).dataProvider = {
+      getInitialData: () => {
+        throw new Error("status unavailable");
+      },
+    };
+    const { socket, send } = connectFakeSocket(service);
+    const ack = vi.fn();
+
+    send(SocketEvent.REQUEST_INITIAL_DATA, {}, ack);
+    await settle();
+
+    expect(ack).toHaveBeenCalledWith(null);
+    expect(socket.emit.mock.calls[0][0]).toBe(SocketEvent.ERROR);
+  });
+});
+
+describe("WebSocketService server status broadcasts", () => {
+  function connectedService(online: () => boolean) {
+    const playtime = new EventEmitter();
+    const service = new WebSocketService(
+      createServer(),
+      new EventEmitter() as unknown as MessageCacheService,
+      {
+        getAllServices: () => new Map([[1, playtime]]),
+      } as unknown as PlaytimeManagerService,
+    );
+    const internals = service as unknown as {
+      dataProvider: unknown;
+      io: { to: (room: string) => { emit: (...args: unknown[]) => void } };
+    };
+    internals.dataProvider = {
+      getServerStatus: () => ({
+        serverSlug: "main",
+        online: online(),
+        maintenance: false,
+        scheduledMaintenance: null,
+        playerCount: 0,
+        maxPlayers: 20,
+      }),
+    };
+    const statuses: boolean[] = [];
+    internals.io.to = (room: string) => ({
+      emit: (event: unknown, payload: unknown) => {
+        if (
+          event === SocketEvent.UPDATE_SERVER_STATUS &&
+          room === `${SubscriptionType.SERVER_STATUS}:1`
+        ) {
+          statuses.push((payload as { online: boolean }).online);
+        }
+      },
+    });
+    service.initialize();
+    return { playtime, statuses };
+  }
+
+  const leave = {
+    uuid: "11111111-2222-3333-4444-555555555555",
+    username: "steve",
+    serverId: 1,
+    sessionStart: new Date("2026-11-25T10:00:00Z"),
+    secondsPlayed: 60,
+  };
+
+  it("tells clients when the watchdog marks a server offline or back online", () => {
+    const { playtime, statuses } = connectedService(() => true);
+
+    playtime.emit("serverOffline");
+    playtime.emit("serverOnline");
+
+    expect(statuses).toEqual([false, true]);
+  });
+
+  it("reports a leave on an offline server as offline", () => {
+    const { playtime, statuses } = connectedService(() => false);
+
+    playtime.emit("sessionEnd", leave);
+
+    expect(statuses).toEqual([false]);
   });
 });

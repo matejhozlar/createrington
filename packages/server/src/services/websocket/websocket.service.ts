@@ -275,7 +275,7 @@ export class WebSocketService {
     rawCallback: unknown,
   ): void {
     const { payload, ack } = splitFrame<
-      InitialDataPayload | ServerInitialDataPayload
+      InitialDataPayload | ServerInitialDataPayload | null
     >(rawRequest, rawCallback);
     if (!this.allowSocketEvent(socket.id)) {
       logger.warn(`[ws] rate-limited ${socket.id} on initialDataRequest`);
@@ -283,6 +283,7 @@ export class WebSocketService {
         message: "Rate limited",
         event: SocketEvent.REQUEST_INITIAL_DATA,
       });
+      ack?.(null);
       return;
     }
     const request = parseInitialDataRequest(payload);
@@ -292,6 +293,7 @@ export class WebSocketService {
         message: "Invalid initial data request",
         event: SocketEvent.REQUEST_INITIAL_DATA,
       });
+      ack?.(null);
       return;
     }
     this.handleInitialDataRequest(socket, request, ack);
@@ -300,7 +302,9 @@ export class WebSocketService {
   private handleInitialDataRequest(
     socket: Socket,
     request: InitialDataRequest,
-    callback?: (data: InitialDataPayload | ServerInitialDataPayload) => void,
+    callback?: (
+      data: InitialDataPayload | ServerInitialDataPayload | null,
+    ) => void,
   ): void {
     try {
       const includeMessages = request.includeMessages ?? true;
@@ -337,6 +341,7 @@ export class WebSocketService {
         message: "Failed to load initial data",
         error: error instanceof Error ? error.message : "Unknown error",
       });
+      callback?.(null);
     }
   }
 
@@ -380,6 +385,14 @@ export class WebSocketService {
           event.secondsPlayed,
         );
       });
+
+      playtimeService.on("serverOnline", () => {
+        this.broadcastServerStatusUpdate(serverId, true);
+      });
+
+      playtimeService.on("serverOffline", () => {
+        this.broadcastServerStatusUpdate(serverId, false);
+      });
     }
 
     logger.debug("Connected to external services");
@@ -397,10 +410,13 @@ export class WebSocketService {
     this.io.to(RoomManager.getRoomForSubscription(type)).emit(event, payload);
   }
 
-  private broadcastServerStatusUpdate(serverId: number, online: boolean): void {
+  private broadcastServerStatusUpdate(
+    serverId: number,
+    reported?: boolean,
+  ): void {
     try {
       const status = this.dataProvider.getServerStatus(serverId);
-      status.online = online;
+      const online = reported ?? status.online;
 
       const payload: ServerStatusUpdatePayload = {
         serverId,
@@ -458,7 +474,7 @@ export class WebSocketService {
       `Broadcast player ${type}: ${event.username} on server ${serverId}`,
     );
 
-    this.broadcastServerStatusUpdate(serverId, true);
+    this.broadcastServerStatusUpdate(serverId);
   }
 
   private broadcastMessageUpdate(

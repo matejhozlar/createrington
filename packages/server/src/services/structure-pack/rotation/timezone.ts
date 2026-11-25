@@ -12,7 +12,7 @@ export function isTimeZone(zone: string): boolean {
   }
 }
 
-/** How many milliseconds one period lasts (approximate, for missed-rotation detection). */
+/** How many milliseconds one period lasts (approximate: a month counts as 30 days). */
 export function periodIntervalMs(period: RotationPeriod): number {
   switch (period) {
     case "daily":

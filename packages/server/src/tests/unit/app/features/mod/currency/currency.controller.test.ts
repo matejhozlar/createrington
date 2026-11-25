@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { transferMock, runIdempotentMock } = vi.hoisted(() => ({
+const { transferMock, runIdempotentMock, historyMock } = vi.hoisted(() => ({
   transferMock: vi.fn(),
   runIdempotentMock: vi.fn(),
+  historyMock: vi.fn(),
 }));
 
 vi.mock("@/app/middleware", async () => ({
@@ -14,7 +15,7 @@ vi.mock("@/app/middleware", async () => ({
 }));
 
 vi.mock("@/db", () => ({
-  balanceRepo: { transfer: transferMock },
+  balanceRepo: { transfer: transferMock, getFormattedHistory: historyMock },
 }));
 
 vi.mock("@/services/reward/reward.service", () => ({ rewardService: {} }));
@@ -57,6 +58,24 @@ describe("CurrencyController.pay", () => {
     ).rejects.toBeInstanceOf(BadRequestError);
     expect(transferMock).not.toHaveBeenCalled();
   });
+
+  it.each([
+    ["more than 3 decimal places", 1.2345, /at most 3 decimal places/],
+    ["an amount that rounds to zero", 0.00004, /too small/],
+  ])(
+    "rejects %s with a 400 and a player message",
+    async (_label, amount, message) => {
+      const error = await CurrencyController.pay(
+        makeReq({ toUuid: RECIPIENT_UUID, amount }),
+        fakeRes(),
+      ).catch((caught: unknown) => caught);
+
+      expect(error).toBeInstanceOf(BadRequestError);
+      expect((error as BadRequestError).message).toMatch(message);
+      expect((error as BadRequestError).playerMessage).toBeTruthy();
+      expect(runIdempotentMock).not.toHaveBeenCalled();
+    },
+  );
 
   function runOperation() {
     runIdempotentMock.mockImplementation(
@@ -122,6 +141,42 @@ describe("CurrencyController.pay", () => {
     expect((error as BadRequestError).playerMessage).toBe(
       "That player can't hold that much money.",
     );
+  });
+});
+
+describe("CurrencyController.getHistory", () => {
+  it("returns only the documented transaction fields", async () => {
+    historyMock.mockResolvedValue([
+      {
+        id: 7,
+        amount: "+50.000",
+        balanceBefore: "100.000",
+        balanceAfter: "150.000",
+        transactionType: "admin_grant",
+        description: "Event prize",
+        createdAt: new Date("2026-11-20T10:00:00Z"),
+        metadata: { adminDiscordId: "1", adminUsername: "admin" },
+      },
+    ]);
+    const res = fakeRes();
+
+    await CurrencyController.getHistory(
+      fakeReq({ query: {}, modAuth: { uuid: SENDER_UUID } }),
+      res,
+    );
+
+    const [body] = res.json.mock.calls[0];
+    expect(body.data.transactions).toEqual([
+      {
+        id: 7,
+        amount: "+50.000",
+        balanceBefore: "100.000",
+        balanceAfter: "150.000",
+        transactionType: "admin_grant",
+        description: "Event prize",
+        createdAt: "2026-11-20T10:00:00.000Z",
+      },
+    ]);
   });
 });
 

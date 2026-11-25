@@ -89,13 +89,10 @@ export class PlaytimeRepository {
         : null;
 
     const closeOrphans = async (): Promise<void> => {
-      const closedCount = await Q.player.session.updateAll(
-        { sessionEnd: event.sessionStart },
-        {
-          playerMinecraftUuid: event.uuid,
-          serverId: event.serverId,
-          sessionEnd: null,
-        },
+      const closedCount = await Q.player.session.closeOpen(
+        event.uuid,
+        event.serverId,
+        event.sessionStart,
       );
 
       if (closedCount > 0) {

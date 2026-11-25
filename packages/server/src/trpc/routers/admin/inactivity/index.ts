@@ -166,7 +166,11 @@ export const inactivityRouter = router({
         throw trpcError.conflict("Warning is already removed");
       }
 
-      if (!warning.minecraftUsername || !warning.discordId) {
+      if (
+        !warning.playerMinecraftUuid ||
+        !warning.minecraftUsername ||
+        !warning.discordId
+      ) {
         throw trpcError.conflict(
           "Player record is missing, cannot perform manual removal",
         );

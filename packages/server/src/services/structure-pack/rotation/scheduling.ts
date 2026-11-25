@@ -1,4 +1,4 @@
-import { dateInTimezone, periodIntervalMs } from "./timezone";
+import { dateInTimezone } from "./timezone";
 import type { RotationConfig } from "./types";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
@@ -28,18 +28,15 @@ function wrapWeek(days: number): number {
   return ((days % 7) + 7) % 7;
 }
 
-/**
- * Returns the first configured rotation time strictly after `now`.
- *
- * Wall-clock dates are taken in the configured IANA timezone so that DST
- * transitions do not shift the scheduled time.
- */
-export function nextOccurrence(cfg: RotationConfig, now: Date): Date {
+function occurrenceAround(
+  cfg: RotationConfig,
+  now: Date,
+): (periods: number) => Date {
   const [hours, minutes] = cfg.time.split(":").map(Number);
   const today = wallClockDate(cfg.timezone, now);
   const weekOffset = wrapWeek(cfg.dayOfWeek - today.weekday);
 
-  const at = (periods: number): Date => {
+  return (periods) => {
     switch (cfg.period) {
       case "daily":
         return dateInTimezone(
@@ -70,9 +67,25 @@ export function nextOccurrence(cfg: RotationConfig, now: Date): Date {
         );
     }
   };
+}
 
+/**
+ * Returns the first configured rotation time strictly after `now`.
+ *
+ * Wall-clock dates are taken in the configured IANA timezone so that DST
+ * transitions do not shift the scheduled time.
+ */
+export function nextOccurrence(cfg: RotationConfig, now: Date): Date {
+  const at = occurrenceAround(cfg, now);
   const candidate = at(0);
   return candidate.getTime() <= now.getTime() ? at(1) : candidate;
+}
+
+/** Returns the last configured rotation time at or before `now`, in the configured timezone. */
+export function previousOccurrence(cfg: RotationConfig, now: Date): Date {
+  const at = occurrenceAround(cfg, now);
+  const candidate = at(0);
+  return candidate.getTime() <= now.getTime() ? candidate : at(-1);
 }
 
 export function describeSchedule(cfg: RotationConfig): string {
@@ -89,14 +102,16 @@ export function describeSchedule(cfg: RotationConfig): string {
 /**
  * Returns true if a rotation was missed since the last recorded rotation.
  *
- * A rotation is considered missed when the elapsed time since `lastRotatedAt`
- * exceeds one full period plus the configured grace period.
+ * A rotation is missed when a scheduled time lies between `lastRotatedAt` and
+ * now. A rotation recorded up to the grace period before a scheduled time
+ * still counts for it, which absorbs clock differences between the database
+ * that stamps the rotation and this process.
  */
 export function checkMissedRotation(
   cfg: RotationConfig,
   lastRotatedAt: Date,
 ): boolean {
-  const expectedInterval = periodIntervalMs(cfg.period);
   const gracePeriod = cfg.gracePeriodMinutes * 60 * 1000;
-  return Date.now() - lastRotatedAt.getTime() > expectedInterval + gracePeriod;
+  const scheduled = previousOccurrence(cfg, new Date());
+  return scheduled.getTime() - lastRotatedAt.getTime() > gracePeriod;
 }

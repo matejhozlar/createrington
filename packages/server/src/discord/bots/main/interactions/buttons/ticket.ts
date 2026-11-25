@@ -129,31 +129,25 @@ async function handleCreate(
   const ticketService = await getService(Services.TICKET_SERVICE);
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-  const hasOpen = await ticketService.hasOpenTicket(interaction.user.id);
+  const result = await ticketService.openTicket({
+    type,
+    creatorId: interaction.user.id,
+  });
 
-  if (hasOpen) {
-    const existingTicket = await Q.ticket.findAll(
-      { creatorDiscordId: interaction.user.id, status: "open" },
-      { limit: 1 },
-    );
+  if (!result.created) {
     await replyError(
       interaction,
       "Ticket Already Open",
       `You already have an open ticket ${channelMention(
-        existingTicket[0].channelId,
+        result.ticket.channelId,
       )}. Please close it before creating a new one.`,
     );
     return;
   }
 
-  const { channel } = await ticketService.createTicket({
-    type,
-    creatorId: interaction.user.id,
-  });
-
   const embed = EmbedPresets.success(
     "Ticket Created",
-    `Your ticket has been created: ${channelMention(channel.id)}`,
+    `Your ticket has been created: ${channelMention(result.channel.id)}`,
   );
 
   await interaction.editReply({

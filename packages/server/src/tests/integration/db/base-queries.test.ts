@@ -348,6 +348,35 @@ describe("BaseQueries (server table)", () => {
       expect(results[2].name).toBe("Alpha");
     });
 
+    it("should break ties on the primary key so pages never repeat or skip a row", async () => {
+      const createdAt = new Date("2026-01-01T00:00:00Z");
+      for (const name of ["tie-1", "tie-2", "tie-3", "tie-4"]) {
+        await Q.server.create({ name, identifier: name, createdAt });
+      }
+
+      const paged = [];
+      for (let offset = 0; offset < 4; offset++) {
+        paged.push(
+          ...(await Q.server.findAll(
+            { createdAt },
+            {
+              orderBy: "createdAt",
+              orderDirection: "desc",
+              limit: 1,
+              offset,
+            },
+          )),
+        );
+      }
+
+      expect(paged.map((server) => server.name)).toEqual([
+        "tie-4",
+        "tie-3",
+        "tie-2",
+        "tie-1",
+      ]);
+    });
+
     it("should support limit", async () => {
       const results = await Q.server.findAll(undefined, { limit: 2 });
       expect(results).toHaveLength(2);

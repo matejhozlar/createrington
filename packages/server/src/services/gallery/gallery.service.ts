@@ -14,6 +14,7 @@ import { settings } from "@/services/settings";
 import { objectStorage } from "@/services/storage/object-storage.service";
 import { DownloadTooLargeError, downloadCapped } from "@/utils/http";
 import type { GallerySubmission } from "@createrington/shared/db";
+import type { DatabaseQueries } from "@/generated/db";
 import {
   galleryCaption,
   GALLERY_MAX_ORIGINAL_BYTES,
@@ -240,10 +241,6 @@ export class GalleryService {
     }
 
     const upload = await this.uploadVariants(submission);
-    const { rewardAmount, capReached } = await this.rewardFor(
-      author.minecraftUuid,
-      input.rewardAmount,
-    );
 
     const creditUuids = [...new Set(input.creditPlayerUuids ?? [])].filter(
       (uuid) => uuid !== author.minecraftUuid,
@@ -253,16 +250,29 @@ export class GalleryService {
         ? submission.caption
         : galleryCaption(input.caption ?? "");
 
-    const approved = await this.withUploadCleanup(
+    const { approved, rewardAmount, capReached } = await this.withUploadCleanup(
       [upload.fullKey, upload.thumbKey],
-      async () =>
-        db.inTransaction(async (tx) => {
+      async () => {
+        const offer = await this.rewardOffer(
+          author.minecraftUuid,
+          input.rewardAmount,
+        );
+
+        return db.inTransaction(async (tx) => {
           const locked = await tx.gallery.submission.findForUpdate(id);
           if (!locked || locked.status !== "pending") {
             throw new ConflictError(
               `Gallery submission is already ${locked?.status ?? "gone"}`,
             );
           }
+
+          if (offer.amount > 0) {
+            await tx.player.balance.findForUpdate(author.minecraftUuid);
+          }
+          const capReached =
+            (await this.weeklyRewardsUsed(author.minecraftUuid, tx)) >=
+            offer.cap;
+          const rewardAmount = capReached ? 0 : offer.amount;
 
           let rewardTransactionId: number | null = null;
 
@@ -306,8 +316,9 @@ export class GalleryService {
             })),
           );
 
-          return row;
-        }),
+          return { approved: row, rewardAmount, capReached };
+        });
+      },
     );
 
     const announced = await this.announce(approved, {
@@ -416,9 +427,12 @@ export class GalleryService {
     return removed;
   }
 
-  /** Number of rewarded approvals a player received in the rolling weekly window. */
-  async weeklyRewardsUsed(playerMinecraftUuid: string): Promise<number> {
-    return Q.gallery.submission.count({
+  /** Number of rewarded approvals a player received in the rolling weekly window. Pass a transaction to count inside it. */
+  async weeklyRewardsUsed(
+    playerMinecraftUuid: string,
+    tx?: DatabaseQueries,
+  ): Promise<number> {
+    return (tx ?? Q).gallery.submission.count({
       playerMinecraftUuid,
       rewardTransactionId: { $exists: true },
       reviewedAt: { $gte: new Date(Date.now() - REWARD_WINDOW_MS) },
@@ -551,19 +565,17 @@ export class GalleryService {
     };
   }
 
-  private async rewardFor(
+  private async rewardOffer(
     authorMinecraftUuid: string,
     requestedAmount: number | undefined,
-  ): Promise<{ rewardAmount: number; capReached: boolean }> {
-    const [defaultAmount, cap, used] = await Promise.all([
+  ): Promise<{ amount: number; cap: number }> {
+    const [defaultAmount, cap] = await Promise.all([
       settings.getGalleryRewardAmount(),
       settings.getGalleryWeeklyRewardCap(),
-      this.weeklyRewardsUsed(authorMinecraftUuid),
     ]);
-    const capReached = used >= cap;
-    const rewardAmount = capReached ? 0 : (requestedAmount ?? defaultAmount);
+    const amount = requestedAmount ?? defaultAmount;
 
-    if (rewardAmount > 0) {
+    if (amount > 0) {
       const balance = await Q.player.balance.find({
         minecraftUuid: authorMinecraftUuid,
       });
@@ -571,7 +583,7 @@ export class GalleryService {
         await balanceRepo.create(authorMinecraftUuid, 0);
       }
     }
-    return { rewardAmount, capReached };
+    return { amount, cap };
   }
 
   private async announce(

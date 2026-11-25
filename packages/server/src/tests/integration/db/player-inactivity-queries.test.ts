@@ -149,6 +149,67 @@ describe("Q.player.inactivity.warning.countByStatus", () => {
   });
 });
 
+describe("removed warnings of deleted players", () => {
+  async function removePlayer(
+    uuid: string,
+    username: string,
+    discordId: string,
+  ): Promise<void> {
+    await seedPlayer(uuid, username, discordId, 70);
+    const id = await seedWarning(uuid, { warnedDaysAgo: 20 });
+    await warning.update(
+      { id },
+      { removedAt: daysAgo(1), minecraftUsername: username, discordId },
+    );
+    await Q.player.delete({ minecraftUuid: uuid });
+  }
+
+  it("lists each one under its snapshot name once the player row is gone", async () => {
+    await removePlayer(ALICE, "alice", "100");
+    await removePlayer(BOB, "bob", "101");
+
+    const { rows, total } = await warning.getByStatus({
+      status: "removed",
+      graceDays: 14,
+      limit: 20,
+      offset: 0,
+    });
+
+    expect(total).toBe(2);
+    expect(
+      rows
+        .map((row) => ({
+          uuid: row.playerMinecraftUuid,
+          username: row.minecraftUsername,
+          discordId: row.discordId,
+        }))
+        .sort((a, b) => (a.username ?? "").localeCompare(b.username ?? "")),
+    ).toEqual([
+      { uuid: null, username: "alice", discordId: "100" },
+      { uuid: null, username: "bob", discordId: "101" },
+    ]);
+  });
+
+  it("finds one by its snapshot name and counts it within retention", async () => {
+    await removePlayer(ALICE, "alice", "100");
+    await removePlayer(BOB, "bob", "101");
+
+    const { rows, total } = await warning.getByStatus({
+      status: "removed",
+      graceDays: 14,
+      search: "LIC",
+      limit: 20,
+      offset: 0,
+    });
+
+    expect(total).toBe(1);
+    expect(rows.map((row) => row.minecraftUsername)).toEqual(["alice"]);
+    expect(await warning.countByStatus(14, 30)).toMatchObject({
+      removedInRetention: 2,
+    });
+  });
+});
+
 describe("Q.player.inactivity.warning.getInactivePlayers", () => {
   it("skips exempted players", async () => {
     await seedPlayer(ALICE, "alice", "100", 90);

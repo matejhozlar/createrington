@@ -19,7 +19,8 @@ type SessionWriter = Pick<
 
 /**
  * Drives the playtime repository from PlaytimeService events: a session start
- * is persisted and its row id handed back to the service, a heartbeat slice
+ * is persisted and its row id handed back to the service (a start that fails
+ * to persist is reported back so the next heartbeat tries it again), a heartbeat slice
  * that fails to persist is returned to the service so the next heartbeat
  * credits it again, and `sessionAggregated` is emitted once a session end is
  * stored. A player's first session also completes the waitlist "joined
@@ -56,6 +57,7 @@ export class PlaytimePersistence {
               `Failed to handle sessionStart event for server ${serverId}:`,
               error,
             );
+            service.markStartFailed(event);
           }),
       );
     });

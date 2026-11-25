@@ -38,7 +38,8 @@ export default defineApiSpec({
           {
             name: "amount",
             type: "double",
-            description: "Positive amount to transfer",
+            description:
+              "Positive amount to transfer, with at most 3 decimal places; more decimals, or an amount below 0.001, are rejected with 400",
           },
           {
             name: "idempotencyKey",
@@ -73,7 +74,8 @@ export default defineApiSpec({
           {
             name: "amount",
             type: "double",
-            description: "Positive amount to add",
+            description:
+              "Positive amount to add, with at most 3 decimal places; more decimals, or an amount below 0.001, are rejected with 400",
           },
           {
             name: "reason",
@@ -114,7 +116,8 @@ export default defineApiSpec({
           {
             name: "denomination",
             type: "double",
-            description: "Unit size of one note/coin",
+            description:
+              "Unit size of one note/coin, with at most 3 decimal places; more decimals, or a size below 0.001, are rejected with 400",
           },
           {
             name: "count",

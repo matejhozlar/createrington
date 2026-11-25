@@ -1,7 +1,12 @@
 import { Q } from "@/db";
 import { loadAllGuildMembers } from "@/discord/utils/guild-members";
-import { ConflictError, NotFoundError } from "@/errors";
+import {
+  ConflictError,
+  NotFoundError,
+  ServiceUnavailableError,
+} from "@/errors";
 import { getServiceSync, Services } from "@/services";
+import { lookupMember } from "@/services/waitlist/discord-lookup";
 import {
   playerDeletionService,
   type DeletionActor,
@@ -140,16 +145,18 @@ export class GhostMemberService {
    * Re-check a single user against Discord. If the user has rejoined,
    * remove them from the cache and report `stillGone: false`. Used by the
    * remove dialog to confirm the action is still valid at the moment the
-   * admin opens the modal.
+   * admin opens the modal. Throws ServiceUnavailableError when Discord
+   * cannot say either way, so a failed lookup never reads as "still gone".
    */
   async verify(discordId: string): Promise<GhostVerifyResult> {
-    const guild = this.getGuild();
+    const lookup = await lookupMember(discordId, { force: true });
+    if (lookup.state === "unavailable") {
+      throw new ServiceUnavailableError(
+        "Could not reach Discord to check whether this member is still gone. Try again in a moment.",
+      );
+    }
 
-    const member = await guild.members
-      .fetch({ user: discordId, force: true })
-      .catch(() => null);
-
-    if (member) {
+    if (lookup.state === "found") {
       const evicted = this.cache.delete(discordId);
       return { stillGone: false, evicted, ghost: null };
     }

@@ -523,17 +523,23 @@ export const playerStrike = pgTable(
 );
 
 // --- player_inactivity_warning ---
+// A removed warning outlives its player: the uuid goes NULL with the player
+// row and `minecraft_username` / `discord_id` keep who it was, stamped
+// together with `removed_at`. Every other warning is deleted with the player.
 
 export const playerInactivityWarning = pgTable(
   "player_inactivity_warning",
   {
     id: serial("id").primaryKey(),
-    playerMinecraftUuid: uuid("player_minecraft_uuid")
-      .notNull()
-      .references(() => player.minecraftUuid, {
+    playerMinecraftUuid: uuid("player_minecraft_uuid").references(
+      () => player.minecraftUuid,
+      {
         onUpdate: "cascade",
-        onDelete: "cascade",
-      }),
+        onDelete: "set null",
+      },
+    ),
+    minecraftUsername: text("minecraft_username"),
+    discordId: text("discord_id"),
     warnedAt: timestamp("warned_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

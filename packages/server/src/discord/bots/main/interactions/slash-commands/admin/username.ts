@@ -1,5 +1,6 @@
 import { Q } from "@/db";
 import { EmbedPresets } from "@/discord/embeds";
+import { replyNotRegistered } from "@/discord/utils/interaction-reply";
 import {
   type ChatInputCommandInteraction,
   MessageFlags,
@@ -31,12 +32,17 @@ async function execute(
 ): Promise<void> {
   const user = interaction.options.getUser("user", true);
 
-  const username = await Q.player.select.minecraftUsername({
-    discordId: user.id,
-  });
+  const player = await Q.player.find(
+    { discordId: user.id },
+    { select: ["minecraftUsername"] },
+  );
+  if (!player) {
+    await replyNotRegistered(interaction, user);
+    return;
+  }
 
   const embed = EmbedPresets.plain({
-    description: `${username}`,
+    description: player.minecraftUsername,
   });
 
   await interaction.reply({

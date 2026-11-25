@@ -8,7 +8,7 @@ export type WarningStatus =
 
 export interface WarningRow {
   id: number;
-  player_minecraft_uuid: string;
+  player_minecraft_uuid: string | null;
   warned_at: Date;
   warning_message_id: string | null;
   resolved_at: Date | null;
@@ -19,6 +19,7 @@ export interface WarningRow {
 }
 
 export interface WarningWithPlayerRow extends WarningRow {
+  player_minecraft_uuid: string;
   minecraft_username: string;
   discord_id: string;
   last_seen: Date;
@@ -32,8 +33,9 @@ export interface InactivePlayerRow {
 }
 
 /**
- * Warning row joined with player data (nullable when the player record
- * was deleted as part of the removal flow).
+ * Warning row joined with player data. A removed warning whose player
+ * record is gone has no uuid or last seen, and takes its username and
+ * Discord id from the snapshot on the row.
  */
 export type WarningListItem = CamelCaseKeys<WarningRow>;
 
@@ -44,8 +46,12 @@ export interface WarningStatusCounts {
   removedInRetention: number;
 }
 
+const USERNAME = "COALESCE(p.minecraft_username, w.minecraft_username)";
 const WARNING_COLUMNS = `w.id, w.player_minecraft_uuid, w.warned_at, w.warning_message_id,
-  w.resolved_at, w.removed_at, p.minecraft_username, p.discord_id, p.last_seen`;
+  w.resolved_at, w.removed_at, ${USERNAME} AS minecraft_username,
+  COALESCE(p.discord_id, w.discord_id) AS discord_id, p.last_seen`;
+const PER_PLAYER =
+  "COALESCE(w.player_minecraft_uuid::text, 'removed-' || w.id)";
 
 const OPEN = "resolved_at IS NULL AND removed_at IS NULL";
 const WITHIN_GRACE = "warned_at >= NOW() - ($1 || ' days')::interval";
@@ -199,12 +205,14 @@ export class PlayerInactivityWarningQueries extends PlayerInactivityWarningBaseQ
   }
 
   /**
-   * List warnings filtered by status, optionally searching by current
-   * Minecraft username. Uses LEFT JOIN on player so "removed" rows still
-   * return even after the player record has been deleted.
+   * List warnings filtered by status, optionally searching by Minecraft
+   * username (the current one, or the snapshot of a removed player). Uses
+   * LEFT JOIN on player so "removed" rows still return even after the player
+   * record has been deleted.
    *
    * Only one row per player is returned (the latest warning), so a player
-   * who was resolved and later re-warned doesn't appear twice. `graceDays`
+   * who was resolved and later re-warned doesn't appear twice; every removed
+   * warning of a deleted player is its own row. `graceDays`
    * is only bound when the status clause references it (active/expired):
    * an unreferenced parameter makes Postgres fail with "could not
    * determine data type".
@@ -229,7 +237,7 @@ export class PlayerInactivityWarningQueries extends PlayerInactivityWarningBaseQ
     let where = STATUS_WHERE[params.status];
     if (params.search) {
       values.push(escapeLike(params.search));
-      where += ` AND p.minecraft_username ILIKE '%' || $${values.length} || '%'`;
+      where += ` AND ${USERNAME} ILIKE '%' || $${values.length} || '%'`;
     }
     const from = `FROM ${this.table} w
       LEFT JOIN player p ON p.minecraft_uuid = w.player_minecraft_uuid
@@ -239,17 +247,17 @@ export class PlayerInactivityWarningQueries extends PlayerInactivityWarningBaseQ
       this.runQuery<WarningRow>(
         "list inactivity warnings by status",
         `SELECT * FROM (
-           SELECT DISTINCT ON (w.player_minecraft_uuid) ${WARNING_COLUMNS}
+           SELECT DISTINCT ON (${PER_PLAYER}) ${WARNING_COLUMNS}
            ${from}
-           ORDER BY w.player_minecraft_uuid, w.warned_at DESC
+           ORDER BY ${PER_PLAYER}, w.warned_at DESC
          ) latest
-         ORDER BY latest.warned_at DESC
+         ORDER BY latest.warned_at DESC, latest.id DESC
          LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
         [...values, params.limit, params.offset],
       ),
       this.runQuery<{ total: number }>(
         "count inactivity warnings by status",
-        `SELECT COUNT(DISTINCT w.player_minecraft_uuid)::int AS total ${from}`,
+        `SELECT COUNT(DISTINCT ${PER_PLAYER})::int AS total ${from}`,
         values,
       ),
     ]);
@@ -292,8 +300,9 @@ export class PlayerInactivityWarningQueries extends PlayerInactivityWarningBaseQ
   }
 
   /**
-   * Fetches a single warning joined with current player data. Returns
-   * null fields for the player columns if the player record was deleted.
+   * Fetches a single warning joined with current player data. Once the
+   * player record is deleted the uuid and last seen are null and the
+   * username and Discord id come from the row's snapshot.
    */
   async findByIdWithPlayer(id: number): Promise<WarningListItem | null> {
     const result = await this.runQuery<WarningRow>(

@@ -21,6 +21,12 @@ let balanceAdds: Array<{
 let balanceDeducts: number;
 let lastRotations: Array<{ rotatedAt: Date }>;
 let eligibleCalls: number;
+let deletedBuyers: Set<string>;
+let fileOpsAllowed: boolean;
+let serverFiles: Set<string>;
+let failingCopy: string | null;
+let failingDelete: string | null;
+let packMods: Map<number, string[]>;
 
 const EIGHT_DAYS_MS = 8 * 24 * 60 * 60 * 1000;
 
@@ -29,10 +35,24 @@ vi.mock("@/config", () => ({
 }));
 
 vi.mock("@/services/mc-server/file-ops", () => ({
-  isFileOpsAllowed: () => false,
-  copyFileToServer: async () => {},
-  deleteFile: async () => {},
-  fileExists: async () => false,
+  isFileOpsAllowed: () => fileOpsAllowed,
+  copyFileToServer: async (_source: string, target: string) => {
+    serverFiles.add(target);
+    if (target === failingCopy) throw new Error("SFTP connection lost");
+  },
+  deleteFile: async (target: string) => {
+    if (target === failingDelete) {
+      failingDelete = null;
+      throw new Error("SFTP connection lost");
+    }
+    serverFiles.delete(target);
+  },
+  fileExists: async (target: string) => serverFiles.has(target),
+}));
+
+vi.mock("@/services/structure-pack/rotation/mod-cache", () => ({
+  ensureModsCached: async () => {},
+  getCachePath: (fileName: string) => `cache/${fileName}`,
 }));
 
 vi.mock("@/services/curseforge/downloads", () => ({
@@ -41,6 +61,12 @@ vi.mock("@/services/curseforge/downloads", () => ({
 
 vi.mock("@/db", () => {
   const makeTx = () => ({
+    player: {
+      findAll: async ({ discordId }: { discordId: { $in: string[] } }) =>
+        discordId.$in
+          .filter((id) => !deletedBuyers.has(id))
+          .map((id) => ({ discordId: id })),
+    },
     structure: {
       pack: {
         update: async (where: unknown, data: unknown) => {
@@ -142,14 +168,18 @@ function makePack(id: number, overrides: Partial<StructurePack> = {}) {
   } as StructurePack;
 }
 
+function modsOf(packId: number) {
+  return (packMods.get(packId) ?? []).map((fileName) => ({ fileName }));
+}
+
 function makeService() {
   const packService = {
     getActivePack: async () =>
-      activePack ? { ...activePack, mods: [] } : null,
+      activePack ? { ...activePack, mods: modsOf(activePack.id) } : null,
     getPack: async (id: number) => {
       const pack = packs.find((p) => p.id === id);
       if (!pack) throw new Error(`Pack ${id} not found`);
-      return { ...pack, mods: [] };
+      return { ...pack, mods: modsOf(id) };
     },
   } as unknown as StructurePackService;
   return new StructurePackRotationService(packService);
@@ -185,6 +215,12 @@ describe("StructurePackRotationService", () => {
     balanceDeducts = 0;
     lastRotations = [];
     eligibleCalls = 0;
+    deletedBuyers = new Set();
+    fileOpsAllowed = false;
+    serverFiles = new Set();
+    failingCopy = null;
+    failingDelete = null;
+    packMods = new Map();
   });
 
   afterEach(() => {
@@ -300,6 +336,20 @@ describe("StructurePackRotationService", () => {
     expect(eligibleCalls).toBe(0);
   });
 
+  it("disables rotations when an open boost belongs to a deleted player, dropping that boost", async () => {
+    openBoosts = [makeBoost(12, 3, 2, "111"), makeBoost(13, 4, 1, "gone")];
+    deletedBuyers = new Set(["gone"]);
+    const service = makeService();
+
+    const updated = await service.updateConfig({ enabled: false });
+
+    expect(updated.enabled).toBe(false);
+    expect(balanceAdds).toEqual([
+      { identifier: { discordId: "111" }, amount: 100, type: "refund" },
+    ]);
+    expect(boostDeletes).toEqual([12, 13]);
+  });
+
   it("does not refund boosts on config updates that keep rotations enabled", async () => {
     openBoosts = [
       {
@@ -323,10 +373,15 @@ describe("StructurePackRotationService", () => {
     service.shutdown();
   });
 
-  function makeBoost(id: number, packId: number, units: number) {
+  function makeBoost(
+    id: number,
+    packId: number,
+    units: number,
+    discordId = "111",
+  ) {
     return {
       id,
-      discordId: "111",
+      discordId,
       packId,
       units,
       currencySpent: units * 50,
@@ -392,6 +447,140 @@ describe("StructurePackRotationService", () => {
     expect(rotationCreates).toHaveLength(1);
     expect(boostFactors()).toEqual({ 3: 0, 4: 3 });
     expect(boostDeletes).toEqual([30]);
+    service.shutdown();
+  });
+
+  it("rotates at boot when a restart straddled the scheduled time", async () => {
+    vi.setSystemTime(new Date("2026-08-31T12:10:00Z"));
+    lastRotations = [{ rotatedAt: new Date("2026-08-24T12:00:03Z") }];
+    packs = [makePack(3), makePack(4)];
+    eligiblePacks = packs;
+    const service = makeService();
+
+    await service.initialize();
+
+    expect(rotationCreates).toHaveLength(1);
+    service.shutdown();
+  });
+
+  it("rotates at boot when a manual rotation was followed by downtime across the scheduled time", async () => {
+    vi.setSystemTime(new Date("2026-08-31T12:10:00Z"));
+    lastRotations = [{ rotatedAt: new Date("2026-08-28T09:00:00Z") }];
+    packs = [makePack(3), makePack(4)];
+    eligiblePacks = packs;
+    const service = makeService();
+
+    await service.initialize();
+
+    expect(rotationCreates).toHaveLength(1);
+    service.shutdown();
+  });
+
+  it("does not rotate at boot when the last rotation was stamped moments before its scheduled time", async () => {
+    lastRotations = [{ rotatedAt: new Date("2026-08-24T11:59:58Z") }];
+    packs = [makePack(3), makePack(4)];
+    eligiblePacks = packs;
+    const service = makeService();
+
+    await service.initialize();
+
+    expect(rotationCreates).toHaveLength(0);
+    service.shutdown();
+  });
+
+  it("does not report a monthly rotation as missed late in a 31-day month", async () => {
+    vi.setSystemTime(new Date("2026-08-31T18:00:00Z"));
+    rotationConfig.period = "monthly";
+    rotationConfig.dayOfMonth = 1;
+    lastRotations = [{ rotatedAt: new Date("2026-08-01T12:00:04Z") }];
+    packs = [makePack(3)];
+    eligiblePacks = packs;
+    const service = makeService();
+
+    await service.initialize();
+
+    expect(rotationCreates).toHaveLength(0);
+    service.shutdown();
+  });
+
+  it("keeps the outgoing pack's files when installing the incoming pack fails", async () => {
+    fileOpsAllowed = true;
+    activePack = makePack(1, { isActive: true });
+    packs = [activePack, makePack(3)];
+    eligiblePacks = [packs[1]];
+    packMods = new Map([
+      [1, ["old.jar", "shared.jar"]],
+      [3, ["shared.jar", "new-a.jar", "new-b.jar"]],
+    ]);
+    serverFiles = new Set(["mods/old.jar", "mods/shared.jar"]);
+    failingCopy = "mods/new-b.jar";
+    const service = makeService();
+
+    await service.executeRotation();
+
+    expect([...serverFiles].sort()).toEqual([
+      "mods/old.jar",
+      "mods/shared.jar",
+    ]);
+    expect(rotationCreates).toMatchObject([
+      { incomingPackId: 3, success: false },
+    ]);
+    expect(packUpdates).toHaveLength(0);
+    service.shutdown();
+  });
+
+  it("leaves the mods as they were when removing the outgoing pack fails", async () => {
+    fileOpsAllowed = true;
+    activePack = makePack(1, { isActive: true });
+    packs = [activePack, makePack(3)];
+    eligiblePacks = [packs[1]];
+    packMods = new Map([
+      [1, ["old-a.jar", "old-b.jar", "shared.jar"]],
+      [3, ["shared.jar", "new-a.jar"]],
+    ]);
+    serverFiles = new Set([
+      "mods/old-a.jar",
+      "mods/old-b.jar",
+      "mods/shared.jar",
+    ]);
+    failingDelete = "mods/old-b.jar";
+    const service = makeService();
+
+    await service.executeRotation();
+
+    expect([...serverFiles].sort()).toEqual([
+      "mods/old-a.jar",
+      "mods/old-b.jar",
+      "mods/shared.jar",
+    ]);
+    expect(rotationCreates).toMatchObject([
+      { incomingPackId: 3, success: false },
+    ]);
+    expect(packUpdates).toHaveLength(0);
+    service.shutdown();
+  });
+
+  it("installs the incoming pack before removing the outgoing one", async () => {
+    fileOpsAllowed = true;
+    activePack = makePack(1, { isActive: true });
+    packs = [activePack, makePack(3)];
+    eligiblePacks = [packs[1]];
+    packMods = new Map([
+      [1, ["old.jar", "shared.jar"]],
+      [3, ["shared.jar", "new-a.jar"]],
+    ]);
+    serverFiles = new Set(["mods/old.jar", "mods/shared.jar"]);
+    const service = makeService();
+
+    await service.executeRotation();
+
+    expect([...serverFiles].sort()).toEqual([
+      "mods/new-a.jar",
+      "mods/shared.jar",
+    ]);
+    expect(rotationCreates).toMatchObject([
+      { incomingPackId: 3, success: true },
+    ]);
     service.shutdown();
   });
 

@@ -14,6 +14,8 @@ import { announceReleaseChangelog } from "./changelog";
 import { getReleaseDiff } from "./release-changelog";
 import config from "@/config";
 
+const ANNOUNCE_START_WINDOW_MS = 24 * 60 * 60 * 1000;
+
 function firstPerProject<T extends { curseforgeProjectId: number }>(
   rows: T[],
 ): T[] {
@@ -100,7 +102,7 @@ export async function recordRelease(
       await upgradeRelease(modpack, recorded, manifest);
       announceRelease(modpack, recorded.id, true);
     } else if (recorded.serverPackFileId !== null) {
-      announceRelease(modpack, recorded.id, false);
+      announceRelease(modpack, recorded.id, isRecentlyRecorded(recorded));
     }
     if (recorded.launcherReadyAt === null) {
       prepareForLauncher(modpack, recorded.id, manifest);
@@ -222,6 +224,10 @@ export async function buildReleaseRows(
       inClientPack: entry.sides !== "server",
     };
   });
+}
+
+function isRecentlyRecorded(release: ModpackRelease): boolean {
+  return Date.now() - release.createdAt.getTime() < ANNOUNCE_START_WINDOW_MS;
 }
 
 function announceRelease(

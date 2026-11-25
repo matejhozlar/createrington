@@ -1,6 +1,7 @@
 import { getAuthedPlayer, respondSuccess } from "@/app/middleware";
 import { BadRequestError } from "@/errors";
 import { Q, balanceRepo } from "@/db";
+import { BalanceUtils } from "@/db/utils/balance";
 import { dailyRewardService } from "@/services/reward/daily-reward.service";
 import { formatDuration } from "@/utils/format";
 import { MC_UUID_REGEX } from "@/utils/zod-schemas";
@@ -27,7 +28,23 @@ function parsePositiveMoney(value: unknown, name: string): number {
       `${name} must be a positive number no greater than ${MAX_MOD_AMOUNT}`,
     );
   }
-  return value;
+
+  let stored: bigint;
+  try {
+    stored = BalanceUtils.toStorage(value);
+  } catch {
+    throw new BadRequestError(
+      `${name} can have at most 3 decimal places`,
+      undefined,
+      { playerMessage: "Amounts can have at most 3 decimal places." },
+    );
+  }
+  if (stored <= 0n) {
+    throw new BadRequestError(`${name} is too small`, undefined, {
+      playerMessage: "That amount is too small.",
+    });
+  }
+  return BalanceUtils.fromStorage(stored);
 }
 
 function parseRecipientUuid(value: unknown): string {
@@ -330,7 +347,12 @@ export class CurrencyController {
       message: `History page ${page} retrieved for ${name} (${transactions.length} entries)`,
       data: {
         transactions: transactions.map((tx) => ({
-          ...tx,
+          id: tx.id,
+          amount: tx.amount,
+          balanceBefore: tx.balanceBefore,
+          balanceAfter: tx.balanceAfter,
+          transactionType: tx.transactionType,
+          description: tx.description,
           createdAt: tx.createdAt.toISOString(),
         })),
         page,

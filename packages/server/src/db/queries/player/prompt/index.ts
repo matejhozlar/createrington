@@ -56,7 +56,7 @@ export class PlayerPromptQueries extends PlayerPromptBaseQueries {
            GROUP BY prompt_id
          ) r ON r.prompt_id = p.id
          WHERE ${whereClause}
-         ORDER BY p.created_at DESC
+         ORDER BY p.created_at DESC, p.id DESC
          LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
         [...params, options.limit, options.offset],
       ),

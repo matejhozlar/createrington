@@ -147,10 +147,23 @@ async function openTicket(
   tickets: TicketService,
 ): Promise<void> {
   const user = interaction.options.getUser("user", true);
-  const result = await tickets.createTicket({
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+  const result = await tickets.openTicket({
     type: TicketType.GENERAL,
     creatorId: user.id,
   });
+
+  if (!result.created) {
+    await replyError(
+      interaction,
+      "Ticket Already Open",
+      `${userMention(user.id)} already has an open ticket: ${channelMention(
+        result.ticket.channelId,
+      )}`,
+    );
+    return;
+  }
 
   const embed = EmbedPresets.success(
     "Ticket Created",
@@ -158,10 +171,7 @@ async function openTicket(
       user.id,
     )} has been created: ${channelMention(result.ticket.channelId)}`,
   );
-  await interaction.reply({
-    embeds: [embed.build()],
-    flags: MessageFlags.Ephemeral,
-  });
+  await interaction.editReply({ embeds: [embed.build()] });
 }
 
 async function closeTicket(

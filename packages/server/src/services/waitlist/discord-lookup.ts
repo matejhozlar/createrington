@@ -22,11 +22,17 @@ export function getGuild(): Guild | null {
   return mainBot.guilds.cache.get(config.discord.guild.id) ?? null;
 }
 
-export async function lookupMember(discordId: string): Promise<MemberLookup> {
+export async function lookupMember(
+  discordId: string,
+  options: { force?: boolean } = {},
+): Promise<MemberLookup> {
   const guild = getGuild();
   if (!guild) return { state: "unavailable" };
   try {
-    const member = await guild.members.fetch(discordId);
+    const member = await guild.members.fetch({
+      user: discordId,
+      force: options.force ?? false,
+    });
     return { state: "found", member };
   } catch (error) {
     if (

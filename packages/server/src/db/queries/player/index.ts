@@ -140,7 +140,7 @@ export class PlayerQueries extends PlayerBaseQueries {
         "list players with violations",
         `SELECT * FROM ${this.table}
          WHERE ${where}
-         ORDER BY ${orderColumn} ${direction}
+         ORDER BY ${orderColumn} ${direction}, minecraft_uuid ${direction}
          LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
         [...params, options.limit, options.offset],
       ),
@@ -179,6 +179,23 @@ export class PlayerQueries extends PlayerBaseQueries {
       query,
     );
     return result.rows;
+  }
+
+  /**
+   * Takes a row lock on a player (SELECT ... FOR UPDATE). Must be called on a
+   * transaction-bound instance; the lock is held until the surrounding
+   * transaction ends, so writers that check a player's state before changing
+   * it (two bans issued at once) run one after the other.
+   *
+   * @returns false when the player does not exist
+   */
+  async lockForUpdate(minecraftUuid: string): Promise<boolean> {
+    const result = await this.runQuery(
+      "lock player for update",
+      `SELECT 1 FROM ${this.table} WHERE minecraft_uuid = $1 FOR UPDATE`,
+      [minecraftUuid],
+    );
+    return result.rows.length > 0;
   }
 
   /**

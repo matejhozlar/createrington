@@ -26,6 +26,7 @@ import {
   isGuildTextChannel,
   isSendableChannel,
 } from "@/discord/utils/channel-guard";
+import { createKeyedLock } from "@/utils/keyed-lock";
 const loadTranscripts = () => import("discord-html-transcripts");
 
 const PARTICIPANT_PERMISSIONS = [
@@ -45,6 +46,9 @@ interface CreateTicketResult {
   channel: TextChannel;
 }
 
+type OpenTicketResult =
+  ({ created: true } & CreateTicketResult) | { created: false; ticket: Ticket };
+
 /**
  * Manages the full Discord support-ticket lifecycle: create channel with
  * role-scoped permission overwrites, close (lock + post closure embed),
@@ -57,6 +61,7 @@ interface CreateTicketResult {
  */
 export class TicketService {
   private readonly transcriptDir: string;
+  private readonly withCreatorLock = createKeyedLock<string>();
   constructor(private readonly bot: Client) {
     this.transcriptDir = path.join(config.storage.path, "transcripts");
     void this.ensureTranscriptDir();
@@ -72,10 +77,26 @@ export class TicketService {
   }
 
   /**
-   * Allocate the next ticket number, create a permission-scoped Discord
-   * channel, persist the ticket row, and post the welcome embed.
+   * Opens a ticket for the creator unless they already have an open one, in
+   * which case that ticket is returned with `created: false`. The check and
+   * the create run under a per-creator lock, so two requests that arrive
+   * together open one ticket. Creating allocates the next ticket number,
+   * creates a permission-scoped Discord channel, persists the ticket row and
+   * posts the welcome embed.
    */
-  async createTicket(
+  async openTicket(options: CreateTicketOptions): Promise<OpenTicketResult> {
+    return this.withCreatorLock(options.creatorId, async () => {
+      const [existing] = await Q.ticket.findAll(
+        { creatorDiscordId: options.creatorId, status: "open" },
+        { limit: 1 },
+      );
+      if (existing) return { created: false, ticket: existing };
+
+      return { created: true, ...(await this.createTicket(options)) };
+    });
+  }
+
+  private async createTicket(
     options: CreateTicketOptions,
   ): Promise<CreateTicketResult> {
     const ticketNumber = await Q.ticket.allocateNumber();
@@ -599,10 +620,5 @@ export class TicketService {
     );
 
     return message.id;
-  }
-
-  /** True if the user currently has any non-closed ticket. */
-  async hasOpenTicket(discordId: string): Promise<boolean> {
-    return ticketRepo.hasOpen(discordId);
   }
 }

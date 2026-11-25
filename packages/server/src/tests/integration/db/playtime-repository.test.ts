@@ -243,6 +243,30 @@ describe("PlaytimeRepository (integration)", () => {
     expect(player.online).toBe(false);
   });
 
+  it("opens the session when an orphaned one started after the reported start", async () => {
+    const orphan = await playtimeRepo.startSession({
+      uuid: STEVE,
+      username: "steve",
+      serverId,
+      sessionStart: at(60),
+      playTimeTicks: ticks(100),
+    });
+
+    const started = await playtimeRepo.startSession({
+      uuid: STEVE,
+      username: "steve",
+      serverId,
+      sessionStart: T0,
+      playTimeTicks: ticks(100),
+    });
+
+    expect(started).not.toBeNull();
+    const closed = await Q.player.session.get({ id: orphan!.sessionId });
+    expect(closed.sessionEnd).toEqual(at(60));
+    const open = await Q.player.session.get({ id: started!.sessionId });
+    expect(open.sessionEnd).toBeNull();
+  });
+
   it("clamps a session end reported before the session start", async () => {
     const sessionId = (await playtimeRepo.startSession({
       uuid: STEVE,
@@ -653,9 +677,29 @@ describe("PlayerPlaytimeSummaryQueries.getServerStats (integration)", () => {
     expect(stats.totalSessions).toBe(8);
   });
 
-  it("reports zero sessions for a server without playtime", async () => {
+  it("averages the session length over all sessions, not over the players' averages", async () => {
+    await Q.player.playtime.summary.create({
+      playerMinecraftUuid: STEVE,
+      serverId,
+      totalSeconds: 72_000n,
+      totalSessions: 10,
+    });
+    await Q.player.playtime.summary.create({
+      playerMinecraftUuid: ALEX,
+      serverId,
+      totalSeconds: 300n,
+      totalSessions: 1,
+    });
+
+    const stats = await Q.player.playtime.summary.getServerStats(serverId);
+
+    expect(stats.avgSessionSeconds).toBeCloseTo(72_300 / 11, 5);
+  });
+
+  it("reports zero sessions and a zero average for a server without playtime", async () => {
     const stats = await Q.player.playtime.summary.getServerStats(serverId);
 
     expect(stats.totalSessions).toBe(0);
+    expect(stats.avgSessionSeconds).toBe(0);
   });
 });
