@@ -259,9 +259,7 @@ export class DonationService {
     discordId: string,
   ): Promise<Stripe.Subscription | null> {
     try {
-      return await this.stripe.subscriptions.retrieve(subscriptionId, {
-        expand: ["latest_invoice"],
-      });
+      return await this.stripe.subscriptions.retrieve(subscriptionId);
     } catch (error) {
       if (
         error instanceof Stripe.errors.StripeError &&
@@ -320,9 +318,9 @@ export class DonationService {
       return new Date(sub.cancel_at * 1000);
     }
 
-    const invoice = sub.latest_invoice;
-    if (invoice && typeof invoice !== "string" && invoice.period_end) {
-      return new Date(invoice.period_end * 1000);
+    const periodEnd = sub.items.data[0]?.current_period_end;
+    if (periodEnd) {
+      return new Date(periodEnd * 1000);
     }
 
     const anchor = new Date(sub.billing_cycle_anchor * 1000);

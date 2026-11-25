@@ -1,5 +1,6 @@
 import { router, publicProcedure } from "@/trpc/trpc";
 import { metricsService } from "@/services/metrics";
+import { coercedId } from "@/trpc/utils";
 import { z } from "zod";
 
 export const playtimeRouter = router({
@@ -10,7 +11,7 @@ export const playtimeRouter = router({
     })
     .input(
       z.object({
-        serverId: z.coerce.number().int().positive().optional(),
+        serverId: coercedId().optional(),
       }),
     )
     .query(async ({ input }) => {

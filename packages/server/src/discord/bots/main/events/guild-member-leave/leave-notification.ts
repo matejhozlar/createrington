@@ -1,5 +1,6 @@
 import { Q } from "@/db";
 import { waitlistService } from "@/services/waitlist/waitlist.service";
+import { deleteVerificationChannelsOf } from "@/discord/bots/main/registration-cleanup";
 import type { EventModule } from "@/discord/bots/common/loaders/event-loader";
 import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
@@ -30,6 +31,8 @@ export async function execute(
       error,
     );
   }
+
+  await deleteVerificationChannelsOf(member.guild, member.user.id);
 
   try {
     const player = await Q.player.find({ discordId: member.user.id });

@@ -132,6 +132,23 @@ describe("WaitlistPromotionService.promoteEligible", () => {
     expect(state.entries.every((e) => e.status === "promoted")).toBe(true);
   });
 
+  it("leaves an entry alone when it left the queue while its member was looked up", async () => {
+    state.free = 2;
+    const entry = fakeEntry({});
+    state.entries.push(entry);
+    state.memberFetch.mockImplementation(async () => {
+      entry.status = "expired";
+      return { id: entry.discordId, toString: () => `<@${entry.discordId}>` };
+    });
+
+    const svc = new WaitlistPromotionService();
+    expect(await svc.promoteEligible()).toBe(0);
+
+    expect(entry.status).toBe("expired");
+    expect(state.free).toBe(2);
+    expect(state.channelFetch).not.toHaveBeenCalled();
+  });
+
   it("alerts admins when a promoted member could not be pinged", async () => {
     state.free = 1;
     state.channelFetch.mockRejectedValue(new Error("502 Bad Gateway"));
@@ -147,5 +164,23 @@ describe("WaitlistPromotionService.promoteEligible", () => {
         content: expect.stringContaining(`#${entry.id}`),
       }),
     );
+  });
+});
+
+describe("WaitlistPromotionService.promote", () => {
+  it("refuses an entry that was promoted while its member was looked up, without pinging again", async () => {
+    const entry = fakeEntry({});
+    state.entries.push(entry);
+    state.memberFetch.mockImplementation(async () => {
+      entry.status = "promoted";
+      return { id: entry.discordId, toString: () => `<@${entry.discordId}>` };
+    });
+
+    const svc = new WaitlistPromotionService();
+    await expect(svc.promote(entry.id, "admin")).rejects.toThrow(
+      /no longer queued/,
+    );
+
+    expect(state.channelFetch).not.toHaveBeenCalled();
   });
 });

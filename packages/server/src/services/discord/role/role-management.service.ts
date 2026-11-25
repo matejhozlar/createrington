@@ -56,6 +56,10 @@ function unresolvedTopRole(
   };
 }
 
+export function isAutomaticRoleSyncAllowed(): boolean {
+  return config.envMode.isProductionDeployment;
+}
+
 /**
  * Top-level coordinator for automatic role assignment. Owns a
  * `RoleAssignmentService` and drives it from two triggers: realtime, by
@@ -69,7 +73,10 @@ function unresolvedTopRole(
  * forced outside the schedule through `recalculateTopRoles`. Every reconcile
  * loads the full guild member list first: the gateway does not send it for a
  * guild this size, and both the current-holder check and the former-holder
- * sweep read it. All scheduling stops on `shutdown`.
+ * sweep read it. All scheduling stops on `shutdown`. The daily pass and the
+ * realtime checks run only on the production deployment, since the dev app
+ * shares the production guild and would act on its own data;
+ * `recalculateTopRoles` stays available to the owner command everywhere.
  */
 export class RoleManagementService {
   private roleAssignmentService: RoleAssignmentService;
@@ -81,12 +88,20 @@ export class RoleManagementService {
     private readonly checkTimeHour: number = 0,
     private readonly gameRankSync: GameRankSyncService = new GameRankSyncService(),
     private readonly topRoleHolders: TopRoleHolderService = topRoleHolderService,
+    private readonly isAllowed: () => boolean = isAutomaticRoleSyncAllowed,
   ) {
     this.roleAssignmentService = new RoleAssignmentService(client);
   }
 
-  /** Starts the daily role-check scheduler. Realtime hooks are wired separately via `setupRealtimeRoleChecking`. */
+  /** Starts the daily role-check scheduler, outside production only logs that it is skipped. Realtime hooks are wired separately via `setupRealtimeRoleChecking`. */
   initialize(): void {
+    if (!this.isAllowed()) {
+      logger.info(
+        "Skipping automatic role management outside the production deployment",
+      );
+      return;
+    }
+
     logger.info("Initializing RoleManagementService");
 
     this.startDailyScheduler();
@@ -104,12 +119,14 @@ export class RoleManagementService {
    * Subscribes to `sessionAggregated` on the given `PlaytimeService` and runs
    * the realtime rule set through `processRoleHierarchy` on each event. Call
    * once per server after its playtime service is initialized; listeners are
-   * not removed on shutdown.
+   * not removed on shutdown. Does nothing outside production.
    */
   setupRealtimeRoleChecking(
     serverId: number,
     playtimeService: PlaytimeService,
   ): void {
+    if (!this.isAllowed()) return;
+
     playtimeService.on("sessionAggregated", (event) => {
       void this.checkRealtimeRoles(event);
     });

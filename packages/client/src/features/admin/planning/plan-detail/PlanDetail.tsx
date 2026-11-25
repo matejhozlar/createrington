@@ -72,7 +72,7 @@ export function PlanDetail() {
   );
   const setAssignees = useMutation(
     trpc.admin.planning.items.assignees.set.mutationOptions(
-      useMutationToast({ onSuccess: () => void invalidate() }),
+      useMutationToast({ onSuccess: () => invalidate() }),
     ),
   );
   const deleteItem = useMutation(
@@ -234,7 +234,11 @@ export function PlanDetail() {
             </CardHeader>
             <CardContent>
               <AssigneePicker
-                value={item.assignees.map((assignee) => assignee.discordId)}
+                value={
+                  setAssignees.isPending
+                    ? setAssignees.variables.discordIds
+                    : item.assignees.map((assignee) => assignee.discordId)
+                }
                 onChange={(discordIds) =>
                   setAssignees.mutate({ id: item.id, discordIds })
                 }

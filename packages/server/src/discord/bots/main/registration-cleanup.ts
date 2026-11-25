@@ -1,12 +1,17 @@
 import {
   ChannelType,
   type Client,
+  DiscordAPIError,
+  type Guild,
   type GuildTextBasedChannel,
   OverwriteType,
+  RESTJSONErrorCodes,
+  type TextChannel,
 } from "discord.js";
 import { Discord } from "@/discord/constants";
 import { RegistrationComponentPresets } from "@/discord/components/presets/registration";
 import config from "@/config";
+import { lookupMember } from "@/services/waitlist/discord-lookup";
 
 export const AUTO_CLOSE_MS = 24 * 60 * 60 * 1000;
 
@@ -52,6 +57,41 @@ async function deleteRegistrationChannel(
   }
 }
 
+export async function deleteVerificationChannelsOf(
+  guild: Guild,
+  discordId: string,
+): Promise<void> {
+  const channels = guild.channels.cache.filter(
+    (channel): channel is TextChannel =>
+      channel.parentId === Discord.Categories.VERIFICATION &&
+      channel.type === ChannelType.GuildText &&
+      channel.permissionOverwrites.cache.some(
+        (overwrite) =>
+          overwrite.type === OverwriteType.Member && overwrite.id === discordId,
+      ),
+  );
+
+  for (const [, channel] of channels) {
+    try {
+      await channel.delete("Member left the server before registering");
+      logger.info(
+        `Deleted verification channel ${channel.id} of departed member ${discordId}`,
+      );
+    } catch (error) {
+      if (
+        error instanceof DiscordAPIError &&
+        error.code === RESTJSONErrorCodes.UnknownChannel
+      ) {
+        continue;
+      }
+      logger.warn(
+        `Could not delete verification channel ${channel.id} of departed member ${discordId}:`,
+        error,
+      );
+    }
+  }
+}
+
 export async function sweepRegistrationChannels(bot: Client): Promise<void> {
   const guild = bot.guilds.cache.get(config.discord.guild.id);
   if (!guild) {
@@ -76,23 +116,24 @@ export async function sweepRegistrationChannels(bot: Client): Promise<void> {
     );
     if (!memberOverwrite) continue;
 
-    try {
-      const member = await guild.members.fetch(memberOverwrite.id);
-      const isVerified = member.roles.cache.has(Discord.Roles.VERIFIED);
+    const lookup = await lookupMember(memberOverwrite.id);
+    if (lookup.state === "unavailable") continue;
 
-      if (isVerified) {
-        scheduleChannelClose(
-          channel,
-          0,
-          `Registration completed - auto-closed on startup (${member.user.tag})`,
-        );
-        cleaned++;
-      }
-    } catch {
+    if (lookup.state === "gone") {
       scheduleChannelClose(
         channel,
         0,
         "Registration channel cleanup - member no longer in server",
+      );
+      cleaned++;
+      continue;
+    }
+
+    if (lookup.member.roles.cache.has(Discord.Roles.VERIFIED)) {
+      scheduleChannelClose(
+        channel,
+        0,
+        `Registration completed - auto-closed on startup (${lookup.member.user.tag})`,
       );
       cleaned++;
     }

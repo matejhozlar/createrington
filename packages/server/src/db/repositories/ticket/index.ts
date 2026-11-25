@@ -78,7 +78,7 @@ export class TicketRepository {
     return ticket;
   }
 
-  /** Move a CLOSED ticket back to OPEN and log the action in one transaction. Throws if it isn't closed. */
+  /** Move a CLOSED ticket back to OPEN and log the action in one transaction; drops the stored transcript, which no longer covers the whole conversation. Throws if it isn't closed. */
   async reopen(ticketId: number, reopenedBy: string): Promise<Ticket> {
     const ticket = await db.inTransaction(async (tx) => {
       const current = await tx.ticket.getForUpdate(ticketId);
@@ -87,12 +87,16 @@ export class TicketRepository {
         throw new Error(`Ticket #${current.ticketNumber} is not closed`);
       }
 
+      const metadata = { ...current.metadata };
+      delete metadata.transcriptPath;
+
       const updated = await tx.ticket.updateAndReturn(
         { id: ticketId },
         {
           status: "open",
           closedAt: null,
           closedByDiscordId: null,
+          metadata,
         },
       );
 
@@ -160,15 +164,5 @@ export class TicketRepository {
         },
       },
     );
-  }
-
-  /** True if the user has at least one OPEN ticket. */
-  async hasOpen(discordId: string): Promise<boolean> {
-    const count = await Q.ticket.count({
-      creatorDiscordId: discordId,
-      status: "open",
-    });
-
-    return count > 0;
   }
 }

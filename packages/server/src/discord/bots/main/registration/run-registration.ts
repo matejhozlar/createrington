@@ -103,8 +103,7 @@ export function runRegistration(
 async function register(
   params: RegistrationParams,
 ): Promise<RegistrationResult> {
-  const { member, discordId, userTag, username, mcName, channel, render } =
-    params;
+  const { member, discordId, username, mcName, channel, render } = params;
   const verifyChannel = isVerificationChannel(channel) ? channel : null;
 
   const steps = STEPS.map((s) => ({ ...s }));
@@ -120,10 +119,6 @@ async function register(
     return { ok: false, errorMessage: "already verified" };
   }
 
-  await render(
-    RegistrationComponentPresets.progress(mcName, steps, currentStep),
-  );
-
   if (!MC_USERNAME_REGEX.test(mcName)) {
     await render(
       RegistrationComponentPresets.idle({
@@ -135,9 +130,14 @@ async function register(
     return { ok: false, errorMessage: "invalid mc name" };
   }
 
+  await render(
+    RegistrationComponentPresets.progress(mcName, steps, currentStep),
+  );
+
   let entry: WaitlistEntry | null = null;
   let reservedHere = false;
   let whitelisted: WhitelistedAccount | null = null;
+  let saved: { account: WhitelistedAccount; entryId: number };
 
   try {
     await randomDelay();
@@ -249,62 +249,10 @@ async function register(
     });
     reservedHere = false;
     whitelisted = null;
-
-    await updateProgressEmbed(entryId);
+    saved = { account: { name: correctName, uuid }, entryId };
 
     steps[currentStep].completed = true;
     currentStep++;
-
-    await render(
-      RegistrationComponentPresets.progress(correctName, steps, currentStep),
-    );
-
-    await randomDelay();
-    await RoleManager.remove(member, Discord.Roles.UNVERIFIED);
-    await RoleManager.assign(member, Discord.Roles.VERIFIED);
-
-    try {
-      await member.setNickname(correctName, "Registration: sync to MC name");
-    } catch (error) {
-      logger.warn(
-        `Could not set nickname for ${userTag}: ${error instanceof Error ? error.message : error}`,
-      );
-    }
-
-    steps[currentStep].completed = true;
-
-    await render(
-      RegistrationComponentPresets.progress(correctName, steps, currentStep),
-    );
-
-    await randomDelay(500, 1000);
-
-    const autoCloseAt = Math.floor((Date.now() + AUTO_CLOSE_MS) / 1000);
-
-    await render(
-      RegistrationComponentPresets.success(correctName, uuid, autoCloseAt),
-    );
-
-    logger.info(
-      `User ${userTag} (${discordId}) registered as ${correctName} (${uuid})`,
-    );
-
-    if (verifyChannel) {
-      scheduleChannelClose(
-        verifyChannel,
-        AUTO_CLOSE_MS,
-        `Registration completed - auto-closed after 24 hours (${userTag})`,
-      );
-    }
-
-    void postRegistrationWelcomeCard({
-      member,
-      discordId,
-      minecraftUuid: uuid,
-      minecraftUsername: correctName,
-    });
-
-    return { ok: true };
   } catch (error) {
     const failure = errorMessage(error);
     const memberMessage =
@@ -327,25 +275,7 @@ async function register(
       }
     }
 
-    const adminEmbed = EmbedPresets.registration.adminError(
-      mcName,
-      userTag,
-      discordId,
-      failure,
-      failedStep,
-    );
-
-    await Discord.Messages.send({
-      channelId: Discord.Channels.administration.NOTIFICATIONS,
-      embeds: adminEmbed.build(),
-      content: roleMention(Discord.Roles.ADMIN),
-      allowedMentions: { roles: [Discord.Roles.ADMIN] },
-    }).catch((error: unknown) => {
-      logger.error(
-        "Could not alert admins about the failed registration:",
-        error,
-      );
-    });
+    await alertAdmins(params, failure, failedStep);
 
     await render(
       RegistrationComponentPresets.idle({
@@ -357,4 +287,121 @@ async function register(
 
     return { ok: false, errorMessage: memberMessage };
   }
+
+  return finishRegistration(
+    params,
+    saved.account,
+    saved.entryId,
+    steps,
+    currentStep,
+  );
+}
+
+async function alertAdmins(
+  { mcName, userTag, discordId }: RegistrationParams,
+  failure: string,
+  failedStep: string,
+): Promise<void> {
+  const adminEmbed = EmbedPresets.registration.adminError(
+    mcName,
+    userTag,
+    discordId,
+    failure,
+    failedStep,
+  );
+
+  await Discord.Messages.send({
+    channelId: Discord.Channels.administration.NOTIFICATIONS,
+    embeds: adminEmbed.build(),
+    content: roleMention(Discord.Roles.ADMIN),
+    allowedMentions: { roles: [Discord.Roles.ADMIN] },
+  }).catch((error: unknown) => {
+    logger.error(
+      "Could not alert admins about the failed registration:",
+      error,
+    );
+  });
+}
+
+async function finishRegistration(
+  params: RegistrationParams,
+  { name, uuid }: WhitelistedAccount,
+  entryId: number,
+  steps: RegistrationStep[],
+  currentStep: number,
+): Promise<RegistrationResult> {
+  const { member, discordId, userTag, channel, render } = params;
+  const verifyChannel = isVerificationChannel(channel) ? channel : null;
+  const renderSafely = (payload: RegistrationMessage) =>
+    render(payload).catch((error: unknown) => {
+      logger.warn(
+        `Could not update the registration message for ${userTag}:`,
+        error,
+      );
+    });
+
+  const removed = await RoleManager.remove(member, Discord.Roles.UNVERIFIED);
+  const assigned = await RoleManager.assign(member, Discord.Roles.VERIFIED);
+  const rolesSwapped = removed && assigned;
+
+  await updateProgressEmbed(entryId).catch((error: unknown) => {
+    logger.warn(
+      `Could not update the waitlist progress embed for entry #${entryId}:`,
+      error,
+    );
+  });
+
+  try {
+    await member.setNickname(name, "Registration: sync to MC name");
+  } catch (error) {
+    logger.warn(
+      `Could not set nickname for ${userTag}: ${error instanceof Error ? error.message : error}`,
+    );
+  }
+
+  logger.info(`User ${userTag} (${discordId}) registered as ${name} (${uuid})`);
+
+  void postRegistrationWelcomeCard({
+    member,
+    discordId,
+    minecraftUuid: uuid,
+    minecraftUsername: name,
+  });
+
+  if (!rolesSwapped) {
+    await alertAdmins(
+      params,
+      `Registered as ${name} (${uuid}), but the Unverified to Verified role swap failed (removed Unverified: ${removed}, assigned Verified: ${assigned})`,
+      steps[currentStep].name,
+    );
+    await renderSafely(
+      RegistrationComponentPresets.error(
+        "Roles Not Updated",
+        "You're registered and whitelisted, but your Discord roles could not be updated. An admin has been notified and will fix them shortly.",
+      ),
+    );
+    return { ok: true };
+  }
+
+  steps[currentStep].completed = true;
+  await renderSafely(
+    RegistrationComponentPresets.progress(name, steps, currentStep),
+  );
+
+  await randomDelay(500, 1000);
+
+  const autoCloseAt = Math.floor((Date.now() + AUTO_CLOSE_MS) / 1000);
+  await renderSafely(
+    RegistrationComponentPresets.success(name, uuid, autoCloseAt),
+  );
+
+  if (verifyChannel) {
+    scheduleChannelClose(
+      verifyChannel,
+      AUTO_CLOSE_MS,
+      `Registration completed - auto-closed after 24 hours (${userTag})`,
+    );
+  }
+
+  return { ok: true };
 }

@@ -26,7 +26,7 @@ export default defineApiSpec({
       path: "/pay",
       name: "Pay",
       description:
-        "Transfers currency from the authenticated player to the recipient.",
+        "Transfers currency from the authenticated player to the recipient. Send an idempotencyKey to make the request safe to retry after a timeout: a replay with the same key and body returns the stored response without transferring again, a replay with the same key and a different body is rejected with 409. The replayed response is the original one, so its new_sender_balance is the balance right after the original attempt, not the current balance. Keys are retained for 24 hours.",
       request: {
         name: "PayRequest",
         fields: [
@@ -38,7 +38,15 @@ export default defineApiSpec({
           {
             name: "amount",
             type: "double",
-            description: "Positive amount to transfer",
+            description:
+              "Positive amount to transfer, with at most 3 decimal places; more decimals, or an amount below 0.001, are rejected with 400",
+          },
+          {
+            name: "idempotencyKey",
+            type: "string",
+            nullable: true,
+            description:
+              "Client-generated key unique per attempt (e.g. a random UUID): 1 to 128 characters of letters, digits, '.', '_', ':' or '-'. Reuse it on retries of the same request.",
           },
         ],
       },
@@ -66,7 +74,8 @@ export default defineApiSpec({
           {
             name: "amount",
             type: "double",
-            description: "Positive amount to add",
+            description:
+              "Positive amount to add, with at most 3 decimal places; more decimals, or an amount below 0.001, are rejected with 400",
           },
           {
             name: "reason",
@@ -107,7 +116,8 @@ export default defineApiSpec({
           {
             name: "denomination",
             type: "double",
-            description: "Unit size of one note/coin",
+            description:
+              "Unit size of one note/coin, with at most 3 decimal places; more decimals, or a size below 0.001, are rejected with 400",
           },
           {
             name: "count",

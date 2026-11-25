@@ -134,6 +134,8 @@ describe("StatsImportService import", () => {
       port: 22,
       username: "stats",
       password: "secret",
+      keepaliveInterval: 10_000,
+      keepaliveCountMax: 3,
     });
     expect(sftp.list).toHaveBeenCalledWith("/world/stats");
   });
@@ -287,7 +289,7 @@ describe("StatsImportService scheduling", () => {
     expect(sftp.connect).not.toHaveBeenCalled();
   });
 
-  it("does not start a second import for a server while one is running", async () => {
+  it("runs an import asked for during a running one once that one ends, never both at once", async () => {
     let releaseList!: () => void;
     sftp.list.mockReturnValueOnce(
       new Promise((resolve) => {
@@ -298,11 +300,30 @@ describe("StatsImportService scheduling", () => {
     playtimeService.emit("sessionEnd");
     await vi.advanceTimersByTimeAsync(30_000);
     playtimeService.emit("sessionEnd");
+    playtimeService.emit("sessionStart");
     await vi.advanceTimersByTimeAsync(30_000);
+    expect(sftp.connect).toHaveBeenCalledTimes(1);
+
     releaseList();
     await vi.advanceTimersByTimeAsync(0);
 
-    expect(sftp.connect).toHaveBeenCalledTimes(1);
+    expect(sftp.connect).toHaveBeenCalledTimes(2);
+    expect(batchUpsert).toHaveBeenCalledTimes(1);
+  });
+
+  it("gives the lock back when a run has no result after ten minutes", async () => {
+    sftp.list.mockReturnValueOnce(new Promise(() => {}));
+
+    playtimeService.emit("sessionEnd");
+    await vi.advanceTimersByTimeAsync(30_000);
+    await vi.advanceTimersByTimeAsync(10 * 60 * 1000);
+    expect(sftp.end).toHaveBeenCalledTimes(1);
+
+    playtimeService.emit("sessionEnd");
+    await vi.advanceTimersByTimeAsync(30_000);
+
+    expect(sftp.connect).toHaveBeenCalledTimes(2);
+    expect(batchUpsert).toHaveBeenCalledTimes(1);
   });
 });
 

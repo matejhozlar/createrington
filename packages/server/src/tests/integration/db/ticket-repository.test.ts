@@ -88,6 +88,19 @@ describe("TicketRepository lifecycle", () => {
     ]);
   });
 
+  it("drops the stored transcript on reopen and keeps the rest of the metadata", async () => {
+    const ticket = await createTicket(await Q.ticket.allocateNumber(), "a");
+    await ticketRepo.updateMetadata(ticket.id, {
+      closeMessageId: "555",
+      transcriptPath: "storage/transcripts/ticket-1-1.html",
+    });
+    await ticketRepo.close(ticket.id, STAFF);
+
+    const reopened = await ticketRepo.reopen(ticket.id, STAFF);
+
+    expect(reopened.metadata).toEqual({ closeMessageId: "555" });
+  });
+
   it("makes a close wait for a concurrent transition and then see its result", async () => {
     const ticket = await createTicket(await Q.ticket.allocateNumber(), "a");
     let closing: Promise<unknown> = Promise.resolve();

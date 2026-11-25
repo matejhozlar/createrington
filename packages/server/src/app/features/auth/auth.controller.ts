@@ -316,53 +316,6 @@ export class AuthController {
     });
   }
 
-  static async ssoCallback(req: Request, res: Response): Promise<void> {
-    const callbackUrl = config.app.auth.sso.callbackUrl;
-    const rawCode = req.query.code;
-    const rawState = req.query.state;
-    const code = typeof rawCode === "string" ? rawCode : undefined;
-    const state = typeof rawState === "string" ? rawState : undefined;
-
-    if (!code || !state) {
-      throw new BadRequestError("Missing code or state");
-    }
-
-    const entry = await consumeSsoState(state);
-    if (!entry) {
-      throw new BadRequestError("Invalid or expired state parameter");
-    }
-
-    try {
-      const user = await discordOAuth.authenticate(code, callbackUrl);
-
-      if (isCodeExchangeReturnTo(entry.returnTo)) {
-        const ssoCode = await issueSsoCodeFor(user);
-
-        logger.info(
-          `User ${user.discordId} completed code-exchange SSO to ${entry.returnTo}`,
-        );
-
-        safeSsoRedirect(res, appendSsoCode(entry.returnTo, ssoCode));
-        return;
-      }
-
-      await completeLogin(req, res, user);
-
-      logger.info(`User ${user.discordId} completed SSO to ${entry.returnTo}`);
-
-      safeSsoRedirect(res, entry.returnTo);
-    } catch (error) {
-      if (error instanceof UnverifiedUserError) {
-        logger.warn("Unverified user attempted SSO login");
-        safeSsoRedirect(res, redirectWithError(entry.returnTo, "unverified"));
-        return;
-      }
-
-      logger.error("SSO callback failed:", error);
-      safeSsoRedirect(res, redirectWithError(entry.returnTo, "auth_failed"));
-    }
-  }
-
   static devSetRefresh(req: Request, res: Response): void {
     if (!config.envMode.isDev) {
       throw new BadRequestError("Not available outside development");
@@ -398,10 +351,6 @@ function redirectWithError(returnTo: string, reason: string): string {
   } catch {
     return returnTo;
   }
-}
-
-function safeSsoRedirect(res: Response, url: string): void {
-  res.redirect(safeReturnTo(url));
 }
 
 function safeReturnTo(url: string): string {

@@ -13,22 +13,20 @@ export interface WarningToRemove {
 /**
  * Runs the full removal sequence for a single inactivity warning:
  *
- * 1. Marks the warning row as removed (must happen first, see below)
+ * 1. Marks the warning row as removed and stamps the player's name and
+ *    Discord id on it (must happen first, see below)
  * 2. Kicks the Discord guild member if they're still present
  * 3. Deletes the player and removes them from all Minecraft whitelists via
- *    the deletion service (cascades to the warning row)
+ *    the deletion service; the removed warning row stays as history, with
+ *    its player uuid set to NULL by the foreign key
  *
  * Step 1 runs before step 2 so the `guildMemberRemove` event handler
  * (`leave-notification.ts`) can reliably detect an inactivity-driven
  * departure and skip posting the "member left" notification with a
  * Yeet-from-database button. If we kicked first, the event handler
- * races with step 4 and may observe the player still present with no
+ * races with step 3 and may observe the player still present with no
  * `removed_at` set, producing a stale notification whose Yeet button
  * fails once the player record is deleted.
- *
- * We cannot simply reorder the player delete before the kick because
- * the `player_inactivity_warning.player_minecraft_uuid` FK cascades,
- * which would delete the warning row we're trying to update.
  *
  * Discord kick and RCON failures are logged but do not abort the rest
  * of the sequence: the DB delete always runs.
@@ -39,7 +37,11 @@ export async function removeInactiveWarning(
 ): Promise<void> {
   await Q.player.inactivity.warning.update(
     { id: warning.id },
-    { removedAt: new Date() },
+    {
+      removedAt: new Date(),
+      minecraftUsername: warning.minecraftUsername,
+      discordId: warning.discordId,
+    },
   );
 
   try {
@@ -79,7 +81,7 @@ export async function removeInactiveWarning(
     try {
       await Q.player.inactivity.warning.update(
         { id: warning.id },
-        { removedAt: null },
+        { removedAt: null, minecraftUsername: null, discordId: null },
       );
     } catch (rollbackError) {
       logger.error(

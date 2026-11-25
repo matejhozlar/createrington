@@ -17,6 +17,9 @@ const ticks = (seconds: number) => seconds * 20;
 let serverId: number;
 
 async function removePlayers(): Promise<void> {
+  await Q.admin.log.action.deleteAll({
+    targetPlayerUuid: { $in: [STEVE, ALEX] },
+  });
   await Q.player.deleteAll({ minecraftUuid: { $in: [STEVE, ALEX] } });
   await Q.player.deleteAll({
     discordId: { $in: [STEVE_DISCORD, ALEX_DISCORD] },
@@ -91,6 +94,51 @@ describe("PlaytimeRepository (integration)", () => {
     const player = await Q.player.get({ minecraftUuid: STEVE });
     expect(player.online).toBe(true);
     expect(player.currentServerId).toBe(serverId);
+  });
+
+  it("adopts a new Minecraft name for the same UUID and still opens the session", async () => {
+    const started = await playtimeRepo.startSession({
+      uuid: STEVE,
+      username: "steve_renamed",
+      serverId,
+      sessionStart: T0,
+      playTimeTicks: ticks(1000),
+    });
+
+    expect(started).toMatchObject({
+      discordId: STEVE_DISCORD,
+      renamedFrom: "steve",
+    });
+    const player = await Q.player.get({ minecraftUuid: STEVE });
+    expect(player.minecraftUsername).toBe("steve_renamed");
+    expect(player.online).toBe(true);
+
+    const [audit] = await Q.admin.log.action.findAll({
+      targetPlayerUuid: STEVE,
+    });
+    expect(audit).toMatchObject({
+      adminDiscordId: "system",
+      actionType: "update_player",
+      fieldName: "minecraftUsername",
+      oldValue: "steve",
+      newValue: "steve_renamed",
+    });
+  });
+
+  it("opens the session under the old name when another player holds the new one", async () => {
+    const started = await playtimeRepo.startSession({
+      uuid: STEVE,
+      username: "alex",
+      serverId,
+      sessionStart: T0,
+      playTimeTicks: ticks(1000),
+    });
+
+    expect(started).toMatchObject({ renamedFrom: null });
+    expect(
+      (await Q.player.get({ minecraftUuid: STEVE })).minecraftUsername,
+    ).toBe("steve");
+    expect(await Q.admin.log.action.count({ targetPlayerUuid: STEVE })).toBe(0);
   });
 
   it("credits heartbeat progress into the row and every aggregate, then closes with a final credit", async () => {
@@ -193,6 +241,30 @@ describe("PlaytimeRepository (integration)", () => {
 
     const player = await Q.player.get({ minecraftUuid: STEVE });
     expect(player.online).toBe(false);
+  });
+
+  it("opens the session when an orphaned one started after the reported start", async () => {
+    const orphan = await playtimeRepo.startSession({
+      uuid: STEVE,
+      username: "steve",
+      serverId,
+      sessionStart: at(60),
+      playTimeTicks: ticks(100),
+    });
+
+    const started = await playtimeRepo.startSession({
+      uuid: STEVE,
+      username: "steve",
+      serverId,
+      sessionStart: T0,
+      playTimeTicks: ticks(100),
+    });
+
+    expect(started).not.toBeNull();
+    const closed = await Q.player.session.get({ id: orphan!.sessionId });
+    expect(closed.sessionEnd).toEqual(at(60));
+    const open = await Q.player.session.get({ id: started!.sessionId });
+    expect(open.sessionEnd).toBeNull();
   });
 
   it("clamps a session end reported before the session start", async () => {
@@ -605,9 +677,29 @@ describe("PlayerPlaytimeSummaryQueries.getServerStats (integration)", () => {
     expect(stats.totalSessions).toBe(8);
   });
 
-  it("reports zero sessions for a server without playtime", async () => {
+  it("averages the session length over all sessions, not over the players' averages", async () => {
+    await Q.player.playtime.summary.create({
+      playerMinecraftUuid: STEVE,
+      serverId,
+      totalSeconds: 72_000n,
+      totalSessions: 10,
+    });
+    await Q.player.playtime.summary.create({
+      playerMinecraftUuid: ALEX,
+      serverId,
+      totalSeconds: 300n,
+      totalSessions: 1,
+    });
+
+    const stats = await Q.player.playtime.summary.getServerStats(serverId);
+
+    expect(stats.avgSessionSeconds).toBeCloseTo(72_300 / 11, 5);
+  });
+
+  it("reports zero sessions and a zero average for a server without playtime", async () => {
     const stats = await Q.player.playtime.summary.getServerStats(serverId);
 
     expect(stats.totalSessions).toBe(0);
+    expect(stats.avgSessionSeconds).toBe(0);
   });
 });

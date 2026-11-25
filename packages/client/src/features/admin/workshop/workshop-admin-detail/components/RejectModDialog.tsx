@@ -13,6 +13,7 @@ import {
 } from "@createrington/shared/workshop";
 import { useDialogDraft } from "@/hooks/use-dialog-draft";
 import { Field, FieldLabel } from "@/components/ui/field";
+import type { RejectTarget } from "@/features/admin/workshop/workshop-admin-detail/types";
 
 type RejectReason = (typeof WORKSHOP_MOD_REJECT_REASONS)[number];
 
@@ -22,7 +23,7 @@ export function RejectModDialog({
   onReject,
   pending,
 }: {
-  target: { workshopModId: number; name: string } | null;
+  target: RejectTarget | null;
   onOpenChange: (open: boolean) => void;
   onReject: (input: {
     workshopModId: number;
@@ -34,7 +35,10 @@ export function RejectModDialog({
   const [draft, update] = useDialogDraft<{
     reason: RejectReason | "";
     note: string;
-  }>(target !== null, () => ({ reason: "", note: "" }));
+  }>(target !== null, () => ({
+    reason: target?.reason ?? "",
+    note: target?.note ?? "",
+  }));
   const { reason, note } = draft;
 
   return (

@@ -154,6 +154,57 @@ describe("PlaytimeService join / heartbeat / leave", () => {
     });
   });
 
+  it("starts the session again on the next heartbeat after its start failed to persist", () => {
+    const { service, starts, progress } = makeService();
+    service.initialize();
+
+    service.handlePlayerJoinFromMod({
+      uuid: STEVE,
+      username: "steve",
+      playTimeTicks: ticks(1000),
+    });
+    service.markStartFailed(starts[0]);
+
+    vi.setSystemTime(new Date(T0.getTime() + seconds(60)));
+    service.reconcileWithHeartbeat([
+      { uuid: STEVE, username: "steve", playTimeTicks: ticks(1060) },
+    ]);
+    expect(starts).toHaveLength(2);
+    expect(starts[1]).toMatchObject({
+      uuid: STEVE,
+      sessionStart: T0,
+      playTimeTicks: ticks(1000),
+    });
+
+    service.setSessionId(STEVE, 9);
+    vi.setSystemTime(new Date(T0.getTime() + seconds(120)));
+    service.reconcileWithHeartbeat([
+      { uuid: STEVE, username: "steve", playTimeTicks: ticks(1120) },
+    ]);
+    expect(starts).toHaveLength(2);
+    expect(progress[0]).toMatchObject({
+      sessionId: 9,
+      credit: { periodStart: T0, seconds: 120 },
+    });
+  });
+
+  it("does not start a session again while its start is still being persisted", () => {
+    const { service, starts } = makeService();
+    service.initialize();
+
+    service.handlePlayerJoinFromMod({
+      uuid: STEVE,
+      username: "steve",
+      playTimeTicks: 0,
+    });
+    vi.setSystemTime(new Date(T0.getTime() + seconds(60)));
+    service.reconcileWithHeartbeat([
+      { uuid: STEVE, username: "steve", playTimeTicks: ticks(60) },
+    ]);
+
+    expect(starts).toHaveLength(1);
+  });
+
   it("re-credits a reverted slice on the next heartbeat", () => {
     const { service, progress, ends } = makeService();
     service.initialize();

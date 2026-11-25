@@ -45,7 +45,7 @@ export const autoMessagesRouter = router({
 
         const messages = await Q.discord.auto.message
           .where({ configId: config.id })
-          .orderBy("sortOrder", "asc")
+          .orderBy([{ field: "sortOrder" }, { field: "id" }])
           .all();
 
         const followups =
@@ -129,7 +129,7 @@ export const autoMessagesRouter = router({
         z.object({
           configId: id(),
           content: z.string().min(1).max(2000),
-          sortOrder: z.number().int().default(0),
+          sortOrder: z.number().int().optional(),
           enabled: z.boolean().default(true),
           followups: z
             .array(followupInputSchema)

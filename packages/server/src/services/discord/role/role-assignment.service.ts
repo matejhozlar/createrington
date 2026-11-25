@@ -20,6 +20,8 @@ import type { Player, PlayerPlaytimeSummary } from "@createrington/shared/db";
 
 type PlaytimeByPlayer = Map<string, Map<number, number>>;
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 function groupPlaytime(rows: PlayerPlaytimeSummary[]): PlaytimeByPlayer {
   const byPlayer: PlaytimeByPlayer = new Map();
   for (const row of rows) {
@@ -39,6 +41,24 @@ function needsPlaytime(rules: AnyRoleRule[]): boolean {
   );
 }
 
+function restoresRankFromBeforeRejoin(
+  member: GuildMember,
+  rule: AnyRoleRule,
+  context: RoleConditionContext,
+  holdsAnotherTier: boolean,
+): boolean {
+  if (holdsAnotherTier) return false;
+
+  const joinedAt = member.joinedTimestamp;
+  const registeredAt = context.createdAt.getTime();
+  if (!joinedAt || joinedAt <= registeredAt) return false;
+
+  if (rule.conditionType === RoleConditionType.SERVER_AGE) {
+    return registeredAt + rule.requiredDays * DAY_MS <= joinedAt;
+  }
+  return true;
+}
+
 /**
  * Evaluates player eligibility against configured role rules (playtime, server
  * age) and reconciles Discord role state to match. Every rule is evaluated
@@ -48,7 +68,10 @@ function needsPlaytime(rules: AnyRoleRule[]): boolean {
  * and the lower tiers are removed in the same pass. Roles are added and
  * removed individually rather than replaced wholesale, so concurrent role
  * changes are never overwritten from a stale member cache. Notifications are
- * dispatched asynchronously and never block role ops. Errors are caught per
+ * dispatched asynchronously and never block role ops. A member who left the
+ * guild and rejoined after registering gets their rank back without a second
+ * announcement: with no role of the hierarchy left, a server-age tier reached
+ * before the rejoin and any playtime tier are restored silently. Errors are caught per
  * player so a single failure does not abort batch runs.
  */
 export class RoleAssignmentService {
@@ -258,7 +281,15 @@ export class RoleAssignmentService {
         }
       }
 
-      if (justAssigned) {
+      if (
+        justAssigned &&
+        !restoresRankFromBeforeRejoin(
+          member,
+          targetRole,
+          context,
+          hasOtherRoles,
+        )
+      ) {
         const notification: RoleAssignmentNotification = {
           discordId: member.id,
           username: member.user.username,

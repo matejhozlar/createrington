@@ -22,6 +22,7 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import helmet from "helmet";
 import { registerHealthRoute } from "./health";
+import { spaFallback } from "./spa-fallback";
 import { allowedOrigins } from "./utils/allowed-origins";
 
 function mountTrpc(
@@ -101,10 +102,7 @@ export function createApp(): Express {
 
     app.use(express.static(clientDir, { maxAge: "1h" }));
 
-    app.get("/{*splat}", (_req, res) => {
-      res.setHeader("Cache-Control", "no-cache");
-      res.sendFile(indexHtml);
-    });
+    app.get("/{*splat}", spaFallback(indexHtml));
   }
 
   app.use(notFoundHandler);

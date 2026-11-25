@@ -375,6 +375,46 @@ describe("GalleryService.approve", () => {
     expect(orphans).toEqual([]);
   });
 
+  it("pays one reward when two submissions of one author are approved at once with one slot left", async () => {
+    const used = await service.weeklyRewardsUsed(AUTHOR.uuid);
+    await settings.setGalleryWeeklyRewardCap(used + 1, ADMIN_DISCORD_ID);
+    const first = await submit();
+    const second = await submit();
+
+    const results = await Promise.all([
+      service.approve(first.id, { discordId: ADMIN_DISCORD_ID }),
+      service.approve(second.id, { discordId: ADMIN_DISCORD_ID }),
+    ]);
+
+    expect(results.map((result) => result.capReached).sort()).toEqual([
+      false,
+      true,
+    ]);
+    expect(results.filter((result) => result.rewardPaid > 0)).toHaveLength(1);
+    expect(await service.weeklyRewardsUsed(AUTHOR.uuid)).toBe(used + 1);
+  });
+
+  it("deletes the uploads when the reward settings cannot be read", async () => {
+    const pending = await submit();
+    const readAmount = vi
+      .spyOn(settings, "getGalleryRewardAmount")
+      .mockRejectedValueOnce(new Error("settings unavailable"));
+
+    await expect(
+      service.approve(pending.id, { discordId: ADMIN_DISCORD_ID }),
+    ).rejects.toThrow("settings unavailable");
+    readAmount.mockRestore();
+
+    expect(
+      [...storage.objects.keys()].filter((key) =>
+        key.startsWith(`gallery/${pending.id}-`),
+      ),
+    ).toEqual([]);
+    expect((await Q.gallery.submission.get({ id: pending.id })).status).toBe(
+      "pending",
+    );
+  });
+
   it("refuses to publish when the stored original is gone", async () => {
     const pending = await submit();
     await fs.rm(service.originalFilePath(pending));

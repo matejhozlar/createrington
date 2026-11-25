@@ -60,7 +60,11 @@ export interface AnnounceReleaseOptions {
  * out silent for as long as this process lives. No-op while the
  * modpack_changelog feature flag is off, for the first recorded release of a
  * modpack (nothing to diff against), and for a release that had no parts
- * created by the time either applied.
+ * created by the time either applied. `start` allows creating the parts: the
+ * caller sets it when it first records a release and keeps setting it for a
+ * day after, so a first attempt that failed before its parts were saved is
+ * made again; without it only an announcement that already has parts is
+ * finished.
  */
 export async function announceReleaseChangelog(
   options: AnnounceReleaseOptions,

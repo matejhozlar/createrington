@@ -19,6 +19,8 @@ const data = new SlashCommandBuilder()
     option
       .setName("mc_name")
       .setDescription("Your exact Minecraft username (case doesn't matter)")
+      .setMinLength(3)
+      .setMaxLength(16)
       .setRequired(true),
   );
 

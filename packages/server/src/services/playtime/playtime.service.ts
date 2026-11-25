@@ -39,7 +39,8 @@ export interface PlaytimeServiceEvents {
  * the stat for, e.g. while AFK, earns nothing), falling back to wall-clock
  * when the mod sends no ticks. Sessions live in memory but are restored
  * from their DB rows on boot via hydrate(), so a backend restart is not a
- * session boundary. A watchdog closes sessions that stop being confirmed,
+ * session boundary. A session whose start failed to persist is started
+ * again by the next heartbeat. A watchdog closes sessions that stop being confirmed,
  * ending them at the last instant the player was seen. Nil-UUID entries
  * (fakeplayers, CommandBlocks) are rejected at every ingress.
  */
@@ -203,17 +204,7 @@ export class PlaytimeService extends typedEmitter<PlaytimeServiceEvents>() {
 
     this.activeSessions.set(data.uuid, session);
     this.markOnline();
-
-    const event: SessionStartEvent = {
-      uuid: session.uuid,
-      username: session.username,
-      serverId: session.serverId,
-      sessionStart: session.sessionStart,
-      playTimeTicks: data.playTimeTicks,
-      metadata: session.metadata,
-    };
-
-    this.emit("sessionStart", event);
+    this.emitSessionStart(session);
 
     logger.info(
       `Session started for ${data.username} (${data.uuid}) via mod notification`,
@@ -372,9 +363,16 @@ export class PlaytimeService extends typedEmitter<PlaytimeServiceEvents>() {
     session.lastSeenAt = now;
 
     if (!session.sessionId) {
-      logger.debug(
-        `Heartbeat for ${session.username} (${session.uuid}) has no session row to credit against; confirming presence only`,
-      );
+      if (session.startPending) {
+        logger.debug(
+          `Heartbeat for ${session.username} (${session.uuid}) has no session row to credit against; confirming presence only`,
+        );
+      } else {
+        logger.warn(
+          `Session start of ${session.username} (${session.uuid}) was not persisted; trying again`,
+        );
+        this.emitSessionStart(session);
+      }
       return;
     }
 
@@ -417,13 +415,19 @@ export class PlaytimeService extends typedEmitter<PlaytimeServiceEvents>() {
     };
 
     this.activeSessions.set(player.uuid, session);
+    this.emitSessionStart(session);
+  }
+
+  private emitSessionStart(session: ActiveSession): void {
+    session.startPending = true;
 
     const event: SessionStartEvent = {
       uuid: session.uuid,
       username: session.username,
       serverId: session.serverId,
       sessionStart: session.sessionStart,
-      playTimeTicks: player.playTimeTicks,
+      playTimeTicks: session.lastPlayTicks,
+      metadata: session.metadata,
     };
 
     this.emit("sessionStart", event);
@@ -530,9 +534,22 @@ export class PlaytimeService extends typedEmitter<PlaytimeServiceEvents>() {
     const session = this.activeSessions.get(uuid);
     if (session) {
       session.sessionId = sessionId;
+      session.startPending = false;
       logger.debug(`Set sessionId ${sessionId} for player ${uuid}`);
     } else {
       logger.warn(`Cannot set sessionId for ${uuid} - session not found`);
+    }
+  }
+
+  /** Reports that a session start could not be persisted, so the next heartbeat emits sessionStart for it again. */
+  markStartFailed(event: SessionStartEvent): void {
+    const session = this.activeSessions.get(event.uuid);
+    if (
+      session &&
+      !session.sessionId &&
+      session.sessionStart.getTime() === event.sessionStart.getTime()
+    ) {
+      session.startPending = false;
     }
   }
 

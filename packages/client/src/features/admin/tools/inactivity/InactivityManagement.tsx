@@ -130,11 +130,13 @@ export function InactivityManagement() {
           ) : (
             <p className="italic text-muted-foreground">(deleted)</p>
           )}
-          <CellText
-            value={warning.playerMinecraftUuid}
-            display={`${warning.playerMinecraftUuid.slice(0, 8)}…`}
-            className="font-mono text-xs text-muted-foreground"
-          />
+          {warning.playerMinecraftUuid && (
+            <CellText
+              value={warning.playerMinecraftUuid}
+              display={`${warning.playerMinecraftUuid.slice(0, 8)}…`}
+              className="font-mono text-xs text-muted-foreground"
+            />
+          )}
         </div>
       ),
     },

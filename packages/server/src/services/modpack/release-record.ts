@@ -14,6 +14,8 @@ import { announceReleaseChangelog } from "./changelog";
 import { getReleaseDiff } from "./release-changelog";
 import config from "@/config";
 
+const ANNOUNCE_START_WINDOW_MS = 24 * 60 * 60 * 1000;
+
 function firstPerProject<T extends { curseforgeProjectId: number }>(
   rows: T[],
 ): T[] {
@@ -41,6 +43,32 @@ export async function createReleaseWithMods(
   });
   await tx.modpack.release.mod.insertMany(created.id, rows);
   return created;
+}
+
+/**
+ * Replace the frozen file list of a release that is not offered yet when it
+ * now holds more projects than the one recorded, for a snapshot first
+ * recorded while some of its projects were not cached. Returns the release
+ * as stored afterwards.
+ */
+export async function refreezeReleaseMods(
+  release: ModpackRelease,
+  rows: ReleaseModInsert[],
+): Promise<ModpackRelease> {
+  const modCount = distinctProjectCount(rows);
+  if (modCount <= release.modCount) return release;
+
+  return db.inTransaction(async (tx) => {
+    const claimed = await tx.modpack.release.updateAll(
+      { modCount },
+      { id: release.id, modCount: { $lt: modCount } },
+    );
+    if (claimed > 0) {
+      await tx.modpack.release.mod.deleteAll({ releaseId: release.id });
+      await tx.modpack.release.mod.insertMany(release.id, rows);
+    }
+    return tx.modpack.release.get({ id: release.id });
+  });
 }
 
 /**
@@ -74,7 +102,7 @@ export async function recordRelease(
       await upgradeRelease(modpack, recorded, manifest);
       announceRelease(modpack, recorded.id, true);
     } else if (recorded.serverPackFileId !== null) {
-      announceRelease(modpack, recorded.id, false);
+      announceRelease(modpack, recorded.id, isRecentlyRecorded(recorded));
     }
     if (recorded.launcherReadyAt === null) {
       prepareForLauncher(modpack, recorded.id, manifest);
@@ -196,6 +224,10 @@ export async function buildReleaseRows(
       inClientPack: entry.sides !== "server",
     };
   });
+}
+
+function isRecentlyRecorded(release: ModpackRelease): boolean {
+  return Date.now() - release.createdAt.getTime() < ANNOUNCE_START_WINDOW_MS;
 }
 
 function announceRelease(

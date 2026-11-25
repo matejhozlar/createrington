@@ -1070,6 +1070,10 @@ export abstract class BaseQueries<
   /**
    * Finds all entities matching the filter criteria
    *
+   * A sort always ends on the primary key (in the first sort term's
+   * direction), so rows that tie on the requested columns keep one order and
+   * paging with limit/offset never repeats or skips a row.
+   *
    * @param filters - Optional filter criteria (can be partial)
    * @param options - Optional pagination, sorting, and field selection options
    * @returns Promise resolving to an array of entities
@@ -1176,6 +1180,15 @@ export abstract class BaseQueries<
           },
         ];
     if (terms.length === 0) return "";
+
+    const sorted = new Set(terms.map((term) => term.column));
+    for (const field of this.IDENTIFIER_GROUPS?.[0] ?? []) {
+      const column = this.getColumnName(field);
+      if (!sorted.has(column)) {
+        terms.push({ column, direction: terms[0].direction });
+      }
+    }
+
     return ` ORDER BY ${terms
       .map(
         ({ column, direction }) =>

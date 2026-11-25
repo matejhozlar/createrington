@@ -9,7 +9,7 @@ import {
 } from "@/services/mc-server/file-ops";
 import { getModFileDownloadUrl } from "@/services/curseforge/downloads";
 import type { DatabaseQueries } from "@/generated/db";
-import type { StructurePackService } from "../structure-pack.service";
+import type { StructurePackService } from "@/services/structure-pack/structure-pack.service";
 import type { StructurePackWithMods } from "@/db/queries/structure/pack";
 import type {
   StructurePack,
@@ -19,7 +19,7 @@ import type {
 } from "@createrington/shared/db";
 import { setLongTimeout, type LongTimeout } from "@/utils/long-timeout";
 import { MODS_DIR } from "./constants";
-import { periodIntervalMs } from "./timezone";
+import { FALLBACK_TIMEZONE, isTimeZone, periodIntervalMs } from "./timezone";
 import {
   checkMissedRotation,
   describeSchedule,
@@ -53,15 +53,48 @@ async function removePackMods(
   }
 }
 
-async function installPackMods(pack: StructurePackWithMods): Promise<void> {
-  for (const mod of pack.mods) {
-    const modPath = `${MODS_DIR}/${mod.fileName}`;
-    if (await fileExists(modPath)) {
-      logger.info(`Mod already in mods dir: ${mod.fileName}`);
-      continue;
+async function installPackMods(pack: StructurePackWithMods): Promise<string[]> {
+  const copied: string[] = [];
+  try {
+    for (const mod of pack.mods) {
+      const modPath = `${MODS_DIR}/${mod.fileName}`;
+      if (await fileExists(modPath)) {
+        logger.info(`Mod already in mods dir: ${mod.fileName}`);
+        continue;
+      }
+      copied.push(modPath);
+      await copyFileToServer(getCachePath(mod.fileName), modPath);
+      logger.info(`Installed mod file: ${mod.fileName}`);
     }
-    await copyFileToServer(getCachePath(mod.fileName), modPath);
-    logger.info(`Installed mod file: ${mod.fileName}`);
+    return copied;
+  } catch (error) {
+    await removeCopiedFiles(copied);
+    throw error;
+  }
+}
+
+async function restorePackMods(pack: StructurePackWithMods): Promise<void> {
+  try {
+    await ensureModsCached(pack.mods);
+    await installPackMods(pack);
+  } catch (error) {
+    logger.error(
+      `Could not put the files of pack "${pack.name}" back after a failed rotation:`,
+      error,
+    );
+  }
+}
+
+async function removeCopiedFiles(paths: string[]): Promise<void> {
+  for (const modPath of paths) {
+    try {
+      if (await fileExists(modPath)) await deleteFile(modPath);
+    } catch (error) {
+      logger.error(
+        `Could not remove ${modPath} after a failed rotation:`,
+        error,
+      );
+    }
   }
 }
 
@@ -83,6 +116,8 @@ async function installPackMods(pack: StructurePackWithMods): Promise<void> {
  * - Can be disabled entirely via the `enabled` flag on the rotation config: no scheduling,
  *   no automatic rotations, and no boost purchases while disabled (manual rotation still
  *   works); disabling refunds all open boosts
+ * - A boost whose buyer has since been deleted is dropped without a refund wherever a
+ *   refund would be due
  *
  * NOTE: File operations (mod installs/removals) are skipped when `isFileOpsAllowed()` returns
  * false; the rotation is still recorded in the database in that case.
@@ -109,7 +144,13 @@ export class StructurePackRotationService {
       return;
     }
 
-    const rotationConfig = await this.getConfig();
+    const row = await Q.structure.pack.rotation.config.getOrCreateDefault();
+    if (!isTimeZone(row.timezone)) {
+      logger.warn(
+        `Structure pack rotation timezone "${row.timezone}" is not a valid IANA zone, scheduling in ${FALLBACK_TIMEZONE}`,
+      );
+    }
+    const rotationConfig = toRotationConfig(row);
     if (!rotationConfig.enabled) {
       logger.info("Structure pack rotation is disabled, scheduler not started");
       return;
@@ -184,7 +225,9 @@ export class StructurePackRotationService {
    * 2. Fetch eligible packs and compute selection weights
    * 3. Select the incoming pack via weighted-random draw
    * 4. Download and cache any uncached mod files from CurseForge
-   * 5. Remove outgoing pack's mods and install the incoming pack's mods on the server
+   * 5. Install the incoming pack's mods on the server, then remove the outgoing pack's;
+   *    a failure in either step takes the incoming copies back out and leaves (or puts
+   *    back) the outgoing pack's files
    * 6. Swap the active pack flag and record the rotation in the database
    * 7. Delete the boosts the draw counted and refund the ones it could not count; a boost
    *    bought during the draw for another eligible pack stays open for the next one
@@ -304,13 +347,19 @@ export class StructurePackRotationService {
     }
     try {
       await ensureModsCached(incoming.mods);
+      const installed = await installPackMods(incoming);
       if (outgoing) {
-        await removePackMods(
-          outgoing,
-          new Set(incoming.mods.map((mod) => mod.fileName)),
-        );
+        try {
+          await removePackMods(
+            outgoing,
+            new Set(incoming.mods.map((mod) => mod.fileName)),
+          );
+        } catch (error) {
+          await removeCopiedFiles(installed);
+          await restorePackMods(outgoing);
+          throw error;
+        }
       }
-      await installPackMods(incoming);
       return null;
     } catch (error) {
       const reason = errorMessage(error);
@@ -566,7 +615,15 @@ export class StructurePackRotationService {
   ): Promise<void> {
     if (boosts.length === 0) return;
 
-    for (const boost of boosts) {
+    const buyers = await tx.player.findAll({
+      discordId: { $in: [...new Set(boosts.map((boost) => boost.discordId))] },
+    });
+    const registered = new Set(buyers.map((player) => player.discordId));
+    const refundable = boosts.filter((boost) =>
+      registered.has(boost.discordId),
+    );
+
+    for (const boost of refundable) {
       await balanceRepo.add(
         { discordId: boost.discordId },
         boost.currencySpent,
@@ -585,7 +642,14 @@ export class StructurePackRotationService {
     await tx.structure.pack.boost.deleteAll({
       id: { $in: boosts.map((boost) => boost.id) },
     });
-    logger.info(`Refunded ${boosts.length} structure pack boost(s): ${reason}`);
+    logger.info(
+      `Refunded ${refundable.length} structure pack boost(s): ${reason}`,
+    );
+    if (refundable.length < boosts.length) {
+      logger.info(
+        `Dropped ${boosts.length - refundable.length} structure pack boost(s) of deleted players without a refund`,
+      );
+    }
   }
 
   private async weighPool(

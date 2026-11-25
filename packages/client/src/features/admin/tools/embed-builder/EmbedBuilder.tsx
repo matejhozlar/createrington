@@ -196,7 +196,7 @@ export function EmbedBuilder() {
                   presetId={state.activePreset.id}
                   payload={builder.payload}
                   bot={state.bot}
-                  validateOrToast={builder.validateOrToast}
+                  validateOrToast={builder.validateForPublishOrToast}
                 />
               </div>
             )}

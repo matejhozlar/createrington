@@ -7,6 +7,11 @@ const mocks = vi.hoisted(() => ({
   whitelist: vi.fn(),
   failSave: false,
   releaseReservation: vi.fn(),
+  removeRole: vi.fn(),
+  assignRole: vi.fn(),
+  adminAlert: vi.fn(),
+  renders: [] as string[],
+  failRender: null as string | null,
 }));
 
 vi.mock("@/db", () => ({
@@ -65,7 +70,7 @@ vi.mock("@/discord/constants", () => ({
       ADMIN: "role-admin",
     },
     Channels: { administration: { NOTIFICATIONS: "notifications-1" } },
-    Messages: { send: async () => ({ id: "message-1" }) },
+    Messages: { send: mocks.adminAlert },
   },
 }));
 
@@ -77,10 +82,10 @@ vi.mock("@/discord/embeds", () => ({
 
 vi.mock("@/discord/components/presets/registration", () => ({
   RegistrationComponentPresets: {
-    error: () => ({}),
-    progress: () => ({}),
-    idle: () => ({}),
-    success: () => ({}),
+    error: () => ({ kind: "error" }),
+    progress: () => ({ kind: "progress" }),
+    idle: () => ({ kind: "idle" }),
+    success: () => ({ kind: "success" }),
   },
 }));
 
@@ -92,8 +97,8 @@ vi.mock("@/discord/bots/main/registration-cleanup", () => ({
 vi.mock("@/discord/utils/roles/role-manager", () => ({
   RoleManager: {
     has: () => true,
-    remove: async () => true,
-    assign: async () => true,
+    remove: mocks.removeRole,
+    assign: mocks.assignRole,
   },
 }));
 
@@ -135,7 +140,11 @@ function register(mcName: string, discordId = "member-1") {
     username: "member",
     mcName,
     channel: null,
-    render: async () => {},
+    render: async (payload) => {
+      const { kind } = payload as unknown as { kind: string };
+      mocks.renders.push(kind);
+      if (kind === mocks.failRender) throw new Error("Unknown interaction");
+    },
   });
 }
 
@@ -155,6 +164,11 @@ describe("runRegistration", () => {
     mocks.whitelist.mockReset().mockResolvedValue(new Map());
     mocks.failSave = false;
     mocks.releaseReservation.mockReset();
+    mocks.removeRole.mockReset().mockResolvedValue(true);
+    mocks.assignRole.mockReset().mockResolvedValue(true);
+    mocks.adminAlert.mockReset().mockResolvedValue({ id: "message-1" });
+    mocks.renders = [];
+    mocks.failRender = null;
   });
 
   afterEach(() => {
@@ -220,5 +234,42 @@ describe("runRegistration", () => {
 
     expect(results.map((r) => r.ok)).toEqual([true, false]);
     expect(whitelistCalls()).toEqual(["add Steve", "add Steve"]);
+  });
+
+  it("swaps the roles of a saved registration even when a later message update fails", async () => {
+    mocks.failRender = "success";
+
+    const result = await settle(register("Main"));
+
+    expect(result.ok).toBe(true);
+    expect(mocks.removeRole).toHaveBeenCalledWith(
+      expect.anything(),
+      "role-unverified",
+    );
+    expect(mocks.assignRole).toHaveBeenCalledWith(
+      expect.anything(),
+      "role-verified",
+    );
+    expect(mocks.adminAlert).not.toHaveBeenCalled();
+    expect(whitelistCalls()).toEqual(["add Main"]);
+  });
+
+  it("alerts admins and tells the member when the role swap fails after saving", async () => {
+    mocks.assignRole.mockResolvedValue(false);
+
+    const result = await settle(register("Main"));
+
+    expect(result.ok).toBe(true);
+    expect(mocks.adminAlert).toHaveBeenCalledTimes(1);
+    expect(mocks.renders.at(-1)).toBe("error");
+    expect(mocks.renders).not.toContain("success");
+    expect(whitelistCalls()).toEqual(["add Main"]);
+  });
+
+  it("rejects an invalid name before showing it in the progress card", async () => {
+    const result = await settle(register("bad`name"));
+
+    expect(result.ok).toBe(false);
+    expect(mocks.renders).toEqual(["idle"]);
   });
 });

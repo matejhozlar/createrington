@@ -41,6 +41,26 @@ describe("computeCredit", () => {
     expect(credit.playTimeTicks).toBe(1900);
   });
 
+  it("carries the ticks short of a full second into the next credit", () => {
+    const first = computeCredit({
+      periodStart: T0,
+      periodEnd: after(60),
+      lastPlayTicks: 1000,
+      playTimeTicks: 1030,
+    });
+    const second = computeCredit({
+      periodStart: after(60),
+      periodEnd: after(120),
+      lastPlayTicks: first.playTimeTicks,
+      playTimeTicks: 1060,
+    });
+
+    expect(first.seconds).toBe(1);
+    expect(first.playTimeTicks).toBe(1020);
+    expect(second.seconds).toBe(2);
+    expect(second.playTimeTicks).toBe(1060);
+  });
+
   it("credits nothing when the stat did not advance", () => {
     const credit = computeCredit({
       periodStart: T0,
@@ -85,6 +105,7 @@ describe("computeCredit", () => {
     });
 
     expect(credit.seconds).toBe(90);
+    expect(credit.playTimeTicks).toBe(10_000 * 20);
   });
 
   it("never credits negative wall-clock", () => {

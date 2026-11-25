@@ -190,6 +190,12 @@ const envSchema = z
     CONTENT_GATEWAY_URL: z.string().url().optional(),
     CONTENT_GATEWAY_TOKEN: z.string().min(32).optional(),
 
+    TACK_URL: z.string().url().optional(),
+    TACK_JWT_SECRET: z
+      .string()
+      .startsWith("tack_sk_", "Tack secret must keep its tack_sk_ prefix")
+      .optional(),
+
     CURSEFORGE_MODPACK_PROJECT_ID: z.coerce
       .number()
       .int()

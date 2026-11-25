@@ -57,7 +57,10 @@ let readSeq = 0;
 const manifestFailures = new Map<number, number>();
 const MANIFEST_FAILURE_BACKOFF_MS = 60_000;
 
-const lastForcedReads = new Map<number, number>();
+const lastForcedReads = new Map<
+  number,
+  { at: number; read: Promise<ModpackManifest> }
+>();
 const FORCE_MIN_INTERVAL_MS = 10_000;
 
 /**
@@ -74,18 +77,30 @@ const FORCE_MIN_INTERVAL_MS = 10_000;
  * of the gateway's cache, and waits out a read that started before the
  * call (its context predates whatever the caller just wrote) instead of
  * joining it; forced reads less than ten seconds apart share the first
- * one, which bounds what a looping caller can download.
+ * one (they wait for it while it runs and get its result or its failure,
+ * never an older stored manifest), which bounds what a looping caller can
+ * download.
  */
 export async function getModpackManifest(
   packProjectId = MODPACK_PROJECT_ID,
   options: { force?: boolean } = {},
 ): Promise<ModpackManifest> {
+  if (options.force !== true) return loadManifest(packProjectId, false);
+
   const lastForced = lastForcedReads.get(packProjectId);
-  const force =
-    options.force === true &&
-    (lastForced === undefined ||
-      Date.now() - lastForced >= FORCE_MIN_INTERVAL_MS);
-  if (force) lastForcedReads.set(packProjectId, Date.now());
+  if (lastForced && Date.now() - lastForced.at < FORCE_MIN_INTERVAL_MS) {
+    return lastForced.read;
+  }
+
+  const read = loadManifest(packProjectId, true);
+  lastForcedReads.set(packProjectId, { at: Date.now(), read });
+  return read;
+}
+
+async function loadManifest(
+  packProjectId: number,
+  force: boolean,
+): Promise<ModpackManifest> {
   const callSeq = readSeq;
 
   if (!force) {

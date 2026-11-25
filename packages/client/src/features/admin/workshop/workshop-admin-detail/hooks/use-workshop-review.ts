@@ -6,9 +6,10 @@ import { sessionStore } from "@/lib/storage";
 import { trpc, type RouterInput } from "@/lib/trpc";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import type { ConfirmActionTarget } from "@/features/admin/workshop/workshop-admin-detail/components/ConfirmActionDialog";
-import type { AdminWorkshopMod } from "@/features/admin/workshop/workshop-admin-detail/types";
-
-type RejectTarget = { workshopModId: number; name: string };
+import type {
+  AdminWorkshopMod,
+  RejectTarget,
+} from "@/features/admin/workshop/workshop-admin-detail/types";
 
 type RejectInput = Omit<
   RouterInput["admin"]["workshops"]["reviewMod"],

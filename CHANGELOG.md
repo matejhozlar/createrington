@@ -1,3 +1,58 @@
+## v1.83.0 (2026-11-25)
+
+### @createrington/server (1.82.0 → 1.83.0)
+- [add] Add the tack comment widget for admins: `admin.overlay.get` returns where the widget loads from (loader URL, global, mask attribute, project) and `admin.overlay.token.get` signs a 15-minute HS256 host token for the signed-in admin's Discord ID, requested only once the widget is open; both return null unless `TACK_URL` and `TACK_JWT_SECRET` (with its `tack_sk_` prefix) are set, and always under `NODE_ENV=development`; both deploy workflows now pass the commit SHA to the client build
+- [fix] Fix the weekly inactivity warn cycle restarting its timer on every deploy: the last full run is persisted in the `inactivity_cycle_ran_at` setting, an hourly check runs the cycle once a week has passed, and a manual force run resets that schedule
+- [fix] Fix banned players being swept by inactivity: a player whose ban is active or ended within the inactivity window (or the grace period, for an existing warning) is skipped, so the clock restarts when the ban ends
+- [fix] Fix removed inactivity warnings disappearing with their deleted player, which left the admin Removed tab and counter empty: migration `0104` makes the warning's player UUID nullable (`ON DELETE SET NULL`) and stores the username and Discord ID on the row, which is stamped at removal time, while non-removed warnings are still deleted with the player
+- [fix] Fix temporarily banned players being dropped from the resynced whitelist, which nothing re-added when the ban ended; only permanent bans are excluded now
+- [fix] Fix two bans issued at once for one player both going through: the player row is locked before the active-ban check
+- [fix] Fix a player who renamed their Minecraft account getting no session on join: the UUID is authoritative, so the stored name is updated (with an audit entry and vote linking) unless another player still holds the new name
+- [fix] Fix lost playtime: a session start that failed to persist is retried on the next heartbeat, orphaned sessions are never closed before their own start, and leftover play ticks carry over to the next credit
+- [fix] Fix the server-wide average session length averaging per-player averages; it now divides total playtime by total sessions
+- [fix] Fix paged lists repeating or skipping rows that tie on the sort column: every `findAll` sort and the custom list queries (admin log, violations, prompts, sessions, inactivity warnings) now end on the primary key
+- [fix] Fix unexpected tRPC failures leaking internal error messages outside dev; they now return a generic message, and public server ID inputs are bounded to int4
+- [fix] Fix unknown `/api`, `/trpc` and `/socket.io` GET paths returning the client HTML shell instead of a 404
+- [fix] Fix websocket clients not seeing a server go offline when the playtime watchdog takes it down, and `request:initial` never being answered when the request was invalid or failed (it now acknowledges with null)
+- [fix] Fix mod currency amounts with more than 3 decimals or below 0.001 being silently rounded; `/pay` and `/deposit` amounts and `/withdraw` denominations now reject them with a 400 (`createrington-api` 2.2.1)
+- [fix] Fix mod currency `/pay` double-transferring when a timed-out request is retried: it accepts an optional `idempotencyKey` and replays the stored response for the same key and body (409 for a different body)
+- [security] Stop the mod currency `/history` endpoint from returning transaction metadata, which names the admin behind a balance adjustment
+- [fix] Fix the gallery weekly reward cap being exceeded by approvals running at once: the cap is counted inside the approval transaction, and uploads are cleaned up when the reward lookup fails
+- [fix] Fix rank-up announcements repeating when a member who left and rejoined gets back a rank they earned before
+- [fix] Fix `/daily` and `/username` failing for unregistered users; they now reply "not registered", and a daily check that cannot run is reported as unavailable
+- [fix] Fix a member who asks for a ticket twice at once getting two tickets, and `/ticket open` timing out; tickets are opened under a per-member lock and the admin command defers its reply first
+- [fix] Fix reopened tickets keeping a transcript that no longer covers the whole conversation; reopening drops it so a fresh one is made, and a fresh one is also made when the stored file is gone
+- [fix] Fix leaving members' verification channels being kept depending on their waitlist state; they are now always deleted on leave
+- [fix] Fix a failed Discord member lookup counting as "gone" in ghost member removal and the verification channel sweep; the lookup is treated as unknown and nothing is removed
+- [fix] Fix a waitlist entry being promoted after it had already left the queue
+- [fix] Fix a registration whose role swap failed after saving the player reporting a failure; roles are swapped right after the save, and admins are alerted if the swap fails while the member is told they are registered
+- [fix] Fix the dev deployment acting on the shared production guild: member cleanup, automatic role management and production-only Discord events now run only on the production deployment
+- [fix] Fix the in-process render browser being throttled by the global and auth rate limits
+- [fix] Fix structure pack rotation: an unknown timezone is rejected on save (a stored one falls back to UTC), a rotation whose time passed while the app was down runs at boot, the incoming pack is installed before the outgoing one is removed, the mods directory is restored when removing the outgoing pack fails mid-rotation, and boosts of deleted players are dropped instead of failing the refund while rotations are disabled
+- [fix] Fix new auto-messages all getting sort order 0: a new message goes after the existing ones, and migration `0103` renumbers each config's messages in their current order
+- [fix] Fix subscription renewal dates showing the last invoice's period end; they now show the end of the current billing period
+- [fix] Fix launcher downloads of a storage file the sandbox no longer keeps failing permanently; the file is marked for recheck so its source is looked up again
+- [fix] Fix modpack release snapshots: projects are cached before files are frozen, a snapshot is recorded even when uncached projects cannot be fetched, concurrent resends claim the release row before refreezing so files are replaced once, and a failed first changelog attempt is retried for a day
+- [fix] Fix forced modpack manifest reads within ten seconds of each other returning the older stored manifest; they now share the result of the running read
+- [fix] Fix a stats import requested during a running one being dropped (it now runs once the first ends) and an unresponsive game host holding the import lock forever (released after ten minutes)
+- [fix] Fix launcher token denials being lost when Redis is briefly unreachable; denials are written to and read from both Redis and process memory
+- [remove] Remove the unused `/api/auth/sso/callback` route
+
+### @createrington/client (0.2.101 → 0.2.102)
+- [add] Add the tack comment widget for admins, opened with Ctrl+M: the loader is injected only for admins and all of its settings come from the server, personal data (balances, server addresses, sensitive settings) is masked from widget screenshots while it is active, and the page reloads when an admin with the loader logs out
+- [fix] Fix the admin assistant stream: the session loads on page load so its stream runs with the drawer closed, a dropped stream reopens, and the typing indicator clears when a session ends
+- [fix] Fix error boundaries staying on the error screen after navigating away, and stale route chunks after a deploy; a failed chunk load now reloads the page once
+- [fix] Fix login redirects following any stored path; only internal paths are followed after login
+- [fix] Fix paged tables showing an empty page after the last row of the final page is removed; they now go back to the last page
+- [fix] Fix the rotation settings form saving defaults before the config loaded; it shows only after loading, saves only changed fields, and picks the timezone from a list of IANA zones
+- [fix] Fix the embed builder: a preset rename alone now enables save, and sending action buttons that the preset has not saved yet is refused
+- [fix] Fix plan assignee changes overwriting each other; each change builds on the pending list and the picker locks while it saves
+- [fix] Fix the workshop reject dialog opening empty instead of with the current reason and note
+- [fix] Fix clearing a structure pack description not saving
+- [fix] Fix the compare page keeping a stale contender error, and add a retry for load failures
+- [fix] Fix the dashboard waiting forever on initial websocket data that never arrives; the request times out after 10 seconds and is retried
+- [fix] Fix the admin inactivity Removed tab breaking for warnings whose player was deleted
+
 ## v1.82.0 (2026-11-25)
 
 ### @createrington/server (1.81.0 → 1.82.0)

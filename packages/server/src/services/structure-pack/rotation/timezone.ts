@@ -1,6 +1,18 @@
 import type { RotationPeriod } from "./types";
 
-/** How many milliseconds one period lasts (approximate, for missed-rotation detection). */
+export const FALLBACK_TIMEZONE = "UTC";
+
+/** Whether `zone` is an IANA timezone this runtime can format dates in. */
+export function isTimeZone(zone: string): boolean {
+  try {
+    new Intl.DateTimeFormat(undefined, { timeZone: zone });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** How many milliseconds one period lasts (approximate: a month counts as 30 days). */
 export function periodIntervalMs(period: RotationPeriod): number {
   switch (period) {
     case "daily":

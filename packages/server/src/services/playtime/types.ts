@@ -32,6 +32,7 @@ export interface ActiveSession {
   creditedUntil: Date;
   lastPlayTicks?: number;
   activeSeconds: number;
+  startPending?: boolean;
 }
 
 export interface PlaytimeCredit {

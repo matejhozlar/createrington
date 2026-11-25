@@ -4,6 +4,7 @@ import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
 import { paginationInput, auditActor, paginateQuery } from "@/trpc/utils";
 import { getRotationService } from "./helpers";
+import { isTimeZone } from "@/services/structure-pack/rotation/timezone";
 
 const rotationConfigRouter = router({
   get: adminProcedure
@@ -25,7 +26,10 @@ const rotationConfigRouter = router({
           .string()
           .regex(/^\d{2}:\d{2}$/, "Time must be in HH:MM format")
           .optional(),
-        timezone: z.string().min(1).optional(),
+        timezone: z
+          .string()
+          .refine(isTimeZone, "Timezone must be an IANA zone name")
+          .optional(),
         boostUnitPrice: z.number().int().positive().optional(),
         timeWeightMultiplier: z.number().positive().optional(),
         boostWeightPerUnit: z.number().min(0).optional(),

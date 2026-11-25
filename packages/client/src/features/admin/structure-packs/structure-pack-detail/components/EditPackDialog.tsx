@@ -57,7 +57,7 @@ export function EditPackDialog({
         updateMutation.mutate({
           id: packId,
           name,
-          description: description || undefined,
+          description,
         })
       }
       disabled={!name.trim()}

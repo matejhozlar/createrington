@@ -265,7 +265,8 @@ export class PlayerPlaytimeSummaryQueries extends PlayerPlaytimeSummaryBaseQueri
    *
    * Calculates server-wide metrics including total unique players,
    * cumulative playtime, total sessions, and average session duration
-   * Useful for server analytics dashboards
+   * (all playtime over all sessions, so every session weighs the same
+   * whoever played it). Useful for server analytics dashboards
    *
    * @param serverId - The ID of the server to analyze
    * @returns Object containing aggregated server statistics
@@ -276,7 +277,10 @@ export class PlayerPlaytimeSummaryQueries extends PlayerPlaytimeSummaryBaseQueri
         COUNT(*)::int as total_players,
         COALESCE(SUM(total_seconds), 0)::float8 as total_seconds,
         COALESCE(SUM(total_sessions), 0)::int as total_sessions,
-        COALESCE(AVG(avg_session_seconds), 0)::float8 as avg_session_seconds
+        COALESCE(
+          SUM(total_seconds)::float8 / NULLIF(SUM(total_sessions), 0),
+          0
+        )::float8 as avg_session_seconds
       FROM ${this.table}
       WHERE server_id = $1`;
 

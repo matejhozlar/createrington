@@ -3,15 +3,28 @@ import { DatabaseTable, type DatabaseQueries } from "@/generated/db";
 import type { PlayerBan } from "@createrington/shared/db";
 import { BasePlayerRepository, type PlayerIdentifier } from "../base";
 import type { BanStatistics } from "@/db/queries/player/ban";
+import { NotFoundError } from "@/db/utils";
 
 /**
  * Player ban lifecycle: issuing temporary or permanent bans, unbanning, and
  * querying a player's history and statistics. The expired-ban sweep lives in
  * PlayerBanService.
  * Every mutation writes a paired admin_log_action entry inside the same DB
- * transaction. Permanent bans cascade-delete the player row.
+ * transaction. Permanent bans cascade-delete the player row. Issuing a ban
+ * locks the player row before checking for an active ban, so two bans issued
+ * at once for one player end as one ban and one "already banned" error.
  */
 export class PlayerBanRepository extends BasePlayerRepository {
+  private async findCurrentBanLocked(
+    tx: DatabaseQueries,
+    minecraftUuid: string,
+  ): Promise<PlayerBan | null> {
+    if (!(await tx.player.lockForUpdate(minecraftUuid))) {
+      throw new NotFoundError("player", { minecraftUuid });
+    }
+    return tx.player.ban.findCurrentBan(minecraftUuid);
+  }
+
   /**
    * Issue a temporary ban that expires at the given timestamp. Rejects if the
    * player already has an active ban or if expiresAt is not in the future.
@@ -36,14 +49,14 @@ export class PlayerBanRepository extends BasePlayerRepository {
       throw new Error("Ban expiry must be in the future");
     }
 
-    const existingBan = await (outerTx ?? Q).player.ban.findCurrentBan(uuid);
-    if (existingBan) {
-      throw new Error(
-        `Player is already banned (Ban #${existingBan.id}, expires: ${existingBan.expiresAt ? existingBan.expiresAt.toISOString() : "permanent"})`,
-      );
-    }
-
     return await (outerTx ?? db).inTransaction(async (tx) => {
+      const existingBan = await this.findCurrentBanLocked(tx, uuid);
+      if (existingBan) {
+        throw new Error(
+          `Player is already banned (Ban #${existingBan.id}, expires: ${existingBan.expiresAt ? existingBan.expiresAt.toISOString() : "permanent"})`,
+        );
+      }
+
       const ban = await tx.player.ban.createAndReturn({
         playerMinecraftUuid: uuid,
         banType: "temporary",
@@ -104,7 +117,8 @@ export class PlayerBanRepository extends BasePlayerRepository {
     { tx: outerTx }: { tx?: DatabaseQueries } = {},
   ): Promise<PlayerBan> {
     return await (outerTx ?? db).inTransaction(async (tx) => {
-      const existingBan = await tx.player.ban.findCurrentBan(
+      const existingBan = await this.findCurrentBanLocked(
+        tx,
         player.minecraftUuid,
       );
       if (existingBan) {

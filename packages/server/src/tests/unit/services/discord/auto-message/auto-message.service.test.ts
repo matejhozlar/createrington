@@ -8,6 +8,7 @@ const { Q, tx, db } = vi.hoisted(() => {
       auto: {
         message: {
           createAndReturn: vi.fn(),
+          nextSortOrder: vi.fn(),
           update: vi.fn(),
           followup: { createMany: vi.fn(), deleteAll: vi.fn() },
         },
@@ -68,6 +69,7 @@ beforeEach(() => {
   Q.discord.auto.message.config.createAndReturn.mockResolvedValue(CONFIG);
   Q.discord.auto.message.find.mockResolvedValue({ id: 8, configId: 3 });
   tx.discord.auto.message.createAndReturn.mockResolvedValue({ id: 8 });
+  tx.discord.auto.message.nextSortOrder.mockResolvedValue(4);
   db.inTransaction.mockImplementation((work: TransactionWork) => work(tx));
 });
 
@@ -183,6 +185,24 @@ describe("AutoMessageService messages", () => {
       { messageId: 8, ...FOLLOWUPS[0], sortOrder: 0 },
       { messageId: 8, ...FOLLOWUPS[1], sortOrder: 1 },
     ]);
+  });
+
+  it("places a message without a sort order after the existing ones", async () => {
+    await service.createMessage(
+      CONFIG.id,
+      { content: "hello", enabled: true },
+      [],
+    );
+
+    expect(tx.discord.auto.message.nextSortOrder).toHaveBeenCalledWith(
+      CONFIG.id,
+    );
+    expect(tx.discord.auto.message.createAndReturn).toHaveBeenCalledWith({
+      configId: CONFIG.id,
+      content: "hello",
+      enabled: true,
+      sortOrder: 4,
+    });
   });
 
   it("refuses a message for a missing config", async () => {

@@ -32,6 +32,7 @@ export function SendModal({ open, onOpenChange, builder }: SendModalProps) {
     setChannelId,
     setBot,
     hasContent,
+    hasActionButtons,
     isPending,
     handleSend,
     handleUpdateAll,
@@ -104,7 +105,8 @@ export function SendModal({ open, onOpenChange, builder }: SendModalProps) {
             <div className="flex items-center gap-2">
               <Checkbox
                 id="link-to-preset"
-                checked={linkToPreset}
+                checked={linkToPreset || hasActionButtons}
+                disabled={hasActionButtons}
                 onCheckedChange={(checked) => setLinkToPreset(checked === true)}
               />
               <label

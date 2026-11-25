@@ -102,7 +102,9 @@ export function MessageInput({
           value={value}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
-          onKeyUp={(e) => mentions.syncFromCursor(e.currentTarget)}
+          onKeyUp={(e) => {
+            if (e.key !== "Escape") mentions.syncFromCursor(e.currentTarget);
+          }}
           onClick={(e) => mentions.syncFromCursor(e.currentTarget)}
           placeholder="Ask anything... (type @ for repo)"
           disabled={sending || disabled}

@@ -10,6 +10,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { useDialogDraft } from "@/hooks/use-dialog-draft";
+import { useOverlayMask } from "@/hooks/use-admin-overlay";
 import { formatMoney } from "@createrington/shared/format";
 import { trpc, queryClient } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
@@ -75,6 +76,7 @@ export function BalanceAdjustModal({
   playerName,
   currentBalance,
 }: BalanceAdjustModalProps) {
+  const mask = useOverlayMask();
   const [draft, update] = useDialogDraft(open, EMPTY_DRAFT);
   const { mode, amountInput, reason } = draft;
 
@@ -137,9 +139,11 @@ export function BalanceAdjustModal({
       }
       onConfirm={handleSubmit}
       confirmLabel={
-        amount === null
-          ? config.label
-          : config.confirmLabel(formatMoney(amount))
+        amount === null ? (
+          config.label
+        ) : (
+          <span {...mask}>{config.confirmLabel(formatMoney(amount))}</span>
+        )
       }
       loading={adjust.isPending}
       disabled={!canSubmit}
@@ -173,6 +177,7 @@ export function BalanceAdjustModal({
             placeholder="0"
             value={amountInput}
             aria-invalid={!!amountError}
+            {...mask}
             onChange={(e) => {
               const next = e.target.value.replace(/[,\s$]/g, "");
               if (AMOUNT_PATTERN.test(next)) update({ amountInput: next });
@@ -180,7 +185,7 @@ export function BalanceAdjustModal({
             className="h-11 pl-7 font-mono text-lg tabular-nums md:text-lg"
           />
         </div>
-        {amountError && <FieldError>{amountError}</FieldError>}
+        {amountError && <FieldError {...mask}>{amountError}</FieldError>}
       </Field>
 
       <BalancePreview
@@ -219,17 +224,19 @@ function BalancePreview({
   newBalance: number | null;
   invalid: boolean;
 }) {
+  const mask = useOverlayMask();
   const hasChange = delta !== null && !invalid;
 
   return (
     <div className="space-y-1.5 rounded-lg border border-border bg-muted/30 p-3 font-mono text-sm tabular-nums">
       <div className="flex items-center justify-between">
         <span className="font-sans text-muted-foreground">Current balance</span>
-        <span>{formatMoney(currentBalance)}</span>
+        <span {...mask}>{formatMoney(currentBalance)}</span>
       </div>
       <div className="flex items-center justify-between">
         <span className="font-sans text-muted-foreground">Change</span>
         <span
+          {...mask}
           className={cn(
             !hasChange && "text-muted-foreground",
             hasChange && delta > 0 && "text-emerald-400",
@@ -243,7 +250,7 @@ function BalancePreview({
       </div>
       <div className="flex items-center justify-between border-t border-border pt-1.5 font-semibold">
         <span className="font-sans">New balance</span>
-        <span className={cn(!hasChange && "text-muted-foreground")}>
+        <span {...mask} className={cn(!hasChange && "text-muted-foreground")}>
           {hasChange && newBalance !== null ? formatMoney(newBalance) : "–"}
         </span>
       </div>

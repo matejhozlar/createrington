@@ -45,6 +45,10 @@ export function SubmissionGrid({ status }: SubmissionGridProps) {
       limit: PAGE_SIZE,
     }),
   );
+  const settledTotalPages = listQuery.data?.pagination.totalPages ?? 0;
+  if (listQuery.isSuccess && page > 0 && page >= settledTotalPages) {
+    setPage(Math.max(0, settledTotalPages - 1));
+  }
 
   const removeMutation = useMutation(
     trpc.admin.gallery.delete.mutationOptions(
