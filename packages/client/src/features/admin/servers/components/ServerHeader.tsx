@@ -4,6 +4,7 @@ import { Server } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { cn } from "@/lib/utils";
+import { useOverlayMask } from "@/hooks/use-admin-overlay";
 
 interface ServerHeaderProps {
   serverName: string;
@@ -18,6 +19,7 @@ export function ServerHeader({
   port,
   presence,
 }: ServerHeaderProps) {
+  const mask = useOverlayMask();
   return (
     <Card className="p-6">
       <div className="flex items-center gap-4">
@@ -34,7 +36,7 @@ export function ServerHeader({
             title={serverName}
             badges={<PresenceBadge status={presence} />}
             description={
-              <p>
+              <p {...mask}>
                 {ip}:{port}
               </p>
             }

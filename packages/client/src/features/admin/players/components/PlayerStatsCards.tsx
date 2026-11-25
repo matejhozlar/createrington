@@ -6,6 +6,7 @@ import { formatMoney } from "@createrington/shared/format";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { useQuery } from "@tanstack/react-query";
 import { MAIN_SERVER_ID } from "@/lib/minecraft";
+import { useOverlayMask } from "@/hooks/use-admin-overlay";
 
 type PlayerDetailed = RouterOutput["admin"]["players"]["players"]["get"];
 
@@ -20,6 +21,7 @@ export function PlayerStatsCards({
   playerUuid,
   onAdjustBalance,
 }: PlayerStatsCardsProps) {
+  const mask = useOverlayMask();
   const balance = player.balance ? parseFloat(player.balance.balance) : 0;
   const totalPlaytimeHours = Math.floor(player.playtime.totalSeconds / 3600);
   const activeStrikes = player.strikes.activeCount;
@@ -51,7 +53,7 @@ export function PlayerStatsCards({
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
       <StatCard
         label="Balance"
-        value={formatMoney(balance)}
+        value={<span {...mask}>{formatMoney(balance)}</span>}
         icon={Coins}
         tone="chart-3"
         action={

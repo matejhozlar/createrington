@@ -12,6 +12,7 @@ import { trpc, type RouterOutput } from "@/lib/trpc";
 import { useLiveServerState } from "@/contexts/server-data";
 import { PRESENCE_STYLES } from "@/components/presence";
 import { useQuery } from "@tanstack/react-query";
+import { useOverlayMask } from "@/hooks/use-admin-overlay";
 
 type ServerRow = RouterOutput["admin"]["servers"]["list"]["servers"][number];
 
@@ -108,6 +109,7 @@ function ServerCard({
   server: ServerRow;
   onOpen: () => void;
 }) {
+  const mask = useOverlayMask();
   const { presence, playerCount } = useLiveServerState(server);
   const styles = PRESENCE_STYLES[presence];
 
@@ -129,7 +131,7 @@ function ServerCard({
             </div>
             <div>
               <p className="font-semibold">{server.serverName}</p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground" {...mask}>
                 {server.ip}:{server.port}
               </p>
             </div>
