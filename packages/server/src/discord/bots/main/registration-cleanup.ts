@@ -7,6 +7,7 @@ import {
 import { Discord } from "@/discord/constants";
 import { RegistrationComponentPresets } from "@/discord/components/presets/registration";
 import config from "@/config";
+import { lookupMember } from "@/services/waitlist/discord-lookup";
 
 export const AUTO_CLOSE_MS = 24 * 60 * 60 * 1000;
 
@@ -76,23 +77,24 @@ export async function sweepRegistrationChannels(bot: Client): Promise<void> {
     );
     if (!memberOverwrite) continue;
 
-    try {
-      const member = await guild.members.fetch(memberOverwrite.id);
-      const isVerified = member.roles.cache.has(Discord.Roles.VERIFIED);
+    const lookup = await lookupMember(memberOverwrite.id);
+    if (lookup.state === "unavailable") continue;
 
-      if (isVerified) {
-        scheduleChannelClose(
-          channel,
-          0,
-          `Registration completed - auto-closed on startup (${member.user.tag})`,
-        );
-        cleaned++;
-      }
-    } catch {
+    if (lookup.state === "gone") {
       scheduleChannelClose(
         channel,
         0,
         "Registration channel cleanup - member no longer in server",
+      );
+      cleaned++;
+      continue;
+    }
+
+    if (lookup.member.roles.cache.has(Discord.Roles.VERIFIED)) {
+      scheduleChannelClose(
+        channel,
+        0,
+        `Registration completed - auto-closed on startup (${lookup.member.user.tag})`,
       );
       cleaned++;
     }

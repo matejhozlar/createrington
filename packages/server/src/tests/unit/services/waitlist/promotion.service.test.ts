@@ -136,9 +136,9 @@ describe("WaitlistPromotionService.promoteEligible", () => {
     state.free = 2;
     const entry = fakeEntry({});
     state.entries.push(entry);
-    state.memberFetch.mockImplementation(async (id: string) => {
+    state.memberFetch.mockImplementation(async () => {
       entry.status = "expired";
-      return { id, toString: () => `<@${id}>` };
+      return { id: entry.discordId, toString: () => `<@${entry.discordId}>` };
     });
 
     const svc = new WaitlistPromotionService();
@@ -171,9 +171,9 @@ describe("WaitlistPromotionService.promote", () => {
   it("refuses an entry that was promoted while its member was looked up, without pinging again", async () => {
     const entry = fakeEntry({});
     state.entries.push(entry);
-    state.memberFetch.mockImplementation(async (id: string) => {
+    state.memberFetch.mockImplementation(async () => {
       entry.status = "promoted";
-      return { id, toString: () => `<@${id}>` };
+      return { id: entry.discordId, toString: () => `<@${entry.discordId}>` };
     });
 
     const svc = new WaitlistPromotionService();

@@ -92,9 +92,9 @@ export function resetWaitlistState(): void {
   state.hideNextFind = false;
   state.guildAvailable = true;
   state.memberFetch.mockReset();
-  state.memberFetch.mockImplementation(async (id: string) => ({
-    id,
-    toString: () => `<@${id}>`,
+  state.memberFetch.mockImplementation(async ({ user }: { user: string }) => ({
+    id: user,
+    toString: () => `<@${user}>`,
   }));
   state.channelFetch.mockReset();
   state.channelFetch.mockImplementation(async () => ({
