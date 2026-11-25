@@ -25,6 +25,7 @@ let deletedBuyers: Set<string>;
 let fileOpsAllowed: boolean;
 let serverFiles: Set<string>;
 let failingCopy: string | null;
+let failingDelete: string | null;
 let packMods: Map<number, string[]>;
 
 const EIGHT_DAYS_MS = 8 * 24 * 60 * 60 * 1000;
@@ -40,6 +41,10 @@ vi.mock("@/services/mc-server/file-ops", () => ({
     if (target === failingCopy) throw new Error("SFTP connection lost");
   },
   deleteFile: async (target: string) => {
+    if (target === failingDelete) {
+      failingDelete = null;
+      throw new Error("SFTP connection lost");
+    }
     serverFiles.delete(target);
   },
   fileExists: async (target: string) => serverFiles.has(target),
@@ -214,6 +219,7 @@ describe("StructurePackRotationService", () => {
     fileOpsAllowed = false;
     serverFiles = new Set();
     failingCopy = null;
+    failingDelete = null;
     packMods = new Map();
   });
 
@@ -514,6 +520,37 @@ describe("StructurePackRotationService", () => {
 
     expect([...serverFiles].sort()).toEqual([
       "mods/old.jar",
+      "mods/shared.jar",
+    ]);
+    expect(rotationCreates).toMatchObject([
+      { incomingPackId: 3, success: false },
+    ]);
+    expect(packUpdates).toHaveLength(0);
+    service.shutdown();
+  });
+
+  it("leaves the mods as they were when removing the outgoing pack fails", async () => {
+    fileOpsAllowed = true;
+    activePack = makePack(1, { isActive: true });
+    packs = [activePack, makePack(3)];
+    eligiblePacks = [packs[1]];
+    packMods = new Map([
+      [1, ["old-a.jar", "old-b.jar", "shared.jar"]],
+      [3, ["shared.jar", "new-a.jar"]],
+    ]);
+    serverFiles = new Set([
+      "mods/old-a.jar",
+      "mods/old-b.jar",
+      "mods/shared.jar",
+    ]);
+    failingDelete = "mods/old-b.jar";
+    const service = makeService();
+
+    await service.executeRotation();
+
+    expect([...serverFiles].sort()).toEqual([
+      "mods/old-a.jar",
+      "mods/old-b.jar",
       "mods/shared.jar",
     ]);
     expect(rotationCreates).toMatchObject([

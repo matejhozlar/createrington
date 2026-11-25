@@ -53,7 +53,7 @@ async function removePackMods(
   }
 }
 
-async function installPackMods(pack: StructurePackWithMods): Promise<void> {
+async function installPackMods(pack: StructurePackWithMods): Promise<string[]> {
   const copied: string[] = [];
   try {
     for (const mod of pack.mods) {
@@ -66,9 +66,22 @@ async function installPackMods(pack: StructurePackWithMods): Promise<void> {
       await copyFileToServer(getCachePath(mod.fileName), modPath);
       logger.info(`Installed mod file: ${mod.fileName}`);
     }
+    return copied;
   } catch (error) {
     await removeCopiedFiles(copied);
     throw error;
+  }
+}
+
+async function restorePackMods(pack: StructurePackWithMods): Promise<void> {
+  try {
+    await ensureModsCached(pack.mods);
+    await installPackMods(pack);
+  } catch (error) {
+    logger.error(
+      `Could not put the files of pack "${pack.name}" back after a failed rotation:`,
+      error,
+    );
   }
 }
 
@@ -78,7 +91,7 @@ async function removeCopiedFiles(paths: string[]): Promise<void> {
       if (await fileExists(modPath)) await deleteFile(modPath);
     } catch (error) {
       logger.error(
-        `Could not remove ${modPath} after a failed pack install:`,
+        `Could not remove ${modPath} after a failed rotation:`,
         error,
       );
     }
@@ -213,7 +226,8 @@ export class StructurePackRotationService {
    * 3. Select the incoming pack via weighted-random draw
    * 4. Download and cache any uncached mod files from CurseForge
    * 5. Install the incoming pack's mods on the server, then remove the outgoing pack's;
-   *    a failed install takes its own copies back out and leaves the outgoing pack in place
+   *    a failure in either step takes the incoming copies back out and leaves (or puts
+   *    back) the outgoing pack's files
    * 6. Swap the active pack flag and record the rotation in the database
    * 7. Delete the boosts the draw counted and refund the ones it could not count; a boost
    *    bought during the draw for another eligible pack stays open for the next one
@@ -333,12 +347,18 @@ export class StructurePackRotationService {
     }
     try {
       await ensureModsCached(incoming.mods);
-      await installPackMods(incoming);
+      const installed = await installPackMods(incoming);
       if (outgoing) {
-        await removePackMods(
-          outgoing,
-          new Set(incoming.mods.map((mod) => mod.fileName)),
-        );
+        try {
+          await removePackMods(
+            outgoing,
+            new Set(incoming.mods.map((mod) => mod.fileName)),
+          );
+        } catch (error) {
+          await removeCopiedFiles(installed);
+          await restorePackMods(outgoing);
+          throw error;
+        }
       }
       return null;
     } catch (error) {
