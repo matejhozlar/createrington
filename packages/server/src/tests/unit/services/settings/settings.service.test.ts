@@ -150,6 +150,41 @@ describe("SettingsService", () => {
     );
   });
 
+  it("returns null for the inactivity cycle time until one is stored", async () => {
+    const svc = new SettingsService();
+    expect(await svc.getInactivityCycleRanAt()).toBeNull();
+
+    const ranAt = new Date("2026-11-25T12:00:00.000Z");
+    await svc.setInactivityCycleRanAt(ranAt);
+
+    expect(state.store.get("inactivity_cycle_ran_at")?.value).toEqual({
+      value: "2026-11-25T12:00:00.000Z",
+    });
+    expect(await svc.getInactivityCycleRanAt()).toEqual(ranAt);
+  });
+
+  it("reads the inactivity cycle time from the table every time", async () => {
+    seed("inactivity_cycle_ran_at", { value: "2026-11-18T12:00:00.000Z" });
+    const svc = new SettingsService();
+    expect(await svc.getInactivityCycleRanAt()).toEqual(
+      new Date("2026-11-18T12:00:00.000Z"),
+    );
+
+    seed("inactivity_cycle_ran_at", { value: "2026-11-25T12:00:00.000Z" });
+    expect(await svc.getInactivityCycleRanAt()).toEqual(
+      new Date("2026-11-25T12:00:00.000Z"),
+    );
+    expect(state.findCalls).toBe(2);
+  });
+
+  it("throws when the inactivity cycle time cannot be read", async () => {
+    state.failReads = true;
+    const svc = new SettingsService();
+    await expect(svc.getInactivityCycleRanAt()).rejects.toThrow(
+      "connection refused",
+    );
+  });
+
   it("falls back to the default vote reward commands and stores replacements", async () => {
     const svc = new SettingsService();
     expect(await svc.getVoteRewardCommands()).toEqual(

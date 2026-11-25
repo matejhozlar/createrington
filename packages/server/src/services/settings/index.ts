@@ -10,6 +10,7 @@ export const galleryRewardAmountSchema = z.number().int().min(0).max(1_000_000);
 export const galleryWeeklyRewardCapSchema = z.number().int().min(0).max(100);
 export const announcedAppVersionSchema = z.string().min(1).max(64);
 export const launcherPacksSeededSchema = z.boolean();
+export const inactivityCycleRanAtSchema = z.iso.datetime();
 
 const rewardCommandSchema = z
   .string()
@@ -53,6 +54,7 @@ const SettingKeys = {
   announcedAppVersion: "announced_app_version",
   launcherPacksSeeded: "launcher_packs_seeded",
   voteRewardCommands: "vote_reward_commands",
+  inactivityCycleRanAt: "inactivity_cycle_ran_at",
 } as const;
 
 const CACHE_TTL_MS = 10_000;
@@ -255,6 +257,28 @@ export class SettingsService {
   /** Record that the launcher's first pack was seeded, so an emptied table is not seeded again. */
   async markLauncherPacksSeeded(): Promise<void> {
     await this.write(SettingKeys.launcherPacksSeeded, true, "system");
+  }
+
+  /** When the last full inactivity cycle (with the warn phase) finished, null when none has; read straight from the table (no cache, no fallback), so a failed read throws. */
+  async getInactivityCycleRanAt(): Promise<Date | null> {
+    const row = await Q.app.setting.find({
+      key: SettingKeys.inactivityCycleRanAt,
+    });
+    if (!row) return null;
+
+    const parsed = z
+      .object({ value: inactivityCycleRanAtSchema })
+      .safeParse(row.value);
+    return parsed.success ? new Date(parsed.data.value) : null;
+  }
+
+  /** Record when a full inactivity cycle finished, so the next one is due a check interval later across restarts. */
+  async setInactivityCycleRanAt(ranAt: Date): Promise<void> {
+    await this.write(
+      SettingKeys.inactivityCycleRanAt,
+      ranAt.toISOString(),
+      "system",
+    );
   }
 }
 
