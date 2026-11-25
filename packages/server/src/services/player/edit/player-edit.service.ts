@@ -66,6 +66,7 @@ export class PlayerEditService {
     }
 
     if (renamed) await this.requireUnclaimed(renamed, player);
+    if (edit.discordId) await this.requireFreeDiscordId(edit.discordId, player);
 
     const movesAccount =
       renamed !== null && renamed.uuid !== player.minecraftUuid;
@@ -90,7 +91,7 @@ export class PlayerEditService {
       if (movesAccount) await this.undoWhitelist(renamed);
       if (error instanceof UniqueViolationError) {
         throw new ConflictError(
-          "That Minecraft account is already registered to another player",
+          "That Minecraft account or Discord ID is already registered to another player",
         );
       }
       throw error;
@@ -119,10 +120,30 @@ export class PlayerEditService {
     account: MinecraftAccount,
     player: Player,
   ): Promise<void> {
-    const owner = await Q.player.find({ minecraftUuid: account.uuid });
-    if (owner && owner.id !== player.id) {
+    const [uuidOwner, nameOwner] = await Promise.all([
+      Q.player.find({ minecraftUuid: account.uuid }),
+      Q.player.find({ minecraftUsername: account.username }),
+    ]);
+    if (uuidOwner && uuidOwner.id !== player.id) {
       throw new ConflictError(
         `${account.username} is already registered to another player`,
+      );
+    }
+    if (nameOwner && nameOwner.id !== player.id) {
+      throw new ConflictError(
+        `Another player is still stored under the name ${account.username}; update that player first`,
+      );
+    }
+  }
+
+  private async requireFreeDiscordId(
+    discordId: string,
+    player: Player,
+  ): Promise<void> {
+    const owner = await Q.player.find({ discordId });
+    if (owner && owner.id !== player.id) {
+      throw new ConflictError(
+        `Discord ID ${discordId} is already registered to another player`,
       );
     }
   }

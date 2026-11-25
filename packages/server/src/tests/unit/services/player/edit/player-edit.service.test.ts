@@ -226,6 +226,18 @@ describe("PlayerEditService.update with a new username", () => {
     expect(mocks.setNickname).toHaveBeenCalledWith("Alex", expect.any(String));
   });
 
+  it("refuses a name another player is still stored under", async () => {
+    mocks.findPlayer.mockImplementation(
+      async (filter: { minecraftUsername?: string }) =>
+        filter.minecraftUsername === REAL_ACCOUNT.username
+          ? { ...OLD, id: 2 }
+          : null,
+    );
+
+    await expect(rename()).rejects.toThrow(/still stored under the name/);
+    expect(mocks.whitelistAll).not.toHaveBeenCalled();
+  });
+
   it("refuses an edit that keeps the same account and Discord ID", async () => {
     mocks.resolve.mockResolvedValue({
       uuid: OLD.minecraftUuid,
@@ -233,6 +245,25 @@ describe("PlayerEditService.update with a new username", () => {
     });
 
     await expect(rename("Steve")).rejects.toBeInstanceOf(BadRequestError);
+    expect(mocks.adminUpdate).not.toHaveBeenCalled();
+  });
+});
+
+describe("PlayerEditService.update with a new Discord ID", () => {
+  it("refuses a Discord ID another player is registered with", async () => {
+    mocks.findPlayer.mockImplementation(
+      async (filter: { discordId?: string }) =>
+        filter.discordId === "100000000000000002" ? { ...OLD, id: 2 } : null,
+    );
+
+    await expect(
+      service.update(
+        { minecraftUuid: OLD.minecraftUuid },
+        { discordId: "100000000000000002" },
+        ACTOR,
+        "lost account",
+      ),
+    ).rejects.toThrow(/Discord ID 100000000000000002 is already registered/);
     expect(mocks.adminUpdate).not.toHaveBeenCalled();
   });
 });
