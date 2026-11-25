@@ -54,14 +54,34 @@ async function removePackMods(
 }
 
 async function installPackMods(pack: StructurePackWithMods): Promise<void> {
-  for (const mod of pack.mods) {
-    const modPath = `${MODS_DIR}/${mod.fileName}`;
-    if (await fileExists(modPath)) {
-      logger.info(`Mod already in mods dir: ${mod.fileName}`);
-      continue;
+  const copied: string[] = [];
+  try {
+    for (const mod of pack.mods) {
+      const modPath = `${MODS_DIR}/${mod.fileName}`;
+      if (await fileExists(modPath)) {
+        logger.info(`Mod already in mods dir: ${mod.fileName}`);
+        continue;
+      }
+      copied.push(modPath);
+      await copyFileToServer(getCachePath(mod.fileName), modPath);
+      logger.info(`Installed mod file: ${mod.fileName}`);
     }
-    await copyFileToServer(getCachePath(mod.fileName), modPath);
-    logger.info(`Installed mod file: ${mod.fileName}`);
+  } catch (error) {
+    await removeCopiedFiles(copied);
+    throw error;
+  }
+}
+
+async function removeCopiedFiles(paths: string[]): Promise<void> {
+  for (const modPath of paths) {
+    try {
+      if (await fileExists(modPath)) await deleteFile(modPath);
+    } catch (error) {
+      logger.error(
+        `Could not remove ${modPath} after a failed pack install:`,
+        error,
+      );
+    }
   }
 }
 
@@ -192,7 +212,8 @@ export class StructurePackRotationService {
    * 2. Fetch eligible packs and compute selection weights
    * 3. Select the incoming pack via weighted-random draw
    * 4. Download and cache any uncached mod files from CurseForge
-   * 5. Remove outgoing pack's mods and install the incoming pack's mods on the server
+   * 5. Install the incoming pack's mods on the server, then remove the outgoing pack's;
+   *    a failed install takes its own copies back out and leaves the outgoing pack in place
    * 6. Swap the active pack flag and record the rotation in the database
    * 7. Delete the boosts the draw counted and refund the ones it could not count; a boost
    *    bought during the draw for another eligible pack stays open for the next one
@@ -312,13 +333,13 @@ export class StructurePackRotationService {
     }
     try {
       await ensureModsCached(incoming.mods);
+      await installPackMods(incoming);
       if (outgoing) {
         await removePackMods(
           outgoing,
           new Set(incoming.mods.map((mod) => mod.fileName)),
         );
       }
-      await installPackMods(incoming);
       return null;
     } catch (error) {
       const reason = errorMessage(error);
