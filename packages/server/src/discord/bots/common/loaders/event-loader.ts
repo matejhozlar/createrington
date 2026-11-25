@@ -49,9 +49,9 @@ export async function loadEventHandlers(
         continue;
       }
 
-      if (isDev && event.prodOnly) {
+      if (event.prodOnly && !config.envMode.isProductionDeployment) {
         logger.warn(
-          `Skipped loading production-only event: ${path.basename(filePath)}`,
+          `Skipped loading production-only event outside the production deployment: ${path.basename(filePath)}`,
         );
         continue;
       }
