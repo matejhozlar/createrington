@@ -330,13 +330,16 @@ export class BalanceRepository extends BasePlayerRepository {
   /**
    * Atomic two-party transfer. Locks both balance rows in lexicographic UUID
    * order so concurrent reverse transfers cannot deadlock, then writes paired
-   * TRANSFER_SEND / TRANSFER_RECEIVE log entries.
+   * TRANSFER_SEND / TRANSFER_RECEIVE log entries. Pass options.tx to join an
+   * existing outer transaction; options.idempotencyKey is stamped on both
+   * ledger rows.
    */
   async transfer(
     from: PlayerIdentifier,
     to: PlayerIdentifier,
     amount: number,
     description?: string,
+    options: Omit<BalanceMutationOptions, "metadata"> = {},
   ): Promise<{
     senderBalance: number;
     recipientBalance: number;
@@ -345,15 +348,19 @@ export class BalanceRepository extends BasePlayerRepository {
       throw new Error("Transfer amount must be positive");
     }
 
-    const senderUuid = (await this.resolvePlayerUuid(from)).toLowerCase();
-    const recipientUuid = (await this.resolvePlayerUuid(to)).toLowerCase();
+    const senderUuid = (
+      await this.resolvePlayerUuid(from, { tx: options.tx })
+    ).toLowerCase();
+    const recipientUuid = (
+      await this.resolvePlayerUuid(to, { tx: options.tx })
+    ).toLowerCase();
     const amountBigInt = BalanceUtils.toStorage(amount);
 
     if (senderUuid === recipientUuid) {
       throw new Error("Cannot transfer to self");
     }
 
-    return await db.inTransaction(async (tx) => {
+    return await (options.tx ?? db).inTransaction(async (tx) => {
       const senderFirst = senderUuid < recipientUuid;
       const firstBalance = await this.lockBalance(
         tx,
@@ -400,6 +407,7 @@ export class BalanceRepository extends BasePlayerRepository {
         transactionType: "transfer_send",
         description: description || `Transfer to ${recipientUuid}`,
         relatedPlayerUuid: recipientUuid,
+        idempotencyKey: options.idempotencyKey,
       });
 
       await this.logTransaction(tx, {
@@ -410,6 +418,7 @@ export class BalanceRepository extends BasePlayerRepository {
         transactionType: "transfer_receive",
         description: description || `Transfer from ${senderUuid}`,
         relatedPlayerUuid: senderUuid,
+        idempotencyKey: options.idempotencyKey,
       });
 
       return {

@@ -26,7 +26,7 @@ export default defineApiSpec({
       path: "/pay",
       name: "Pay",
       description:
-        "Transfers currency from the authenticated player to the recipient.",
+        "Transfers currency from the authenticated player to the recipient. Send an idempotencyKey to make the request safe to retry after a timeout: a replay with the same key and body returns the stored response without transferring again, a replay with the same key and a different body is rejected with 409. The replayed response is the original one, so its new_sender_balance is the balance right after the original attempt, not the current balance. Keys are retained for 24 hours.",
       request: {
         name: "PayRequest",
         fields: [
@@ -39,6 +39,13 @@ export default defineApiSpec({
             name: "amount",
             type: "double",
             description: "Positive amount to transfer",
+          },
+          {
+            name: "idempotencyKey",
+            type: "string",
+            nullable: true,
+            description:
+              "Client-generated key unique per attempt (e.g. a random UUID): 1 to 128 characters of letters, digits, '.', '_', ':' or '-'. Reuse it on retries of the same request.",
           },
         ],
       },

@@ -61,9 +61,14 @@ export class CurrencyController {
   }
 
   static async pay(req: Request, res: Response): Promise<void> {
-    const { toUuid: rawToUuid, amount: rawAmount } = req.body as {
+    const {
+      toUuid: rawToUuid,
+      amount: rawAmount,
+      idempotencyKey: rawKey,
+    } = req.body as {
       toUuid?: unknown;
       amount?: unknown;
+      idempotencyKey?: unknown;
     };
 
     if (rawToUuid == null || rawAmount == null) {
@@ -72,41 +77,61 @@ export class CurrencyController {
 
     const toUuid = parseRecipientUuid(rawToUuid);
     const amount = parsePositiveMoney(rawAmount, "amount");
+    const idempotencyKey = parseIdempotencyKey(rawKey);
 
     const { uuid: senderUuid } = getAuthedPlayer(req);
 
-    try {
-      const result = await balanceRepo.transfer(senderUuid, toUuid, amount);
-
-      respondSuccess(res, {
-        message: `Transferred ${amount} from ${senderUuid} to ${toUuid}`,
-        playerMessage: `You sent ${formatMoney(amount)}`,
-        data: {
-          new_sender_balance: result.senderBalance,
-        },
-      });
-    } catch (error) {
-      if (error instanceof Error) {
-        if (error.message.includes("Insufficient balance")) {
-          throw new BadRequestError("Insufficient balance", undefined, {
-            playerMessage: "You don't have enough money!",
-          });
-        }
-        if (error.message.includes("Cannot transfer to self")) {
-          throw new BadRequestError("Cannot transfer to yourself", undefined, {
-            playerMessage: "You can't pay yourself.",
-          });
-        }
-        if (error.message.includes("exceeds maximum balance")) {
-          throw new BadRequestError(
-            "Would exceed the recipient's maximum balance",
+    const outcome = await runIdempotent(
+      {
+        playerUuid: senderUuid,
+        key: idempotencyKey,
+        requestHash: hashRequest("pay", { toUuid, amount }),
+      },
+      async (tx) => {
+        try {
+          const result = await balanceRepo.transfer(
+            senderUuid,
+            toUuid,
+            amount,
             undefined,
-            { playerMessage: "That player can't hold that much money." },
+            { idempotencyKey, tx },
           );
+
+          return {
+            message: `Transferred ${amount} from ${senderUuid} to ${toUuid}`,
+            playerMessage: `You sent ${formatMoney(amount)}`,
+            data: {
+              new_sender_balance: result.senderBalance,
+            },
+          };
+        } catch (error) {
+          if (error instanceof Error) {
+            if (error.message.includes("Insufficient balance")) {
+              throw new BadRequestError("Insufficient balance", undefined, {
+                playerMessage: "You don't have enough money!",
+              });
+            }
+            if (error.message.includes("Cannot transfer to self")) {
+              throw new BadRequestError(
+                "Cannot transfer to yourself",
+                undefined,
+                { playerMessage: "You can't pay yourself." },
+              );
+            }
+            if (error.message.includes("exceeds maximum balance")) {
+              throw new BadRequestError(
+                "Would exceed the recipient's maximum balance",
+                undefined,
+                { playerMessage: "That player can't hold that much money." },
+              );
+            }
+          }
+          throw error;
         }
-      }
-      throw error;
-    }
+      },
+    );
+
+    sendOutcome(res, outcome);
   }
 
   static async deposit(req: Request, res: Response): Promise<void> {
