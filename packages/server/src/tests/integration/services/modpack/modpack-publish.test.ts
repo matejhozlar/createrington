@@ -53,6 +53,7 @@ import { getModpackFile } from "@/services/curseforge/modpack";
 import { getModpackManifest } from "@/services/modpack/manifest";
 import { launcherPackReleaseService } from "@/services/launcher/pack/pack-release.service";
 import { findSandboxSnapshotUrl } from "@/services/launcher/pack/sandbox-files";
+import { ingestProjectsWhere } from "@/services/curseforge/ingest";
 import {
   createWorkshopTestContext,
   cleanupWorkshopTestContext,
@@ -338,6 +339,7 @@ describe("ModpackPublishService.recordSnapshot", () => {
   }
 
   beforeEach(() => {
+    vi.mocked(ingestProjectsWhere).mockResolvedValue(0);
     vi.mocked(findSandboxSnapshotUrl).mockResolvedValue(SNAPSHOT_URL);
     vi.mocked(launcherPackReleaseService.prepareSnapshot).mockResolvedValue({
       status: "blocked",
@@ -459,6 +461,80 @@ describe("ModpackPublishService.recordSnapshot", () => {
     expect(
       await Q.modpack.publish.get({ modpackId: modpack.id, clientFileId: 7 }),
     ).toMatchObject({ notes: null, lastError: null });
+  });
+
+  function cacheOnIngest() {
+    vi.mocked(ingestProjectsWhere).mockImplementation(async (projectIds) => {
+      for (const id of projectIds) {
+        await Q.curseforge.project.create({
+          id,
+          classId: 6,
+          slug: `vitest-mod-${id}`,
+          name: `Vitest Mod ${id}`,
+        });
+      }
+      return projectIds.length;
+    });
+  }
+
+  function uncachedProjectId(): number {
+    const id = ctx.nextProjectId++;
+    ctx.projectIds.push(id);
+    return id;
+  }
+
+  function twoFileReport(known: number, fresh: number) {
+    return report(known, {
+      files: [known, fresh].map((projectId) => ({
+        projectId,
+        fileId: fileIdFor(projectId),
+        required: true,
+      })),
+    });
+  }
+
+  it("caches the projects of a snapshot it does not know yet before freezing its files", async () => {
+    await seedSandboxPack();
+    const known = await seedProject(ctx);
+    const fresh = uncachedProjectId();
+    cacheOnIngest();
+
+    const result = await modpackPublishService.recordSnapshot(
+      twoFileReport(known, fresh),
+    );
+
+    expect(ingestProjectsWhere).toHaveBeenCalledWith(
+      [fresh],
+      expect.any(Function),
+    );
+    expect(result.release.modCount).toBe(2);
+    const mods = await Q.modpack.release.mod.findAll({
+      releaseId: result.release.id,
+    });
+    expect(mods.map((mod) => mod.curseforgeProjectId).sort()).toEqual(
+      [known, fresh].sort(),
+    );
+  });
+
+  it("refreezes the files of a snapshot not offered yet when a resend can cache a project it missed", async () => {
+    await seedSandboxPack();
+    const known = await seedProject(ctx);
+    const fresh = uncachedProjectId();
+
+    const first = await modpackPublishService.recordSnapshot(
+      twoFileReport(known, fresh),
+    );
+    cacheOnIngest();
+    const second = await modpackPublishService.recordSnapshot(
+      twoFileReport(known, fresh),
+    );
+
+    expect(first.release.modCount).toBe(1);
+    expect(second.release.id).toBe(first.release.id);
+    expect(second.release.modCount).toBe(2);
+    expect(
+      await Q.modpack.release.mod.count({ releaseId: first.release.id }),
+    ).toBe(2);
   });
 
   it("answers a ready snapshot as it is without asking the sandbox again", async () => {

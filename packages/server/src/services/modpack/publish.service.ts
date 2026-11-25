@@ -14,8 +14,15 @@ import {
 import { getModpackManifest } from "@/services/modpack/manifest";
 import { launcherPackReleaseService } from "@/services/launcher/pack/pack-release.service";
 import { findSandboxSnapshotUrl } from "@/services/launcher/pack/sandbox-files";
+import { packFolderForClass } from "@/services/launcher/pack/pack-rules";
+import { ingestProjectsWhere } from "@/services/curseforge/ingest";
+import type { ReleaseModInsert } from "@/db/queries/modpack/release/mod";
 import { modpackService } from "./modpack.service";
-import { buildReleaseRows, createReleaseWithMods } from "./release-record";
+import {
+  buildReleaseRows,
+  createReleaseWithMods,
+  refreezeReleaseMods,
+} from "./release-record";
 import { modpackSyncService } from "./sync.service";
 
 export interface ModpackPublishReport {
@@ -199,8 +206,12 @@ export class ModpackPublishService {
       );
     }
 
-    const release =
-      recorded ?? (await this.recordSnapshotRelease(modpack, report, notes));
+    const release = recorded
+      ? await refreezeReleaseMods(
+          recorded,
+          await this.snapshotReleaseRows(report),
+        )
+      : await this.recordSnapshotRelease(modpack, report, notes);
     if (notes !== undefined && recorded) {
       await this.upsertPublish(modpack.id, report.snapshotId, null, notes);
     }
@@ -267,16 +278,31 @@ export class ModpackPublishService {
     };
   }
 
-  private async recordSnapshotRelease(
-    modpack: Modpack,
+  private async snapshotReleaseRows(
     report: ModpackSnapshotReport,
-    notes: string | null | undefined,
-  ): Promise<ModpackRelease> {
+  ): Promise<ReleaseModInsert[]> {
     const entries: ModpackManifestEntry[] = report.files.map((file) => ({
       ...file,
       sides: "client",
     }));
-    const rows = await buildReleaseRows({
+    const projectIds = [...new Set(entries.map((entry) => entry.projectId))];
+    const cached = new Set(
+      (
+        await Q.curseforge.project.findAll(
+          { id: { $in: projectIds } },
+          { select: ["id"] },
+        )
+      ).map((project) => project.id),
+    );
+    const missing = projectIds.filter((id) => !cached.has(id));
+    if (missing.length > 0) {
+      await ingestProjectsWhere(
+        missing,
+        (project) => packFolderForClass(project.classId) !== null,
+      );
+    }
+
+    return buildReleaseRows({
       fileId: report.snapshotId,
       serverPackFileId: null,
       displayName: null,
@@ -285,9 +311,17 @@ export class ModpackPublishService {
       modLoader: report.modLoader,
       publishedAt: null,
       entries,
-      modIds: new Set(entries.map((entry) => entry.projectId)),
+      modIds: new Set(projectIds),
       disabledModIds: manifestDisabledModIds(entries),
     });
+  }
+
+  private async recordSnapshotRelease(
+    modpack: Modpack,
+    report: ModpackSnapshotReport,
+    notes: string | null | undefined,
+  ): Promise<ModpackRelease> {
+    const rows = await this.snapshotReleaseRows(report);
 
     await this.upsertPublish(modpack.id, report.snapshotId, null, notes);
     try {
