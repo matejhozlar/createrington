@@ -677,9 +677,29 @@ describe("PlayerPlaytimeSummaryQueries.getServerStats (integration)", () => {
     expect(stats.totalSessions).toBe(8);
   });
 
-  it("reports zero sessions for a server without playtime", async () => {
+  it("averages the session length over all sessions, not over the players' averages", async () => {
+    await Q.player.playtime.summary.create({
+      playerMinecraftUuid: STEVE,
+      serverId,
+      totalSeconds: 72_000n,
+      totalSessions: 10,
+    });
+    await Q.player.playtime.summary.create({
+      playerMinecraftUuid: ALEX,
+      serverId,
+      totalSeconds: 300n,
+      totalSessions: 1,
+    });
+
+    const stats = await Q.player.playtime.summary.getServerStats(serverId);
+
+    expect(stats.avgSessionSeconds).toBeCloseTo(72_300 / 11, 5);
+  });
+
+  it("reports zero sessions and a zero average for a server without playtime", async () => {
     const stats = await Q.player.playtime.summary.getServerStats(serverId);
 
     expect(stats.totalSessions).toBe(0);
+    expect(stats.avgSessionSeconds).toBe(0);
   });
 });
