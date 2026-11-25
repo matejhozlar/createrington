@@ -516,6 +516,25 @@ describe("ModpackPublishService.recordSnapshot", () => {
     );
   });
 
+  it("records a snapshot with its cached projects while CurseForge cannot be asked about the others", async () => {
+    const modpack = await seedSandboxPack();
+    const known = await seedProject(ctx);
+    const fresh = uncachedProjectId();
+    vi.mocked(ingestProjectsWhere).mockRejectedValue(
+      new Error("CurseForge 503"),
+    );
+
+    const result = await modpackPublishService.recordSnapshot(
+      twoFileReport(known, fresh),
+    );
+
+    expect(result.release.modCount).toBe(1);
+    expect(result.error).toBe(BLOCKED_REASON);
+    expect(
+      await Q.modpack.publish.get({ modpackId: modpack.id, clientFileId: 7 }),
+    ).toMatchObject({ notes: "First test snapshot." });
+  });
+
   it("refreezes the files of a snapshot not offered yet when a resend can cache a project it missed", async () => {
     await seedSandboxPack();
     const known = await seedProject(ctx);

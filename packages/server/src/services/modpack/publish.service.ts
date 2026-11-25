@@ -299,7 +299,12 @@ export class ModpackPublishService {
       await ingestProjectsWhere(
         missing,
         (project) => packFolderForClass(project.classId) !== null,
-      );
+      ).catch((error: unknown) => {
+        logger.warn(
+          `Snapshot ${report.snapshotId}: ${missing.length} uncached project(s) could not be cached, freezing the cached ones:`,
+          error,
+        );
+      });
     }
 
     return buildReleaseRows({
