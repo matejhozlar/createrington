@@ -157,8 +157,10 @@ export class PlayerQueries extends PlayerBaseQueries {
   }
 
   /**
-   * Get whitelist entries for every registered player without an active ban,
-   * shaped to match Minecraft's whitelist.json format.
+   * Get whitelist entries for every registered player without an active
+   * permanent ban, shaped to match Minecraft's whitelist.json format.
+   * Temporarily banned players stay listed: the in-game ban keeps them out,
+   * and nothing re-adds a whitelist entry when a temporary ban ends.
    *
    * @returns Array of { uuid, name }, ordered by username
    */
@@ -167,7 +169,8 @@ export class PlayerQueries extends PlayerBaseQueries {
       SELECT minecraft_uuid AS uuid, minecraft_username AS name
       FROM ${this.table}
       WHERE minecraft_uuid NOT IN (
-        SELECT player_minecraft_uuid FROM player_ban WHERE ${ACTIVE_BAN_WHERE}
+        SELECT player_minecraft_uuid FROM player_ban
+        WHERE ban_type = 'permanent' AND ${ACTIVE_BAN_WHERE}
       )
       ORDER BY minecraft_username`;
 

@@ -3,7 +3,8 @@ import { Q } from "@/db";
 
 const EXPIRED = "aaaa0000-0000-4000-8000-000000000011";
 const RUNNING = "aaaa0000-0000-4000-8000-000000000012";
-const UUIDS = [EXPIRED, RUNNING];
+const PERMANENT = "aaaa0000-0000-4000-8000-000000000013";
+const UUIDS = [EXPIRED, RUNNING, PERMANENT];
 const DAY = 24 * 60 * 60 * 1000;
 const BANNER = { bannedByDiscordId: "1", bannedByUsername: "admin" };
 
@@ -36,6 +37,12 @@ beforeEach(async () => {
       expiresAt: new Date(Date.now() + DAY),
       ...BANNER,
     },
+    {
+      playerMinecraftUuid: PERMANENT,
+      banType: "permanent",
+      reason: "for good",
+      ...BANNER,
+    },
   ]);
 });
 
@@ -51,5 +58,16 @@ describe("Q.player.ban.getExpiredBans", () => {
     );
 
     expect(ours.map((ban) => ban.playerMinecraftUuid)).toEqual([EXPIRED]);
+  });
+});
+
+describe("Q.player.getWhitelistEntries", () => {
+  it("keeps temporarily banned players and leaves out permanently banned ones", async () => {
+    const entries = await Q.player.getWhitelistEntries();
+    const ours = entries.filter((entry) => UUIDS.includes(entry.uuid));
+
+    expect(ours.map((entry) => entry.uuid).sort()).toEqual(
+      [EXPIRED, RUNNING].sort(),
+    );
   });
 });
