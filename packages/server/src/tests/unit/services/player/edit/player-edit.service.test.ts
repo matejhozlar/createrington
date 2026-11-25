@@ -200,6 +200,32 @@ describe("PlayerEditService.update with a new username", () => {
     );
   });
 
+  it("touches nothing in game when the account keeps its UUID under a new name", async () => {
+    mocks.resolve.mockResolvedValue({
+      uuid: OLD.minecraftUuid,
+      username: "Alex",
+    });
+    mocks.adminUpdate.mockResolvedValue({ ...OLD, minecraftUsername: "Alex" });
+    mocks.findCurrentBan.mockResolvedValue({
+      reason: "griefing",
+      expiresAt: new Date("2026-12-01T00:00:00Z"),
+    });
+
+    await rename("alex");
+
+    expect(mocks.adminUpdate).toHaveBeenCalledWith(
+      expect.anything(),
+      { minecraftUsername: "Alex", minecraftUuid: OLD.minecraftUuid },
+      ACTOR.discordId,
+      ACTOR.username,
+      expect.any(String),
+    );
+    expect(mocks.whitelistAll).not.toHaveBeenCalled();
+    expect(mocks.banAll).not.toHaveBeenCalled();
+    expect(mocks.pardonAll).not.toHaveBeenCalled();
+    expect(mocks.setNickname).toHaveBeenCalledWith("Alex", expect.any(String));
+  });
+
   it("refuses an edit that keeps the same account and Discord ID", async () => {
     mocks.resolve.mockResolvedValue({
       uuid: OLD.minecraftUuid,

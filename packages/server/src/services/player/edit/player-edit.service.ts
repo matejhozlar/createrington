@@ -28,19 +28,17 @@ interface MinecraftAccount {
   username: string;
 }
 
-function sameName(a: string, b: string): boolean {
-  return a.toLowerCase() === b.toLowerCase();
-}
-
 /**
  * Applies an admin edit of a player's Minecraft account or Discord ID. A new
  * username is resolved through the skin API and the edit is refused when it
  * does not resolve to an account, when the lookup fails, or when the account
- * belongs to another player; the Minecraft UUID changes with the account. The
- * new name is whitelisted on every server before the database changes and
- * removed again if the update fails. After commit the old name leaves the
- * whitelist, an active ban moves to the new name in game, and the Discord
- * nickname follows; those steps are best-effort and logged.
+ * belongs to another player; the Minecraft UUID changes with the account.
+ * When the UUID changes, the new name is whitelisted on every server before
+ * the database changes and removed again if the update fails, and after
+ * commit the old name leaves the whitelist and an active ban moves to the new
+ * name in game. A rename that keeps the UUID touches nothing in game, since
+ * whitelist and ban entries are keyed by UUID. The Discord nickname follows
+ * either way. Post-commit steps are best-effort and logged.
  */
 export class PlayerEditService {
   /** Applies the edit and resolves to the updated player. */
@@ -69,9 +67,9 @@ export class PlayerEditService {
 
     if (renamed) await this.requireUnclaimed(renamed, player);
 
-    const whitelistsNewName =
-      renamed !== null && !sameName(renamed.username, player.minecraftUsername);
-    if (whitelistsNewName) await this.whitelist(renamed.username);
+    const movesAccount =
+      renamed !== null && renamed.uuid !== player.minecraftUuid;
+    if (movesAccount) await this.whitelist(renamed.username);
 
     let updated: Player;
     try {
@@ -89,7 +87,7 @@ export class PlayerEditService {
         reason,
       );
     } catch (error) {
-      if (whitelistsNewName) await this.undoWhitelist(renamed);
+      if (movesAccount) await this.undoWhitelist(renamed);
       if (error instanceof UniqueViolationError) {
         throw new ConflictError(
           "That Minecraft account is already registered to another player",
@@ -159,7 +157,7 @@ export class PlayerEditService {
     const from = previous.minecraftUsername;
     const to = updated.minecraftUsername;
 
-    if (!sameName(from, to)) {
+    if (previous.minecraftUuid !== updated.minecraftUuid) {
       try {
         await minecraftRcon.whitelistAll(WhitelistAction.REMOVE, from);
       } catch (error) {
