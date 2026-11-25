@@ -18,7 +18,7 @@ import { OwnerRoute } from "./components/owner-route";
 import { LAUNCHER_ENABLED } from "./lib/launcher";
 import { Home } from "./features/home/Home";
 import { NotFound } from "./components/not-found";
-import { ErrorBoundary } from "./components/error-boundary";
+import { ErrorBoundary, RouteErrorBoundary } from "./components/error-boundary";
 import { ToastProvider } from "./components/ui/toast";
 import { AppLayout, PageLayout } from "./components/app-layout";
 import { SidebarProvider } from "./components/ui/sidebar";
@@ -416,9 +416,7 @@ function AppContent() {
               element={
                 <ProtectedRoute requiresAdmin>
                   <AdminPlayersProvider>
-                    <ErrorBoundary>
-                      <Outlet />
-                    </ErrorBoundary>
+                    <Outlet />
                   </AdminPlayersProvider>
                 </ProtectedRoute>
               }
@@ -481,9 +479,7 @@ function AppContent() {
               path="/owner"
               element={
                 <OwnerRoute>
-                  <ErrorBoundary>
-                    <Outlet />
-                  </ErrorBoundary>
+                  <Outlet />
                 </OwnerRoute>
               }
             >
@@ -519,11 +515,11 @@ function App() {
                 <BrowserRouter>
                   <ScrollToTop />
                   <AdminChatBoundary>
-                    <ErrorBoundary>
+                    <RouteErrorBoundary>
                       <SidebarProvider>
                         <AppContent />
                       </SidebarProvider>
-                    </ErrorBoundary>
+                    </RouteErrorBoundary>
                   </AdminChatBoundary>
                 </BrowserRouter>
               </ToastProvider>
