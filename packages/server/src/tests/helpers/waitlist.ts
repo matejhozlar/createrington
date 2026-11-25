@@ -180,7 +180,12 @@ export const waitlistMocks: Record<
             e.id === filters.id &&
             (filters.status === undefined || e.status === filters.status),
         );
-        for (const entry of matched) Object.assign(entry, data);
+        for (const entry of matched) {
+          if (data.status === "promoted" && entry.status !== "promoted") {
+            state.free--;
+          }
+          Object.assign(entry, data);
+        }
         return matched.length;
       },
       createAndReturn: async (data: Partial<Entry>) => {

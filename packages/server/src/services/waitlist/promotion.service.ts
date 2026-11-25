@@ -15,6 +15,8 @@ import { withSlotLock } from "./slot-lock";
 
 const PROMOTION_BATCH = 100;
 
+type PromotionOutcome = "promoted" | "full" | "no-longer-queued";
+
 /**
  * Promotion out of the waitlist queue: an admin promoting one entry, and
  * automatic passes that move the oldest queued entries into free slots,
@@ -25,7 +27,9 @@ const PROMOTION_BATCH = 100;
  * member gone; an unreachable guild or a failed lookup skips the entry
  * until the next pass. Every automatic promotion re-reads the free slot
  * count inside the slot lock that direct-registration reservations also
- * take, so two writers cannot both claim the last slot.
+ * take, so two writers cannot both claim the last slot. The promotion
+ * itself only applies to an entry that is still queued at that moment, so
+ * one that left the queue or was promoted meanwhile is left as it is.
  */
 export class WaitlistPromotionService {
   private promotionPass: Promise<number> | null = null;
@@ -70,12 +74,17 @@ export class WaitlistPromotionService {
       );
     }
 
-    const { notified } = await this.promoteMember(
+    const { outcome, notified } = await this.promoteMember(
       entry,
       lookup.member,
       promotedBy,
       { enforceCapacity: false },
     );
+    if (outcome !== "promoted") {
+      throw new BadRequestError(
+        "This entry is no longer queued; it was promoted or left the queue a moment ago.",
+      );
+    }
 
     return { entry: await Q.waitlist.entry.get({ id: entry.id }), notified };
   }
@@ -85,22 +94,22 @@ export class WaitlistPromotionService {
     member: GuildMember,
     promotedBy: string | null,
     options: { enforceCapacity: boolean },
-  ): Promise<{ reserved: boolean; notified: boolean }> {
-    const reserved = await withSlotLock(async () => {
+  ): Promise<{ outcome: PromotionOutcome; notified: boolean }> {
+    const outcome = await withSlotLock(async (): Promise<PromotionOutcome> => {
       if (
         options.enforceCapacity &&
         (await waitlistCapacityService.getFreeSlots()) <= 0
       ) {
-        return false;
+        return "full";
       }
-      await Q.waitlist.entry.update(
-        { id: entry.id },
+      const promoted = await Q.waitlist.entry.updateAll(
         { status: "promoted", promotedAt: new Date(), promotedBy },
+        { id: entry.id, status: "queued" },
       );
-      return true;
+      return promoted === 0 ? "no-longer-queued" : "promoted";
     });
 
-    if (!reserved) return { reserved: false, notified: false };
+    if (outcome !== "promoted") return { outcome, notified: false };
 
     let notified = false;
     try {
@@ -122,7 +131,7 @@ export class WaitlistPromotionService {
       await this.alertUnnotifiedPromotion(entry);
     }
 
-    return { reserved: true, notified };
+    return { outcome, notified };
   }
 
   private async alertUnnotifiedPromotion(entry: WaitlistEntry): Promise<void> {
@@ -276,17 +285,17 @@ export class WaitlistPromotionService {
       }
 
       try {
-        const { reserved } = await this.promoteMember(
+        const { outcome } = await this.promoteMember(
           entry,
           lookup.member,
           null,
           { enforceCapacity: true },
         );
-        if (!reserved) {
+        if (outcome === "full") {
           exhausted = true;
           break;
         }
-        promoted++;
+        if (outcome === "promoted") promoted++;
       } catch (error) {
         logger.warn(
           `Skipping waitlist entry #${entry.id} during auto-promotion:`,
