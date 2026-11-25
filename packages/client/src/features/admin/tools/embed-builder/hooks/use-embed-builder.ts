@@ -62,7 +62,11 @@ export function useEmbedBuilder() {
     [kind, embed, components],
   );
   const snapshot = useMemo(() => snapshotOf(payload), [payload]);
-  const isDirty = !!activePreset && snapshot !== state.savedSnapshot;
+  const isContentDirty = !!activePreset && snapshot !== state.savedSnapshot;
+  const trimmedName = presetName.trim();
+  const isNameDirty =
+    !!activePreset && !!trimmedName && trimmedName !== activePreset.name;
+  const isDirty = isContentDirty || isNameDirty;
   const hasContent = payloadHasContent(payload);
 
   const draftToastedRef = useRef(false);
@@ -147,7 +151,7 @@ export function useEmbedBuilder() {
 
   const validateForPublishOrToast = (): boolean => {
     if (!validateOrToast()) return false;
-    if (hasActionButtons && isDirty) {
+    if (hasActionButtons && isContentDirty) {
       toast.error(
         "Save the preset first: action buttons run what the saved preset holds.",
       );
@@ -199,9 +203,7 @@ export function useEmbedBuilder() {
     if (!validateOrToast()) return false;
 
     if (activePreset) {
-      const trimmed = presetName.trim();
-      const name =
-        trimmed && trimmed !== activePreset.name ? trimmed : undefined;
+      const name = isNameDirty ? trimmedName : undefined;
       try {
         await updateMutation.mutateAsync({
           id: activePreset.id,
