@@ -13,12 +13,13 @@ const repository = vi.hoisted(() => ({
 }));
 const sendMessage = vi.hoisted(() => vi.fn());
 const writeFile = vi.hoisted(() => vi.fn(async () => undefined));
+const access = vi.hoisted(() => vi.fn(async () => undefined));
 const createTranscript = vi.hoisted(() =>
   vi.fn(async () => Buffer.from("<html></html>")),
 );
 
 vi.mock("node:fs/promises", () => ({
-  default: { mkdir: vi.fn(async () => undefined), writeFile },
+  default: { mkdir: vi.fn(async () => undefined), writeFile, access },
 }));
 
 vi.mock("discord-html-transcripts", () => ({
@@ -209,6 +210,7 @@ describe("TicketService.ensureTranscript", () => {
     repository.updateMetadata.mockReset();
     createTranscript.mockClear();
     writeFile.mockClear();
+    access.mockReset().mockResolvedValue(undefined);
   });
 
   it("returns the stored transcript without generating a new one", async () => {
@@ -239,6 +241,25 @@ describe("TicketService.ensureTranscript", () => {
     expect(writeFile).toHaveBeenCalledWith(
       result.transcriptPath,
       expect.any(Buffer),
+    );
+    expect(repository.updateMetadata).toHaveBeenCalledWith(7, {
+      transcriptPath: result.transcriptPath,
+    });
+  });
+
+  it("regenerates the transcript when the stored file is gone", async () => {
+    ticketGet.mockResolvedValue({
+      ...ticket,
+      metadata: { transcriptPath: "storage/transcripts/ticket-12-1.html" },
+    });
+    access.mockRejectedValue(new Error("ENOENT"));
+    const service = new TicketService(fakeBot({}).client);
+
+    const result = await service.ensureTranscript(7);
+
+    expect(result.generated).toBe(true);
+    expect(result.transcriptPath).not.toBe(
+      "storage/transcripts/ticket-12-1.html",
     );
     expect(repository.updateMetadata).toHaveBeenCalledWith(7, {
       transcriptPath: result.transcriptPath,

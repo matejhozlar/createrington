@@ -469,7 +469,8 @@ export class TicketService {
 
   /**
    * Return the ticket's stored transcript path, generating and storing a new
-   * transcript first when it has none. `generated` says which happened.
+   * transcript first when it has none or its file is gone. `generated` says
+   * which happened.
    */
   async ensureTranscript(
     ticketId: number,
@@ -477,7 +478,7 @@ export class TicketService {
     const ticket = await Q.ticket.get({ id: ticketId });
     const { transcriptPath: stored } = readTicketMetadata(ticket.metadata);
 
-    if (stored) {
+    if (stored && (await this.fileExists(stored))) {
       return { transcriptPath: stored, generated: false };
     }
 
@@ -485,6 +486,15 @@ export class TicketService {
     await ticketRepo.updateMetadata(ticketId, { transcriptPath });
 
     return { transcriptPath, generated: true };
+  }
+
+  private async fileExists(filepath: string): Promise<boolean> {
+    try {
+      await fs.access(filepath);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   private async generateTranscript(ticket: Ticket): Promise<string> {
