@@ -83,7 +83,12 @@ function unreachable(command: string) {
     `Failed to execute RCON command: ${command}`,
     command,
     SERVER,
-    new Error("connect ECONNREFUSED"),
+    new RconCommandError(
+      "Failed to establish RCON connection",
+      "connect",
+      SERVER,
+      new Error("connect ECONNREFUSED"),
+    ),
   );
 }
 
@@ -239,7 +244,7 @@ describe("VoteRewardService.payout", () => {
       STAMPED,
       {
         rewardedAt: null,
-        rewardError: `${GIVE}: Failed to execute RCON command: ${GIVE}`,
+        rewardError: `${GIVE}: connect ECONNREFUSED`,
       },
     ]);
   });
@@ -256,7 +261,7 @@ describe("VoteRewardService.payout", () => {
     expect(updatedWith(1)).toEqual([
       STAMPED,
       {
-        rewardError: `unconfirmed, check manually: ${GIVE}: Failed to execute RCON command: ${GIVE}`,
+        rewardError: `unconfirmed, check manually: ${GIVE}: Timeout for packet id 3`,
       },
     ]);
     expect(updatedWith(2)).toEqual([]);

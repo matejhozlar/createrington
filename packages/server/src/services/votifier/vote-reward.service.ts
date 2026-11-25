@@ -25,6 +25,14 @@ interface CommandFailure {
   mayHaveRun: boolean;
 }
 
+function rootReason(error: unknown): string {
+  let reason = error;
+  while (reason instanceof RconCommandError && reason.cause !== undefined) {
+    reason = reason.cause;
+  }
+  return reason instanceof Error ? reason.message : String(reason);
+}
+
 function fill(
   template: string,
   values: Record<string, string | number>,
@@ -245,7 +253,7 @@ export class VoteRewardService {
       response = stripFormatting(await this.send(serverId, command));
     } catch (error) {
       return {
-        message: `${command}: ${error instanceof Error ? error.message : error}`,
+        message: `${command}: ${rootReason(error)}`,
         mayHaveRun: !(
           error instanceof ServerNotFoundError ||
           (error instanceof RconCommandError && !error.mayHaveRun)
