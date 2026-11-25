@@ -21,6 +21,7 @@ let balanceAdds: Array<{
 let balanceDeducts: number;
 let lastRotations: Array<{ rotatedAt: Date }>;
 let eligibleCalls: number;
+let deletedBuyers: Set<string>;
 
 const EIGHT_DAYS_MS = 8 * 24 * 60 * 60 * 1000;
 
@@ -41,6 +42,12 @@ vi.mock("@/services/curseforge/downloads", () => ({
 
 vi.mock("@/db", () => {
   const makeTx = () => ({
+    player: {
+      findAll: async ({ discordId }: { discordId: { $in: string[] } }) =>
+        discordId.$in
+          .filter((id) => !deletedBuyers.has(id))
+          .map((id) => ({ discordId: id })),
+    },
     structure: {
       pack: {
         update: async (where: unknown, data: unknown) => {
@@ -185,6 +192,7 @@ describe("StructurePackRotationService", () => {
     balanceDeducts = 0;
     lastRotations = [];
     eligibleCalls = 0;
+    deletedBuyers = new Set();
   });
 
   afterEach(() => {
@@ -300,6 +308,20 @@ describe("StructurePackRotationService", () => {
     expect(eligibleCalls).toBe(0);
   });
 
+  it("disables rotations when an open boost belongs to a deleted player, dropping that boost", async () => {
+    openBoosts = [makeBoost(12, 3, 2, "111"), makeBoost(13, 4, 1, "gone")];
+    deletedBuyers = new Set(["gone"]);
+    const service = makeService();
+
+    const updated = await service.updateConfig({ enabled: false });
+
+    expect(updated.enabled).toBe(false);
+    expect(balanceAdds).toEqual([
+      { identifier: { discordId: "111" }, amount: 100, type: "refund" },
+    ]);
+    expect(boostDeletes).toEqual([12, 13]);
+  });
+
   it("does not refund boosts on config updates that keep rotations enabled", async () => {
     openBoosts = [
       {
@@ -323,10 +345,15 @@ describe("StructurePackRotationService", () => {
     service.shutdown();
   });
 
-  function makeBoost(id: number, packId: number, units: number) {
+  function makeBoost(
+    id: number,
+    packId: number,
+    units: number,
+    discordId = "111",
+  ) {
     return {
       id,
-      discordId: "111",
+      discordId,
       packId,
       units,
       currencySpent: units * 50,

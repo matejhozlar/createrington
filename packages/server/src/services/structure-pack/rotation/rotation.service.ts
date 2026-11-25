@@ -83,6 +83,8 @@ async function installPackMods(pack: StructurePackWithMods): Promise<void> {
  * - Can be disabled entirely via the `enabled` flag on the rotation config: no scheduling,
  *   no automatic rotations, and no boost purchases while disabled (manual rotation still
  *   works); disabling refunds all open boosts
+ * - A boost whose buyer has since been deleted is dropped without a refund wherever a
+ *   refund would be due
  *
  * NOTE: File operations (mod installs/removals) are skipped when `isFileOpsAllowed()` returns
  * false; the rotation is still recorded in the database in that case.
@@ -572,7 +574,15 @@ export class StructurePackRotationService {
   ): Promise<void> {
     if (boosts.length === 0) return;
 
-    for (const boost of boosts) {
+    const buyers = await tx.player.findAll({
+      discordId: { $in: [...new Set(boosts.map((boost) => boost.discordId))] },
+    });
+    const registered = new Set(buyers.map((player) => player.discordId));
+    const refundable = boosts.filter((boost) =>
+      registered.has(boost.discordId),
+    );
+
+    for (const boost of refundable) {
       await balanceRepo.add(
         { discordId: boost.discordId },
         boost.currencySpent,
@@ -591,7 +601,14 @@ export class StructurePackRotationService {
     await tx.structure.pack.boost.deleteAll({
       id: { $in: boosts.map((boost) => boost.id) },
     });
-    logger.info(`Refunded ${boosts.length} structure pack boost(s): ${reason}`);
+    logger.info(
+      `Refunded ${refundable.length} structure pack boost(s): ${reason}`,
+    );
+    if (refundable.length < boosts.length) {
+      logger.info(
+        `Dropped ${boosts.length - refundable.length} structure pack boost(s) of deleted players without a refund`,
+      );
+    }
   }
 
   private async weighPool(
