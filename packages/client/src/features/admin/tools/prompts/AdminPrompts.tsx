@@ -223,12 +223,7 @@ export function AdminPrompts() {
         prompt={deleteTarget}
         entryCount={deleteTarget?.responseCount ?? 0}
         onClose={() => setDeleteTarget(null)}
-        onSuccess={() => {
-          setDeleteTarget(null);
-          if (prompts.rows.length === 1 && prompts.page > 0) {
-            prompts.setPage(prompts.page - 1);
-          }
-        }}
+        onSuccess={() => setDeleteTarget(null)}
       />
     </AdminPage>
   );
