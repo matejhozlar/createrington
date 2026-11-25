@@ -9,6 +9,12 @@ import type {
   PlanningCategory,
   PlanningItemStatus,
 } from "@createrington/shared/planning";
+import {
+  type PlanningFilingRow,
+  type PlanningItemFiling,
+  filingQuery,
+  toFilings,
+} from "@/db/queries/planning/item/filing";
 
 export const PLANNING_UNASSIGNED = "unassigned";
 
@@ -50,9 +56,15 @@ export class PlanningItemQueries extends PlanningItemBaseQueries {
     const bind = (value: unknown): string => `$${values.push(value)}`;
     const where = ["TRUE"];
 
-    if (params.category) where.push(`pi.category = ${bind(params.category)}`);
+    if (params.category) {
+      where.push(
+        `EXISTS (SELECT 1 FROM planning_item_category c WHERE c.item_id = pi.id AND c.category = ${bind(params.category)})`,
+      );
+    }
     if (params.subcategoryId !== undefined) {
-      where.push(`pi.subcategory_id = ${bind(params.subcategoryId)}`);
+      where.push(
+        `EXISTS (SELECT 1 FROM planning_item_subcategory s WHERE s.item_id = pi.id AND s.subcategory_id = ${bind(params.subcategoryId)})`,
+      );
     }
     if (params.assignee === PLANNING_UNASSIGNED) {
       where.push(
@@ -109,6 +121,27 @@ export class PlanningItemQueries extends PlanningItemBaseQueries {
       total: countResult.rows[0]?.total ?? 0,
       statusCounts,
     };
+  }
+
+  /**
+   * The categories and subcategories of each given item, categories in
+   * declaration order and subcategory ids ascending. Ids with no item map to
+   * empty lists.
+   */
+  async getFilings(
+    itemIds: number[],
+  ): Promise<Map<number, PlanningItemFiling>> {
+    if (itemIds.length === 0) return new Map();
+    const result = await this.runQuery<PlanningFilingRow>(
+      "get planning item filings",
+      filingQuery({
+        category: "planning_item_category",
+        subcategory: "planning_item_subcategory",
+        ownerColumn: "item_id",
+      }),
+      [itemIds],
+    );
+    return toFilings(result.rows);
   }
 
   /**

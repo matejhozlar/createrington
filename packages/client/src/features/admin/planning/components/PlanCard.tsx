@@ -1,17 +1,17 @@
 import { Link } from "react-router";
 import { MessageSquare } from "lucide-react";
 import { formatRelativeDate } from "@/lib/format";
-import { markdownPreview } from "../format";
-import type { PlanningItem } from "../types";
+import { markdownPreview } from "@/features/admin/planning/format";
+import type { PlanningItem } from "@/features/admin/planning/types";
 import { CategoryBadges, StatusBadge } from "./PlanBadges";
 import { AvatarStack } from "./PersonChip";
 
 interface PlanCardProps {
   item: PlanningItem;
-  subcategory: string | null;
+  subcategories: string[];
 }
 
-export function PlanCard({ item, subcategory }: PlanCardProps) {
+export function PlanCard({ item, subcategories }: PlanCardProps) {
   const preview = markdownPreview(item.body);
 
   return (
@@ -21,7 +21,10 @@ export function PlanCard({ item, subcategory }: PlanCardProps) {
     >
       <div className="flex flex-wrap items-center gap-1.5">
         <StatusBadge status={item.status} />
-        <CategoryBadges category={item.category} subcategory={subcategory} />
+        <CategoryBadges
+          categories={item.categories}
+          subcategories={subcategories}
+        />
       </div>
 
       <h2 className="line-clamp-2 break-words text-lg font-semibold leading-snug">

@@ -48,8 +48,8 @@ interface PlanningBoard {
   cards: {
     id: number;
     title: string;
-    category: PlanningCategory;
-    subcategory: string | null;
+    categories: PlanningCategory[];
+    subcategories: string[];
     status: string;
     details: string;
   }[];
@@ -60,8 +60,8 @@ export type PlanningProposal =
       action: "create";
       title: string;
       body: string;
-      category: string;
-      subcategoryId: number | null;
+      categories: string[];
+      subcategoryIds: number[];
     }
   | { action: "comment"; cardId: number; cardTitle: string; body: string };
 
@@ -123,7 +123,9 @@ export class PlanningIntakeService {
 
   /**
    * Writes a proposal to planning: a new draft, or a comment on the plan it
-   * names. Throws when the category is unknown or the plan is gone.
+   * names. Unknown categories and subcategories outside the chosen
+   * categories are left out. Throws when no known category is left or the
+   * plan is gone.
    */
   async apply(
     proposal: PlanningProposal,
@@ -158,22 +160,25 @@ export class PlanningIntakeService {
       PLANNING_TEXT_MAX_LENGTH,
       "details",
     );
-    if (!isCategory(proposal.category)) {
+    const categories = proposal.categories.filter(isCategory);
+    if (categories.length === 0) {
       throw new BadRequestError(
-        `Unknown planning category "${proposal.category}"`,
+        `Unknown planning categories "${proposal.categories.join(", ")}"`,
       );
     }
-    const subcategory =
-      proposal.subcategoryId === null
-        ? null
-        : await Q.planning.subcategory.find({ id: proposal.subcategoryId });
+    const subcategories =
+      proposal.subcategoryIds.length === 0
+        ? []
+        : await Q.planning.subcategory.findAll({
+            id: { $in: proposal.subcategoryIds },
+            category: { $in: categories },
+          });
     const item = await planningRepo.createItem(
       {
         title,
         body,
-        category: proposal.category,
-        subcategoryId:
-          subcategory?.category === proposal.category ? subcategory.id : null,
+        categories,
+        subcategoryIds: subcategories.map((subcategory) => subcategory.id),
         status: "draft",
       },
       by.discordId,
@@ -212,6 +217,9 @@ export class PlanningIntakeService {
       ),
     ]);
     const subcategoryName = new Map(subcategories.map((s) => [s.id, s.name]));
+    const filings = await Q.planning.item.getFilings(
+      items.map((item) => item.id),
+    );
 
     return {
       categories: PLANNING_CATEGORIES.map((key) => ({
@@ -224,11 +232,10 @@ export class PlanningIntakeService {
       cards: items.map((item) => ({
         id: item.id,
         title: item.title,
-        category: item.category,
-        subcategory:
-          item.subcategoryId === null
-            ? null
-            : (subcategoryName.get(item.subcategoryId) ?? null),
+        categories: filings.get(item.id)?.categories ?? [],
+        subcategories: (filings.get(item.id)?.subcategoryIds ?? []).flatMap(
+          (id) => subcategoryName.get(id) ?? [],
+        ),
         status: item.status,
         details: (item.body ?? "").slice(0, CARD_DETAILS_LENGTH),
       })),

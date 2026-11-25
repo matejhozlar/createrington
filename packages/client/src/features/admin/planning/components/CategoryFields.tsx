@@ -1,90 +1,141 @@
-import { Field, FieldLabel } from "@/components/ui/field";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Field,
+  FieldLabel,
+  FieldLegend,
+  FieldSet,
+} from "@/components/ui/field";
 import {
   PLANNING_CATEGORIES,
   type PlanningCategory,
 } from "@createrington/shared/planning";
-import { CATEGORY_CONFIG, NO_SUBCATEGORY } from "../constants";
-import type { PlanningSubcategory } from "../types";
+import { CATEGORY_CONFIG } from "@/features/admin/planning/constants";
+import { subcategoriesWithin } from "@/features/admin/planning/format";
+import type { PlanningSubcategory } from "@/features/admin/planning/types";
 
 interface CategoryFieldsProps {
   idPrefix: string;
-  category: PlanningCategory;
-  subcategoryId: number | null;
+  categories: PlanningCategory[];
+  subcategoryIds: number[];
   subcategories: PlanningSubcategory[];
   onChange: (next: {
-    category: PlanningCategory;
-    subcategoryId: number | null;
+    categories: PlanningCategory[];
+    subcategoryIds: number[];
   }) => void;
+}
+
+function CheckOption({
+  id,
+  label,
+  checked,
+  disabled,
+  onCheckedChange,
+}: {
+  id: string;
+  label: string;
+  checked: boolean;
+  disabled?: boolean;
+  onCheckedChange: (checked: boolean) => void;
+}) {
+  return (
+    <Field orientation="horizontal" className="w-auto gap-2">
+      <Checkbox
+        id={id}
+        checked={checked}
+        disabled={disabled}
+        onCheckedChange={(value) => onCheckedChange(value === true)}
+      />
+      <FieldLabel htmlFor={id} className="font-normal">
+        {label}
+      </FieldLabel>
+    </Field>
+  );
 }
 
 export function CategoryFields({
   idPrefix,
-  category,
-  subcategoryId,
+  categories,
+  subcategoryIds,
   subcategories,
   onChange,
 }: CategoryFieldsProps) {
-  const options = subcategories.filter((s) => s.category === category);
+  const toggleCategory = (category: PlanningCategory, checked: boolean) => {
+    const next = PLANNING_CATEGORIES.filter((value) =>
+      value === category ? checked : categories.includes(value),
+    );
+    onChange({
+      categories: next,
+      subcategoryIds: subcategoriesWithin(next, subcategoryIds, subcategories),
+    });
+  };
+
+  const toggleSubcategory = (id: number, checked: boolean) =>
+    onChange({
+      categories,
+      subcategoryIds: checked
+        ? [...subcategoryIds, id]
+        : subcategoryIds.filter((existing) => existing !== id),
+    });
+
+  const groups = categories
+    .map((category) => ({
+      category,
+      options: subcategories.filter((s) => s.category === category),
+    }))
+    .filter(({ options }) => options.length > 0);
 
   return (
-    <div className="grid gap-4 xs:grid-cols-2">
-      <Field>
-        <FieldLabel htmlFor={`${idPrefix}-category`}>Category</FieldLabel>
-        <Select
-          value={category}
-          onValueChange={(value) =>
-            onChange({
-              category: value as PlanningCategory,
-              subcategoryId: null,
-            })
-          }
-        >
-          <SelectTrigger id={`${idPrefix}-category`} className="w-full">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {PLANNING_CATEGORIES.map((value) => (
-              <SelectItem key={value} value={value}>
-                {CATEGORY_CONFIG[value].label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </Field>
+    <div className="flex flex-col gap-5">
+      <FieldSet className="gap-0">
+        <FieldLegend variant="label">Categories</FieldLegend>
+        <div className="flex flex-wrap gap-x-5 gap-y-2">
+          {PLANNING_CATEGORIES.map((category) => {
+            const checked = categories.includes(category);
+            return (
+              <CheckOption
+                key={category}
+                id={`${idPrefix}-category-${category}`}
+                label={CATEGORY_CONFIG[category].label}
+                checked={checked}
+                disabled={checked && categories.length === 1}
+                onCheckedChange={(value) => toggleCategory(category, value)}
+              />
+            );
+          })}
+        </div>
+      </FieldSet>
 
-      <Field>
-        <FieldLabel htmlFor={`${idPrefix}-subcategory`}>Subcategory</FieldLabel>
-        <Select
-          value={
-            subcategoryId === null ? NO_SUBCATEGORY : String(subcategoryId)
-          }
-          onValueChange={(value) =>
-            onChange({
-              category,
-              subcategoryId: value === NO_SUBCATEGORY ? null : Number(value),
-            })
-          }
-        >
-          <SelectTrigger id={`${idPrefix}-subcategory`} className="w-full">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={NO_SUBCATEGORY}>None</SelectItem>
-            {options.map((subcategory) => (
-              <SelectItem key={subcategory.id} value={String(subcategory.id)}>
-                {subcategory.name}
-              </SelectItem>
+      <FieldSet className="gap-0">
+        <FieldLegend variant="label">Subcategories</FieldLegend>
+        {groups.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            The chosen categories have no subcategories.
+          </p>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {groups.map(({ category, options }) => (
+              <div key={category} className="flex flex-col gap-2">
+                <span className="text-xs font-medium text-muted-foreground">
+                  {CATEGORY_CONFIG[category].label}
+                </span>
+                <div className="flex flex-wrap gap-x-5 gap-y-2">
+                  {options.map((subcategory) => (
+                    <CheckOption
+                      key={subcategory.id}
+                      id={`${idPrefix}-subcategory-${subcategory.id}`}
+                      label={subcategory.name}
+                      checked={subcategoryIds.includes(subcategory.id)}
+                      onCheckedChange={(value) =>
+                        toggleSubcategory(subcategory.id, value)
+                      }
+                    />
+                  ))}
+                </div>
+              </div>
             ))}
-          </SelectContent>
-        </Select>
-      </Field>
+          </div>
+        )}
+      </FieldSet>
     </div>
   );
 }

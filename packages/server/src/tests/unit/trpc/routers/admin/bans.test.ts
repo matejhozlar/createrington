@@ -4,6 +4,10 @@ type TransactionWork = (tx: unknown) => Promise<unknown>;
 
 const TX = { transaction: true };
 
+const { OWNER_DISCORD_ID } = vi.hoisted(() => ({
+  OWNER_DISCORD_ID: "100000000000000777",
+}));
+
 const {
   db,
   Q,
@@ -17,8 +21,10 @@ const {
   Q: {
     player: {
       get: vi.fn(),
+      find: vi.fn(),
       ban: { get: vi.fn() },
     },
+    admin: { exists: vi.fn() },
   },
   bans: { issueTemporary: vi.fn(), createPermanent: vi.fn(), unban: vi.fn() },
   rcon: { banAll: vi.fn(), pardonAll: vi.fn(), whitelistAll: vi.fn() },
@@ -27,6 +33,21 @@ const {
   deletePlayer: vi.fn(),
 }));
 
+vi.mock("@/config", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/config")>();
+  return {
+    default: {
+      ...actual.default,
+      app: {
+        ...actual.default.app,
+        auth: {
+          ...actual.default.app.auth,
+          owner: { discordId: OWNER_DISCORD_ID },
+        },
+      },
+    },
+  };
+});
 vi.mock("@/db", () => ({ db, Q, playerBanRepo: bans }));
 vi.mock("@/services/player/deletion", () => ({
   playerDeletionService: { delete: deletePlayer },
@@ -94,6 +115,8 @@ beforeEach(() => {
     guilds: { cache: { first: () => undefined } },
   } as never);
   Q.player.get.mockResolvedValue(PLAYER);
+  Q.player.find.mockResolvedValue(PLAYER);
+  Q.admin.exists.mockResolvedValue(false);
   Q.player.ban.get.mockResolvedValue({
     id: 1,
     reason: "griefing",
@@ -219,6 +242,49 @@ describe("admin.players.bans.issuePermanent", () => {
       "add",
       PLAYER.minecraftUsername,
     );
+  });
+});
+
+describe("banning an admin", () => {
+  const ownerCaller = bansRouter.createCaller(
+    adminContext({ discordId: OWNER_DISCORD_ID }),
+  );
+
+  beforeEach(() => {
+    Q.admin.exists.mockResolvedValue(true);
+  });
+
+  it("refuses a permanent ban from another admin", async () => {
+    await expect(
+      caller.issuePermanent({ id: PLAYER.minecraftUuid, reason: "rogue" }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(deletePlayer).not.toHaveBeenCalled();
+  });
+
+  it("refuses a temporary ban from another admin", async () => {
+    await expect(
+      caller.issueTemporary({
+        id: PLAYER.minecraftUuid,
+        reason: "rogue",
+        durationDays: 7,
+      }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(bans.issueTemporary).not.toHaveBeenCalled();
+  });
+
+  it("refuses to ban the owner", async () => {
+    Q.admin.exists.mockResolvedValue(false);
+    Q.player.find.mockResolvedValue({ ...PLAYER, discordId: OWNER_DISCORD_ID });
+
+    await expect(
+      caller.issuePermanent({ id: PLAYER.minecraftUuid, reason: "rogue" }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("lets the owner ban an admin", async () => {
+    await expect(
+      ownerCaller.issuePermanent({ id: PLAYER.minecraftUuid, reason: "rogue" }),
+    ).resolves.toEqual({ banId: 2 });
   });
 });
 

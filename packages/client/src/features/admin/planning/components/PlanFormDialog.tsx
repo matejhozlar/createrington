@@ -43,16 +43,16 @@ export function PlanFormDialog({
   const [draft, update] = useDialogDraft<{
     title: string;
     body: string;
-    category: PlanningCategory;
-    subcategoryId: number | null;
+    categories: PlanningCategory[];
+    subcategoryIds: number[];
     status: PlanningItemStatus;
     assigneeIds: string[];
     revision: number | undefined;
   }>(open, () => ({
     title: item?.title ?? "",
     body: item?.body ?? "",
-    category: item?.category ?? defaultCategory,
-    subcategoryId: item?.subcategoryId ?? null,
+    categories: item?.categories ?? [defaultCategory],
+    subcategoryIds: item?.subcategoryIds ?? [],
     status: item?.status ?? "draft",
     assigneeIds: [],
     revision: item?.revision,
@@ -60,8 +60,8 @@ export function PlanFormDialog({
   const {
     title,
     body,
-    category,
-    subcategoryId,
+    categories,
+    subcategoryIds,
     status,
     assigneeIds,
     revision,
@@ -107,13 +107,13 @@ export function PlanFormDialog({
         revision,
         title,
         body,
-        category,
-        subcategoryId,
+        categories,
+        subcategoryIds,
         status,
       });
       return;
     }
-    create.mutate({ title, body, category, subcategoryId, assigneeIds });
+    create.mutate({ title, body, categories, subcategoryIds, assigneeIds });
   };
 
   return (
@@ -169,15 +169,10 @@ export function PlanFormDialog({
 
       <CategoryFields
         idPrefix="plan"
-        category={category}
-        subcategoryId={subcategoryId}
+        categories={categories}
+        subcategoryIds={subcategoryIds}
         subcategories={subcategoriesQuery.data?.subcategories ?? []}
-        onChange={(next) => {
-          update({
-            category: next.category,
-            subcategoryId: next.subcategoryId,
-          });
-        }}
+        onChange={update}
       />
 
       <MarkdownField

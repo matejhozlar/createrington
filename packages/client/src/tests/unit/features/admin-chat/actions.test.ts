@@ -45,35 +45,46 @@ describe("coerceAction", () => {
     expect(coerceAction(null)).toBeNull();
   });
 
-  it("keeps a new plan with its title, category and body", () => {
+  it("keeps a new plan with its title, categories and body", () => {
     expect(
       coerceAction({
         type: "plan_create",
         title: "Rework the economy",
         body: "## Why\nMoney has no use.",
-        category: "modpack",
-        subcategoryId: 4,
+        categories: ["modpack", "website"],
+        subcategoryIds: [4, 9],
         label: "Economy plan",
       }),
     ).toEqual({
       type: "plan_create",
       title: "Rework the economy",
       body: "## Why\nMoney has no use.",
-      category: "modpack",
-      subcategoryId: 4,
+      categories: ["modpack", "website"],
+      subcategoryIds: [4, 9],
       label: "Economy plan",
     });
   });
 
-  it("rejects a new plan without a title or with an unknown category", () => {
+  it("rejects a new plan without a title, without a category or with an unknown one", () => {
     expect(
-      coerceAction({ type: "plan_create", category: "modpack" }),
+      coerceAction({ type: "plan_create", categories: ["modpack"] }),
     ).toBeNull();
     expect(
-      coerceAction({ type: "plan_create", title: "  ", category: "modpack" }),
+      coerceAction({
+        type: "plan_create",
+        title: "  ",
+        categories: ["modpack"],
+      }),
     ).toBeNull();
     expect(
-      coerceAction({ type: "plan_create", title: "Plan", category: "lore" }),
+      coerceAction({
+        type: "plan_create",
+        title: "Plan",
+        categories: ["modpack", "lore"],
+      }),
+    ).toBeNull();
+    expect(
+      coerceAction({ type: "plan_create", title: "Plan", categories: [] }),
     ).toBeNull();
     expect(coerceAction({ type: "plan_create", title: "Plan" })).toBeNull();
   });
@@ -83,8 +94,8 @@ describe("coerceAction", () => {
       coerceAction({ type: "plan_update", id: 12, status: "approved" }),
     ).toEqual({ type: "plan_update", id: 12, status: "approved" });
     expect(
-      coerceAction({ type: "plan_update", id: 12, subcategoryId: null }),
-    ).toEqual({ type: "plan_update", id: 12, subcategoryId: null });
+      coerceAction({ type: "plan_update", id: 12, subcategoryIds: [] }),
+    ).toEqual({ type: "plan_update", id: 12, subcategoryIds: [] });
   });
 
   it("rejects a plan edit that changes nothing or is malformed", () => {
@@ -100,7 +111,10 @@ describe("coerceAction", () => {
       coerceAction({ type: "plan_update", id: 12, status: "done" }),
     ).toBeNull();
     expect(
-      coerceAction({ type: "plan_update", id: 12, subcategoryId: 1.5 }),
+      coerceAction({ type: "plan_update", id: 12, subcategoryIds: [1.5] }),
+    ).toBeNull();
+    expect(
+      coerceAction({ type: "plan_update", id: 12, subcategoryIds: 4 }),
     ).toBeNull();
   });
 });

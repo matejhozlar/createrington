@@ -57,6 +57,4 @@ export const SORT_OPTIONS = [
 
 export type SortValue = (typeof SORT_OPTIONS)[number]["value"];
 
-export const NO_SUBCATEGORY = "none";
-
 export const PAGE_SIZE = 12;

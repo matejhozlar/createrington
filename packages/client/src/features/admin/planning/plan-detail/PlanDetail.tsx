@@ -35,7 +35,7 @@ import { PlanFormDialog } from "@/features/admin/planning/components/PlanFormDia
 import { PlanMarkdown } from "@/features/admin/planning/components/PlanMarkdown";
 import { SourceLink } from "@/features/admin/planning/components/SourceLink";
 import { STATUS_CONFIG } from "@/features/admin/planning/constants";
-import { personName, subcategoryName } from "@/features/admin/planning/format";
+import { personName, subcategoryNames } from "@/features/admin/planning/format";
 import { PlanComments } from "./components/PlanComments";
 import { PlanHistory } from "./components/PlanHistory";
 
@@ -131,8 +131,11 @@ export function PlanDetail() {
           <>
             <StatusBadge status={item.status} />
             <CategoryBadges
-              category={item.category}
-              subcategory={subcategoryName(subcategories, item.subcategoryId)}
+              categories={item.categories}
+              subcategories={subcategoryNames(
+                subcategories,
+                item.subcategoryIds,
+              )}
             />
           </>
         }

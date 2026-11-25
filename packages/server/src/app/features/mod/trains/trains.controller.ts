@@ -98,6 +98,7 @@ export class TrainsController {
     await Discord.Messages.send({
       channelId: Discord.Channels.railsNSails.NOTIFICATIONS,
       content: `||${roleMention(Discord.Roles.RAILSNSAILSNOTIFICATIONS)}||`,
+      allowedMentions: { roles: [Discord.Roles.RAILSNSAILSNOTIFICATIONS] },
       embeds: embed.build(),
     });
 

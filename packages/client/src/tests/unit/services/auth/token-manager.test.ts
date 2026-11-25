@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   getAccessToken,
+  refreshAccessToken,
   refreshDelayMs,
   retryAfterRefresh,
   SESSION_EXPIRED_EVENT,
@@ -110,14 +111,28 @@ describe("retryAfterRefresh", () => {
     expect(getAccessToken()).toBeNull();
   });
 
-  it("dispatches session-expired when the refresh request fails", async () => {
+  it.each([
+    [
+      "the network is down",
+      () => Promise.reject(new TypeError("network down")),
+    ],
+    [
+      "the refresh is rate limited",
+      () => Promise.resolve(responseFrom(REFRESH_URL, 429)),
+    ],
+    [
+      "the server is restarting",
+      () => Promise.resolve(responseFrom(REFRESH_URL, 502)),
+    ],
+  ])("keeps the session when %s", async (_label, refresh) => {
     const response = responseFrom("https://createrington.test/trpc/x", 401);
-    fetchMock.mockRejectedValueOnce(new TypeError("network down"));
+    fetchMock.mockImplementationOnce(refresh);
 
     await expect(retryAfterRefresh(response, retry)).resolves.toBe(response);
 
-    expect(sessionExpired).toHaveBeenCalledTimes(1);
+    expect(sessionExpired).not.toHaveBeenCalled();
     expect(retry).not.toHaveBeenCalled();
+    expect(getAccessToken()).toBe("stale-token");
   });
 
   it.each([
@@ -153,6 +168,63 @@ describe("retryAfterRefresh", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(retry).toHaveBeenCalledTimes(2);
     expect(retry).toHaveBeenCalledWith("fresh-token");
+  });
+});
+
+describe("refreshAccessToken", () => {
+  const fetchMock = vi.fn<typeof fetch>();
+
+  beforeEach(() => {
+    vi.stubGlobal("fetch", fetchMock);
+    setAccessToken("stale-token");
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.resetAllMocks();
+  });
+
+  it.each([
+    ["a rejected refresh token", 401],
+    ["an untrusted origin", 403],
+    ["a deleted player", 404],
+  ])(
+    "reports %s as unauthorized and drops the token",
+    async (_label, status) => {
+      fetchMock.mockResolvedValueOnce(responseFrom(REFRESH_URL, status));
+
+      await expect(refreshAccessToken()).resolves.toEqual({
+        status: "unauthorized",
+      });
+      expect(getAccessToken()).toBeNull();
+    },
+  );
+
+  it.each([
+    ["a network error", () => Promise.reject(new TypeError("network down"))],
+    ["a 408", () => Promise.resolve(responseFrom(REFRESH_URL, 408))],
+    ["a 429", () => Promise.resolve(responseFrom(REFRESH_URL, 429))],
+    ["a 503", () => Promise.resolve(responseFrom(REFRESH_URL, 503))],
+    [
+      "a malformed body",
+      () => Promise.resolve(responseFrom(REFRESH_URL, 200, { success: false })),
+    ],
+  ])("reports %s as transient and keeps the token", async (_label, refresh) => {
+    fetchMock.mockImplementationOnce(refresh);
+
+    await expect(refreshAccessToken()).resolves.toEqual({
+      status: "transient",
+    });
+    expect(getAccessToken()).toBe("stale-token");
+  });
+
+  it("stores the new token on success", async () => {
+    fetchMock.mockResolvedValueOnce(refreshSucceeds("fresh-token"));
+
+    const result = await refreshAccessToken();
+
+    expect(result.status).toBe("ok");
+    expect(getAccessToken()).toBe("fresh-token");
   });
 });
 

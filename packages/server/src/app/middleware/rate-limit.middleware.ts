@@ -4,6 +4,7 @@ import { createRateLimitStore } from "@/services/rate-limit";
 import { isLoopbackRequest } from "./server-ip.middleware";
 
 const AVATAR_PATH = /^\/api\/skin\/[^/]+\/avatar$/;
+const AUTH_REFRESH_PATH = "/refresh";
 
 function rateLimitHandler(req: Request, res: Response) {
   logger.warn(`[RateLimit] IP ${req.ip} exceeded rate limit on ${req.path}`);
@@ -53,7 +54,17 @@ export const authLimiter = rateLimit({
   standardHeaders: "draft-7",
   legacyHeaders: false,
   handler: rateLimitHandler,
+  skip: (req) => req.path === AUTH_REFRESH_PATH,
   store: createRateLimitStore("auth"),
+});
+
+export const authRefreshLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 300,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  handler: rateLimitHandler,
+  store: createRateLimitStore("auth-refresh"),
 });
 
 export const launcherAuthLimiter = rateLimit({

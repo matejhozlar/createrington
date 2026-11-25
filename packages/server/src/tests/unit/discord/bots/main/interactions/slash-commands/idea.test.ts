@@ -38,7 +38,10 @@ vi.mock("@/discord/utils/interaction-reply", () => ({
 
 vi.mock("@/discord/utils/channel-transcript", () => ({
   TRANSCRIPT_MAX_MESSAGES: 500,
-  fetchRecentMessages: vi.fn(async () => [{ id: "1" }]),
+  fetchRecentMessages: vi.fn(async () => ({
+    messages: [{ id: "1" }],
+    hasMore: false,
+  })),
   fetchMessagesSince: vi.fn(),
   parseMessageReference: vi.fn(),
   buildChannelTranscript: vi.fn(() => ({
@@ -67,8 +70,8 @@ const PROPOSED = {
     action: "create",
     title: "Rework the shops",
     body: "Shops should sell claim upgrades.",
-    category: "modpack",
-    subcategoryId: null,
+    categories: ["modpack"],
+    subcategoryIds: [],
   },
   reason: null,
 };
@@ -89,7 +92,11 @@ function fakeInteraction() {
       isTextBased: () => true,
       isDMBased: () => false,
     },
-    options: { getString: () => null, getInteger: () => null },
+    options: {
+      getString: () => null,
+      getInteger: () => null,
+      getUser: () => null,
+    },
     deferReply: vi.fn(async () => undefined),
     editReply,
     user: { id: "555", username: "matej", tag: "matej" },

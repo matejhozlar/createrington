@@ -7,31 +7,21 @@ export class DonationQueries extends DonationBaseQueries {
     super(db);
   }
 
-  /** The newest completed monthly donation with a Stripe subscription ID, or null. */
-  async findActiveSubscription(discordId: string): Promise<Donation | null> {
-    const [donation] = await this.findAll(
-      {
-        playerDiscordId: discordId,
-        type: "monthly",
-        status: "completed",
-        stripeSubscriptionId: { $exists: true },
-      },
-      { orderBy: "createdAt", orderDirection: "desc", limit: 1 },
-    );
-
-    return donation ?? null;
-  }
-
-  /** The newest completed monthly donation of every Stripe subscription. */
-  async getLatestPerSubscription(): Promise<Donation[]> {
+  /** The newest completed monthly donation of every Stripe subscription, newest first, optionally of one player only. */
+  async getLatestPerSubscription(discordId?: string): Promise<Donation[]> {
     const result = await this.runQuery<DonationRow>(
       "get latest donation per subscription",
-      `SELECT DISTINCT ON (stripe_subscription_id) *
-       FROM ${this.table}
-       WHERE type = 'monthly'
-         AND status = 'completed'
-         AND stripe_subscription_id IS NOT NULL
-       ORDER BY stripe_subscription_id, created_at DESC`,
+      `SELECT * FROM (
+         SELECT DISTINCT ON (stripe_subscription_id) *
+         FROM ${this.table}
+         WHERE type = 'monthly'
+           AND status = 'completed'
+           AND stripe_subscription_id IS NOT NULL
+           AND ($1::text IS NULL OR player_discord_id = $1)
+         ORDER BY stripe_subscription_id, created_at DESC
+       ) latest
+       ORDER BY created_at DESC`,
+      [discordId ?? null],
     );
     return this.mapRowsToEntities(result.rows);
   }

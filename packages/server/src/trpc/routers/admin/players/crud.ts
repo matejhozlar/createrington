@@ -2,6 +2,7 @@ import { z } from "zod";
 import { ADMIN_REASON_MAX_LENGTH } from "@createrington/shared/admin-reason";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { playerDeletionService } from "@/services/player/deletion";
+import { playerEditService } from "@/services/player/edit";
 import { Q, playerBanRepo, playerRepo, playerStrikeRepo } from "@/db";
 import { ilikeContains } from "@/db/utils";
 import { BalanceUtils } from "@/db/utils/balance";
@@ -17,6 +18,7 @@ import {
 import { discordId, mcUsername } from "@/utils/zod-schemas";
 import type { Player, PlayerFilters } from "@createrington/shared/db";
 import { violationFilterInput, violationRequirement } from "./violation-filter";
+import { requireOwnerForAdminTarget } from "./admin-target";
 
 export const playersRouter = router({
   stats: adminProcedure
@@ -169,7 +171,8 @@ export const playersRouter = router({
 
   update: adminProcedure
     .meta({
-      description: "Update a player's Minecraft username or Discord ID.",
+      description:
+        "Move a player to the Minecraft account a username resolves to (UUID, whitelist, in-game ban, nickname) or change their Discord ID.",
     })
     .input(
       z.object({
@@ -187,16 +190,24 @@ export const playersRouter = router({
         throw trpcError.badRequest("At least one field to update is required");
       }
 
-      const updates: { minecraftUsername?: string; discordId?: string } = {};
-      if (input.minecraftUsername)
-        updates.minecraftUsername = input.minecraftUsername;
-      if (input.discordId) updates.discordId = input.discordId;
+      if (input.discordId) {
+        await requireOwnerForAdminTarget(
+          input.id,
+          ctx.user.discordId,
+          "change the Discord ID of",
+        );
+      }
 
-      const updatedPlayer = await playerRepo.adminUpdate(
+      const updatedPlayer = await playerEditService.update(
         input.id,
-        updates,
-        ctx.user.discordId,
-        ctx.user.minecraftUsername,
+        {
+          minecraftUsername: input.minecraftUsername,
+          discordId: input.discordId,
+        },
+        {
+          discordId: ctx.user.discordId,
+          username: ctx.user.minecraftUsername,
+        },
         input.reason,
       );
 
@@ -217,6 +228,7 @@ export const playersRouter = router({
       }),
     )
     .mutation(async ({ input, ctx }) => {
+      await requireOwnerForAdminTarget(input.id, ctx.user.discordId, "delete");
       await playerDeletionService.delete(input.id, {
         actor: {
           type: "admin",

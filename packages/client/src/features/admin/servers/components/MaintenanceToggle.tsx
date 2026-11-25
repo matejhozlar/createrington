@@ -36,8 +36,14 @@ import { useCountdown } from "@/hooks/use-countdown";
 import { MaintenanceSettingsDialog } from "./MaintenanceSettingsDialog";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Field, FieldLabel } from "@/components/ui/field";
+import { MAINTENANCE_MAX_LEAD_MS } from "@createrington/shared/maintenance";
 
 const DEFAULT_ESTIMATED_MINUTES = 30;
+
+function toLocalInputValue(ms: number) {
+  const offsetMs = new Date(ms).getTimezoneOffset() * 60_000;
+  return new Date(ms - offsetMs).toISOString().slice(0, 16);
+}
 
 function parseEstimatedMinutes(value: string) {
   const minutes = parseInt(value, 10);
@@ -71,10 +77,12 @@ export function MaintenanceToggle({
   );
 
   const [minDatetime, setMinDatetime] = useState("");
+  const [maxDatetime, setMaxDatetime] = useState("");
 
   const handleScheduleDialogOpenChange = (open: boolean) => {
     if (open) {
-      setMinDatetime(new Date(Date.now() + 60000).toISOString().slice(0, 16));
+      setMinDatetime(toLocalInputValue(Date.now() + 60_000));
+      setMaxDatetime(toLocalInputValue(Date.now() + MAINTENANCE_MAX_LEAD_MS));
     }
     setDialogOpen(open);
   };
@@ -377,6 +385,7 @@ export function MaintenanceToggle({
                     value={scheduledAt}
                     onChange={(e) => setScheduledAt(e.target.value)}
                     min={minDatetime}
+                    max={maxDatetime}
                   />
                 </Field>
                 <Field>
