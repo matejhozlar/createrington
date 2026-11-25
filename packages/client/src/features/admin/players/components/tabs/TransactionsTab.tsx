@@ -11,6 +11,7 @@ import { PagedTable } from "@/components/paged-table";
 import { usePagedQuery } from "@/hooks/use-paged-query";
 import { ArrowLeftRight } from "lucide-react";
 import { TabSectionHeader } from "@/features/admin/players/components/TabSectionHeader";
+import { useOverlayMask } from "@/hooks/use-admin-overlay";
 
 interface TransactionsTabProps {
   playerId: string;
@@ -20,6 +21,7 @@ type Transaction =
   RouterOutput["admin"]["players"]["transactions"]["list"]["items"][number];
 
 export function TransactionsTab({ playerId }: TransactionsTabProps) {
+  const mask = useOverlayMask();
   const transactions = usePagedQuery({ id: playerId }, (input) =>
     trpc.admin.players.transactions.list.queryOptions(input),
   );
@@ -51,6 +53,7 @@ export function TransactionsTab({ playerId }: TransactionsTabProps) {
         const isPositive = tx.amount >= 0;
         return (
           <span
+            {...mask}
             className={cn(
               "font-mono text-sm font-medium tabular-nums",
               isPositive ? "text-emerald-400" : "text-destructive",
@@ -68,7 +71,7 @@ export function TransactionsTab({ playerId }: TransactionsTabProps) {
       width: 130,
       align: "right",
       cellClassName: "font-mono text-sm text-muted-foreground tabular-nums",
-      render: (tx) => formatMoney(tx.balanceBefore),
+      render: (tx) => <span {...mask}>{formatMoney(tx.balanceBefore)}</span>,
     },
     {
       key: "after",
@@ -76,7 +79,7 @@ export function TransactionsTab({ playerId }: TransactionsTabProps) {
       width: 130,
       align: "right",
       cellClassName: "font-mono text-sm text-muted-foreground tabular-nums",
-      render: (tx) => formatMoney(tx.balanceAfter),
+      render: (tx) => <span {...mask}>{formatMoney(tx.balanceAfter)}</span>,
     },
     {
       key: "description",

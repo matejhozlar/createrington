@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
+import { useOverlayMask } from "@/hooks/use-admin-overlay";
 
 const DECOY_ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789";
 
@@ -30,6 +31,7 @@ export function Sensitive({
   label?: string;
   className?: string;
 }) {
+  const mask = useOverlayMask();
   const [revealed, setRevealed] = useState(false);
   const trimmed = value?.trim() ?? "";
   const decoy = useMemo(
@@ -42,6 +44,7 @@ export function Sensitive({
   return (
     <button
       type="button"
+      {...mask}
       aria-pressed={revealed}
       aria-label={revealed ? `Hide ${label}` : `Reveal ${label}`}
       title={revealed ? "Click to hide" : "Click to reveal"}

@@ -270,6 +270,19 @@ const config = {
       ? { url: env.CONTENT_GATEWAY_URL, token: env.CONTENT_GATEWAY_TOKEN }
       : null,
 
+  tack:
+    env.TACK_URL && env.TACK_JWT_SECRET && !envMode.isDev
+      ? {
+          url: env.TACK_URL.replace(/\/+$/, ""),
+          loaderPath: "/widget/tack.js",
+          globalName: "Tack",
+          maskAttribute: "data-tack-ignore",
+          project: "createrington",
+          secret: env.TACK_JWT_SECRET,
+          tokenTtlSeconds: 15 * 60,
+        }
+      : null,
+
   curseforge: {
     defaultGameVersion: "1.21.1",
     modpackProjectId: env.CURSEFORGE_MODPACK_PROJECT_ID,

@@ -92,11 +92,13 @@ jobs:
         run: |
           VERSION="$(node -p 'require("./package.json").version')"
           echo "APP_VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "COMMIT_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
 
       - name: Build
         env:
           VITE_APP_VERSION: ${{ env.APP_VERSION }}
           VITE_BLUEMAP_URL: ${{ env.BLUEMAP_URL }}
+          VITE_COMMIT_SHA: ${{ env.COMMIT_SHA }}
         run: pnpm build
 
       - name: Deploy frontend
