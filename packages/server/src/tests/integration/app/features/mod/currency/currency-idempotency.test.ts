@@ -22,6 +22,7 @@ import {
 } from "@/tests/helpers/db";
 
 const ALICE = "11111111-1111-1111-1111-111111111111";
+const BOB = "22222222-2222-2222-2222-222222222222";
 const KEY = "0f6a7b1c-5d4e-4f3a-9b2c-1d0e9f8a7b6c";
 
 function rawBalance(minecraftUuid: string): Promise<bigint> {
@@ -347,6 +348,49 @@ describe("runIdempotent (integration)", () => {
     expect(again.replayed).toBe(false);
     expect(await rawBalance(ALICE)).toBe(80_000n);
     expect(await withdrawLedger()).toHaveLength(2);
+  });
+
+  it("applies a retried transfer once and stamps the key on both ledger rows", async () => {
+    await seedAlice(100);
+    await Q.player.create({
+      minecraftUuid: BOB,
+      minecraftUsername: "bob",
+      discordId: "101",
+    });
+    await balanceRepo.create(BOB, 0);
+    const operation = vi.fn<IdempotentOperation>(async (tx) => {
+      const result = await balanceRepo.transfer(ALICE, BOB, 10, undefined, {
+        idempotencyKey: KEY,
+        tx,
+      });
+      return {
+        message: "Transferred",
+        data: { new_sender_balance: result.senderBalance },
+      };
+    });
+    const params = {
+      playerUuid: ALICE,
+      key: KEY,
+      requestHash: hashRequest("pay", { toUuid: BOB, amount: 10 }),
+    };
+
+    const first = await runIdempotent(params, operation);
+    const retry = await runIdempotent(params, operation);
+
+    expect(operation).toHaveBeenCalledTimes(1);
+    expect(retry.replayed).toBe(true);
+    expect(retry.body).toEqual(first.body);
+    expect(await rawBalance(ALICE)).toBe(90_000n);
+    expect(await rawBalance(BOB)).toBe(10_000n);
+
+    const [sent] = (await balanceRepo.getHistory(ALICE)).filter(
+      (t) => t.transactionType === "transfer_send",
+    );
+    const [received] = (await balanceRepo.getHistory(BOB)).filter(
+      (t) => t.transactionType === "transfer_receive",
+    );
+    expect(sent.idempotencyKey).toBe(KEY);
+    expect(received.idempotencyKey).toBe(KEY);
   });
 
   it("deleteExpired removes only rows past retention", async () => {

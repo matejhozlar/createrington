@@ -58,7 +58,15 @@ describe("CurrencyController.pay", () => {
     expect(transferMock).not.toHaveBeenCalled();
   });
 
+  function runOperation() {
+    runIdempotentMock.mockImplementation(
+      async (_params: unknown, operation: (tx?: unknown) => Promise<unknown>) =>
+        operation(undefined),
+    );
+  }
+
   it("passes the recipient lower-cased to the transfer", async () => {
+    runOperation();
     transferMock.mockResolvedValue({ senderBalance: 5, recipientBalance: 5 });
 
     await CurrencyController.pay(
@@ -66,10 +74,43 @@ describe("CurrencyController.pay", () => {
       fakeRes(),
     );
 
-    expect(transferMock).toHaveBeenCalledWith(SENDER_UUID, RECIPIENT_UUID, 5);
+    expect(transferMock).toHaveBeenCalledWith(
+      SENDER_UUID,
+      RECIPIENT_UUID,
+      5,
+      undefined,
+      { idempotencyKey: undefined, tx: undefined },
+    );
+  });
+
+  it("runs the transfer under the sender's idempotency key and request hash", async () => {
+    runIdempotentMock.mockResolvedValue({});
+
+    await CurrencyController.pay(
+      makeReq({ toUuid: RECIPIENT_UUID, amount: 5, idempotencyKey: "pay-1" }),
+      fakeRes(),
+    );
+
+    const [params] = runIdempotentMock.mock.calls[0];
+    expect(params).toEqual({
+      playerUuid: SENDER_UUID,
+      key: "pay-1",
+      requestHash: hashRequest("pay", { toUuid: RECIPIENT_UUID, amount: 5 }),
+    });
+  });
+
+  it("rejects a malformed idempotency key before transferring", async () => {
+    await expect(
+      CurrencyController.pay(
+        makeReq({ toUuid: RECIPIENT_UUID, amount: 5, idempotencyKey: "a b" }),
+        fakeRes(),
+      ),
+    ).rejects.toBeInstanceOf(BadRequestError);
+    expect(runIdempotentMock).not.toHaveBeenCalled();
   });
 
   it("answers a recipient balance overflow with a 400 and a player message", async () => {
+    runOperation();
     transferMock.mockRejectedValue(new Error("Amount exceeds maximum balance"));
 
     const error = await CurrencyController.pay(

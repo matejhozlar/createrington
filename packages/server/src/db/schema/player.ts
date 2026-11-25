@@ -125,7 +125,7 @@ export const playerBalanceTransaction = pgTable(
 );
 
 // --- player_balance_idempotency ---
-// Dedup store for mod deposit/withdraw requests that carry an idempotency key.
+// Dedup store for mod pay/deposit/withdraw requests that carry an idempotency key.
 // A row is claimed at the start of the request transaction and filled with the
 // final status + envelope before commit, so a replay (same player, same key,
 // same request hash) returns the stored response without touching the balance.
