@@ -2,9 +2,11 @@ import { Q } from "@/db";
 import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
 import type { DiscordMessageService } from "@/services/discord/message/message.service";
+import { settings } from "@/services/settings";
 import { removeInactiveWarning } from "./remove-warning";
 import {
   INACTIVITY_CHECK_INTERVAL_MS,
+  INACTIVITY_DUE_CHECK_INTERVAL_MS,
   INACTIVITY_GRACE_DAYS,
   INACTIVITY_INACTIVE_DAYS,
   INACTIVITY_RETENTION_DAYS,
@@ -38,41 +40,77 @@ export type InactivityTriggerContext = {
  * Players listed in `player_inactivity_exemption` are skipped by the warning
  * and removal phases entirely.
  *
- * All state is persisted in the `player_inactivity_warning` table, making
- * the system fully restart/redeploy-safe.
+ * Warning and removal state is persisted in the `player_inactivity_warning`
+ * table, and the time of the last full cycle in the `inactivity_cycle_ran_at`
+ * app setting, so the weekly schedule survives restarts and redeploys: an
+ * hourly tick (and startup) runs the full cycle once a week has passed since
+ * the last one, and startup otherwise runs only resolve+remove.
  */
 export class InactivityCleanupService {
   private intervalId?: NodeJS.Timeout;
+  private scheduledRunInFlight = false;
 
-  /**
-   * Kick off a resolve+remove sweep, then arm the weekly cycle. Startup
-   * skips the warn phase so frequent deploys don't double-announce.
-   */
+  /** Run the full cycle if one is due (resolve+remove otherwise), then arm the hourly due check. */
   initialize(): void {
     logger.info("Initializing InactivityCleanupService...");
 
-    this.resolveAndRemoveOnly().catch((error) => {
-      logger.error("Initial inactivity resolve/remove failed:", error);
+    this.runStartup().catch((error) => {
+      logger.error("Initial inactivity cleanup run failed:", error);
     });
 
     this.intervalId = setInterval(() => {
-      this.runCycle().catch((error) => {
+      this.runIfDue().catch((error) => {
         logger.error("Scheduled inactivity cleanup cycle failed:", error);
       });
-    }, INACTIVITY_CHECK_INTERVAL_MS);
+    }, INACTIVITY_DUE_CHECK_INTERVAL_MS);
 
     logger.info(
-      `InactivityCleanupService initialized (check every ${INACTIVITY_CHECK_INTERVAL_MS / 86400000}d, inactive threshold: ${INACTIVITY_INACTIVE_DAYS}d, grace period: ${INACTIVITY_GRACE_DAYS}d, retention: ${INACTIVITY_RETENTION_DAYS}d)`,
+      `InactivityCleanupService initialized (full cycle every ${INACTIVITY_CHECK_INTERVAL_MS / 86400000}d, inactive threshold: ${INACTIVITY_INACTIVE_DAYS}d, grace period: ${INACTIVITY_GRACE_DAYS}d, retention: ${INACTIVITY_RETENTION_DAYS}d)`,
     );
   }
 
-  /** Stop the weekly cycle. Safe to call multiple times. */
+  /** Stop the hourly due check. Safe to call multiple times. */
   shutdown(): void {
     if (this.intervalId) {
       clearInterval(this.intervalId);
       this.intervalId = undefined;
       logger.info("InactivityCleanupService stopped");
     }
+  }
+
+  private async runStartup(): Promise<void> {
+    const ran = await this.runIfDue();
+    if (!ran) {
+      await this.resolveAndRemoveOnly();
+    }
+  }
+
+  private async runIfDue(): Promise<boolean> {
+    if (this.scheduledRunInFlight) return false;
+    this.scheduledRunInFlight = true;
+
+    try {
+      const ranAt = await settings.getInactivityCycleRanAt();
+      if (
+        ranAt &&
+        Date.now() - ranAt.getTime() < INACTIVITY_CHECK_INTERVAL_MS
+      ) {
+        return false;
+      }
+
+      logger.info("Weekly inactivity cleanup cycle is due, running it");
+      await this.runRecordedCycle();
+      return true;
+    } finally {
+      this.scheduledRunInFlight = false;
+    }
+  }
+
+  private async runRecordedCycle(
+    triggeredBy: InactivityTriggerContext = null,
+  ): Promise<void> {
+    await this.runCycle(triggeredBy);
+    await settings.setInactivityCycleRanAt(new Date());
   }
 
   private async runCycle(
@@ -291,11 +329,7 @@ export class InactivityCleanupService {
     await this.resolveAndRemoveOnly(triggeredBy);
   }
 
-  /**
-   * Force-run the full cleanup cycle now and reset the recurring schedule:
-   * the next automatic run is CHECK_INTERVAL after this call's completion,
-   * not from the previously-scheduled tick.
-   */
+  /** Force-run the full cleanup cycle now and reset the schedule: the next automatic full cycle is due a week after this one finishes. */
   async forceRunAndResetSchedule(
     triggeredBy: InactivityTriggerContext = null,
   ): Promise<void> {
@@ -303,23 +337,10 @@ export class InactivityCleanupService {
       "Forced inactivity cleanup triggered, resetting recurring schedule",
     );
 
-    if (this.intervalId) {
-      clearInterval(this.intervalId);
-      this.intervalId = undefined;
-    }
+    await this.runRecordedCycle(triggeredBy);
 
-    try {
-      await this.runCycle(triggeredBy);
-    } finally {
-      this.intervalId = setInterval(() => {
-        this.runCycle().catch((error) => {
-          logger.error("Scheduled inactivity cleanup cycle failed:", error);
-        });
-      }, INACTIVITY_CHECK_INTERVAL_MS);
-
-      logger.info(
-        `Inactivity cleanup schedule reset, next run in ${INACTIVITY_CHECK_INTERVAL_MS / 86400000}d`,
-      );
-    }
+    logger.info(
+      `Inactivity cleanup schedule reset, next full cycle in ${INACTIVITY_CHECK_INTERVAL_MS / 86400000}d`,
+    );
   }
 }
