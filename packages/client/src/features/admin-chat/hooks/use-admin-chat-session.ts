@@ -135,11 +135,16 @@ export function useAdminChatSession({
 
   const sessionQuery = useQuery(
     trpc.admin.chat.sessions.current.queryOptions(undefined, {
-      enabled: open && isAdmin,
+      enabled: isAdmin,
       staleTime: 0,
     }),
   );
   const sessionId = sessionQuery.data?.id ?? null;
+  const { refetch: refetchSession } = sessionQuery;
+
+  useEffect(() => {
+    if (open && isAdmin) void refetchSession();
+  }, [open, isAdmin, refetchSession]);
 
   const transcriptOptions = trpc.admin.chat.messages.list.queryOptions(
     sessionId !== null ? { sessionId } : skipToken,
