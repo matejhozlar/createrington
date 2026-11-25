@@ -1,3 +1,36 @@
+## v1.82.0 (2026-11-25)
+
+### @createrington/server (1.81.0 → 1.82.0)
+- [add] Add multiple categories and subcategories per plan: four join tables (`planning_item_category`, `planning_item_subcategory`, `planning_item_revision_category`, `planning_item_revision_subcategory`) replace the single `category` and `subcategory_id` columns, migration `0102` copies every plan's and revision's existing values across, saves require at least one category and refuse a subcategory outside the plan's categories (one left over from a removed category is dropped), category filters match any plan that includes the value, restoring a revision brings its filings back, and the `/idea` board and admin chat plan actions now carry `categories` and `subcategoryIds` lists
+- [add] Add `first_message`, `last_message` and `user` options to `/idea` and `/issue`, so a transcript can be a linked range (both ends inclusive, up to 500 messages), N messages ending at a link, or one author's messages; `from` is renamed to `first_message`, and invalid combinations are rejected before the reply is deferred
+- [security] Stop `/sso/authorize` from re-signing the caller's access token with a fresh expiry, which let a script chain authorize calls to keep access past bans, logout-all and account deletion; it now sets the cookie to the token that was presented
+- [security] Leave edits of a Discord ID, deletes and bans (permanent and temporary) of an admin or the owner to the owner; a username-only edit of an admin is still allowed
+- [fix] Fix a player edit that changes the Minecraft username keeping the old UUID: the name is resolved through the skin API and the player moves to that account (canonical name stored), whitelisting the new name first, rolling it back on failure, moving UUID columns without a foreign key, re-issuing an active temporary ban on the new name and renaming the Discord nickname; unresolved names, lookup failures and clashes with another player are refused with the field that clashes
+- [fix] Fix re-linking a player to a new Discord ID carrying the old account's sessions over: the old account's web refresh sessions and the player's launcher sessions are revoked, and Discord-keyed rows (tickets, donations, waitlist, workshop submissions, upvotes, poll ballots and bans, structure pack boosts, prompt answers) move to the new id in the same transaction
+- [fix] Fix deleted players' monthly donations continuing to bill: every deletion path now cancels all live Stripe subscriptions immediately and alerts the admins about any it cannot cancel or look up
+- [fix] Fix a second monthly donation creating a subscription the site could neither show nor cancel: a monthly checkout is refused while any subscription is live, and the active subscription, cancel and reactivate now resolve across all of a supporter's stored subscriptions (`incomplete_expired` counts as ended, also in MRR stats)
+- [fix] Fix scheduled structure-pack rotations ignoring paid boosts: a boost stays open until the next successful draw counts and deletes it, boosts a draw cannot count are refunded, and clearing the rotation keeps them; migration `0101` drops `structure_pack_boost.cycle_start` and deletes, without refund, the boosts stranded before the last successful rotation
+- [fix] Fix maintenance and monthly rotations scheduled more than 24.8 days ahead firing immediately (Node's `setTimeout` limit) with a shared `setLongTimeout` helper, and cap scheduled maintenance at 90 days ahead
+- [fix] Fix a vote reward being paid twice when its RCON command timed out: a command that may have reached the server keeps the vote claimed and records an `unconfirmed, check manually` reward error instead of retrying it
+- [fix] Fix the app shutting down when a Postgres connection drops: pool and in-transaction client errors are logged, a failing `ROLLBACK` no longer masks the original error, and the broken connection is discarded
+- [fix] Fix the app crashing with an uncaught `ECONNRESET` when the Minecraft server resets an RCON connection; dead or timed-out connections are dropped so the next command opens a fresh one
+- [fix] Fix a failed or overlapping registration leaving a whitelisted account with no player: registrations run one at a time per member, an already registered Discord account is refused up front, the whitelist entry is rolled back on failure, and releasing a reservation no longer expires a registered waitlist entry
+- [fix] Fix departed-member cleanup deleting players who are back: the sweep and the "delete now" button re-check that the member is still gone and the Minecraft account is not linked to another Discord account, a rejoin cancels every pending departure row, and a row whose player is already deleted is cleared
+- [fix] Fix failed token refreshes counting against the login rate limit; `/api/auth/refresh` now has its own limit of 300 per 15 minutes per IP
+- [fix] Fix the Admin role mentions on "Member left" and failed registration notices and the train-crash role mention rendering without pinging
+- [fix] Fix auto-message timers of a deleted config running and logging an error every interval
+
+### @createrington/client (0.2.100 → 0.2.101)
+- [add] Add multiple categories and subcategories to the admin Planning page: the plan form has a checkbox per category with subcategories grouped under the ticked ones, cards and the plan page show a badge for each, and history lines name what was added or removed
+- [fix] Fix failed token refreshes logging users out: network errors, 408, 429 and 5xx keep the session and retry with backoff (and on reconnect or tab focus), only a rejected refresh signs out, and a rejected refresh no longer revokes the server session through an extra logout call
+- [fix] Fix the donate page allowing a second monthly subscription; the Monthly tab is disabled while a subscription is shown
+- [fix] Fix the maintenance date picker building its minimum time in UTC instead of local time, and limit it to 90 days ahead
+- [fix] Fix the player page pointing at the old UUID after a username edit moves the player to another account; it now navigates to the new UUID, and the edit dialog explains that the UUID and whitelist follow the account
+- [refactor] Rotate the shared select chevron while the dropdown is open
+
+### @createrington/shared (1.19.0 → 1.19.1)
+- [add] Add `MAINTENANCE_MAX_LEAD_DAYS` and `MAINTENANCE_MAX_LEAD_MS` to `@createrington/shared/maintenance` for the 90-day maintenance scheduling cap
+
 ## v1.81.0 (2026-11-23)
 
 ### @createrington/server (1.80.1 → 1.81.0)
