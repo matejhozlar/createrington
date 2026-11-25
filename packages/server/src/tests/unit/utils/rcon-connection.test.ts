@@ -98,6 +98,33 @@ describe("ServerRconConnection", () => {
     expect(connections).toHaveLength(2);
   });
 
+  it("marks a command the server never answered as possibly run", async () => {
+    onCommand = () => {};
+
+    await expect(rcon.send("give Steve diamond 1")).rejects.toMatchObject({
+      mayHaveRun: true,
+    });
+  });
+
+  it("marks a command that could not be sent as not run", async () => {
+    const { port } = server.address() as AddressInfo;
+    await new Promise((resolve) => server.close(resolve));
+    server = createServer();
+    await new Promise<void>((resolve) =>
+      server.listen(0, "127.0.0.1", resolve),
+    );
+    const unreachable = new ServerRconConnection(
+      1,
+      "Test Server",
+      { host: "127.0.0.1", port, password: PASSWORD },
+      TIMEOUT_MS,
+    );
+
+    await expect(
+      unreachable.send("give Steve diamond 1"),
+    ).rejects.toMatchObject({ mayHaveRun: false });
+  });
+
   it("survives a reset on an idle connection and reconnects for the next command", async () => {
     await expect(rcon.send("list")).resolves.toBe("ok");
     expect(rcon.isConnected()).toBe(true);

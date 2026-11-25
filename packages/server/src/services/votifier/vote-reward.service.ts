@@ -8,6 +8,7 @@ import {
   stripFormatting,
   type RconSend,
 } from "@/utils/rcon";
+import { RconCommandError, ServerNotFoundError } from "@/utils/rcon/errors";
 
 export interface VoteRewardServiceOptions {
   rewardServerIds?: readonly number[];
@@ -18,6 +19,19 @@ export interface VoteRewardServiceOptions {
 const DEFAULT_SWEEP_INTERVAL_MS = 5 * 60 * 1000;
 const COMMAND_FAILED =
   /no player was found|no entity was found|no targets|player does not exist|unknown item|cannot give/i;
+
+interface CommandFailure {
+  message: string;
+  mayHaveRun: boolean;
+}
+
+function rootReason(error: unknown): string {
+  let reason = error;
+  while (reason instanceof RconCommandError && reason.cause !== undefined) {
+    reason = reason.cause;
+  }
+  return reason instanceof Error ? reason.message : String(reason);
+}
 
 function fill(
   template: string,
@@ -43,11 +57,15 @@ function fill(
  * the `perVote` list runs once per vote and the `afterPayout` list once per
  * batch, with `{player}` (and `{count}` after the payout) filled in. The
  * first per-vote command is the commit point: the vote is claimed
- * (`rewarded_at` set) before it runs and the claim is reverted when it
- * fails, so the service fails toward a vote that is stamped but unpaid,
- * which is visible in `reward_error` and the log, never toward a repeated
- * reward. A later per-vote command that fails is noted in `reward_error`
- * and not retried. Payouts for one player never run concurrently.
+ * (`rewarded_at` set) before it runs. The claim is reverted only when the
+ * command certainly did not run (an error reply, an unknown command, or a
+ * connection that failed before the command was sent). A timeout or a
+ * connection closed after sending keeps the claim, notes it in
+ * `reward_error` for manual review and stops the batch, so the service
+ * fails toward a vote that is stamped but possibly unpaid, never toward a
+ * repeated reward. A later per-vote command that fails is noted in
+ * `reward_error` and not retried. Payouts for one player never run
+ * concurrently.
  */
 export class VoteRewardService {
   private sweepTimer: NodeJS.Timeout | null = null;
@@ -153,8 +171,12 @@ export class VoteRewardService {
       );
 
       const commitFailure = await this.run(serverId, commit);
+      if (commitFailure?.mayHaveRun) {
+        await this.keepUnconfirmedClaim(vote.id, player, commitFailure.message);
+        break;
+      }
       if (commitFailure) {
-        await this.revertClaim(vote.id, player, commitFailure);
+        await this.revertClaim(vote.id, player, commitFailure.message);
         break;
       }
       paid++;
@@ -162,9 +184,12 @@ export class VoteRewardService {
       for (const command of rest) {
         const failure = await this.run(serverId, command);
         if (failure) {
-          await Q.player.vote.update({ id: vote.id }, { rewardError: failure });
+          await Q.player.vote.update(
+            { id: vote.id },
+            { rewardError: failure.message },
+          );
           logger.warn(
-            `Vote #${vote.id} for ${player} was paid without all its rewards: ${failure}`,
+            `Vote #${vote.id} for ${player} was paid without all its rewards: ${failure.message}`,
           );
           break votes;
         }
@@ -204,15 +229,39 @@ export class VoteRewardService {
     }
   }
 
-  private async run(serverId: number, command: string): Promise<string | null> {
+  private async keepUnconfirmedClaim(
+    voteId: number,
+    username: string,
+    failure: string,
+  ): Promise<void> {
+    const rewardError = `unconfirmed, check manually: ${failure}`;
+    try {
+      await Q.player.vote.update({ id: voteId }, { rewardError });
+    } finally {
+      logger.error(
+        `Vote #${voteId} for ${username} is stamped as paid but the server did not confirm its first reward (${failure}); check in game whether it was given`,
+      );
+    }
+  }
+
+  private async run(
+    serverId: number,
+    command: string,
+  ): Promise<CommandFailure | null> {
     let response: string;
     try {
       response = stripFormatting(await this.send(serverId, command));
     } catch (error) {
-      return `${command}: ${error instanceof Error ? error.message : error}`;
+      return {
+        message: `${command}: ${rootReason(error)}`,
+        mayHaveRun: !(
+          error instanceof ServerNotFoundError ||
+          (error instanceof RconCommandError && !error.mayHaveRun)
+        ),
+      };
     }
     if (isUnknownCommand(response) || COMMAND_FAILED.test(response)) {
-      return `${command}: ${response}`;
+      return { message: `${command}: ${response}`, mayHaveRun: false };
     }
     return null;
   }
