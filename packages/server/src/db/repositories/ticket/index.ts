@@ -165,14 +165,4 @@ export class TicketRepository {
       },
     );
   }
-
-  /** True if the user has at least one OPEN ticket. */
-  async hasOpen(discordId: string): Promise<boolean> {
-    const count = await Q.ticket.count({
-      creatorDiscordId: discordId,
-      status: "open",
-    });
-
-    return count > 0;
-  }
 }

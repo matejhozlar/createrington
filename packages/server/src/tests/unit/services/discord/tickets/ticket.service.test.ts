@@ -7,6 +7,7 @@ import {
 } from "discord.js";
 
 const ticketGet = vi.hoisted(() => vi.fn());
+const ticketFindAll = vi.hoisted(() => vi.fn());
 const repository = vi.hoisted(() => ({
   close: vi.fn(),
   updateMetadata: vi.fn(),
@@ -35,7 +36,7 @@ vi.mock("@/config", () => ({
 }));
 
 vi.mock("@/db", () => ({
-  Q: { ticket: { get: ticketGet } },
+  Q: { ticket: { get: ticketGet, findAll: ticketFindAll } },
   ticketRepo: repository,
 }));
 
@@ -52,6 +53,7 @@ vi.mock("@/discord/embeds", () => ({
 }));
 
 import { TicketService } from "@/services/discord/tickets/ticket.service";
+import { TicketType } from "@/services/discord/tickets/types";
 
 interface FakeOverwrite {
   id: string;
@@ -94,6 +96,56 @@ function fakeBot(options: {
   } as unknown as Client;
   return { client, cache, permissionOverwrites };
 }
+
+describe("TicketService.openTicket", () => {
+  function serviceCreatingInto(open: Array<{ creatorDiscordId: string }>) {
+    const service = new TicketService(fakeBot({}).client);
+    ticketFindAll.mockImplementation(
+      async ({ creatorDiscordId }: { creatorDiscordId: string }) =>
+        open.filter((ticket) => ticket.creatorDiscordId === creatorDiscordId),
+    );
+    const createTicket = vi
+      .spyOn(
+        service as unknown as {
+          createTicket: (options: { creatorId: string }) => Promise<unknown>;
+        },
+        "createTicket",
+      )
+      .mockImplementation(async ({ creatorId }) => {
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        const ticket = { creatorDiscordId: creatorId, channelId: "channel-1" };
+        open.push(ticket);
+        return { ticket, channel: { id: "channel-1" } };
+      });
+    return { service, createTicket };
+  }
+
+  it("opens one ticket when the same member asks twice at once", async () => {
+    const { service, createTicket } = serviceCreatingInto([]);
+    const request = { type: TicketType.GENERAL, creatorId: "user-1" };
+
+    const results = await Promise.all([
+      service.openTicket(request),
+      service.openTicket(request),
+    ]);
+
+    expect(createTicket).toHaveBeenCalledTimes(1);
+    expect(results.map((result) => result.created)).toEqual([true, false]);
+    expect(results[1].ticket.channelId).toBe("channel-1");
+  });
+
+  it("opens a ticket each for two members asking at once", async () => {
+    const { service, createTicket } = serviceCreatingInto([]);
+
+    const results = await Promise.all([
+      service.openTicket({ type: TicketType.GENERAL, creatorId: "user-1" }),
+      service.openTicket({ type: TicketType.GENERAL, creatorId: "user-2" }),
+    ]);
+
+    expect(createTicket).toHaveBeenCalledTimes(2);
+    expect(results.map((result) => result.created)).toEqual([true, true]);
+  });
+});
 
 describe("TicketService.removeParticipant", () => {
   it("deletes the user's permission overwrite on the ticket channel", async () => {
