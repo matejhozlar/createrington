@@ -109,13 +109,15 @@ export class PlayerRepository extends BasePlayerRepository {
    * Update player fields and write one admin_log_action entry per changed
    * field, all inside a single transaction. A Discord ID change also revokes
    * the old account's web sessions and moves its Discord-keyed rows in that
-   * transaction, then revokes the player's launcher sessions. Resolves to the
-   * post-update row.
+   * transaction, then revokes the player's launcher sessions. A Minecraft UUID
+   * change moves the UUID-keyed rows without a foreign key and links votes
+   * cast under the new username. Resolves to the post-update row.
    */
   async adminUpdate(
     identifier: PlayerIdentifier,
     updates: {
       minecraftUsername?: string;
+      minecraftUuid?: string;
       discordId?: string;
     },
     adminDiscordId: string,
@@ -128,6 +130,7 @@ export class PlayerRepository extends BasePlayerRepository {
       updates.discordId && updates.discordId !== oldPlayer.discordId
         ? updates.discordId
         : null;
+    const newUuid = updates.minecraftUuid ?? uuid;
 
     const updated = await db.inTransaction(async (tx) => {
       if (relinkedTo) {
@@ -143,6 +146,14 @@ export class PlayerRepository extends BasePlayerRepository {
         await tx.player.reassignDiscordId(oldPlayer.discordId, relinkedTo);
       }
 
+      if (newUuid !== uuid) {
+        await tx.player.reassignMinecraftUuid(uuid, newUuid);
+      }
+
+      if (updates.minecraftUsername) {
+        await tx.player.vote.linkUsername(updates.minecraftUsername, newUuid);
+      }
+
       for (const [field, newValue] of Object.entries(updates)) {
         const oldValue = oldPlayer[field as keyof Player] as string;
 
@@ -151,7 +162,7 @@ export class PlayerRepository extends BasePlayerRepository {
             adminDiscordId,
             adminUsername,
             actionType: "update_player",
-            targetPlayerUuid: uuid,
+            targetPlayerUuid: newUuid,
             targetPlayerName: oldPlayer.minecraftUsername,
             tableName: DatabaseTable.PLAYER.TABLE,
             fieldName: field,
@@ -162,12 +173,12 @@ export class PlayerRepository extends BasePlayerRepository {
         }
       }
 
-      return await tx.player.get({ minecraftUuid: uuid });
+      return await tx.player.get({ minecraftUuid: newUuid });
     });
 
     if (relinkedTo) {
       try {
-        await launcherSessionService.revokeAllForPlayer(uuid);
+        await launcherSessionService.revokeAllForPlayer(newUuid);
       } catch (error) {
         logger.error(
           `Failed to revoke launcher sessions of re-linked player ${oldPlayer.minecraftUsername}:`,
