@@ -9,13 +9,13 @@ import type { Granularity } from "@/db/utils";
 import { ACTIVE_BAN_WHERE } from "./ban/sql";
 import { DatabaseTable as T } from "@/generated/db/constants";
 
-interface DiscordIdReference {
+interface ColumnReference {
   table: string;
   column: string;
   uniqueWith?: string[];
 }
 
-const DISCORD_ID_REFERENCES: DiscordIdReference[] = [
+const DISCORD_ID_REFERENCES: ColumnReference[] = [
   { table: T.TICKET.TABLE, column: T.TICKET.FIELDS.CREATOR_DISCORD_ID },
   { table: T.DONATION.TABLE, column: T.DONATION.FIELDS.PLAYER_DISCORD_ID },
   {
@@ -52,11 +52,31 @@ const DISCORD_ID_REFERENCES: DiscordIdReference[] = [
   },
 ];
 
-function reassignDiscordIdSql({
-  table,
-  column,
-  uniqueWith,
-}: DiscordIdReference): string {
+const MINECRAFT_UUID_REFERENCES: ColumnReference[] = [
+  {
+    table: T.ADMIN_LOG_ACTION.TABLE,
+    column: T.ADMIN_LOG_ACTION.FIELDS.TARGET_PLAYER_UUID,
+  },
+  {
+    table: T.DISCORD_GUILD_MEMBER_LEAVE.TABLE,
+    column: T.DISCORD_GUILD_MEMBER_LEAVE.FIELDS.MINECRAFT_UUID,
+  },
+  {
+    table: T.DISCORD_TOP_ROLE.TABLE,
+    column: T.DISCORD_TOP_ROLE.FIELDS.MINECRAFT_UUID,
+  },
+  {
+    table: T.DISCORD_TOP_ROLE_REIGN.TABLE,
+    column: T.DISCORD_TOP_ROLE_REIGN.FIELDS.MINECRAFT_UUID,
+  },
+  {
+    table: T.SERVER_MAINTENANCE_ALLOWED_PLAYER.TABLE,
+    column: T.SERVER_MAINTENANCE_ALLOWED_PLAYER.FIELDS.PLAYER_UUID,
+    uniqueWith: [T.SERVER_MAINTENANCE_ALLOWED_PLAYER.FIELDS.SERVER_ID],
+  },
+];
+
+function reassignSql({ table, column, uniqueWith }: ColumnReference): string {
   const sql = `UPDATE ${table} AS moved SET ${column} = $2 WHERE moved.${column} = $1`;
   if (!uniqueWith) return sql;
   const sameKey = uniqueWith
@@ -165,10 +185,30 @@ export class PlayerQueries extends PlayerBaseQueries {
    * under the old one. Run it in the transaction that changes player.discord_id.
    */
   async reassignDiscordId(from: string, to: string): Promise<void> {
-    for (const reference of DISCORD_ID_REFERENCES) {
+    await this.reassign(DISCORD_ID_REFERENCES, from, to);
+  }
+
+  /**
+   * Moves the rows that refer to a player by Minecraft UUID without a foreign
+   * key (admin log targets, departure records, top-role holders and reigns,
+   * maintenance allow lists) from one UUID to another, with the same
+   * unique-key rule as reassignDiscordId. Tables with a foreign key follow
+   * player.minecraft_uuid on their own. Run it in the transaction that
+   * changes the UUID.
+   */
+  async reassignMinecraftUuid(from: string, to: string): Promise<void> {
+    await this.reassign(MINECRAFT_UUID_REFERENCES, from, to);
+  }
+
+  private async reassign(
+    references: ColumnReference[],
+    from: string,
+    to: string,
+  ): Promise<void> {
+    for (const reference of references) {
       await this.runQuery(
         `reassign ${reference.table}.${reference.column}`,
-        reassignDiscordIdSql(reference),
+        reassignSql(reference),
         [from, to],
       );
     }

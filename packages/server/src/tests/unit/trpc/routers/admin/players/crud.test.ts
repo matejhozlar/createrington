@@ -4,12 +4,12 @@ const { OWNER_DISCORD_ID } = vi.hoisted(() => ({
   OWNER_DISCORD_ID: "100000000000000777",
 }));
 
-const { Q, playerRepo, deletePlayer } = vi.hoisted(() => ({
+const { Q, editPlayer, deletePlayer } = vi.hoisted(() => ({
   Q: {
     player: { find: vi.fn() },
     admin: { exists: vi.fn() },
   },
-  playerRepo: { adminUpdate: vi.fn() },
+  editPlayer: vi.fn(),
   deletePlayer: vi.fn(),
 }));
 
@@ -30,9 +30,12 @@ vi.mock("@/config", async (importOriginal) => {
 });
 vi.mock("@/db", () => ({
   Q,
-  playerRepo,
+  playerRepo: {},
   playerBanRepo: {},
   playerStrikeRepo: {},
+}));
+vi.mock("@/services/player/edit", () => ({
+  playerEditService: { update: editPlayer },
 }));
 vi.mock("@/services/player/deletion", () => ({
   playerDeletionService: { delete: deletePlayer },
@@ -76,7 +79,7 @@ function givenTarget(options: { admin?: boolean; owner?: boolean } = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  playerRepo.adminUpdate.mockResolvedValue(TARGET);
+  editPlayer.mockResolvedValue(TARGET);
   deletePlayer.mockResolvedValue(TARGET);
   givenTarget();
 });
@@ -94,7 +97,7 @@ describe("admin.players.players.update", () => {
     const error = await rejection(adminCaller.update(relink));
 
     expect(error.code).toBe("FORBIDDEN");
-    expect(playerRepo.adminUpdate).not.toHaveBeenCalled();
+    expect(editPlayer).not.toHaveBeenCalled();
   });
 
   it("refuses to move the owner's player to another Discord account", async () => {
@@ -110,7 +113,7 @@ describe("admin.players.players.update", () => {
 
     await ownerCaller.update(relink);
 
-    expect(playerRepo.adminUpdate).toHaveBeenCalledOnce();
+    expect(editPlayer).toHaveBeenCalledOnce();
   });
 
   it("lets an admin rename another admin's player", async () => {
@@ -122,13 +125,13 @@ describe("admin.players.players.update", () => {
       reason: "name change",
     });
 
-    expect(playerRepo.adminUpdate).toHaveBeenCalledOnce();
+    expect(editPlayer).toHaveBeenCalledOnce();
   });
 
   it("lets an admin move a regular player", async () => {
     await adminCaller.update(relink);
 
-    expect(playerRepo.adminUpdate).toHaveBeenCalledOnce();
+    expect(editPlayer).toHaveBeenCalledOnce();
   });
 });
 

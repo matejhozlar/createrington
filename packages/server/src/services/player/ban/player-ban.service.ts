@@ -27,7 +27,10 @@ export interface BanDetails {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-function inGameBanReason(reason: string, expiresAt: Date | null): string {
+export function inGameBanReason(
+  reason: string,
+  expiresAt: Date | null,
+): string {
   const suffix = expiresAt
     ? `(Expires: ${expiresAt.toISOString()})`
     : "(PERMANENT)";
