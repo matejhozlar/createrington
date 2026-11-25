@@ -2,7 +2,8 @@ import { db, Q } from "@/db/pool";
 import { NIL_UUID } from "@/utils/player-identifier";
 import { calendarDay } from "@/db/utils";
 import { UniqueViolationError } from "@/db/utils/errors";
-import type { DatabaseQueries } from "@/generated/db";
+import { SYSTEM_AUDIT_ACTOR } from "@/db/queries/admin/log/action";
+import { DatabaseTable, type DatabaseQueries } from "@/generated/db";
 import type { ServerActivity } from "@/db/queries/player/playtime/daily";
 import type {
   LeaderboardEntry,
@@ -28,6 +29,7 @@ function clampSessionEnd(sessionStart: Date, candidate: Date): Date {
 export interface StartedSession {
   sessionId: number;
   discordId: string;
+  renamedFrom: string | null;
 }
 
 export interface StatsReconcileEntry {
@@ -58,8 +60,11 @@ export class PlaytimeRepository {
   /**
    * Persist a session start. Closes any orphaned active sessions for the same
    * (player, server) pair first, retries once on the unique-index race, then
-   * flips the player online. Returns the new row id with the player's Discord
-   * id, or null when the player is unregistered or the username mismatches.
+   * flips the player online. The UUID is authoritative: a player who joins
+   * under a new Minecraft name has the stored name updated (audited, votes
+   * under the new name linked) before the session opens. Returns the new row
+   * id with the player's Discord id and the name they had before a rename,
+   * or null when the player is unregistered.
    */
   async startSession(event: SessionStartEvent): Promise<StartedSession | null> {
     const player = await Q.player.find({
@@ -72,14 +77,16 @@ export class PlaytimeRepository {
       );
       return null;
     }
-    if (player.minecraftUsername !== event.username) {
-      logger.debug(
-        `Username for user ${event.username} does not check out with database entry` +
-          `Database: ${player.minecraftUsername} (${player.minecraftUuid})` +
-          `Event: ${event.username} (${event.uuid})`,
-      );
-      return null;
-    }
+
+    const renamedFrom =
+      player.minecraftUsername !== event.username &&
+      (await this.adoptUsername(
+        event.uuid,
+        player.minecraftUsername,
+        event.username,
+      ))
+        ? player.minecraftUsername
+        : null;
 
     const closeOrphans = async (): Promise<void> => {
       const closedCount = await Q.player.session.updateAll(
@@ -134,7 +141,41 @@ export class PlaytimeRepository {
       `Session started: ${event.username} (${event.uuid}) - ID: ${session.id}`,
     );
 
-    return { sessionId: session.id, discordId: player.discordId };
+    return { sessionId: session.id, discordId: player.discordId, renamedFrom };
+  }
+
+  private async adoptUsername(
+    minecraftUuid: string,
+    from: string,
+    to: string,
+  ): Promise<boolean> {
+    try {
+      await db.inTransaction(async (tx) => {
+        await tx.player.update({ minecraftUuid }, { minecraftUsername: to });
+        await tx.player.vote.linkUsername(to, minecraftUuid);
+        await tx.admin.log.action.create({
+          adminDiscordId: SYSTEM_AUDIT_ACTOR.discordId,
+          adminUsername: SYSTEM_AUDIT_ACTOR.username,
+          actionType: "update_player",
+          targetPlayerUuid: minecraftUuid,
+          targetPlayerName: from,
+          tableName: DatabaseTable.PLAYER.TABLE,
+          fieldName: "minecraftUsername",
+          oldValue: from,
+          newValue: to,
+          reason: "Joined under a new Minecraft name",
+        });
+      });
+    } catch (error) {
+      if (!(error instanceof UniqueViolationError)) throw error;
+      logger.warn(
+        `${from} (${minecraftUuid}) joined as ${to}, but another player is still stored under ${to}; keeping the old name`,
+      );
+      return false;
+    }
+
+    logger.info(`Player ${from} (${minecraftUuid}) renamed to ${to}`);
+    return true;
   }
 
   /** Persist a heartbeat observation: advance the row and credit the slice into the playtime tables, atomically. */

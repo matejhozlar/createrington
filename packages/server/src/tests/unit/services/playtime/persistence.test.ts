@@ -6,6 +6,16 @@ const { markJoinedMinecraft } = vi.hoisted(() => ({
 
 vi.mock("@/services/waitlist/progress-embed", () => ({ markJoinedMinecraft }));
 
+const { fetchGuildMember, setNickname } = vi.hoisted(() => {
+  const setNickname = vi.fn();
+  return {
+    setNickname,
+    fetchGuildMember: vi.fn(async () => ({ setNickname })),
+  };
+});
+
+vi.mock("@/discord/utils/fetch-guild-member", () => ({ fetchGuildMember }));
+
 vi.mock("@/services/discord/message/cache", () => ({
   MessageSource: { SYSTEM: "system" },
 }));
@@ -78,6 +88,49 @@ describe("PlaytimePersistence", () => {
 
     expect(sessionOf(service, STEVE)?.sessionId).toBe(42);
     expect(markJoinedMinecraft).toHaveBeenCalledWith("discord-steve");
+    service.shutdown();
+  });
+
+  it("renames the Discord nickname when the session adopted a new Minecraft name", async () => {
+    const { service, writer, persistence } = startedService();
+    writer.startSession.mockResolvedValue({
+      sessionId: 42,
+      discordId: "discord-steve",
+      renamedFrom: "steve_old",
+    });
+
+    service.handlePlayerJoinFromMod({
+      uuid: STEVE,
+      username: "steve",
+      playTimeTicks: ticks(1000),
+    });
+    await persistence.flush(1000);
+
+    expect(fetchGuildMember).toHaveBeenCalledWith("discord-steve");
+    expect(setNickname).toHaveBeenCalledWith(
+      "steve",
+      "Minecraft account renamed",
+    );
+    expect(sessionOf(service, STEVE)?.sessionId).toBe(42);
+    service.shutdown();
+  });
+
+  it("leaves the Discord nickname alone when the name did not change", async () => {
+    const { service, writer, persistence } = startedService();
+    writer.startSession.mockResolvedValue({
+      sessionId: 42,
+      discordId: "discord-steve",
+      renamedFrom: null,
+    });
+
+    service.handlePlayerJoinFromMod({
+      uuid: STEVE,
+      username: "steve",
+      playTimeTicks: ticks(1000),
+    });
+    await persistence.flush(1000);
+
+    expect(fetchGuildMember).not.toHaveBeenCalled();
     service.shutdown();
   });
 
