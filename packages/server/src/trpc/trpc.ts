@@ -1,6 +1,11 @@
 import { initTRPC } from "@trpc/server";
 import type { Context } from "./context";
-import { mapDomainError, trpcError } from "@/trpc/utils";
+import {
+  INTERNAL_ERROR_MESSAGE,
+  isUnmappedFailure,
+  mapDomainError,
+  trpcError,
+} from "@/trpc/utils";
 import { AuthRole } from "@createrington/shared/auth";
 import { adminStatusService } from "@/services/auth/admin-status/admin-status.service";
 import { httpLogger, colorDuration } from "@/http-logger";
@@ -13,7 +18,13 @@ export interface Meta {
 const t = initTRPC
   .context<Context>()
   .meta<Meta>()
-  .create({ isDev: config.envMode.isDev });
+  .create({
+    isDev: config.envMode.isDev,
+    errorFormatter({ shape, error }) {
+      if (config.envMode.isDev || !isUnmappedFailure(error)) return shape;
+      return { ...shape, message: INTERNAL_ERROR_MESSAGE };
+    },
+  });
 
 export const router = t.router;
 export const middleware = t.middleware;

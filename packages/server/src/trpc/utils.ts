@@ -7,10 +7,14 @@ import type { OrderBy, OrderDirection } from "@/db/queries/query-builder";
 
 type TrpcCode = ConstructorParameters<typeof TRPCError>[0]["code"];
 
-export const id = () => z.number().int().positive().max(2147483647);
+const INT4_MAX = 2147483647;
+
+export const id = () => z.number().int().positive().max(INT4_MAX);
+
+export const coercedId = () => z.coerce.number().int().positive().max(INT4_MAX);
 
 export const serverIdInput = z.object({
-  serverId: z.coerce.number().int().positive(),
+  serverId: coercedId(),
 });
 
 export const sortDirection = () => z.enum(["asc", "desc"]);
@@ -65,6 +69,13 @@ export function mapDomainError(error: TRPCError): TRPCError | null {
   });
   mapped.stack = error.stack;
   return mapped;
+}
+
+export const INTERNAL_ERROR_MESSAGE =
+  "Something went wrong on our side. Please try again.";
+
+export function isUnmappedFailure(error: TRPCError): boolean {
+  return error.code === "INTERNAL_SERVER_ERROR" && error.cause !== undefined;
 }
 
 export function parsePlayerId(id: string) {

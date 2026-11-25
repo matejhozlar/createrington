@@ -3,6 +3,7 @@ import { Q } from "@/db";
 import { ilikeContains } from "@/db/utils";
 import { z } from "zod";
 import {
+  coercedId,
   parsePlayerId,
   paginationInput,
   paginateQuery,
@@ -131,7 +132,7 @@ export const playersRouter = router({
           .enum(["true", "false"])
           .transform((val) => val === "true")
           .optional(),
-        currentServerId: z.coerce.number().int().positive().optional(),
+        currentServerId: coercedId().optional(),
         createdAfter: z.iso.datetime().optional(),
         createdBefore: z.iso.datetime().optional(),
         lastSeenAfter: z.iso.datetime().optional(),
