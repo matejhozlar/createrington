@@ -5,8 +5,7 @@ import remarkBreaks from "remark-breaks";
 import { Check, Copy } from "lucide-react";
 import { useClipboard } from "@/hooks/use-clipboard";
 import { cn } from "@/lib/utils";
-
-const INTERNAL_PATH = /^\/(?![/\\])/;
+import { isInternalPath } from "@/lib/internalPath";
 
 interface AssistantMarkdownProps {
   text: string;
@@ -99,7 +98,7 @@ export function AssistantMarkdown({
             </a>
           );
         }
-        if (typeof href === "string" && INTERNAL_PATH.test(href)) {
+        if (typeof href === "string" && isInternalPath(href)) {
           return (
             <a
               href={href}
