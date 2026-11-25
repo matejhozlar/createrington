@@ -182,6 +182,23 @@ export class PlayerQueries extends PlayerBaseQueries {
   }
 
   /**
+   * Takes a row lock on a player (SELECT ... FOR UPDATE). Must be called on a
+   * transaction-bound instance; the lock is held until the surrounding
+   * transaction ends, so writers that check a player's state before changing
+   * it (two bans issued at once) run one after the other.
+   *
+   * @returns false when the player does not exist
+   */
+  async lockForUpdate(minecraftUuid: string): Promise<boolean> {
+    const result = await this.runQuery(
+      "lock player for update",
+      `SELECT 1 FROM ${this.table} WHERE minecraft_uuid = $1 FOR UPDATE`,
+      [minecraftUuid],
+    );
+    return result.rows.length > 0;
+  }
+
+  /**
    * Moves every row that refers to a player by plain-text Discord ID (tickets,
    * donations, waitlist, workshop, boosts, prompt answers) from one ID to
    * another. A row whose unique key already exists under the new ID stays
