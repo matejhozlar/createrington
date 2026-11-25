@@ -16,7 +16,6 @@ router.post(
 );
 if (config.app.auth.sso.callbackUrl) {
   router.get("/sso/start", ...route("public", AuthController.ssoStart));
-  router.get("/sso/callback", ...route("public", AuthController.ssoCallback));
   router.get("/sso/consent", ...route("user", AuthController.ssoConsent));
   router.post(
     "/sso/authorize",
