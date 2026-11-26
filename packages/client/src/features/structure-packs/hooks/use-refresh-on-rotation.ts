@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { trpc, queryClient } from "@/lib/trpc";
 
@@ -15,6 +15,12 @@ export function useRefreshOnRotation() {
     trpc.public.structurePacks.rotationInfo.queryOptions(),
   );
   const nextRotationAt = rotationInfo?.nextRotationAt ?? null;
+  const timersRef = useRef<number[]>([]);
+
+  useEffect(() => {
+    const timers = timersRef.current;
+    return () => timers.forEach((id) => window.clearTimeout(id));
+  }, []);
 
   useEffect(() => {
     if (!nextRotationAt) return;
@@ -23,9 +29,10 @@ export function useRefreshOnRotation() {
       new Date(nextRotationAt).getTime() - Date.now(),
     );
     if (remaining + REFRESH_DELAYS_MS[1] > MAX_TIMER_MS) return;
-    const timers = REFRESH_DELAYS_MS.map((delay) =>
-      window.setTimeout(refreshStructurePacks, remaining + delay),
+    timersRef.current.push(
+      ...REFRESH_DELAYS_MS.map((delay) =>
+        window.setTimeout(refreshStructurePacks, remaining + delay),
+      ),
     );
-    return () => timers.forEach((id) => window.clearTimeout(id));
   }, [nextRotationAt]);
 }
