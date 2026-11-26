@@ -5,7 +5,7 @@ import type {
   MessagePayload,
   PresetKind,
 } from "@createrington/shared/api/embed";
-import { DEFAULT_EMBED } from "./payload";
+import { DEFAULT_EMBED, snapshotOf } from "./payload";
 
 export interface ActivePreset {
   id: number;
@@ -43,6 +43,13 @@ export type BuilderAction =
   | { type: "import"; payload: MessagePayload }
   | { type: "saved"; snapshot: string; preset?: ActivePreset }
   | { type: "movePreset"; categoryId: number | null }
+  | {
+      type: "presetChanged";
+      presetId: number;
+      payload: MessagePayload;
+      snapshot: string;
+    }
+  | { type: "presetDeleted"; presetId: number }
   | { type: "reset" };
 
 export const INITIAL_STATE: BuilderState = {
@@ -136,6 +143,21 @@ export function builderReducer(
             },
             selectedCategoryId: action.categoryId,
           }
+        : state;
+    case "presetChanged": {
+      if (state.activePreset?.id !== action.presetId) return state;
+      const unedited = snapshotOf(payloadOf(state)) === state.savedSnapshot;
+      return unedited
+        ? {
+            ...state,
+            ...documentOf(action.payload),
+            savedSnapshot: action.snapshot,
+          }
+        : { ...state, savedSnapshot: action.snapshot };
+    }
+    case "presetDeleted":
+      return state.activePreset?.id === action.presetId
+        ? { ...state, ...DETACHED }
         : state;
     case "reset":
       return { ...INITIAL_STATE, bot: state.bot };

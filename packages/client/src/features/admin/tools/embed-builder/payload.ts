@@ -1,9 +1,10 @@
 import { z } from "zod";
-import type {
-  ComponentNode,
-  EmbedData,
-  MessagePayload,
-  PresetKind,
+import {
+  hasEmbedMessageContent,
+  type ComponentNode,
+  type EmbedData,
+  type MessagePayload,
+  type PresetKind,
 } from "@createrington/shared/api/embed";
 
 export const DEFAULT_EMBED: EmbedData = {
@@ -178,6 +179,5 @@ export function payloadHasContent(payload: MessagePayload): boolean {
   if (payload.kind === "components") {
     return payload.components.components.length > 0;
   }
-  const { content, title, description, fields } = payload.embed;
-  return !!(content || title || description || fields.length > 0);
+  return hasEmbedMessageContent(payload.embed);
 }

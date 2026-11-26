@@ -10,7 +10,10 @@ import {
   assertPatchNotEmpty,
   id,
 } from "@/trpc/utils";
-import { messagePayloadSchema } from "@createrington/shared/api/embed";
+import {
+  EMBED_PRESET_NAME_MAX,
+  messagePayloadSchema,
+} from "@createrington/shared/api/embed";
 import type { DiscordEmbedPresetFilters } from "@createrington/shared/db";
 import { payloadToStorage } from "./helpers";
 import { embedPresetCategoriesRouter } from "./preset-categories";
@@ -65,7 +68,7 @@ export const embedPresetsRouter = router({
     .input(
       z
         .object({
-          name: z.string().min(1).max(100),
+          name: z.string().min(1).max(EMBED_PRESET_NAME_MAX),
           categoryId: id().nullish(),
         })
         .and(messagePayloadSchema),
@@ -100,7 +103,7 @@ export const embedPresetsRouter = router({
     .input(
       z.object({
         id: id(),
-        name: z.string().min(1).max(100).optional(),
+        name: z.string().min(1).max(EMBED_PRESET_NAME_MAX).optional(),
         payload: messagePayloadSchema.optional(),
       }),
     )

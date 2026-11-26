@@ -7,6 +7,9 @@ import {
   MessageFlags,
 } from "discord.js";
 import {
+  EMBED_EMPTY_MESSAGE,
+  hasEmbedContent,
+  hasEmbedMessageContent,
   type EmbedData,
   type MessagePayload,
   type PresetKind,
@@ -28,18 +31,6 @@ export const embedSendLimit = createRateLimit({
   windowMs: 60 * 60 * 1000,
   key: (ctx) => ctx.user!.discordId,
 });
-
-export function hasEmbedContent(data: EmbedData): boolean {
-  return !!(
-    data.title ||
-    data.description ||
-    data.fields.length > 0 ||
-    data.author ||
-    data.footer ||
-    data.imageUrl ||
-    data.thumbnailUrl
-  );
-}
 
 export function buildDiscordEmbed(data: EmbedData): EmbedBuilder | undefined {
   if (!hasEmbedContent(data)) return undefined;
@@ -153,12 +144,8 @@ export function buildMessage(
   }
 
   const data = payload.embed;
-  if (!data.content && !hasEmbedContent(data)) {
-    return {
-      ok: false,
-      error:
-        "Message must have content, a title, a description, or at least one field",
-    };
+  if (!hasEmbedMessageContent(data)) {
+    return { ok: false, error: EMBED_EMPTY_MESSAGE };
   }
 
   return {
