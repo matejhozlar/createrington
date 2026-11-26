@@ -1,4 +1,6 @@
 import { Q } from "@/db";
+import { ConflictError } from "@/errors";
+import { InteractionError } from "@/discord/utils/interaction-error";
 import { EmbedPresets } from "@/discord/embeds";
 import { replyError } from "@/discord/utils/interaction-reply";
 import { getOptionalService, Services } from "@/services";
@@ -41,10 +43,21 @@ async function execute(
 
   const player = await Q.player.find({ discordId: interaction.user.id });
 
-  await service.forceRunAndResetSchedule({
-    discordId: interaction.user.id,
-    username: player?.minecraftUsername ?? null,
-  });
+  await service
+    .forceRunAndResetSchedule({
+      discordId: interaction.user.id,
+      username: player?.minecraftUsername ?? null,
+    })
+    .catch((error: unknown) => {
+      if (error instanceof ConflictError) {
+        throw new InteractionError(
+          "Cleanup Already Running",
+          "An inactivity cleanup run is already in progress. Try again once it finishes.",
+          { cause: error },
+        );
+      }
+      throw error;
+    });
 
   const embed = EmbedPresets.success(
     "Inactivity Cleanup Triggered",

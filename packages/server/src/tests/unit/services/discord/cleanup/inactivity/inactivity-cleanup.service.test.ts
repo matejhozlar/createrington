@@ -146,4 +146,28 @@ describe("InactivityCleanupService schedule", () => {
     expect(warning.createMany).toHaveBeenCalledTimes(1);
     expect(settings.setInactivityCycleRanAt).toHaveBeenCalledWith(NOW);
   });
+
+  it("refuses a forced run while another run is in progress", async () => {
+    let finishWarnings!: () => void;
+    warning.createMany.mockReturnValueOnce(
+      new Promise<void>((resolve) => {
+        finishWarnings = resolve;
+      }),
+    );
+    const admin = { discordId: "1", username: "admin" };
+
+    const first = service.forceRunAndResetSchedule(admin);
+    await vi.advanceTimersByTimeAsync(0);
+
+    await expect(service.forceRunAndResetSchedule(admin)).rejects.toThrow(
+      "already in progress",
+    );
+
+    finishWarnings();
+    await first;
+    expect(warning.createMany).toHaveBeenCalledTimes(1);
+    await expect(
+      service.forceRunAndResetSchedule(admin),
+    ).resolves.toBeUndefined();
+  });
 });

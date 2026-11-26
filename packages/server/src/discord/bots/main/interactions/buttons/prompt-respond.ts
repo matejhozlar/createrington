@@ -1,4 +1,4 @@
-import { getServiceSync, Services } from "@/services";
+import { getService, Services } from "@/services";
 import {
   ActionRowBuilder,
   type ButtonInteraction,
@@ -22,7 +22,7 @@ async function execute(interaction: ButtonInteraction): Promise<void> {
     return;
   }
 
-  const service = getServiceSync(Services.PLAYER_PROMPT_SERVICE);
+  const service = await getService(Services.PLAYER_PROMPT_SERVICE);
   const decision = await service.prepareEntry(promptId, interaction.user.id);
 
   if (!decision.allowed) {

@@ -8,7 +8,12 @@ import {
   messagePayloadSchema,
 } from "@createrington/shared/api/embed";
 import { isMessageGone } from "@/services/discord/message/errors";
-import { buildMessage, payloadToStorage, toEditOptions } from "./helpers";
+import {
+  assertPresetKind,
+  buildMessage,
+  payloadToStorage,
+  toEditOptions,
+} from "./helpers";
 
 export const embedPresetLinksRouter = router({
   list: adminProcedure
@@ -39,6 +44,12 @@ export const embedPresetLinksRouter = router({
       if (!built.ok) {
         throw trpcError.badRequest(built.error);
       }
+
+      const preset = await findOrThrow(
+        Q.discord.embed.preset.find({ id: input.presetId }),
+        "Preset not found",
+      );
+      assertPresetKind(preset, input.kind);
 
       await Q.discord.embed.preset.update(
         { id: input.presetId },
