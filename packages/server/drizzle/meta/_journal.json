@@ -736,6 +736,13 @@
       "when": 1795625060339,
       "tag": "0104_abandoned_firebird",
       "breakpoints": true
+    },
+    {
+      "idx": 105,
+      "version": "7",
+      "when": 1795704403536,
+      "tag": "0105_orange_sentry",
+      "breakpoints": true
     }
   ]
 }

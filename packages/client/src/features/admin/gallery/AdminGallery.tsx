@@ -164,6 +164,7 @@ export function AdminGallery() {
               item={detail}
               position={index + 1}
               total={total}
+              hasNext={index < queue.length - 1}
               onPrev={() => setCursor(index - 1)}
               onNext={() => setCursor(index + 1)}
               onDecided={() => setCursor(index)}

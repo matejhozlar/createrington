@@ -15,6 +15,7 @@ import {
   type PresetKind,
 } from "@createrington/shared/api/embed";
 import { createRateLimit } from "@/trpc/middleware/rate-limit";
+import { trpcError } from "@/trpc/utils";
 import type {
   EditMessageOptions,
   SendMessageOptions,
@@ -196,4 +197,15 @@ export function payloadToStorage(payload: MessagePayload): {
   return payload.kind === "components"
     ? { kind: "components", data: payload.components }
     : { kind: "embed", data: payload.embed };
+}
+
+export function assertPresetKind(
+  preset: { kind: PresetKind },
+  kind: PresetKind,
+): void {
+  if (preset.kind !== kind) {
+    throw trpcError.badRequest(
+      `Preset is a ${preset.kind} preset and cannot be changed to ${kind}`,
+    );
+  }
 }

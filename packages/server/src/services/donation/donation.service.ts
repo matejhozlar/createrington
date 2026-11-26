@@ -1,5 +1,10 @@
 import Stripe from "stripe";
-import { roleMention, userMention, type Client } from "discord.js";
+import {
+  roleMention,
+  userMention,
+  type Client,
+  type GuildMember,
+} from "discord.js";
 import config from "@/config";
 import { Q } from "@/db";
 import { UniqueViolationError } from "@/db/utils";
@@ -11,6 +16,7 @@ import { RoleManager } from "@/discord/utils/roles/role-manager";
 import type { Donation, DonationType } from "@createrington/shared/db";
 
 const SESSION_ID_CONSTRAINT = "donation_stripe_session_id_unique";
+const INVOICE_ID_CONSTRAINT = "donation_stripe_invoice_id_unique";
 
 const ENDED_SUBSCRIPTION_STATUSES: ReadonlySet<Stripe.Subscription.Status> =
   new Set(["canceled", "incomplete_expired"]);
@@ -25,19 +31,29 @@ function customerId(subscription: Stripe.Subscription): string {
   return typeof customer === "string" ? customer : customer.id;
 }
 
+function stripeId(
+  value: string | { id?: string } | null | undefined,
+): string | undefined {
+  if (!value) return undefined;
+  return typeof value === "string" ? value : value.id;
+}
+
 /**
  * Stripe-backed donation flow: creates checkout sessions for one-time and monthly
  * support tiers, processes webhook events into donation records, and manages active
  * subscriptions (status lookup, cancel-at-period-end, reactivate, MRR stats). A player
  * has at most one monthly subscription: a second monthly checkout is refused while any
- * stored subscription of theirs is still live in Stripe, and the lookup, cancel and
+ * stored subscription of theirs is still live in Stripe, and every paid renewal invoice
+ * after the first becomes its own donation row. The lookup, cancel and
  * reactivate calls resolve the subscription across all of them, preferring one that is
  * still renewing. Deleting a player cancels all of their live subscriptions at once,
  * and alerts the admins about any cancellation Stripe refuses. Supporter
  * role assignment is best-effort; a missing role or absent guild member is logged but
- * does not block the donation from completing. Webhook handlers are idempotent against
- * replays via the `stripeSessionId` lookup, and its unique constraint turns a concurrent
- * duplicate delivery into a skipped replay instead of an error.
+ * does not block the donation from completing, and the grant is retried on a webhook
+ * replay, on the next renewal and when the donor (re)joins the guild. Webhook handlers
+ * are idempotent against replays via the `stripeSessionId` and `stripeInvoiceId`
+ * lookups, and their unique constraints turn a concurrent duplicate delivery into a
+ * skipped replay instead of an error.
  */
 export class DonationService {
   private readonly stripe: Stripe;
@@ -349,6 +365,9 @@ export class DonationService {
       logger.info(
         `Stripe webhook replay for session ${session.id}, already processed, skipping`,
       );
+      if (!existing.supporterRoleGranted) {
+        await this.syncSupporterRole(discordId);
+      }
       return;
     }
 
@@ -359,8 +378,9 @@ export class DonationService {
         type,
         amountCents,
         stripeSessionId: session.id,
-        stripeCustomerId: (session.customer as string) ?? undefined,
-        stripeSubscriptionId: (session.subscription as string) ?? undefined,
+        stripeInvoiceId: stripeId(session.invoice),
+        stripeCustomerId: stripeId(session.customer),
+        stripeSubscriptionId: stripeId(session.subscription),
         status: "completed",
         completedAt: new Date(),
       });
@@ -381,11 +401,90 @@ export class DonationService {
       `Donation completed: ${session.id}, €${(donation.amountCents / 100).toFixed(2)} from discord ${discordId}`,
     );
 
-    if (await this.grantSupporterRole(discordId)) {
-      await Q.donation.update(
-        { id: donation.id },
-        { supporterRoleGranted: true },
+    await this.syncSupporterRole(discordId);
+  }
+
+  /** Webhook: records a paid renewal invoice of a monthly subscription as its own donation row (idempotent on `invoice.id`); the first invoice is left to `handleSessionCompleted`. */
+  async handleInvoicePaid(invoice: Stripe.Invoice): Promise<void> {
+    const subscriptionId = stripeId(
+      invoice.parent?.subscription_details?.subscription,
+    );
+    if (
+      !subscriptionId ||
+      !invoice.id ||
+      invoice.billing_reason === "subscription_create" ||
+      invoice.amount_paid <= 0
+    ) {
+      return;
+    }
+
+    const existing = await Q.donation.find({ stripeInvoiceId: invoice.id });
+    if (existing) {
+      logger.info(
+        `Stripe webhook replay for invoice ${invoice.id}, already processed, skipping`,
       );
+      if (!existing.supporterRoleGranted) {
+        await this.syncSupporterRole(existing.playerDiscordId);
+      }
+      return;
+    }
+
+    const [first] = await Q.donation.findAll(
+      { stripeSubscriptionId: subscriptionId },
+      { limit: 1, orderBy: "createdAt", orderDirection: "asc" },
+    );
+    if (!first) {
+      logger.warn(
+        `Paid invoice ${invoice.id} belongs to unknown subscription ${subscriptionId}, skipping`,
+      );
+      return;
+    }
+
+    const paidAt = invoice.status_transitions.paid_at;
+    let donation: Donation;
+    try {
+      donation = await Q.donation.createAndReturn({
+        playerDiscordId: first.playerDiscordId,
+        type: first.type,
+        amountCents: invoice.amount_paid,
+        currency: invoice.currency,
+        stripeInvoiceId: invoice.id,
+        stripeCustomerId:
+          stripeId(invoice.customer) ?? first.stripeCustomerId ?? undefined,
+        stripeSubscriptionId: subscriptionId,
+        status: "completed",
+        completedAt: paidAt ? new Date(paidAt * 1000) : new Date(),
+      });
+    } catch (error) {
+      if (
+        error instanceof UniqueViolationError &&
+        error.constraint === INVOICE_ID_CONSTRAINT
+      ) {
+        logger.info(
+          `Stripe webhook replay for invoice ${invoice.id}, processed concurrently, skipping`,
+        );
+        return;
+      }
+      throw error;
+    }
+
+    logger.info(
+      `Subscription renewal recorded: ${invoice.id}, €${(donation.amountCents / 100).toFixed(2)} from discord ${donation.playerDiscordId}`,
+    );
+
+    await this.syncSupporterRole(donation.playerDiscordId);
+  }
+
+  /** Gives the supporter role back to a member who (re)joins the guild after a completed donation, and marks their ungranted donations as granted. */
+  async restoreSupporterRole(member: GuildMember): Promise<void> {
+    const donated = await Q.donation.count({
+      playerDiscordId: member.id,
+      status: "completed",
+    });
+    if (donated === 0) return;
+
+    if (await this.assignSupporterRole(member)) {
+      await this.markSupporterRoleGranted(member.id);
     }
   }
 
@@ -408,12 +507,37 @@ export class DonationService {
     );
   }
 
-  private async grantSupporterRole(discordId: string): Promise<boolean> {
+  private async syncSupporterRole(discordId: string): Promise<void> {
+    if (await this.grantSupporterRole(discordId)) {
+      await this.markSupporterRoleGranted(discordId);
+    }
+  }
+
+  private async markSupporterRoleGranted(discordId: string): Promise<void> {
+    await Q.donation.updateAll(
+      {
+        playerDiscordId: discordId,
+        status: "completed",
+        supporterRoleGranted: false,
+      },
+      { supporterRoleGranted: true },
+    );
+  }
+
+  private async assignSupporterRole(member: GuildMember): Promise<boolean> {
     if (!DiscordRoles.SUPPORTER) {
       logger.warn("No 'SUPPORTER' role configured, skipping role assignment");
       return false;
     }
 
+    return RoleManager.assign(
+      member,
+      DiscordRoles.SUPPORTER,
+      "Donation supporter",
+    );
+  }
+
+  private async grantSupporterRole(discordId: string): Promise<boolean> {
     try {
       const guild = this.discordClient.guilds.cache.get(
         config.discord.guild.id,
@@ -431,11 +555,7 @@ export class DonationService {
         return false;
       }
 
-      return await RoleManager.assign(
-        member,
-        DiscordRoles.SUPPORTER,
-        "Donation supporter",
-      );
+      return await this.assignSupporterRole(member);
     } catch (error) {
       logger.error(`Failed to grant supporter role to ${discordId}:`, error);
       return false;

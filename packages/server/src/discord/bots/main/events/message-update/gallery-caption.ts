@@ -1,6 +1,6 @@
 import config from "@/config";
 import type { EventModule } from "@/discord/bots/common/loaders/event-loader";
-import { getServiceSync, Services } from "@/services";
+import { getService, Services } from "@/services";
 import type { Client, Message, PartialMessage } from "discord.js";
 
 export const eventName: EventModule<"messageUpdate">["eventName"] =
@@ -19,7 +19,7 @@ export async function execute(
       : updatedMessage;
     if (message.author.bot) return;
 
-    const gallery = getServiceSync(Services.GALLERY_SERVICE);
+    const gallery = await getService(Services.GALLERY_SERVICE);
     await gallery.updateCaption(message.id, message.content);
   } catch (error) {
     logger.error("Gallery caption update error:", error);

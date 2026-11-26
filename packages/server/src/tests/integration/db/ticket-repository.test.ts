@@ -90,15 +90,30 @@ describe("TicketRepository lifecycle", () => {
 
   it("drops the stored transcript on reopen and keeps the rest of the metadata", async () => {
     const ticket = await createTicket(await Q.ticket.allocateNumber(), "a");
+    await ticketRepo.close(ticket.id, STAFF);
     await ticketRepo.updateMetadata(ticket.id, {
       closeMessageId: "555",
       transcriptPath: "storage/transcripts/ticket-1-1.html",
     });
-    await ticketRepo.close(ticket.id, STAFF);
 
     const reopened = await ticketRepo.reopen(ticket.id, STAFF);
 
     expect(reopened.metadata).toEqual({ closeMessageId: "555" });
+  });
+
+  it("drops the closure message of an earlier close when the ticket is closed again", async () => {
+    const ticket = await createTicket(await Q.ticket.allocateNumber(), "a");
+    await ticketRepo.close(ticket.id, STAFF);
+    await ticketRepo.updateMetadata(ticket.id, {
+      closeMessageId: "555",
+      transcriptPath: "storage/transcripts/ticket-1-1.html",
+    });
+    await ticketRepo.reopen(ticket.id, STAFF);
+    await ticketRepo.updateMetadata(ticket.id, { transcriptPath: "kept" });
+
+    const closed = await ticketRepo.close(ticket.id, STAFF);
+
+    expect(closed.metadata).toEqual({ transcriptPath: "kept" });
   });
 
   it("makes a close wait for a concurrent transition and then see its result", async () => {

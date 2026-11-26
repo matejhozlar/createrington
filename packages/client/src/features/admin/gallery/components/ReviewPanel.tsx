@@ -36,6 +36,7 @@ interface ReviewPanelProps {
   item: GallerySubmissionDetail;
   position: number;
   total: number;
+  hasNext: boolean;
   onPrev: () => void;
   onNext: () => void;
   onDecided: () => void;
@@ -45,6 +46,7 @@ export function ReviewPanel({
   item,
   position,
   total,
+  hasNext,
   onPrev,
   onNext,
   onDecided,
@@ -132,7 +134,7 @@ export function ReviewPanel({
               variant="outline"
               size="icon"
               aria-label="Next submission"
-              disabled={position >= total || busy}
+              disabled={!hasNext || busy}
               onClick={onNext}
             >
               <ChevronRight className="size-4" />

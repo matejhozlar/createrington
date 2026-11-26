@@ -3,6 +3,7 @@ import { ADMIN_REASON_MAX_LENGTH } from "@createrington/shared/admin-reason";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { balanceRepo, playerBalanceRepo, playerRepo } from "@/db";
 import { trpcError, playerId } from "@/trpc/utils";
+import { mcUuid } from "@/utils/zod-schemas";
 
 const BALANCE_ADJUST_MODES = ["add", "remove", "set"] as const;
 const MAX_ADJUSTMENT = 1_000_000_000;
@@ -107,7 +108,7 @@ export const balanceRouter = router({
     .input(
       z.object({
         playerUuids: z
-          .array(z.string().min(1))
+          .array(mcUuid)
           .min(1, "At least one player UUID is required")
           .max(100, "At most 100 players per bulk adjust"),
         amount: z.number().int().min(-1_000_000_000).max(1_000_000_000),
