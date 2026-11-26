@@ -44,7 +44,7 @@ export class TicketRepository {
     return ticket;
   }
 
-  /** Mark a ticket CLOSED and log the action in one transaction. Throws if already closed. */
+  /** Mark a ticket CLOSED and log the action in one transaction; drops the closure message id of an earlier close, so the stored one always belongs to the current closure. Throws if already closed. */
   async close(ticketId: number, closedBy: string): Promise<Ticket> {
     const ticket = await db.inTransaction(async (tx) => {
       const current = await tx.ticket.getForUpdate(ticketId);
@@ -53,12 +53,16 @@ export class TicketRepository {
         throw new Error(`Ticket #${current.ticketNumber} is already closed`);
       }
 
+      const metadata = { ...current.metadata };
+      delete metadata.closeMessageId;
+
       const updated = await tx.ticket.updateAndReturn(
         { id: ticketId },
         {
           status: "closed",
           closedAt: new Date(),
           closedByDiscordId: closedBy,
+          metadata,
         },
       );
 
