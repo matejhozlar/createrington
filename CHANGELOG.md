@@ -1,3 +1,8 @@
+## v1.83.2 (2026-11-26)
+
+### @createrington/server (1.83.1 → 1.83.2)
+- [fix] Fix the member-left notification pinging the admin role: the message in the administration notifications channel now posts as plain "👋 Member left" text without a role mention
+
 ## v1.83.1 (2026-11-26)
 
 ### @createrington/server (1.83.0 → 1.83.1)
