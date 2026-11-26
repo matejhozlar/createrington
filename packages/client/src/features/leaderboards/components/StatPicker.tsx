@@ -7,6 +7,7 @@ import {
 } from "@createrington/shared/minecraft-stats";
 import { pluralize } from "@/lib/format";
 import { trpc } from "@/lib/trpc";
+import { ErrorState } from "@/components/query-states";
 import { cn } from "@/lib/utils";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import {
@@ -70,6 +71,12 @@ function StatResults({ onPick }: { onPick: (stat: Stat) => void }) {
           <div className="flex justify-center py-6">
             <Spinner className="size-4 text-muted-foreground" />
           </div>
+        ) : searchQuery.isError && results.length === 0 ? (
+          <ErrorState
+            message="Couldn't search the stats"
+            onRetry={() => searchQuery.refetch()}
+            compact
+          />
         ) : (
           <CommandEmpty>No stat matching "{debounced}".</CommandEmpty>
         )}

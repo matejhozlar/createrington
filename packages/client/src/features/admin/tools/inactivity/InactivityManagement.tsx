@@ -50,6 +50,7 @@ import { ExemptionsCard } from "./components/ExemptionsCard";
 import { GhostsCard } from "./components/GhostsCard";
 import { UnlinkedMembersCard } from "./components/UnlinkedMembersCard";
 import { StatCard } from "@/components/stat-card";
+import { ErrorState } from "@/components/query-states";
 
 type Warning = RouterOutput["admin"]["inactivity"]["list"]["items"][number];
 
@@ -106,13 +107,6 @@ export function InactivityManagement() {
   const handleTriggerCleanup = () => triggerCleanup.mutate();
 
   const handleProcessOverdue = () => triggerResolveRemove.mutate();
-
-  const stats = {
-    active: statsQuery.data?.active ?? 0,
-    expired: statsQuery.data?.expired ?? 0,
-    resolvedInRetention: statsQuery.data?.resolvedInRetention ?? 0,
-    removedInRetention: statsQuery.data?.removedInRetention ?? 0,
-  };
 
   const columns: DataTableColumn<Warning>[] = [
     {
@@ -266,18 +260,26 @@ export function InactivityManagement() {
         </Card>
       )}
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {STAT_CARDS.map(({ key, label, description, icon, tone }) => (
-          <StatCard
-            key={key}
-            label={resolveStatText(label, statWindows)}
-            value={stats[key]}
-            icon={icon}
-            tone={tone}
-            footer={resolveStatText(description, statWindows)}
-          />
-        ))}
-      </div>
+      {statsQuery.isError ? (
+        <ErrorState
+          message={`Failed to load the inactivity totals: ${statsQuery.error.message}`}
+          onRetry={() => statsQuery.refetch()}
+          className="flex-none py-8"
+        />
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {STAT_CARDS.map(({ key, label, description, icon, tone }) => (
+            <StatCard
+              key={key}
+              label={resolveStatText(label, statWindows)}
+              value={statsQuery.data?.[key] ?? "–"}
+              icon={icon}
+              tone={tone}
+              footer={resolveStatText(description, statWindows)}
+            />
+          ))}
+        </div>
+      )}
 
       <FilterBar
         search={searchQuery}

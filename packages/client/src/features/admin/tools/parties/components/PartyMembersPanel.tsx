@@ -1,4 +1,4 @@
-import { LoadingState } from "@/components/query-states";
+import { ErrorState, LoadingState } from "@/components/query-states";
 import { PlayerLabel } from "@/components/player-label";
 import { Button } from "@/components/ui/button";
 import { formatDimension } from "@/lib/minecraft";
@@ -28,6 +28,16 @@ export function PartyMembersPanel({
 
   if (query.isLoading || claimsQuery.isLoading) {
     return <LoadingState size="small" className="flex-none p-0" />;
+  }
+
+  if (query.isError) {
+    return (
+      <ErrorState
+        message={`Failed to load the members: ${query.error.message}`}
+        onRetry={() => query.refetch()}
+        compact
+      />
+    );
   }
 
   const members = query.data?.members ?? [];
