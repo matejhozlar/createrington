@@ -1,3 +1,39 @@
+## v1.83.1 (2026-11-26)
+
+### @createrington/server (1.83.0 → 1.83.1)
+- [fix] Fix monthly subscription renewals never being recorded as donations: the Stripe `invoice.paid` webhook now stores every paid renewal after the first as its own donation row, idempotent on the new `stripe_invoice_id` column (migration `0105`, which also makes `stripe_session_id` nullable for renewal rows)
+- [fix] Fix a failed supporter-role grant never being retried: the grant is attempted again on a webhook replay, on the next renewal and when the donor (re)joins the guild, and every ungranted donation of that member is marked granted once it succeeds
+- [fix] Fix a ticket whose welcome message failed to send being left half-created: the channel and the row are discarded so the member can open a new ticket
+- [fix] Fix a ticket closed without its closure message being stuck: closing it again (including `/ticket close`) re-posts the missing closure embed, closes run under a per-ticket lock, and closing a reopened ticket no longer keeps the previous closure's message id
+- [fix] Fix inactivity cleanup runs overlapping: the hourly check skips while a run is in progress, and manual, resolve-only and forced runs are refused (the owner command replies "Cleanup Already Running")
+- [fix] Fix FAQ, gallery and player prompt Discord handlers failing when an event arrives before their service is ready; they now wait for it
+- [fix] Fix the embed builder sending or editing with a deleted preset or one of the other kind (embed vs components): the preset is checked before the Discord message is sent or edited
+- [fix] Fix embeds with only an author, footer or image being rejected as empty; the server and the builder now share one content check
+- [security] Validate bulk balance adjustments: every player UUID must be a well-formed Minecraft UUID
+- [fix] Fix the admin server activity heatmap bucketing hours in the database's time zone; the server now returns each hour as an instant so the viewer buckets it in their own zone
+- [fix] Fix the player activity heatmap marking the wrong day as today near midnight; the response now carries the server's current day
+
+### @createrington/client (0.2.102 → 0.2.103)
+- [fix] Fix navigation disappearing when resizing across the mobile breakpoint: `useIsMobile` now follows the same `48rem` media query as Tailwind's `md`
+- [fix] Fix a mixed tRPC query batch holding a 401 not refreshing the token, and REST errors losing their server message after a refreshed retry
+- [fix] Fix stale data after admin and workshop mutations: player deletion, structure pack rotation and mod changes, Discord entity refresh, workshop settings and mod upvotes now invalidate the queries they affect, and the admin log refreshes after any mutation
+- [fix] Fix emptied number inputs submitting 0 or NaN in the strike, auto-message interval, structure pack rotation and title generator forms; they stay editable as text, show a validation error and only clamp on blur
+- [fix] Fix admin tools, the gallery, the leaderboard player and stat pickers and the embed builder sidebar showing an empty state when loading failed; they now show an error with a retry
+- [fix] Fix the embed builder accepting invalid clipboard imports and incomplete link or action buttons, overwriting unsaved work on import (it now asks first), restoring a draft of a preset that was changed or deleted since (it now syncs or detaches it with a warning), and duplicating a preset past the name length limit
+- [fix] Fix the admin gallery review queue letting Next go past the loaded page, and the maintenance dialog closing when the request failed
+- [fix] Fix the admin player detail keeping tabs and dialogs from the previous player when navigating between players
+- [fix] Fix the manifest import skipping the replace confirmation before the pack members had loaded
+- [fix] Fix the title generator edge cleanup using the image height instead of its width for the row size, which corrupted non-square renders
+- [fix] Fix leaderboards briefly showing another board's rows while switching, "1 hours" on top-role cards, and search inputs accepting longer text than the server allows
+- [fix] Fix a saved guide step past the guide's current length showing a blank step
+- [fix] Fix the structure packs page not refreshing when a rotation ends, and the portal overlay swallowing Escape from dialogs on top of it
+- [fix] Fix the BlueMap hash sync rewriting the URL after leaving the map page, the changelog page losing its active-version tracking after a filter, and skin runner keys staying held after the window loses focus
+
+### @createrington/shared (1.19.1 → 1.19.2)
+- [fix] Fix the embed content check ignoring author, footer and image: `hasEmbedContent`, `hasEmbedMessageContent` and `EMBED_EMPTY_MESSAGE` now live here and are shared by the server and client, alongside `EMBED_PRESET_NAME_MAX`
+- [add] Add the `leaderboard` module with the player and stat search length limits, so the client caps inputs at the same values the server validates
+- [add] Add `today` to `RenderActivity` for the server-side current day
+
 ## v1.83.0 (2026-11-25)
 
 ### @createrington/server (1.82.0 → 1.83.0)
