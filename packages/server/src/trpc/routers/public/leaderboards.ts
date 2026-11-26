@@ -1,4 +1,8 @@
 import { z } from "zod";
+import {
+  LEADERBOARD_PLAYER_SEARCH_MAX,
+  LEADERBOARD_STAT_SEARCH_MAX,
+} from "@createrington/shared/leaderboard";
 import { router, publicProcedure } from "@/trpc/trpc";
 import {
   buildPagination,
@@ -28,7 +32,7 @@ const leaderboardsReadLimit = createRateLimit({
 });
 
 const boardPageInput = {
-  search: z.string().trim().max(32).optional(),
+  search: z.string().trim().max(LEADERBOARD_PLAYER_SEARCH_MAX).optional(),
   focus: mcUuid.optional(),
   ...paginationInput({ defaultLimit: 25, maxLimit: 100 }),
 };
@@ -134,7 +138,11 @@ export const leaderboardsRouter = router({
       description:
         "Searches individual Minecraft stats (a category such as minecraft:mined plus an item such as minecraft:diamond_ore) by item name, returning only stats at least one player holds, with how many players hold each",
     })
-    .input(z.object({ query: z.string().trim().min(1).max(48) }))
+    .input(
+      z.object({
+        query: z.string().trim().min(1).max(LEADERBOARD_STAT_SEARCH_MAX),
+      }),
+    )
     .query(({ input }) =>
       Q.player.minecraft.stat.key.getMatchingStats(input.query),
     ),
@@ -217,7 +225,7 @@ export const leaderboardsRouter = router({
     .input(
       uuidPair.and(
         z.object({
-          search: z.string().trim().max(48).optional(),
+          search: z.string().trim().max(LEADERBOARD_STAT_SEARCH_MAX).optional(),
           sort: z.enum(["gap", "total"]).default("gap"),
           ...paginationInput({ defaultLimit: 10, maxLimit: 50 }),
         }),

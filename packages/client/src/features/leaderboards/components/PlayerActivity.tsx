@@ -91,7 +91,11 @@ export function PlayerActivity({ minecraftUuid }: { minecraftUuid: string }) {
     );
   }
 
-  const { weeks, monthLabels } = buildHeatmapGrid(activity.days, NUM_WEEKS);
+  const { weeks, monthLabels } = buildHeatmapGrid(
+    activity.days,
+    NUM_WEEKS,
+    activity.today,
+  );
   const visibleMonths = monthLabels.filter((month, index) => {
     const next = monthLabels[index + 1];
     return !next || next.col - month.col >= MIN_MONTH_GAP;

@@ -1,6 +1,6 @@
 import { STRIKE_DESCRIPTION_MAX_LENGTH } from "@createrington/shared/admin-reason";
 import { Input } from "@/components/ui/input";
-import { Field, FieldLabel } from "@/components/ui/field";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import {
   Select,
   SelectContent,
@@ -22,15 +22,28 @@ import { Textarea } from "@/components/ui/textarea";
 
 type Severity = 1 | 2 | 3 | 4 | 5;
 
+const MIN_SEVERITY = 1;
+const MAX_SEVERITY = 5;
+
 const EMPTY_DRAFT: {
   classification: StrikeClassification;
   description: string;
-  severity: Severity;
+  severity: string;
 } = {
   classification: "rule_violation",
   description: "",
-  severity: 1,
+  severity: String(MIN_SEVERITY),
 };
+
+function parseSeverity(value: string): Severity | null {
+  const severity = Number(value);
+  return value.trim() !== "" &&
+    Number.isInteger(severity) &&
+    severity >= MIN_SEVERITY &&
+    severity <= MAX_SEVERITY
+    ? (severity as Severity)
+    : null;
+}
 
 interface IssueStrikeModalProps {
   open: boolean;
@@ -45,6 +58,7 @@ export function IssueStrikeModal({
 }: IssueStrikeModalProps) {
   const [draft, update] = useDialogDraft(open, EMPTY_DRAFT);
   const { classification, description, severity } = draft;
+  const parsedSeverity = parseSeverity(severity);
 
   const issueStrike = useMutation(
     trpc.admin.players.strikes.issue.mutationOptions(
@@ -59,13 +73,13 @@ export function IssueStrikeModal({
   );
 
   const handleSubmit = () => {
-    if (!description) return;
+    if (!description || parsedSeverity === null) return;
 
     issueStrike.mutate({
       id: playerId,
       classification,
       description,
-      severity,
+      severity: parsedSeverity,
     });
   };
 
@@ -77,7 +91,7 @@ export function IssueStrikeModal({
       onConfirm={handleSubmit}
       confirmLabel="Issue Strike"
       loading={issueStrike.isPending}
-      disabled={!description}
+      disabled={!description || parsedSeverity === null}
     >
       <Field>
         <FieldLabel htmlFor="strike-classification">Classification</FieldLabel>
@@ -105,15 +119,18 @@ export function IssueStrikeModal({
         <Input
           id="strike-severity"
           type="number"
-          min="1"
-          max="5"
+          min={MIN_SEVERITY}
+          max={MAX_SEVERITY}
           value={severity}
-          onChange={(e) =>
-            update({
-              severity: parseInt(e.target.value) as Severity,
-            })
-          }
+          aria-invalid={parsedSeverity === null}
+          onChange={(e) => update({ severity: e.target.value })}
         />
+        {parsedSeverity === null && (
+          <FieldError>
+            Severity must be a whole number from {MIN_SEVERITY} to{" "}
+            {MAX_SEVERITY}
+          </FieldError>
+        )}
       </Field>
 
       <Field>

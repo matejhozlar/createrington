@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { clamp } from "@/lib/math";
+import { ClampedNumberInput } from "@/components/clamped-number-input";
 import { cn } from "@/lib/utils";
 import type { BlendMode } from "../engine/types";
 
@@ -93,17 +93,13 @@ export function SliderField({
           className="h-2 min-w-0 flex-1 cursor-pointer accent-primary"
         />
         <div className="relative w-24 shrink-0">
-          <Input
+          <ClampedNumberInput
             id={id}
-            type="number"
             min={min}
             max={max}
             step={step}
             value={value}
-            onChange={(event) => {
-              const next = Number(event.target.value);
-              if (Number.isFinite(next)) onChange(clamp(next, min, max));
-            }}
+            onValueChange={onChange}
             className={cn("tabular-nums", suffix && "pr-7")}
           />
           {suffix && (

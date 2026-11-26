@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { SearchInput } from "@/components/search-input";
 import { Input } from "@/components/ui/input";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { ErrorState } from "@/components/query-states";
 import { FormDialog } from "@/components/form-dialog";
 import {
   Tooltip,
@@ -272,6 +273,12 @@ export function PresetSidebar({
         {isSearching ? (
           presetsQuery.isLoading ? (
             <SkeletonList />
+          ) : presetsQuery.isError ? (
+            <ErrorState
+              message="Couldn't search the presets"
+              onRetry={() => presetsQuery.refetch()}
+              compact
+            />
           ) : searchResults.length === 0 ? (
             <p className="px-2 py-4 text-center text-xs text-muted-foreground">
               No presets found
@@ -302,6 +309,12 @@ export function PresetSidebar({
           <div className="space-y-0.5">
             {categoriesQuery.isLoading ? (
               <SkeletonList />
+            ) : categoriesQuery.isError ? (
+              <ErrorState
+                message="Couldn't load the categories"
+                onRetry={() => categoriesQuery.refetch()}
+                compact
+              />
             ) : (
               <>
                 {categories.map((cat) => (

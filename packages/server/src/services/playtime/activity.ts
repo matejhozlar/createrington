@@ -52,6 +52,7 @@ export interface PlayerActivity {
   currentStreak: number;
   mostActiveDay: string | null;
   days: Record<string, number>;
+  today: string;
 }
 
 export async function getPlayerActivity(
@@ -87,5 +88,6 @@ export async function getPlayerActivity(
     currentStreak: currentStreak(days),
     mostActiveDay: mostActiveWeekday(days),
     days,
+    today: calendarDay(new Date()),
   };
 }

@@ -2,11 +2,13 @@ import {
   COMPONENTS_V2_MAX_COMPONENTS,
   COMPONENTS_V2_MAX_TEXT,
   findAttachmentRef,
+  httpUrlSchema,
   measureComponentsV2,
 } from "@createrington/shared/api/embed";
 import type {
   ComponentButton,
   ComponentNode,
+  EmbedData,
   MessagePayload,
 } from "@createrington/shared/api/embed";
 
@@ -28,6 +30,30 @@ function incompleteFieldsMessage(indexes: number[]): string {
 function checkComponentButton(button: ComponentButton): string | null {
   if (!button.label.trim()) return "A button is missing a label.";
   if (!button.url.trim()) return "A button is missing a URL.";
+  return null;
+}
+
+function findEmbedButtonIssue({
+  buttons,
+  actionButtons,
+}: EmbedData): string | null {
+  for (const button of buttons) {
+    if (!button.label.trim()) return "A link button is missing a label.";
+    if (!button.url.trim()) return "A link button is missing a URL.";
+    if (!httpUrlSchema.safeParse(button.url).success) {
+      return "A link button URL must be a full http:// or https:// address.";
+    }
+  }
+  for (const button of actionButtons) {
+    if (!button.label.trim()) return "An action button is missing a label.";
+    if (!button.channelId) return "An action button is missing a channel.";
+    if (!button.threadName.trim()) {
+      return "An action button is missing a thread name.";
+    }
+    if (!button.threadMessage.trim()) {
+      return "An action button is missing a thread message.";
+    }
+  }
   return null;
 }
 
@@ -92,7 +118,9 @@ function findComponentIssue(nodes: ComponentNode[]): string | null {
 export function findPayloadIssue(payload: MessagePayload): string | null {
   if (payload.kind === "embed") {
     const incomplete = getIncompleteFieldIndexes(payload.embed.fields);
-    return incomplete.length > 0 ? incompleteFieldsMessage(incomplete) : null;
+    return incomplete.length > 0
+      ? incompleteFieldsMessage(incomplete)
+      : findEmbedButtonIssue(payload.embed);
   }
   const nodes = payload.components.components;
   return findSizeIssue(nodes) ?? findComponentIssue(nodes);

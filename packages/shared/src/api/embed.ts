@@ -27,6 +27,7 @@ const mediaUrl = z.union([httpUrl, attachmentRef]);
 
 export const EMBED_MAX_FIELDS = 25;
 export const EMBED_MAX_BUTTONS = 5;
+export const EMBED_PRESET_NAME_MAX = 100;
 
 export const embedFieldSchema = z.object({
   name: z.string().min(1).max(256),
@@ -71,6 +72,25 @@ export const embedDataSchema = z.object({
 });
 
 export type EmbedData = z.infer<typeof embedDataSchema>;
+
+export const EMBED_EMPTY_MESSAGE =
+  "Message must have content, a title, a description, an author, a footer, an image, or at least one field";
+
+export function hasEmbedContent(data: EmbedData): boolean {
+  return !!(
+    data.title ||
+    data.description ||
+    data.fields.length > 0 ||
+    data.author ||
+    data.footer ||
+    data.imageUrl ||
+    data.thumbnailUrl
+  );
+}
+
+export function hasEmbedMessageContent(data: EmbedData): boolean {
+  return !!data.content || hasEmbedContent(data);
+}
 export type EmbedField = z.infer<typeof embedFieldSchema>;
 export type EmbedLinkButton = z.infer<typeof embedLinkButtonSchema>;
 export type EmbedActionButton = z.infer<typeof embedActionButtonSchema>;

@@ -1,4 +1,5 @@
 import { Q } from "@/db";
+import { ConflictError } from "@/errors";
 import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
 import type { DiscordMessageService } from "@/services/discord/message/message.service";
@@ -45,10 +46,13 @@ export type InactivityTriggerContext = {
  * app setting, so the weekly schedule survives restarts and redeploys: an
  * hourly tick (and startup) runs the full cycle once a week has passed since
  * the last one, and startup otherwise runs only resolve+remove.
+ *
+ * Runs never overlap: an hourly tick that finds a run in progress is skipped,
+ * and a manual or forced run is refused with `ConflictError`.
  */
 export class InactivityCleanupService {
   private intervalId?: NodeJS.Timeout;
-  private scheduledRunInFlight = false;
+  private runInFlight = false;
 
   /** Run the full cycle if one is due (resolve+remove otherwise), then arm the hourly due check. */
   initialize(): void {
@@ -79,30 +83,47 @@ export class InactivityCleanupService {
   }
 
   private async runStartup(): Promise<void> {
-    const ran = await this.runIfDue();
-    if (!ran) {
-      await this.resolveAndRemoveOnly();
-    }
+    await this.exclusive(async () => {
+      if (await this.isCycleDue()) {
+        await this.runRecordedCycle();
+      } else {
+        await this.resolveAndRemoveOnly();
+      }
+    });
   }
 
-  private async runIfDue(): Promise<boolean> {
-    if (this.scheduledRunInFlight) return false;
-    this.scheduledRunInFlight = true;
+  private async runIfDue(): Promise<void> {
+    if (this.runInFlight) return;
 
-    try {
-      const ranAt = await settings.getInactivityCycleRanAt();
-      if (
-        ranAt &&
-        Date.now() - ranAt.getTime() < INACTIVITY_CHECK_INTERVAL_MS
-      ) {
-        return false;
+    await this.exclusive(async () => {
+      if (await this.isCycleDue()) {
+        await this.runRecordedCycle();
       }
+    });
+  }
 
-      logger.info("Weekly inactivity cleanup cycle is due, running it");
-      await this.runRecordedCycle();
-      return true;
+  private async isCycleDue(): Promise<boolean> {
+    const ranAt = await settings.getInactivityCycleRanAt();
+    if (ranAt && Date.now() - ranAt.getTime() < INACTIVITY_CHECK_INTERVAL_MS) {
+      return false;
+    }
+
+    logger.info("Weekly inactivity cleanup cycle is due, running it");
+    return true;
+  }
+
+  private async exclusive<T>(run: () => Promise<T>): Promise<T> {
+    if (this.runInFlight) {
+      throw new ConflictError(
+        "An inactivity cleanup run is already in progress",
+      );
+    }
+
+    this.runInFlight = true;
+    try {
+      return await run();
     } finally {
-      this.scheduledRunInFlight = false;
+      this.runInFlight = false;
     }
   }
 
@@ -295,12 +316,7 @@ export class InactivityCleanupService {
     }
   }
 
-  /**
-   * Run the resolve, remove, and prune phases (no new warnings posted).
-   * Used on startup and from the admin panel to process overdue players
-   * without firing duplicate warning announcements in #announcements.
-   */
-  async resolveAndRemoveOnly(
+  private async resolveAndRemoveOnly(
     triggeredBy: InactivityTriggerContext = null,
   ): Promise<void> {
     try {
@@ -318,15 +334,15 @@ export class InactivityCleanupService {
     triggeredBy: InactivityTriggerContext = null,
   ): Promise<void> {
     logger.info("Manual inactivity cleanup triggered");
-    await this.runCycle(triggeredBy);
+    await this.exclusive(() => this.runCycle(triggeredBy));
   }
 
-  /** Run resolve+remove on demand, skipping the warn phase. */
+  /** Run resolve+remove on demand, skipping the warn phase, to process overdue players without posting duplicate warning announcements. */
   async triggerResolveAndRemove(
     triggeredBy: InactivityTriggerContext = null,
   ): Promise<void> {
     logger.info("Manual inactivity resolve+remove triggered (no new warnings)");
-    await this.resolveAndRemoveOnly(triggeredBy);
+    await this.exclusive(() => this.resolveAndRemoveOnly(triggeredBy));
   }
 
   /** Force-run the full cleanup cycle now and reset the schedule: the next automatic full cycle is due a week after this one finishes. */
@@ -337,7 +353,7 @@ export class InactivityCleanupService {
       "Forced inactivity cleanup triggered, resetting recurring schedule",
     );
 
-    await this.runRecordedCycle(triggeredBy);
+    await this.exclusive(() => this.runRecordedCycle(triggeredBy));
 
     logger.info(
       `Inactivity cleanup schedule reset, next full cycle in ${INACTIVITY_CHECK_INTERVAL_MS / 86400000}d`,

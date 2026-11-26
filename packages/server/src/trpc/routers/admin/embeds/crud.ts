@@ -1,10 +1,10 @@
 import { Discord } from "@/discord/constants";
 import { z } from "zod";
-import { guildChannelsProcedure } from "../guild-channels";
+import { guildChannelsProcedure } from "@/trpc/routers/admin/guild-channels";
 import { adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
 import { getServiceIfReady, Services } from "@/services";
-import { trpcError, auditActor, id } from "@/trpc/utils";
+import { trpcError, auditActor, id, findOrThrow } from "@/trpc/utils";
 import { isMessageGone } from "@/services/discord/message/errors";
 import config from "@/config";
 import {
@@ -17,6 +17,7 @@ import {
   payloadToStorage,
   toSendOptions,
   toEditOptions,
+  assertPresetKind,
 } from "./helpers";
 
 const colors = config.discord.embeds.colors;
@@ -67,6 +68,13 @@ export const embedCrudProcedures = {
         throw trpcError.badRequest(built.error);
       }
 
+      if (input.presetId) {
+        await findOrThrow(
+          Q.discord.embed.preset.find({ id: input.presetId }),
+          "Preset not found",
+        );
+      }
+
       const sent = await Discord.Messages.send(toSendOptions(built, channelId));
 
       if (input.presetId) {
@@ -114,6 +122,14 @@ export const embedCrudProcedures = {
       const built = buildMessage(input, input.presetId);
       if (!built.ok) {
         throw trpcError.badRequest(built.error);
+      }
+
+      if (input.presetId) {
+        const preset = await findOrThrow(
+          Q.discord.embed.preset.find({ id: input.presetId }),
+          "Preset not found",
+        );
+        assertPresetKind(preset, input.kind);
       }
 
       const edited = await Discord.Messages.edit(

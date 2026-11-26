@@ -1,6 +1,6 @@
 import { TRPCClientError, createTRPCClient, httpBatchLink } from "@trpc/client";
 import { createTRPCOptionsProxy } from "@trpc/tanstack-react-query";
-import { QueryClient } from "@tanstack/react-query";
+import { MutationCache, QueryClient } from "@tanstack/react-query";
 import type { AppRouter } from "@createrington/server/trpc";
 import type { inferRouterInputs, inferRouterOutputs } from "@trpc/server";
 import { HTTPError } from "ky";
@@ -8,6 +8,7 @@ import {
   getAccessToken,
   retryAfterRefresh,
 } from "@/services/auth/token-manager";
+import { isUnauthorizedBatch } from "@/lib/trpcBatch";
 
 export type RouterInput = inferRouterInputs<AppRouter>;
 export type RouterOutput = inferRouterOutputs<AppRouter>;
@@ -25,6 +26,11 @@ function isClientError(error: unknown): boolean {
 }
 
 export const queryClient = new QueryClient({
+  mutationCache: new MutationCache({
+    onSettled: () => {
+      void queryClient.invalidateQueries(trpc.admin.logs.pathFilter());
+    },
+  }),
   defaultOptions: {
     queries: {
       staleTime: 5 * 60 * 1000,
@@ -54,6 +60,7 @@ const trpcClient = createTRPCClient<AppRouter>({
             headers.set("Authorization", `Bearer ${accessToken}`);
             return send(headers);
           },
+          (response) => isUnauthorizedBatch(response, options?.method),
         );
       },
     }),

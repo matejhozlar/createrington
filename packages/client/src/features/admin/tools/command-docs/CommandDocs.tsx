@@ -18,7 +18,7 @@ import {
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 import { useQuery } from "@tanstack/react-query";
-import { LoadingState } from "@/components/query-states";
+import { ErrorState, LoadingState } from "@/components/query-states";
 import { formatDate } from "@createrington/shared/format";
 import type {
   DiscordCommandDoc,
@@ -230,9 +230,10 @@ function CommandCard({ command }: { command: DiscordCommandDoc }) {
 }
 
 export function CommandDocs() {
-  const { data: payload, isLoading } = useQuery(
+  const commandsQuery = useQuery(
     trpc.admin.discordCommands.list.queryOptions(),
   );
+  const payload = commandsQuery.data;
 
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
@@ -271,8 +272,14 @@ export function CommandDocs() {
         { label: "Command Docs" },
       ]}
     >
-      {isLoading ? (
+      {commandsQuery.isLoading ? (
         <LoadingState text="Loading commands..." className="py-0" />
+      ) : commandsQuery.isError ? (
+        <ErrorState
+          message={`Failed to load the commands: ${commandsQuery.error.message}`}
+          onRetry={() => commandsQuery.refetch()}
+          className="py-0"
+        />
       ) : (
         <>
           <AdminPageTitle

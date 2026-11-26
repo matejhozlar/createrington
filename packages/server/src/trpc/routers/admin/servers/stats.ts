@@ -143,8 +143,7 @@ export const serverStatsProcedures = {
 
       return {
         heatmap: heatmapData.map((d) => ({
-          day: d.day,
-          hour: Number(d.hour),
+          hourStart: d.hourStart,
           uniquePlayers: Number(d.uniquePlayers),
           totalSeconds: Number(d.totalSeconds),
         })),

@@ -11,6 +11,7 @@ import type {
 } from "@/features/admin/structure-packs/structure-pack-detail/types";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Spinner } from "@/components/ui/spinner";
+import { ErrorState } from "@/components/query-states";
 import { pluralize } from "@/lib/format";
 
 export function RemoveModDialog({
@@ -50,6 +51,14 @@ export function RemoveModDialog({
   const removeModMutation = useMutation(
     trpc.admin.structurePacks.mods.delete.mutationOptions({
       onSuccess: () => {
+        void queryClient.invalidateQueries({
+          ...trpc.admin.structurePacks.mods.checkDeleteDeps.pathFilter(),
+          refetchType: "none",
+        });
+        void queryClient.invalidateQueries({
+          ...trpc.admin.structurePacks.mods.resolveDeps.pathFilter(),
+          refetchType: "none",
+        });
         void queryClient.invalidateQueries(
           trpc.admin.structurePacks.get.queryFilter({ id: packId }),
         );
@@ -128,7 +137,7 @@ export function RemoveModDialog({
         </>
       }
       onConfirm={() => void handleBatchRemove()}
-      disabled={checkRemoveDepsQuery.isLoading}
+      disabled={!checkRemoveDepsQuery.data}
       loading={removingBatch}
       destructive
       contentClassName="sm:max-w-lg"
@@ -166,6 +175,14 @@ export function RemoveModDialog({
             <Spinner className="mr-2 size-4" />
             Checking dependencies...
           </div>
+        )}
+
+        {checkRemoveDepsQuery.error && (
+          <ErrorState
+            message={checkRemoveDepsQuery.error.message}
+            onRetry={() => void checkRemoveDepsQuery.refetch()}
+            compact
+          />
         )}
 
         {checkRemoveDepsQuery.data &&

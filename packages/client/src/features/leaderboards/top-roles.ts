@@ -1,6 +1,6 @@
 import { Coins, Crown, MoonStar, type LucideIcon } from "lucide-react";
 import { formatCompactMoney, formatMoney } from "@createrington/shared/format";
-import { formatNumber, pluralize } from "@/lib/format";
+import { pluralize } from "@/lib/format";
 import { DAY_MS } from "@/lib/time";
 import { playerPoseUrl } from "@/lib/playerImages";
 import type { Board } from "./hooks/use-board-params";
@@ -70,7 +70,7 @@ export function topRoleStyle(roleKey: string): TopRoleStyle {
 export function formatMetric(metric: TopRoleMetric, value: number): string {
   switch (metric) {
     case "playtime":
-      return `${formatNumber(Math.floor(value / 3600))} hours`;
+      return pluralize(Math.floor(value / 3600), "hour");
     case "balance":
       return formatMoney(value);
     case "records":

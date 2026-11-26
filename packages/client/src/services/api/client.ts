@@ -1,4 +1,9 @@
-import ky, { type HTTPError, type KyInstance, type Options } from "ky";
+import ky, {
+  type BeforeErrorHook,
+  type HTTPError,
+  type KyInstance,
+  type Options,
+} from "ky";
 import {
   getAccessToken,
   retryAfterRefresh,
@@ -10,6 +15,28 @@ interface ApiErrorResponse {
 }
 
 export type ApiError = HTTPError & { code?: string };
+
+const readErrorBody: BeforeErrorHook = async (error) => {
+  const { response } = error;
+
+  if (response?.body) {
+    try {
+      const errorBody = await response.json<ApiErrorResponse>();
+      error.message = errorBody.message || error.message;
+      (error as ApiError).code = errorBody.error?.code;
+    } catch {}
+  }
+
+  if (import.meta.env.DEV) {
+    console.error("[API Error]", {
+      url: response?.url,
+      status: response?.status,
+      message: error.message,
+    });
+  }
+
+  return error;
+};
 
 class ApiClient {
   private client: KyInstance;
@@ -43,29 +70,7 @@ class ApiClient {
             }
           },
         ],
-        beforeError: [
-          async (error) => {
-            const { response } = error;
-
-            if (response?.body) {
-              try {
-                const errorBody = await response.json<ApiErrorResponse>();
-                error.message = errorBody.message || error.message;
-                (error as ApiError).code = errorBody.error?.code;
-              } catch {}
-            }
-
-            if (import.meta.env.DEV) {
-              console.error("[API Error]", {
-                url: response?.url,
-                status: response?.status,
-                message: error.message,
-              });
-            }
-
-            return error;
-          },
-        ],
+        beforeError: [readErrorBody],
         afterResponse: [
           async (request, options, response) => {
             if (import.meta.env.DEV && response.ok) {
@@ -74,7 +79,10 @@ class ApiClient {
 
             return retryAfterRefresh(response, (accessToken) => {
               request.headers.set("Authorization", `Bearer ${accessToken}`);
-              return ky(request, { ...options, hooks: {} });
+              return ky(request, {
+                ...options,
+                hooks: { beforeError: [readErrorBody] },
+              });
             });
           },
         ],

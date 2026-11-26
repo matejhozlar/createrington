@@ -2,12 +2,14 @@ import { useEffect, useRef, useState } from "react";
 import { ActivePack } from "./components/ActivePack";
 import { PacksHero, type PacksHeroHandle } from "./components/hero/PacksHero";
 import { PortalZoomOverlay } from "./components/hero/PortalZoomOverlay";
+import { useRefreshOnRotation } from "./hooks/use-refresh-on-rotation";
 import "./structure-packs.css";
 
 export function StructurePacks() {
   const activePackRef = useRef<HTMLElement | null>(null);
   const heroRef = useRef<PacksHeroHandle>(null);
   const cancelPendingScrollRef = useRef<(() => void) | null>(null);
+  useRefreshOnRotation();
 
   useEffect(() => {
     return () => {

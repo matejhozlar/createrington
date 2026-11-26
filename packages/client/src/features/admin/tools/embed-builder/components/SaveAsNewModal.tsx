@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
+import { EMBED_PRESET_NAME_MAX } from "@createrington/shared/api/embed";
 import type { UseEmbedBuilder } from "@/features/admin/tools/embed-builder/hooks/use-embed-builder";
 
 const NEW_CATEGORY_VALUE = "__new__";
@@ -100,7 +101,7 @@ export function SaveAsNewModal({
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="e.g. Welcome message"
-          maxLength={100}
+          maxLength={EMBED_PRESET_NAME_MAX}
         />
       </Field>
 

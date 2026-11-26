@@ -8,8 +8,11 @@ import {
 
 const ticketGet = vi.hoisted(() => vi.fn());
 const ticketFindAll = vi.hoisted(() => vi.fn());
+const allocateNumber = vi.hoisted(() => vi.fn());
 const repository = vi.hoisted(() => ({
+  create: vi.fn(),
   close: vi.fn(),
+  delete: vi.fn(),
   updateMetadata: vi.fn(),
 }));
 const sendMessage = vi.hoisted(() => vi.fn());
@@ -36,7 +39,10 @@ vi.mock("@/config", () => ({
 }));
 
 vi.mock("@/db", () => ({
-  Q: { ticket: { get: ticketGet, findAll: ticketFindAll } },
+  Q: {
+    ticket: { get: ticketGet, findAll: ticketFindAll, allocateNumber },
+    player: { find: vi.fn(async () => null) },
+  },
   ticketRepo: repository,
 }));
 
@@ -49,7 +55,12 @@ vi.mock("@/discord/constants", () => ({
 }));
 
 vi.mock("@/discord/embeds", () => ({
-  EmbedPresets: { ticket: { close: () => ({ build: () => [] }) } },
+  EmbedPresets: {
+    ticket: {
+      close: (closedBy: string) => ({ build: () => [closedBy] }),
+      welcome: () => ({ build: () => [] }),
+    },
+  },
 }));
 
 import { TicketService } from "@/services/discord/tickets/ticket.service";
@@ -147,6 +158,60 @@ describe("TicketService.openTicket", () => {
   });
 });
 
+describe("TicketService.openTicket when creating fails", () => {
+  function serviceWithChannel() {
+    const channel = { id: "channel-9", delete: vi.fn(async () => undefined) };
+    const client = {
+      user: { id: "bot-1" },
+      guilds: {
+        fetch: vi.fn(async () => ({
+          id: "guild-1",
+          channels: { create: vi.fn(async () => channel) },
+        })),
+      },
+    } as unknown as Client;
+    return { service: new TicketService(client), channel };
+  }
+
+  const request = { type: TicketType.GENERAL, creatorId: "user-1" };
+
+  beforeEach(() => {
+    ticketFindAll.mockReset().mockResolvedValue([]);
+    allocateNumber.mockReset().mockResolvedValue(42);
+    repository.create.mockReset();
+    repository.delete.mockReset();
+    sendMessage.mockReset();
+  });
+
+  it("discards the channel and the ticket when the welcome message fails", async () => {
+    const { service, channel } = serviceWithChannel();
+    repository.create.mockResolvedValue({
+      id: 9,
+      creatorDiscordId: "user-1",
+    });
+    sendMessage.mockRejectedValue(new Error("Discord unavailable"));
+
+    await expect(service.openTicket(request)).rejects.toThrow(
+      "Discord unavailable",
+    );
+
+    expect(repository.delete).toHaveBeenCalledWith(9, "bot-1");
+    expect(channel.delete).toHaveBeenCalledOnce();
+  });
+
+  it("deletes the channel when the ticket row cannot be stored", async () => {
+    const { service, channel } = serviceWithChannel();
+    repository.create.mockRejectedValue(new Error("connection lost"));
+
+    await expect(service.openTicket(request)).rejects.toThrow(
+      "connection lost",
+    );
+
+    expect(repository.delete).not.toHaveBeenCalled();
+    expect(channel.delete).toHaveBeenCalledOnce();
+  });
+});
+
 describe("TicketService.removeParticipant", () => {
   it("deletes the user's permission overwrite on the ticket channel", async () => {
     const { client, cache, permissionOverwrites } = fakeBot({
@@ -214,7 +279,44 @@ describe("TicketService.closeTicket", () => {
     repository.close.mockResolvedValue({ ...ticket, status: "closed" });
     repository.updateMetadata.mockReset();
     sendMessage.mockReset();
-    sendMessage.mockResolvedValue({ messageId: "message-1" });
+    sendMessage.mockResolvedValue({ id: "message-1" });
+  });
+
+  it("posts the closure message again for a ticket closed without one", async () => {
+    ticketGet.mockResolvedValue({
+      ...ticket,
+      status: "closed",
+      closedByDiscordId: "admin-0",
+      metadata: {},
+    });
+    const service = new TicketService(fakeBot({}).client);
+
+    await service.closeTicket(7, "admin-1");
+
+    expect(repository.close).not.toHaveBeenCalled();
+    expect(sendMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ channelId: "channel-1", embeds: ["admin-0"] }),
+    );
+    expect(repository.updateMetadata).toHaveBeenCalledWith(7, {
+      closeMessageId: "message-1",
+    });
+  });
+
+  it("refuses to close a ticket again once its closure message is posted", async () => {
+    ticketGet.mockResolvedValue({
+      ...ticket,
+      status: "closed",
+      metadata: { closeMessageId: "message-0" },
+    });
+    repository.close.mockRejectedValue(
+      new Error("Ticket #12 is already closed"),
+    );
+    const service = new TicketService(fakeBot({}).client);
+
+    await expect(service.closeTicket(7, "admin-1")).rejects.toThrow(
+      "already closed",
+    );
+    expect(sendMessage).not.toHaveBeenCalled();
   });
 
   it("locks out the owner and removes everyone added to the ticket", async () => {

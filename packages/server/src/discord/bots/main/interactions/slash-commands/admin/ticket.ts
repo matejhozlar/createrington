@@ -181,7 +181,7 @@ async function closeTicket(
   const ticket = await channelTicket(interaction);
   if (!ticket) return;
 
-  if (ticket.status === "closed") {
+  if (ticket.status === "closed" && !tickets.isMissingClosureMessage(ticket)) {
     await replyError(
       interaction,
       "Already Closed",

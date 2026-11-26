@@ -42,6 +42,15 @@ export function Gallery() {
     return <LoadingScreen text="Loading gallery..." />;
   }
 
+  if (enabledQuery.isError) {
+    return (
+      <ErrorState
+        message={`Failed to load the gallery: ${enabledQuery.error.message}`}
+        onRetry={() => enabledQuery.refetch()}
+      />
+    );
+  }
+
   if (!enabled) {
     return <NotFound />;
   }

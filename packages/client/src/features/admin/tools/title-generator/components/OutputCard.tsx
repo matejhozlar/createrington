@@ -1,6 +1,6 @@
 import { Frame } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { ClampedNumberInput } from "@/components/clamped-number-input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -57,18 +57,13 @@ function SizeInput({
       <Label htmlFor={id} className="text-sm font-medium">
         {label}
       </Label>
-      <Input
+      <ClampedNumberInput
         id={id}
-        type="number"
+        integer
         min={1}
         max={MAX_RENDER_SIZE}
         value={value}
-        onChange={(event) => {
-          const next = Math.round(Number(event.target.value));
-          if (Number.isFinite(next)) {
-            onChange(Math.min(MAX_RENDER_SIZE, Math.max(1, next)));
-          }
-        }}
+        onValueChange={onChange}
         className="w-28 tabular-nums"
       />
     </div>
