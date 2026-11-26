@@ -256,7 +256,9 @@ class Runner {
   };
 
   private readonly onVisibility = (): void => {
-    if (document.hidden && this.state === "running") this.run.paused = true;
+    if (!document.hidden) return;
+    this.input.release();
+    if (this.state === "running") this.run.paused = true;
   };
 
   private pressJump(): void {

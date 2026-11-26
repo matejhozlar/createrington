@@ -45,6 +45,17 @@ export function Changelog() {
   const versionRefs = useRef<Record<string, HTMLElement | null>>({});
   useEffect(() => {
     if (sections.length === 0) return;
+    versionRefs.current[window.location.hash.slice(1)]?.scrollIntoView();
+  }, [sections]);
+
+  const packages = useMemo(() => packageNames(sections), [sections]);
+  const filteredSections = useMemo(
+    () => filterSections(sections, filters),
+    [sections, filters],
+  );
+
+  useEffect(() => {
+    if (filteredSections.length === 0) return;
     const obs = new IntersectionObserver(
       (entries) => {
         const visible = entries.filter((e) => e.isIntersecting);
@@ -60,18 +71,8 @@ export function Changelog() {
     );
     Object.values(versionRefs.current).forEach((el) => el && obs.observe(el));
     return () => obs.disconnect();
-  }, [sections]);
+  }, [filteredSections]);
 
-  useEffect(() => {
-    if (sections.length === 0) return;
-    versionRefs.current[window.location.hash.slice(1)]?.scrollIntoView();
-  }, [sections]);
-
-  const packages = useMemo(() => packageNames(sections), [sections]);
-  const filteredSections = useMemo(
-    () => filterSections(sections, filters),
-    [sections, filters],
-  );
   const stats = useMemo(() => changelogStats(sections), [sections]);
 
   if (changelogQuery.isLoading) {
