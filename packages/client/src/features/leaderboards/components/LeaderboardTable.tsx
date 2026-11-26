@@ -10,6 +10,7 @@ import {
   statModName,
 } from "@createrington/shared/minecraft-stats";
 import { trpc, type RouterOutput } from "@/lib/trpc";
+import { LEADERBOARD_PLAYER_SEARCH_MAX } from "@createrington/shared/leaderboard";
 import { ErrorState } from "@/components/query-states";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/auth";
@@ -47,6 +48,19 @@ const BOARDS: { board: Board; roleKey: string; metric: TopRoleMetric }[] = [
   { board: "records", roleKey: "the_unrivaled", metric: "records" },
   { board: "balance", roleKey: "capitalist", metric: "balance" },
 ];
+
+function sameInput(
+  queryKey: readonly unknown[] | undefined,
+  match: Record<string, unknown>,
+): boolean {
+  const input = (
+    queryKey?.[1] as { input?: Record<string, unknown> } | undefined
+  )?.input;
+  return (
+    input !== undefined &&
+    Object.entries(match).every(([key, value]) => input[key] === value)
+  );
+}
 
 function reveal(start: number): CSSProperties {
   const progress = `clamp(0, (var(--land, 1) - ${start}) / ${(1 - start).toFixed(2)}, 1)`;
@@ -306,7 +320,9 @@ export function LeaderboardTable() {
   );
   const [now] = useState(Date.now);
   const [detailTab, setDetailTab] = useState<DetailTab>("records");
-  const [search, setSearch] = useState(params.search);
+  const [search, setSearch] = useState(
+    params.search.slice(0, LEADERBOARD_PLAYER_SEARCH_MAX),
+  );
   const debouncedSearch = useDebouncedValue(search.trim());
 
   const active = BOARDS.find((b) => b.board === board) ?? BOARDS[0];
@@ -342,7 +358,8 @@ export function LeaderboardTable() {
       { board, ...pageInput },
       {
         staleTime: 60 * 1000,
-        placeholderData: (previous) => previous,
+        placeholderData: (previous, previousQuery) =>
+          sameInput(previousQuery?.queryKey, { board }) ? previous : undefined,
         enabled: !activeStat,
       },
     ),
@@ -352,7 +369,8 @@ export function LeaderboardTable() {
       { ...statKey, ...pageInput },
       {
         staleTime: 60 * 1000,
-        placeholderData: (previous) => previous,
+        placeholderData: (previous, previousQuery) =>
+          sameInput(previousQuery?.queryKey, statKey) ? previous : undefined,
         enabled: !!activeStat,
       },
     ),
@@ -432,6 +450,7 @@ export function LeaderboardTable() {
           )}
           <SearchInput
             className="flex-1"
+            maxLength={LEADERBOARD_PLAYER_SEARCH_MAX}
             value={search}
             onValueChange={(value) => {
               setSearch(value);

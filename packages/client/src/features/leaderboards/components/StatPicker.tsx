@@ -8,6 +8,7 @@ import {
 import { pluralize } from "@/lib/format";
 import { trpc } from "@/lib/trpc";
 import { ErrorState } from "@/components/query-states";
+import { LEADERBOARD_STAT_SEARCH_MAX } from "@createrington/shared/leaderboard";
 import { cn } from "@/lib/utils";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import {
@@ -58,6 +59,7 @@ function StatResults({ onPick }: { onPick: (stat: Stat) => void }) {
   return (
     <Command shouldFilter={false}>
       <CommandInput
+        maxLength={LEADERBOARD_STAT_SEARCH_MAX}
         value={query}
         onValueChange={setQuery}
         placeholder="Diamond ore, jumps, zombie…"

@@ -1,5 +1,6 @@
 import { Skeleton } from "@/components/ui/skeleton";
 import { useState } from "react";
+import { LEADERBOARD_STAT_SEARCH_MAX } from "@createrington/shared/leaderboard";
 import {
   formatStatCategory,
   formatStatItem,
@@ -71,6 +72,7 @@ export function EveryStat({
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <SearchInput
             className="sm:w-80"
+            maxLength={LEADERBOARD_STAT_SEARCH_MAX}
             value={search}
             onValueChange={setSearch}
             placeholder="Search stats, e.g. diamond"

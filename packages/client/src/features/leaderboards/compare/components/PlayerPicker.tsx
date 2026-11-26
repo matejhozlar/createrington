@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { trpc } from "@/lib/trpc";
 import { ErrorState } from "@/components/query-states";
+import { LEADERBOARD_PLAYER_SEARCH_MAX } from "@createrington/shared/leaderboard";
 import { useAuth } from "@/contexts/auth";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
@@ -167,6 +168,7 @@ function PlayerResults({
   return (
     <Command shouldFilter={false}>
       <CommandInput
+        maxLength={LEADERBOARD_PLAYER_SEARCH_MAX}
         value={query}
         onValueChange={setQuery}
         placeholder="Search players"
