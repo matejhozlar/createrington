@@ -62,6 +62,7 @@ type OpenTicketResult =
 export class TicketService {
   private readonly transcriptDir: string;
   private readonly withCreatorLock = createKeyedLock<string>();
+  private readonly withTicketLock = createKeyedLock<number>();
   constructor(private readonly bot: Client) {
     this.transcriptDir = path.join(config.storage.path, "transcripts");
     void this.ensureTranscriptDir();
@@ -82,7 +83,8 @@ export class TicketService {
    * the create run under a per-creator lock, so two requests that arrive
    * together open one ticket. Creating allocates the next ticket number,
    * creates a permission-scoped Discord channel, persists the ticket row and
-   * posts the welcome embed.
+   * posts the welcome embed. When the row or the welcome embed fails, the
+   * channel and the row are discarded so the creator can try again.
    */
   async openTicket(options: CreateTicketOptions): Promise<OpenTicketResult> {
     return this.withCreatorLock(options.creatorId, async () => {
@@ -109,20 +111,54 @@ export class TicketService {
       config.allowedRoleIds,
     );
 
-    const ticket = await ticketRepo.create({
-      ticketNumber,
-      type: options.type,
-      creatorDiscordId: options.creatorId,
-      channelId: channel.id,
-    });
+    let ticket: Ticket | null = null;
+    try {
+      ticket = await ticketRepo.create({
+        ticketNumber,
+        type: options.type,
+        creatorDiscordId: options.creatorId,
+        channelId: channel.id,
+      });
 
-    await this.sendWelcomeMessage(channel, ticket, options.creatorId);
+      await this.sendWelcomeMessage(channel, ticket, options.creatorId);
+    } catch (error) {
+      await this.discardTicket(channel, ticket);
+      throw error;
+    }
 
     logger.info(
       `Created ticket #${ticketNumber} (ID: ${ticket.id}) for user ${options.creatorId}`,
     );
 
     return { ticket, channel };
+  }
+
+  private async discardTicket(
+    channel: TextChannel,
+    ticket: Ticket | null,
+  ): Promise<void> {
+    if (ticket) {
+      try {
+        await ticketRepo.delete(
+          ticket.id,
+          this.bot.user?.id ?? ticket.creatorDiscordId,
+        );
+      } catch (error) {
+        logger.error(
+          `Failed to discard ticket ${ticket.id} after a failed create:`,
+          error,
+        );
+      }
+    }
+
+    try {
+      await channel.delete("Ticket creation failed");
+    } catch (error) {
+      logger.error(
+        `Failed to delete channel ${channel.id} after a failed ticket create:`,
+        error,
+      );
+    }
   }
 
   private async createTicketChannel(
@@ -201,25 +237,37 @@ export class TicketService {
   /**
    * Close an active ticket: mark the row closed, lock the channel for the
    * creator, drop everyone added to it afterwards, and post the closure
-   * embed. Throws if the ticket is already closed.
+   * embed. A closed ticket whose closure embed was never posted gets it
+   * posted again instead. Throws if the ticket is already closed with its
+   * closure embed in place. Runs under a per-ticket lock.
    */
   async closeTicket(ticketId: number, closedBy: string): Promise<Ticket> {
-    const updatedTicket = await ticketRepo.close(ticketId, closedBy);
+    return this.withTicketLock(ticketId, async () => {
+      const current = await Q.ticket.get({ id: ticketId });
+      const ticket = this.isMissingClosureMessage(current)
+        ? current
+        : await ticketRepo.close(ticketId, closedBy);
 
-    await this.lockTicketChannel(
-      updatedTicket.channelId,
-      updatedTicket.creatorDiscordId,
+      await this.lockTicketChannel(ticket.channelId, ticket.creatorDiscordId);
+
+      const closeMessageId = await this.sendClosureMessage(
+        ticket.channelId,
+        ticket,
+        ticket.closedByDiscordId ?? closedBy,
+      );
+
+      await ticketRepo.updateMetadata(ticketId, { closeMessageId });
+
+      return ticket;
+    });
+  }
+
+  /** Whether the ticket is closed without its closure embed (the send failed after the row was closed), so `closeTicket` can post it again. */
+  isMissingClosureMessage(ticket: Ticket): boolean {
+    return (
+      ticket.status === "closed" &&
+      !readTicketMetadata(ticket.metadata).closeMessageId
     );
-
-    const closeMessageId = await this.sendClosureMessage(
-      updatedTicket.channelId,
-      updatedTicket,
-      closedBy,
-    );
-
-    await ticketRepo.updateMetadata(ticketId, { closeMessageId });
-
-    return updatedTicket;
   }
 
   private async lockTicketChannel(
