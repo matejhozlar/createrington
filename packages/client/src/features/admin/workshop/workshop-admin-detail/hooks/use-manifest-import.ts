@@ -16,7 +16,7 @@ export function useManifestImport({
   onImported,
 }: {
   modpackId: number;
-  memberCount: number;
+  memberCount: number | null;
   onImported: () => void;
 }) {
   const toast = useToastActions();
@@ -64,6 +64,10 @@ export function useManifestImport({
     const parsed = modpackManifestUploadSchema.safeParse(raw);
     if (!parsed.success) {
       toast.error("That file does not look like a modpack manifest.json");
+      return;
+    }
+    if (memberCount === null) {
+      toast.error("Wait for the pack members to load, then import again");
       return;
     }
     if (memberCount === 0) {

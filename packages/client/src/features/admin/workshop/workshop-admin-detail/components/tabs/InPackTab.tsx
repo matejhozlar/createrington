@@ -74,9 +74,10 @@ export function InPackTab({
     ),
   );
 
+  const membersLoaded = !isLoading && error === null;
   const manifest = useManifestImport({
     modpackId,
-    memberCount: rows.length,
+    memberCount: membersLoaded ? rows.length : null,
     onImported: onReconciled,
   });
 
@@ -89,6 +90,7 @@ export function InPackTab({
         <Button
           variant="outline"
           size="sm"
+          disabled={!membersLoaded}
           loading={manifest.importing}
           onClick={() => manifestInputRef.current?.click()}
           className="max-sm:w-full"
