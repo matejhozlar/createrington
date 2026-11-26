@@ -43,6 +43,10 @@ type PlayerDialog =
 
 export function AdminPlayerDetail() {
   const { id = "" } = useParams<{ id: string }>();
+  return <PlayerDetail key={id} id={id} />;
+}
+
+function PlayerDetail({ id }: { id: string }) {
   const navigate = useNavigate();
   const { isPlayerOnline, getPlayerServerId, getServerName } =
     useAdminPlayers();

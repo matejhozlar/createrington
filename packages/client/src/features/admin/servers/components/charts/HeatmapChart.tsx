@@ -15,8 +15,8 @@ export function HeatmapChart({ data }: HeatmapChartProps) {
     let max = 0;
 
     for (const point of data) {
-      const dayOfWeek = new Date(point.day).getUTCDay();
-      const key = `${dayOfWeek}-${point.hour}`;
+      const start = new Date(point.hourStart);
+      const key = `${start.getDay()}-${start.getHours()}`;
       buckets[key] = (buckets[key] || 0) + point.uniquePlayers;
     }
 

@@ -51,8 +51,9 @@ export function parseHeatmapDate(date: string): Date {
 export function buildHeatmapGrid(
   days: Record<string, number>,
   numWeeks: number,
+  todayKey: string,
 ): HeatmapGrid {
-  const today = new Date();
+  const today = parseHeatmapDate(todayKey);
   const todayDay = today.getDay();
   const mondayOffset = todayDay === 0 ? 6 : todayDay - 1;
 
@@ -68,7 +69,7 @@ export function buildHeatmapGrid(
     const week: HeatmapDay[] = [];
     for (let row = 0; row < 7; row++) {
       const dateStr = toDateStr(cursor);
-      const isFuture = cursor > today;
+      const isFuture = dateStr > todayKey;
       week.push({
         date: dateStr,
         seconds: isFuture ? 0 : (days[dateStr] ?? 0),

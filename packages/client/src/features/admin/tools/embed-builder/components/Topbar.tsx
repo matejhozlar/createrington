@@ -18,12 +18,28 @@ import { useClipboard } from "@/hooks/use-clipboard";
 import { useToastActions } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import {
+  EMBED_PRESET_NAME_MAX,
   embedDataSchema,
   componentsDataSchema,
+  hasEmbedMessageContent,
+  type MessagePayload,
 } from "@createrington/shared/api/embed";
 import type { UseEmbedBuilder } from "@/features/admin/tools/embed-builder/hooks/use-embed-builder";
 import { SendModal } from "./SendModal";
 import { SaveAsNewModal } from "./SaveAsNewModal";
+import { UnsavedDialog } from "./preset-sidebar/UnsavedDialog";
+
+function readImport(raw: unknown): MessagePayload | null {
+  const components = componentsDataSchema.safeParse(raw);
+  if (components.success) {
+    return { kind: "components", components: components.data };
+  }
+  const embed = embedDataSchema.strict().safeParse(raw);
+  if (embed.success && hasEmbedMessageContent(embed.data)) {
+    return { kind: "embed", embed: embed.data };
+  }
+  return null;
+}
 
 interface TopbarProps {
   builder: UseEmbedBuilder;
@@ -46,6 +62,7 @@ export function Topbar({ builder, onOpenPresets }: TopbarProps) {
   const { copy } = useClipboard();
   const [sendOpen, setSendOpen] = useState(false);
   const [saveOpen, setSaveOpen] = useState(false);
+  const [pendingImport, setPendingImport] = useState<(() => void) | null>(null);
 
   function handleCopyJson() {
     const data =
@@ -70,23 +87,27 @@ export function Topbar({ builder, onOpenPresets }: TopbarProps) {
       return;
     }
 
-    const componentsResult = componentsDataSchema.safeParse(raw);
-    if (componentsResult.success) {
-      importPayload({ kind: "components", components: componentsResult.data });
-      toast.success("Components imported from clipboard");
+    const next = readImport(raw);
+    if (!next) {
+      toast.error(
+        "Clipboard isn't a valid embed or components message. Copy one exported from this tool.",
+      );
       return;
     }
 
-    const embedResult = embedDataSchema.safeParse(raw);
-    if (embedResult.success) {
-      importPayload({ kind: "embed", embed: embedResult.data });
-      toast.success("Embed imported from clipboard");
-      return;
+    const apply = () => {
+      importPayload(next);
+      toast.success(
+        next.kind === "components"
+          ? "Components imported from clipboard"
+          : "Embed imported from clipboard",
+      );
+    };
+    if (isDirty || (!activePreset && hasContent)) {
+      setPendingImport(() => apply);
+    } else {
+      apply();
     }
-
-    toast.error(
-      "Clipboard isn't a valid embed or components message. Copy one exported from this tool.",
-    );
   }
 
   const saveDisabled = activePreset
@@ -138,6 +159,7 @@ export function Topbar({ builder, onOpenPresets }: TopbarProps) {
           <input
             value={presetName}
             onChange={(e) => setPresetName(e.target.value)}
+            maxLength={EMBED_PRESET_NAME_MAX}
             placeholder={activePreset ? activePreset.name : "Untitled embed"}
             className={cn(
               "h-9 min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-2 text-center text-[14px] font-medium outline-none transition-colors",
@@ -213,6 +235,10 @@ export function Topbar({ builder, onOpenPresets }: TopbarProps) {
         open={saveOpen}
         onOpenChange={setSaveOpen}
         builder={builder}
+      />
+      <UnsavedDialog
+        pendingAction={pendingImport}
+        setPendingAction={setPendingImport}
       />
     </>
   );

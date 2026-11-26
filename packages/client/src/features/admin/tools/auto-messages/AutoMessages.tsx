@@ -19,7 +19,11 @@ import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { UpsertConfigDialog } from "./components/UpsertConfigDialog";
 import { MessageDialog } from "./components/MessageDialog";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { EmptyState, LoadingState } from "@/components/query-states";
+import {
+  EmptyState,
+  ErrorState,
+  LoadingState,
+} from "@/components/query-states";
 
 type Config = RouterOutput["admin"]["autoMessages"]["configs"]["list"][number];
 type ConfigDetail = RouterOutput["admin"]["autoMessages"]["configs"]["get"];
@@ -113,6 +117,11 @@ export function AutoMessages() {
 
       {configsQuery.isLoading ? (
         <LoadingState text="Loading configs..." />
+      ) : configsQuery.isError ? (
+        <ErrorState
+          message={`Failed to load the configs: ${configsQuery.error.message}`}
+          onRetry={() => configsQuery.refetch()}
+        />
       ) : configs.length === 0 ? (
         <EmptyState icon={Timer} message="No auto-message configs yet">
           <Button onClick={() => setConfigTarget({ config: null })}>
@@ -204,6 +213,12 @@ export function AutoMessages() {
                         size="small"
                         text="Loading messages..."
                         className="flex-none py-8"
+                      />
+                    ) : detailQuery.isError ? (
+                      <ErrorState
+                        message={`Failed to load the messages: ${detailQuery.error.message}`}
+                        onRetry={() => detailQuery.refetch()}
+                        compact
                       />
                     ) : (detailQuery.data?.messages.length ?? 0) === 0 ? (
                       <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">

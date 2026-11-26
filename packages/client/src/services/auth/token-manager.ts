@@ -68,13 +68,20 @@ export async function refreshAccessToken(): Promise<RefreshResult> {
   }
 }
 
+function isUnauthorizedStatus(response: Response): boolean {
+  return response.status === 401;
+}
+
 export async function retryAfterRefresh(
   response: Response,
   retry: (accessToken: string) => Promise<Response>,
+  isUnauthorized: (
+    response: Response,
+  ) => boolean | Promise<boolean> = isUnauthorizedStatus,
 ): Promise<Response> {
   if (
-    response.status !== 401 ||
-    NO_RETRY_PATHS.some((path) => response.url.includes(path))
+    NO_RETRY_PATHS.some((path) => response.url.includes(path)) ||
+    !(await isUnauthorized(response))
   ) {
     return response;
   }

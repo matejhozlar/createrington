@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Camera, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { ClampedNumberInput } from "@/components/clamped-number-input";
 import { Label } from "@/components/ui/label";
 import { MAX_ANTIALIAS_RESOLUTION, MAX_RENDER_SIZE } from "../engine/render";
 import { DEFAULT_CAMERA_DISTANCE, RENDER_VIEWS } from "../engine/settings";
@@ -97,20 +97,13 @@ export function RenderCard({
               >
                 Custom resolution
               </Label>
-              <Input
+              <ClampedNumberInput
                 id="title-render-resolution"
-                type="number"
+                integer
                 min={1}
                 max={maxResolution}
                 value={render.resolution}
-                onChange={(event) => {
-                  const value = Math.round(Number(event.target.value));
-                  if (Number.isFinite(value)) {
-                    onChange({
-                      resolution: Math.min(maxResolution, Math.max(1, value)),
-                    });
-                  }
-                }}
+                onValueChange={(resolution) => onChange({ resolution })}
                 className="w-32 tabular-nums"
               />
             </div>

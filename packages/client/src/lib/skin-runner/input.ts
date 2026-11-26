@@ -40,7 +40,14 @@ export class Input {
     window.addEventListener("pointermove", this.onPointerMove);
     window.addEventListener("pointerup", this.onPointerUp);
     window.addEventListener("pointercancel", this.onPointerUp);
+    window.addEventListener("blur", this.release);
   }
+
+  readonly release = (): void => {
+    this.pointerId = null;
+    this.jumpHeld = false;
+    this.downHeld = false;
+  };
 
   queueJump(): void {
     this.jumpQueued = true;
@@ -61,6 +68,7 @@ export class Input {
     window.removeEventListener("pointermove", this.onPointerMove);
     window.removeEventListener("pointerup", this.onPointerUp);
     window.removeEventListener("pointercancel", this.onPointerUp);
+    window.removeEventListener("blur", this.release);
   }
 
   private readonly onKeyDown = (event: KeyboardEvent): void => {

@@ -1,5 +1,10 @@
 import { Input } from "@/components/ui/input";
-import { Field, FieldLabel, FieldDescription } from "@/components/ui/field";
+import {
+  Field,
+  FieldLabel,
+  FieldDescription,
+  FieldError,
+} from "@/components/ui/field";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ChoiceField } from "@/components/choice-field";
 import { FormDialog } from "@/components/form-dialog";
@@ -19,6 +24,19 @@ import { useDialogDraft } from "@/hooks/use-dialog-draft";
 type Config = RouterOutput["admin"]["autoMessages"]["configs"]["list"][number];
 type ChannelGroup = RouterOutput["admin"]["autoMessages"]["channels"][number];
 type RotationMode = Config["rotationMode"];
+
+const MIN_INTERVAL = 1;
+const MAX_INTERVAL = 10080;
+
+function parseInterval(value: string): number | null {
+  const minutes = Number(value);
+  return value.trim() !== "" &&
+    Number.isInteger(minutes) &&
+    minutes >= MIN_INTERVAL &&
+    minutes <= MAX_INTERVAL
+    ? minutes
+    : null;
+}
 
 const ROTATION_MODE_OPTIONS: { value: RotationMode; label: string }[] = [
   { value: "sequential", label: "Sequential" },
@@ -62,17 +80,18 @@ export function UpsertConfigDialog({
   const [draft, update] = useDialogDraft<{
     name: string;
     channelId: string;
-    intervalMinutes: number;
+    intervalMinutes: string;
     rotationMode: RotationMode;
     enabled: boolean;
   }>(open, () => ({
     name: config?.name ?? "",
     channelId: config?.channelId ?? "",
-    intervalMinutes: config?.intervalMinutes ?? 60,
+    intervalMinutes: String(config?.intervalMinutes ?? 60),
     rotationMode: config?.rotationMode ?? "sequential",
     enabled: config?.enabled ?? false,
   }));
   const { name, channelId, intervalMinutes, rotationMode, enabled } = draft;
+  const parsedInterval = parseInterval(intervalMinutes);
 
   const isPending = createMutation.isPending || updateMutation.isPending;
 
@@ -81,13 +100,14 @@ export function UpsertConfigDialog({
       toast.error("Name and channel are required");
       return;
     }
+    if (parsedInterval === null) return;
 
     if (isEdit) {
       updateMutation.mutate({
         id: config.id,
         name: name.trim(),
         channelId,
-        intervalMinutes,
+        intervalMinutes: parsedInterval,
         rotationMode,
         enabled,
       });
@@ -95,7 +115,7 @@ export function UpsertConfigDialog({
       createMutation.mutate({
         name: name.trim(),
         channelId,
-        intervalMinutes,
+        intervalMinutes: parsedInterval,
         rotationMode,
         enabled,
       });
@@ -114,6 +134,7 @@ export function UpsertConfigDialog({
       onConfirm={handleSubmit}
       confirmLabel={isEdit ? "Save" : "Create"}
       loading={isPending}
+      disabled={parsedInterval === null}
       contentClassName="sm:max-w-lg"
       asForm
     >
@@ -163,11 +184,18 @@ export function UpsertConfigDialog({
         <Input
           id="config-interval"
           type="number"
-          min={1}
-          max={10080}
+          min={MIN_INTERVAL}
+          max={MAX_INTERVAL}
           value={intervalMinutes}
-          onChange={(e) => update({ intervalMinutes: Number(e.target.value) })}
+          aria-invalid={parsedInterval === null}
+          onChange={(e) => update({ intervalMinutes: e.target.value })}
         />
+        {parsedInterval === null && (
+          <FieldError>
+            Enter a whole number of minutes from {MIN_INTERVAL} to{" "}
+            {MAX_INTERVAL}
+          </FieldError>
+        )}
         <FieldDescription>
           How often a message is sent (1 min – 7 days)
         </FieldDescription>

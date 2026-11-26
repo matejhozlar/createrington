@@ -5,6 +5,7 @@ import { trpc, queryClient } from "@/lib/trpc";
 import type { ActivePreset } from "@/features/admin/tools/embed-builder/builder-state";
 import { parsePayload } from "@/features/admin/tools/embed-builder/payload";
 import type { PresetRow } from "@/features/admin/tools/embed-builder/preset-row";
+import { EMBED_PRESET_NAME_MAX } from "@createrington/shared/api/embed";
 
 interface UsePresetActionsOptions {
   activePreset: ActivePreset | null;
@@ -27,6 +28,11 @@ function invalidateCategories() {
   );
 }
 
+function copyName(baseName: string, n: number): string {
+  const suffix = n === 1 ? " (copy)" : ` (copy ${n})`;
+  return `${baseName.slice(0, EMBED_PRESET_NAME_MAX - suffix.length).trimEnd()}${suffix}`;
+}
+
 async function nextCopyName(name: string): Promise<string> {
   const baseName = name.replace(/ \(copy(?: \d+)?\)$/, "");
   const existing = await queryClient.fetchQuery(
@@ -36,10 +42,9 @@ async function nextCopyName(name: string): Promise<string> {
     }),
   );
   const taken = new Set(existing.items.map((p) => p.name));
-  if (!taken.has(`${baseName} (copy)`)) return `${baseName} (copy)`;
-  let n = 2;
-  while (taken.has(`${baseName} (copy ${n})`)) n++;
-  return `${baseName} (copy ${n})`;
+  let n = 1;
+  while (taken.has(copyName(baseName, n))) n++;
+  return copyName(baseName, n);
 }
 
 export function usePresetActions({
@@ -99,8 +104,15 @@ export function usePresetActions({
       toast.error(`"${preset.name}" holds a message the builder cannot read`);
       return;
     }
+    let name: string;
+    try {
+      name = await nextCopyName(preset.name);
+    } catch {
+      toast.error(`Couldn't duplicate "${preset.name}"`);
+      return;
+    }
     duplicatePresetMutation.mutate({
-      name: await nextCopyName(preset.name),
+      name,
       categoryId: preset.categoryId,
       ...payload,
     });

@@ -40,7 +40,7 @@ export function PortalZoomOverlay({
   useEffect(() => {
     if (phase !== "open") return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape" && !e.defaultPrevented) onClose();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);

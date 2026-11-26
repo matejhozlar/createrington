@@ -7,16 +7,18 @@ import {
   useState,
 } from "react";
 import { useMutation } from "@tanstack/react-query";
+import { TRPCClientError } from "@trpc/client";
 import { trpc, queryClient } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { plural } from "@/lib/format";
-import type {
-  ComponentNode,
-  EmbedBot,
-  EmbedData,
-  MessagePayload,
-  PresetKind,
+import {
+  EMBED_EMPTY_MESSAGE,
+  type ComponentNode,
+  type EmbedBot,
+  type EmbedData,
+  type MessagePayload,
+  type PresetKind,
 } from "@createrington/shared/api/embed";
 import {
   builderReducer,
@@ -76,6 +78,54 @@ export function useEmbedBuilder() {
     if (!hasPendingAssistantInsert()) {
       toast.info("Draft restored from your last session");
     }
+  }, [restoredDraft, toast]);
+
+  const restoredPresetCheckedRef = useRef(false);
+  useEffect(() => {
+    if (!restoredDraft?.activePreset || restoredPresetCheckedRef.current) {
+      return;
+    }
+    restoredPresetCheckedRef.current = true;
+    const preset = restoredDraft.activePreset;
+    const draftEdited =
+      snapshotOf(payloadOf(restoredDraft)) !== restoredDraft.savedSnapshot;
+    queryClient
+      .fetchQuery(
+        trpc.admin.embeds.presets.get.queryOptions(
+          { id: preset.id },
+          { staleTime: 0 },
+        ),
+      )
+      .then(({ preset: row }) => {
+        const latest = parsePayload(row.kind, row.data);
+        if (!latest) return;
+        const latestSnapshot = snapshotOf(latest);
+        if (latestSnapshot === restoredDraft.savedSnapshot) return;
+        dispatch({
+          type: "presetChanged",
+          presetId: preset.id,
+          payload: latest,
+          snapshot: latestSnapshot,
+        });
+        if (draftEdited) {
+          toast.warning(
+            `"${row.name}" was changed after this draft was made. Saving the draft overwrites those changes.`,
+            "Preset changed",
+          );
+        }
+      })
+      .catch((error: unknown) => {
+        if (
+          error instanceof TRPCClientError &&
+          error.data?.code === "NOT_FOUND"
+        ) {
+          dispatch({ type: "presetDeleted", presetId: preset.id });
+          toast.warning(
+            `"${preset.name}" was deleted. The draft is kept as a new message.`,
+            "Preset deleted",
+          );
+        }
+      });
   }, [restoredDraft, toast]);
 
   useEffect(() => {
@@ -169,7 +219,7 @@ export function useEmbedBuilder() {
       toast.error(
         kind === "components"
           ? "Add at least one component"
-          : "Message must have content, a title, a description, or at least one field",
+          : EMBED_EMPTY_MESSAGE,
       );
       return false;
     }

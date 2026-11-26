@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { trpc } from "@/lib/trpc";
+import { ErrorState } from "@/components/query-states";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { PresetItem } from "./PresetItem";
@@ -117,6 +118,12 @@ export function CategorySection({
         <div className="ml-3 space-y-0.5 border-l border-border pl-1">
           {presetsQuery.isLoading ? (
             <SkeletonList />
+          ) : presetsQuery.isError ? (
+            <ErrorState
+              message="Couldn't load the presets"
+              onRetry={() => presetsQuery.refetch()}
+              compact
+            />
           ) : presets.length === 0 ? (
             <p className="px-2 py-2 text-xs text-muted-foreground">
               No presets

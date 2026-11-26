@@ -1,5 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { trpc } from "@/lib/trpc";
+import { ErrorState } from "@/components/query-states";
+import { LEADERBOARD_PLAYER_SEARCH_MAX } from "@createrington/shared/leaderboard";
 import { useAuth } from "@/contexts/auth";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
@@ -119,19 +121,33 @@ function PlayerResults({
             .slice(0, RIVALS),
         },
       ];
-  const loading = searching ? searchQuery.isLoading : rivalsQuery.isLoading;
+  const activeQuery = searching ? searchQuery : rivalsQuery;
 
   let body: ReactNode;
-  if (loading) {
+  if (activeQuery.isLoading) {
     body = (
       <div className="flex justify-center py-6">
         <Spinner className="size-4 text-muted-foreground" />
       </div>
     );
+  } else if (activeQuery.isError) {
+    body = (
+      <ErrorState
+        message={
+          searching ? "Couldn't search the players" : "Couldn't load players"
+        }
+        onRetry={() => activeQuery.refetch()}
+        compact
+      />
+    );
   } else {
     body = (
       <>
-        <CommandEmpty>No player matching "{debounced}".</CommandEmpty>
+        <CommandEmpty>
+          {searching
+            ? `No player matching "${debounced}".`
+            : "No players to suggest."}
+        </CommandEmpty>
         {groups
           .filter((group) => group.players.length > 0)
           .map((group) => (
@@ -152,6 +168,7 @@ function PlayerResults({
   return (
     <Command shouldFilter={false}>
       <CommandInput
+        maxLength={LEADERBOARD_PLAYER_SEARCH_MAX}
         value={query}
         onValueChange={setQuery}
         placeholder="Search players"

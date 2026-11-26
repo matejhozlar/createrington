@@ -8,6 +8,7 @@ const IS_SAME_ORIGIN =
 
 export function BlueMap() {
   const iframeSrc = useMemo(() => `${BLUEMAP_URL}${window.location.hash}`, []);
+  const [mapPath] = useState(() => window.location.pathname);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const syncRef = useRef<{
     child: Window;
@@ -62,12 +63,16 @@ export function BlueMap() {
     if (!child) return;
     try {
       const sync = () => {
+        if (window.location.pathname !== mapPath) {
+          detachSync();
+          return;
+        }
         const h = child.location.hash;
         if (h && window.location.hash !== h) {
           window.history.replaceState(
-            null,
+            window.history.state,
             "",
-            window.location.pathname + window.location.search + h,
+            mapPath + window.location.search + h,
           );
         }
       };
