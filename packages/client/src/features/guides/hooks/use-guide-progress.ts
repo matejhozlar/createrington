@@ -3,10 +3,16 @@ import { localStore } from "@/lib/storage";
 
 const STORAGE_PREFIX = "guide-progress:";
 
-export function useGuideProgress(slug: string) {
-  const [currentStep, setCurrentStepState] = useState(
-    () => Number(localStore.get(`${STORAGE_PREFIX}${slug}`)) || 0,
+function toStepIndex(value: number, stepCount: number): number {
+  const step = Number.isInteger(value) ? value : 0;
+  return Math.min(Math.max(0, step), Math.max(0, stepCount - 1));
+}
+
+export function useGuideProgress(slug: string, stepCount: number) {
+  const [storedStep, setCurrentStepState] = useState(() =>
+    Number(localStore.get(`${STORAGE_PREFIX}${slug}`)),
   );
+  const currentStep = toStepIndex(storedStep, stepCount);
 
   const setCurrentStep = useCallback(
     (step: number) => {

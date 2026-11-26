@@ -16,6 +16,7 @@ export function GuideDetail() {
 
   const { currentStep, setCurrentStep, clearProgress } = useGuideProgress(
     slug ?? "",
+    guide?.steps.length ?? 0,
   );
 
   const [isTransitioning, setIsTransitioning] = useState(false);
