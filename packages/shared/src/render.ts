@@ -37,6 +37,7 @@ export interface RenderActivity extends RenderPlayer {
   currentStreak: number;
   mostActiveDay: string;
   days: Record<string, number>;
+  today: string;
 }
 
 export interface RenderPodiumPlayer extends RenderPlayer {

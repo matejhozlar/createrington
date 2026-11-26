@@ -47,7 +47,11 @@ export function ActivityRender() {
   if (!data || !platesReady) return <LoadingScreen />;
 
   const avatarSrc = playerAvatarUrl(data.uuid);
-  const { weeks, monthLabels } = buildHeatmapGrid(data.days, NUM_WEEKS);
+  const { weeks, monthLabels } = buildHeatmapGrid(
+    data.days,
+    NUM_WEEKS,
+    data.today,
+  );
   const cellSpacing = (900 - 64 - 36) / NUM_WEEKS;
 
   return (
