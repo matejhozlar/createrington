@@ -11,6 +11,8 @@ import {
 } from "@/features/structure-packs/pool";
 import { PackRow } from "./PackRow";
 
+const POOL_REFRESH_MS = 60 * 1000;
+
 const GRID_CLASSES =
   "grid grid-cols-1 gap-x-6 gap-y-5 md:grid-cols-2 lg:grid-cols-3";
 
@@ -21,7 +23,11 @@ export function OverlayBody() {
     isLoading,
     isError,
     refetch,
-  } = useQuery(trpc.public.structurePacks.pool.queryOptions());
+  } = useQuery(
+    trpc.public.structurePacks.pool.queryOptions(undefined, {
+      refetchInterval: POOL_REFRESH_MS,
+    }),
+  );
   const { data: myBoosts } = useQuery(
     trpc.user.structurePacks.myBoosts.queryOptions(undefined, {
       enabled: !!user,
