@@ -1,13 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import Stripe from "stripe";
-import type { Client } from "discord.js";
+import type { Client, GuildMember } from "discord.js";
 
 const { donation, messages } = vi.hoisted(() => ({
   messages: { send: vi.fn() },
   donation: {
     find: vi.fn(),
+    findAll: vi.fn(),
+    count: vi.fn(),
     createAndReturn: vi.fn(),
-    update: vi.fn(),
+    updateAll: vi.fn(),
     getLatestPerSubscription: vi.fn(),
   },
 }));
@@ -71,7 +73,7 @@ describe("DonationService.handleSessionCompleted", () => {
   beforeEach(() => {
     donation.find.mockReset().mockResolvedValue(null);
     donation.createAndReturn.mockReset();
-    donation.update.mockReset();
+    donation.updateAll.mockReset();
     vi.mocked(RoleManager.assign).mockReset();
   });
 
@@ -85,10 +87,58 @@ describe("DonationService.handleSessionCompleted", () => {
     expect(donation.createAndReturn).toHaveBeenCalledWith(
       expect.not.objectContaining({ supporterRoleGranted: true }),
     );
-    expect(donation.update).toHaveBeenCalledWith(
-      { id: 7 },
+    expect(donation.updateAll).toHaveBeenCalledWith(
+      {
+        playerDiscordId: "user-1",
+        status: "completed",
+        supporterRoleGranted: false,
+      },
       { supporterRoleGranted: true },
     );
+  });
+
+  it("stores the first invoice of a monthly checkout", async () => {
+    donation.createAndReturn.mockResolvedValue({ id: 7, amountCents: 500 });
+    const { donations } = service();
+
+    await donations.handleSessionCompleted({
+      ...SESSION,
+      customer: "cus_1",
+      subscription: "sub_1",
+      invoice: "in_first",
+    } as Stripe.Checkout.Session);
+
+    expect(donation.createAndReturn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        stripeInvoiceId: "in_first",
+        stripeCustomerId: "cus_1",
+        stripeSubscriptionId: "sub_1",
+      }),
+    );
+  });
+
+  it("retries the supporter role on a replay of a session whose grant failed", async () => {
+    donation.find.mockResolvedValue({ id: 7, supporterRoleGranted: false });
+    vi.mocked(RoleManager.assign).mockResolvedValue(true);
+    const { donations } = service(GUILD);
+
+    await donations.handleSessionCompleted(SESSION);
+
+    expect(donation.createAndReturn).not.toHaveBeenCalled();
+    expect(donation.updateAll).toHaveBeenCalledWith(
+      expect.objectContaining({ playerDiscordId: "user-1" }),
+      { supporterRoleGranted: true },
+    );
+  });
+
+  it("skips a replay whose supporter role was already granted", async () => {
+    donation.find.mockResolvedValue({ id: 7, supporterRoleGranted: true });
+    const { donations, getGuild } = service(GUILD);
+
+    await donations.handleSessionCompleted(SESSION);
+
+    expect(getGuild).not.toHaveBeenCalled();
+    expect(donation.updateAll).not.toHaveBeenCalled();
   });
 
   it("leaves the supporter role unmarked when the grant fails", async () => {
@@ -99,7 +149,7 @@ describe("DonationService.handleSessionCompleted", () => {
     await donations.handleSessionCompleted(SESSION);
 
     expect(donation.createAndReturn).toHaveBeenCalledOnce();
-    expect(donation.update).not.toHaveBeenCalled();
+    expect(donation.updateAll).not.toHaveBeenCalled();
   });
 
   it("leaves the supporter role unmarked when the guild is unavailable", async () => {
@@ -109,7 +159,7 @@ describe("DonationService.handleSessionCompleted", () => {
     await donations.handleSessionCompleted(SESSION);
 
     expect(getGuild).toHaveBeenCalledWith("guild-1");
-    expect(donation.update).not.toHaveBeenCalled();
+    expect(donation.updateAll).not.toHaveBeenCalled();
   });
 
   it("treats a concurrent duplicate insert as a replay", async () => {
@@ -136,6 +186,153 @@ describe("DonationService.handleSessionCompleted", () => {
     await expect(donations.handleSessionCompleted(SESSION)).rejects.toThrow(
       UniqueViolationError,
     );
+  });
+});
+
+function invoice(overrides: Record<string, unknown> = {}): Stripe.Invoice {
+  return {
+    id: "in_2",
+    billing_reason: "subscription_cycle",
+    amount_paid: 500,
+    currency: "eur",
+    customer: "cus_1",
+    parent: { subscription_details: { subscription: "sub_1" } },
+    status_transitions: { paid_at: 1_800_000_000 },
+    ...overrides,
+  } as unknown as Stripe.Invoice;
+}
+
+describe("DonationService.handleInvoicePaid", () => {
+  const FIRST = {
+    id: 7,
+    playerDiscordId: "user-1",
+    type: "monthly",
+    stripeCustomerId: "cus_1",
+    supporterRoleGranted: true,
+  };
+
+  beforeEach(() => {
+    donation.find.mockReset().mockResolvedValue(null);
+    donation.findAll.mockReset().mockResolvedValue([FIRST]);
+    donation.createAndReturn.mockReset();
+    donation.updateAll.mockReset();
+    vi.mocked(RoleManager.assign).mockReset().mockResolvedValue(true);
+  });
+
+  it("records a renewal as its own donation of the subscription's donor", async () => {
+    donation.createAndReturn.mockResolvedValue({
+      id: 8,
+      amountCents: 500,
+      playerDiscordId: "user-1",
+    });
+    const { donations } = service(GUILD);
+
+    await donations.handleInvoicePaid(invoice());
+
+    expect(donation.find).toHaveBeenCalledWith({ stripeInvoiceId: "in_2" });
+    expect(donation.findAll).toHaveBeenCalledWith(
+      { stripeSubscriptionId: "sub_1" },
+      { limit: 1, orderBy: "createdAt", orderDirection: "asc" },
+    );
+    expect(donation.createAndReturn).toHaveBeenCalledWith({
+      playerDiscordId: "user-1",
+      type: "monthly",
+      amountCents: 500,
+      currency: "eur",
+      stripeInvoiceId: "in_2",
+      stripeCustomerId: "cus_1",
+      stripeSubscriptionId: "sub_1",
+      status: "completed",
+      completedAt: new Date(1_800_000_000_000),
+    });
+    expect(donation.updateAll).toHaveBeenCalledWith(
+      expect.objectContaining({ playerDiscordId: "user-1" }),
+      { supporterRoleGranted: true },
+    );
+  });
+
+  it.each([
+    ["the first invoice", { billing_reason: "subscription_create" }],
+    ["a free invoice", { amount_paid: 0 }],
+    ["an invoice outside a subscription", { parent: null }],
+  ])("ignores %s", async (_label, overrides) => {
+    const { donations } = service(GUILD);
+
+    await donations.handleInvoicePaid(invoice(overrides));
+
+    expect(donation.find).not.toHaveBeenCalled();
+    expect(donation.createAndReturn).not.toHaveBeenCalled();
+  });
+
+  it("skips an invoice of a subscription it never recorded", async () => {
+    donation.findAll.mockResolvedValue([]);
+    const { donations } = service(GUILD);
+
+    await donations.handleInvoicePaid(invoice());
+
+    expect(donation.createAndReturn).not.toHaveBeenCalled();
+  });
+
+  it("retries the supporter role on a replay of a renewal whose grant failed", async () => {
+    donation.find.mockResolvedValue({ ...FIRST, supporterRoleGranted: false });
+    const { donations } = service(GUILD);
+
+    await donations.handleInvoicePaid(invoice());
+
+    expect(donation.createAndReturn).not.toHaveBeenCalled();
+    expect(donation.updateAll).toHaveBeenCalledOnce();
+  });
+
+  it("treats a concurrent duplicate insert as a replay", async () => {
+    donation.createAndReturn.mockRejectedValue(
+      new UniqueViolationError(
+        "duplicate key",
+        "donation_stripe_invoice_id_unique",
+      ),
+    );
+    const { donations, getGuild } = service(GUILD);
+
+    await expect(
+      donations.handleInvoicePaid(invoice()),
+    ).resolves.toBeUndefined();
+    expect(getGuild).not.toHaveBeenCalled();
+  });
+});
+
+describe("DonationService.restoreSupporterRole", () => {
+  const MEMBER = { id: "user-1" } as unknown as GuildMember;
+
+  beforeEach(() => {
+    donation.count.mockReset();
+    donation.updateAll.mockReset();
+    vi.mocked(RoleManager.assign).mockReset().mockResolvedValue(true);
+  });
+
+  it("gives a returning donor the role and marks their donations", async () => {
+    donation.count.mockResolvedValue(2);
+    const { donations } = service();
+
+    await donations.restoreSupporterRole(MEMBER);
+
+    expect(donation.count).toHaveBeenCalledWith({
+      playerDiscordId: "user-1",
+      status: "completed",
+    });
+    expect(RoleManager.assign).toHaveBeenCalledWith(
+      MEMBER,
+      "supporter-role",
+      "Donation supporter",
+    );
+    expect(donation.updateAll).toHaveBeenCalledOnce();
+  });
+
+  it("leaves a member who never donated alone", async () => {
+    donation.count.mockResolvedValue(0);
+    const { donations } = service();
+
+    await donations.restoreSupporterRole(MEMBER);
+
+    expect(RoleManager.assign).not.toHaveBeenCalled();
   });
 });
 
