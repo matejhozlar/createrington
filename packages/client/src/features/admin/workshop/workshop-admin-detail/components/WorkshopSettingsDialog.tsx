@@ -68,6 +68,19 @@ export function WorkshopSettingsDialog({
   );
 }
 
+function invalidateWorkshopSettings() {
+  void queryClient.invalidateQueries(trpc.admin.workshops.list.pathFilter());
+  void queryClient.invalidateQueries(trpc.admin.modpacks.list.pathFilter());
+  void queryClient.invalidateQueries(
+    trpc.admin.workshops.listPackMods.pathFilter(),
+  );
+  void queryClient.invalidateQueries(
+    trpc.admin.workshops.attention.pathFilter(),
+  );
+  void queryClient.invalidateQueries(trpc.user.workshops.list.pathFilter());
+  void queryClient.invalidateQueries(trpc.user.workshops.get.pathFilter());
+}
+
 function SettingsForm({
   workshop,
   hasMods,
@@ -127,6 +140,7 @@ function SettingsForm({
       : null;
     const nextSlug = slug.trim();
 
+    let saved = false;
     try {
       const updated = await updateMutation.mutateAsync({
         workshopId: workshop.id,
@@ -146,6 +160,7 @@ function SettingsForm({
               }),
         },
       });
+      saved = true;
 
       if (updated.slug !== workshop.slug) {
         queryClient.setQueryData(trpc.admin.workshops.list.queryKey(), (rows) =>
@@ -164,19 +179,11 @@ function SettingsForm({
       }
     } catch {
       return;
+    } finally {
+      if (saved) invalidateWorkshopSettings();
     }
 
     toast.success("Workshop settings saved");
-    void queryClient.invalidateQueries(trpc.admin.workshops.list.pathFilter());
-    void queryClient.invalidateQueries(trpc.admin.modpacks.list.pathFilter());
-    void queryClient.invalidateQueries(
-      trpc.admin.workshops.listPackMods.pathFilter(),
-    );
-    void queryClient.invalidateQueries(
-      trpc.admin.workshops.attention.pathFilter(),
-    );
-    void queryClient.invalidateQueries(trpc.user.workshops.list.pathFilter());
-    void queryClient.invalidateQueries(trpc.user.workshops.get.pathFilter());
     onOpenChange(false);
   };
 

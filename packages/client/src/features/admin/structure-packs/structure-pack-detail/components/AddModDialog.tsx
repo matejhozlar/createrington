@@ -21,6 +21,7 @@ import {
 } from "@createrington/shared/launcher";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Spinner } from "@/components/ui/spinner";
+import { ErrorState } from "@/components/query-states";
 import { pluralize } from "@/lib/format";
 import type { StructurePackMod } from "@/features/admin/structure-packs/structure-pack-detail/types";
 
@@ -109,6 +110,14 @@ export function AddModDialog({
   const addModMutation = useMutation(
     trpc.admin.structurePacks.mods.create.mutationOptions({
       onSuccess: () => {
+        void queryClient.invalidateQueries({
+          ...trpc.admin.structurePacks.mods.checkDeleteDeps.pathFilter(),
+          refetchType: "none",
+        });
+        void queryClient.invalidateQueries({
+          ...trpc.admin.structurePacks.mods.resolveDeps.pathFilter(),
+          refetchType: "none",
+        });
         void queryClient.invalidateQueries(
           trpc.admin.structurePacks.get.queryFilter({ id: packId }),
         );
@@ -364,7 +373,7 @@ export function AddModDialog({
           </>
         }
         onConfirm={() => void handleBatchAdd()}
-        disabled={depsQuery.isLoading}
+        disabled={addDepModIds.length > 0 && !depsQuery.data}
         loading={addingBatch}
         contentClassName="sm:max-w-lg"
       >
@@ -374,6 +383,14 @@ export function AddModDialog({
               <Spinner className="mr-2 size-4" />
               Resolving dependencies...
             </div>
+          )}
+
+          {depsQuery.error && (
+            <ErrorState
+              message={depsQuery.error.message}
+              onRetry={() => void depsQuery.refetch()}
+              compact
+            />
           )}
 
           {addDepModIds.length === 0 && (

@@ -43,12 +43,11 @@ export function DeletePlayerModal({
       id: player.minecraftUuid,
       reason: reason.trim(),
     });
-    await queryClient.invalidateQueries(
-      trpc.admin.players.players.list.pathFilter(),
-    );
     toast.success("Player deleted");
     onSuccess();
     onClose();
+    queryClient.removeQueries(trpc.admin.players.players.get.pathFilter());
+    void queryClient.invalidateQueries(trpc.admin.players.pathFilter());
   };
 
   return (

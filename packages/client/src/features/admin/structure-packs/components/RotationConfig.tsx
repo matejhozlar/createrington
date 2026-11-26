@@ -47,19 +47,11 @@ export function RotationConfig() {
   const [forceOpen, setForceOpen] = useState(false);
 
   const forceRotationMutation = useMutation(
-    trpc.admin.structurePacks.rotation.force.mutationOptions(
-      useMutationToast({
-        success: "Rotation triggered",
-        onSuccess: () => {
-          void queryClient.invalidateQueries(
-            trpc.admin.structurePacks.list.pathFilter(),
-          );
-          void queryClient.invalidateQueries(
-            trpc.admin.structurePacks.rotation.config.get.pathFilter(),
-          );
-        },
-      }),
-    ),
+    trpc.admin.structurePacks.rotation.force.mutationOptions({
+      ...useMutationToast({ success: "Rotation triggered" }),
+      onSettled: () =>
+        queryClient.invalidateQueries(trpc.admin.structurePacks.pathFilter()),
+    }),
   );
 
   const clearRotationMutation = useMutation(
@@ -68,10 +60,7 @@ export function RotationConfig() {
         success: "Rotation cleared — no active structure pack",
         onSuccess: () => {
           void queryClient.invalidateQueries(
-            trpc.admin.structurePacks.list.pathFilter(),
-          );
-          void queryClient.invalidateQueries(
-            trpc.admin.structurePacks.rotation.config.get.pathFilter(),
+            trpc.admin.structurePacks.pathFilter(),
           );
         },
       }),

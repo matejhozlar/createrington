@@ -28,7 +28,7 @@ import {
   Vote,
   Hammer as WorkshopIcon,
 } from "lucide-react";
-import { trpc } from "@/lib/trpc";
+import { trpc, queryClient } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { PinnedTools } from "./components/PinnedTools";
@@ -189,6 +189,16 @@ export function AdminTools() {
       useMutationToast({
         success: (data) =>
           `Refreshed: ${data.roles} roles, ${data.channels} channels, ${data.categories} categories`,
+        onSuccess: () =>
+          Promise.all([
+            queryClient.invalidateQueries(
+              trpc.admin.embeds.channels.pathFilter(),
+            ),
+            queryClient.invalidateQueries(trpc.admin.embeds.roles.pathFilter()),
+            queryClient.invalidateQueries(
+              trpc.admin.autoMessages.channels.pathFilter(),
+            ),
+          ]),
       }),
     ),
   );

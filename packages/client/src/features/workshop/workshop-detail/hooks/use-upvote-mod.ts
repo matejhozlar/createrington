@@ -73,7 +73,10 @@ export function useUpvoteMod(slug: string, workshopId: number | undefined) {
         }
         toast.error(error.message);
       },
-      onSettled: () => {
+      onSettled: (_data, _error, { workshopModId }) => {
+        void queryClient.invalidateQueries(
+          trpc.user.workshops.getMod.queryFilter({ workshopModId }),
+        );
         if (slug) {
           void queryClient.invalidateQueries(
             trpc.user.workshops.get.queryFilter({ slug }),
