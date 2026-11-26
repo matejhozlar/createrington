@@ -8,6 +8,7 @@ import {
   getAccessToken,
   retryAfterRefresh,
 } from "@/services/auth/token-manager";
+import { isUnauthorizedBatch } from "@/lib/trpcBatch";
 
 export type RouterInput = inferRouterInputs<AppRouter>;
 export type RouterOutput = inferRouterOutputs<AppRouter>;
@@ -59,6 +60,7 @@ const trpcClient = createTRPCClient<AppRouter>({
             headers.set("Authorization", `Bearer ${accessToken}`);
             return send(headers);
           },
+          (response) => isUnauthorizedBatch(response, options?.method),
         );
       },
     }),
