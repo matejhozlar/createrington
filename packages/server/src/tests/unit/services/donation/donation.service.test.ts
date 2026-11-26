@@ -106,7 +106,7 @@ describe("DonationService.handleSessionCompleted", () => {
       customer: "cus_1",
       subscription: "sub_1",
       invoice: "in_first",
-    } as Stripe.Checkout.Session);
+    });
 
     expect(donation.createAndReturn).toHaveBeenCalledWith(
       expect.objectContaining({
