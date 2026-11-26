@@ -204,7 +204,7 @@ function cleanEdges(frame: Frame) {
 
   for (let i = data.length - 4; i >= 0; i -= 4) {
     const x = (i / 4) % width;
-    const y = Math.floor(i / (4 * height));
+    const y = Math.floor(i / row);
     if (data[i + 3] === 0) {
       if (
         (x === 0 || data[i - 1] !== 0) &&
@@ -263,7 +263,7 @@ function cleanEdges(frame: Frame) {
             queue.push(j + 4);
           }
           if (
-            Math.floor(j / (4 * height)) !== 0 &&
+            Math.floor(j / row) !== 0 &&
             data[j - row + 3] === 0 &&
             !store.includes(j - row)
           ) {
@@ -273,7 +273,7 @@ function cleanEdges(frame: Frame) {
         if (store.length >= 6) continue;
         for (const j of store) {
           const jx = (j / 4) % width;
-          const jy = Math.floor(j / (4 * height));
+          const jy = Math.floor(j / row);
           let count = 0;
           let sr = 0;
           let sg = 0;
@@ -334,7 +334,7 @@ function cleanEdges(frame: Frame) {
           queue.push(j + 4);
         }
         if (
-          Math.floor(j / (4 * height)) !== 0 &&
+          Math.floor(j / row) !== 0 &&
           data[j - row + 3] !== 0 &&
           !store.includes(j - row)
         ) {
