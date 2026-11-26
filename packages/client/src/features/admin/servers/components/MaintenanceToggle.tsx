@@ -122,11 +122,9 @@ export function MaintenanceToggle({
           );
         }
         invalidate();
-      },
-      onError: (err: { message: string }) => toast.error(err.message),
-      onSettled: () => {
         setDialogOpen(false);
       },
+      onError: (err: { message: string }) => toast.error(err.message),
     }),
   );
 
