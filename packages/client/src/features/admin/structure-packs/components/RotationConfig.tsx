@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ChangeEvent } from "react";
 import { trpc, queryClient, type RouterInput } from "@/lib/trpc";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { Settings, Save, Zap, Trash2 } from "lucide-react";
@@ -17,7 +17,7 @@ import {
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { ErrorState, LoadingState } from "@/components/query-states";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Field, FieldLabel } from "@/components/ui/field";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { TimezonePicker } from "@/features/admin/structure-packs/components/TimezonePicker";
 
 const DAYS_OF_WEEK = [
@@ -135,15 +135,86 @@ type RotationFields = Required<
   RouterInput["admin"]["structurePacks"]["rotation"]["config"]["update"]
 >;
 
+type NumberKey =
+  | "gracePeriodMinutes"
+  | "timeWeightMultiplier"
+  | "boostWeightPerUnit"
+  | "boostUnitPrice";
+
+const NUMBER_RULES: Record<
+  NumberKey,
+  { integer: boolean; min: number; minExclusive: boolean; error: string }
+> = {
+  gracePeriodMinutes: {
+    integer: true,
+    min: 0,
+    minExclusive: false,
+    error: "Enter a whole number of minutes, 0 or more",
+  },
+  timeWeightMultiplier: {
+    integer: false,
+    min: 0,
+    minExclusive: true,
+    error: "Enter a number greater than 0",
+  },
+  boostWeightPerUnit: {
+    integer: false,
+    min: 0,
+    minExclusive: false,
+    error: "Enter a number, 0 or more",
+  },
+  boostUnitPrice: {
+    integer: true,
+    min: 1,
+    minExclusive: false,
+    error: "Enter a whole number, 1 or more",
+  },
+};
+
+function parseRotationNumber(key: NumberKey, text: string): number | null {
+  const { integer, min, minExclusive } = NUMBER_RULES[key];
+  const value = Number(text);
+  if (text.trim() === "" || !Number.isFinite(value)) return null;
+  if (integer && !Number.isInteger(value)) return null;
+  if (minExclusive ? value <= min : value < min) return null;
+  return value;
+}
+
 function RotationForm({ config }: { config: RotationFields }) {
   const [draft, setDraft] = useState<Partial<RotationFields>>({});
+  const [numberText, setNumberText] = useState<
+    Partial<Record<NumberKey, string>>
+  >({});
   const current = { ...config, ...draft };
-  const changes = Object.fromEntries(
-    Object.entries(draft).filter(
-      ([key, value]) => value !== config[key as keyof RotationFields],
+
+  const numberErrors: Partial<Record<NumberKey, string>> = {};
+  const numberChanges: Partial<Record<NumberKey, number>> = {};
+  for (const [key, text] of Object.entries(numberText) as [
+    NumberKey,
+    string,
+  ][]) {
+    const value = parseRotationNumber(key, text);
+    if (value === null) numberErrors[key] = NUMBER_RULES[key].error;
+    else if (value !== config[key]) numberChanges[key] = value;
+  }
+  const hasErrors = Object.keys(numberErrors).length > 0;
+
+  const changes = {
+    ...Object.fromEntries(
+      Object.entries(draft).filter(
+        ([key, value]) => value !== config[key as keyof RotationFields],
+      ),
     ),
-  ) as Partial<RotationFields>;
+    ...numberChanges,
+  } as Partial<RotationFields>;
   const hasChanges = Object.keys(changes).length > 0;
+
+  const numberInput = (key: NumberKey) => ({
+    value: numberText[key] ?? String(config[key]),
+    "aria-invalid": numberErrors[key] !== undefined,
+    onChange: (e: ChangeEvent<HTMLInputElement>) =>
+      setNumberText((prev) => ({ ...prev, [key]: e.target.value })),
+  });
 
   const set = <K extends keyof RotationFields>(
     key: K,
@@ -159,6 +230,7 @@ function RotationForm({ config }: { config: RotationFields }) {
             trpc.admin.structurePacks.rotation.config.get.pathFilter(),
           );
           setDraft({});
+          setNumberText({});
         },
       }),
     ),
@@ -283,11 +355,9 @@ function RotationForm({ config }: { config: RotationFields }) {
               id="rotation-grace-period"
               type="number"
               min={0}
-              value={current.gracePeriodMinutes}
-              onChange={(e) =>
-                set("gracePeriodMinutes", Number(e.target.value))
-              }
+              {...numberInput("gracePeriodMinutes")}
             />
+            <FieldError>{numberErrors.gracePeriodMinutes}</FieldError>
             <p className="text-xs text-muted-foreground">
               Catch-up window if the server was down during a scheduled rotation
             </p>
@@ -309,11 +379,9 @@ function RotationForm({ config }: { config: RotationFields }) {
               type="number"
               min={0}
               step={0.1}
-              value={current.timeWeightMultiplier}
-              onChange={(e) =>
-                set("timeWeightMultiplier", Number(e.target.value))
-              }
+              {...numberInput("timeWeightMultiplier")}
             />
+            <FieldError>{numberErrors.timeWeightMultiplier}</FieldError>
             <p className="text-xs text-muted-foreground">
               How much "time since last used" matters
             </p>
@@ -327,11 +395,9 @@ function RotationForm({ config }: { config: RotationFields }) {
               type="number"
               min={0}
               step={0.1}
-              value={current.boostWeightPerUnit}
-              onChange={(e) =>
-                set("boostWeightPerUnit", Number(e.target.value))
-              }
+              {...numberInput("boostWeightPerUnit")}
             />
+            <FieldError>{numberErrors.boostWeightPerUnit}</FieldError>
             <p className="text-xs text-muted-foreground">
               How much weight each purchased boost unit adds
             </p>
@@ -344,9 +410,9 @@ function RotationForm({ config }: { config: RotationFields }) {
               id="rotation-boost-price"
               type="number"
               min={1}
-              value={current.boostUnitPrice}
-              onChange={(e) => set("boostUnitPrice", Number(e.target.value))}
+              {...numberInput("boostUnitPrice")}
             />
+            <FieldError>{numberErrors.boostUnitPrice}</FieldError>
             <p className="text-xs text-muted-foreground">
               Currency cost per boost unit
             </p>
@@ -357,7 +423,7 @@ function RotationForm({ config }: { config: RotationFields }) {
       <Button
         className="w-full"
         onClick={() => updateMutation.mutate(changes)}
-        disabled={!hasChanges}
+        disabled={!hasChanges || hasErrors}
         loading={updateMutation.isPending}
       >
         <Save className="mr-1 size-4" />
