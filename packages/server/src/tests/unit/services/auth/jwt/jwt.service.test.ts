@@ -68,9 +68,9 @@ describe("JWTService", () => {
       const token = await service.generate(baseUser);
       // Flip a character in the signature segment to invalidate it
       const [header, payload, signature] = token.split(".");
-      const tampered = `${header}.${payload}.${signature.slice(0, -1)}${
-        signature.slice(-1) === "A" ? "B" : "A"
-      }`;
+      const tampered = `${header}.${payload}.${
+        signature[0] === "A" ? "B" : "A"
+      }${signature.slice(1)}`;
       await expect(service.verify(tampered)).rejects.toThrow("Invalid token");
     });
   });
