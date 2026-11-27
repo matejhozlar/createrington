@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
-import jwt from "jsonwebtoken";
+import { signTestJwt } from "@/tests/helpers/jwt";
+import { decodeJwt } from "jose";
 
 const { WEB_SECRET, MOD_SECRET, LAUNCHER_SECRET } = vi.hoisted(() => ({
   WEB_SECRET: "test-web-secret-please-do-not-use-in-prod",
@@ -82,61 +83,63 @@ async function run(
 }
 
 describe("LauncherJwtService", () => {
-  it("round-trips the Minecraft identity and session family and nothing else", () => {
-    const token = launcherJwtService.generate({
+  it("round-trips the Minecraft identity and session family and nothing else", async () => {
+    const token = await launcherJwtService.generate({
       ...WEB_USER,
     });
 
-    expect(launcherJwtService.verify(token)).toEqual({
+    expect(await launcherJwtService.verify(token)).toEqual({
       ...PLAYER,
       issuedAt: expect.any(Number),
     });
 
-    const raw = jwt.decode(token) as Record<string, unknown>;
+    const raw = decodeJwt(token) as Record<string, unknown>;
     expect(raw.aud).toBe(JWT_AUDIENCE_LAUNCHER);
     expect(raw.discordId).toBeUndefined();
     expect(raw.isAdmin).toBeUndefined();
     expect(raw.role).toBeUndefined();
   });
 
-  it("rejects an expired launcher token", () => {
-    const token = jwt.sign(PLAYER, LAUNCHER_SECRET, {
-      algorithm: "HS256",
+  it("rejects an expired launcher token", async () => {
+    const token = await signTestJwt(PLAYER, LAUNCHER_SECRET, {
       audience: JWT_AUDIENCE_LAUNCHER,
-      expiresIn: -10,
+      expiresInSeconds: -10,
     });
 
-    expect(() => launcherJwtService.verify(token)).toThrow(TokenExpiredError);
+    await expect(launcherJwtService.verify(token)).rejects.toThrow(
+      TokenExpiredError,
+    );
   });
 
-  it("rejects a launcher-audience token signed with the web secret", () => {
-    const token = jwt.sign(PLAYER, WEB_SECRET, {
-      algorithm: "HS256",
+  it("rejects a launcher-audience token signed with the web secret", async () => {
+    const token = await signTestJwt(PLAYER, WEB_SECRET, {
       audience: JWT_AUDIENCE_LAUNCHER,
-      expiresIn: "15m",
+      expiresInSeconds: 900,
     });
 
-    expect(() => launcherJwtService.verify(token)).toThrow("Invalid token");
+    await expect(launcherJwtService.verify(token)).rejects.toThrow(
+      "Invalid token",
+    );
   });
 
-  it("rejects a web-audience token signed with the launcher secret", () => {
-    const token = jwt.sign(PLAYER, LAUNCHER_SECRET, {
-      algorithm: "HS256",
+  it("rejects a web-audience token signed with the launcher secret", async () => {
+    const token = await signTestJwt(PLAYER, LAUNCHER_SECRET, {
       audience: "createrington.web",
-      expiresIn: "15m",
+      expiresInSeconds: 900,
     });
 
-    expect(() => launcherJwtService.verify(token)).toThrow("Invalid token");
+    await expect(launcherJwtService.verify(token)).rejects.toThrow(
+      "Invalid token",
+    );
   });
 
-  it("rejects a token whose payload lacks the Minecraft identity", () => {
-    const token = jwt.sign({ minecraftUuid: 42 }, LAUNCHER_SECRET, {
-      algorithm: "HS256",
+  it("rejects a token whose payload lacks the Minecraft identity", async () => {
+    const token = await signTestJwt({ minecraftUuid: 42 }, LAUNCHER_SECRET, {
       audience: JWT_AUDIENCE_LAUNCHER,
-      expiresIn: "15m",
+      expiresInSeconds: 900,
     });
 
-    expect(() => launcherJwtService.verify(token)).toThrow(
+    await expect(launcherJwtService.verify(token)).rejects.toThrow(
       "Invalid token payload",
     );
   });
@@ -144,7 +147,7 @@ describe("LauncherJwtService", () => {
 
 describe("token isolation between launcher and website", () => {
   it("accepts a launcher token on a launcher route", async () => {
-    const req = makeReq(launcherJwtService.generate(PLAYER));
+    const req = makeReq(await launcherJwtService.generate(PLAYER));
 
     expect(await run(authenticateLauncher, req)).toBe("passed");
     expect(req.launcherAuth).toEqual({
@@ -154,7 +157,7 @@ describe("token isolation between launcher and website", () => {
   });
 
   it("rejects a website token on a launcher route", async () => {
-    const req = makeReq(jwtService.generate(WEB_USER));
+    const req = makeReq(await jwtService.generate(WEB_USER));
 
     expect(await run(authenticateLauncher, req)).toBeInstanceOf(
       UnauthorizedError,
@@ -163,14 +166,14 @@ describe("token isolation between launcher and website", () => {
   });
 
   it("rejects a launcher token on a website route", async () => {
-    const req = makeReq(launcherJwtService.generate(PLAYER));
+    const req = makeReq(await launcherJwtService.generate(PLAYER));
 
     expect(await run(authenticate, req)).toBeInstanceOf(UnauthorizedError);
     expect(req.user).toBeUndefined();
   });
 
   it("rejects a launcher token on a mod route", async () => {
-    const req = makeReq(launcherJwtService.generate(PLAYER));
+    const req = makeReq(await launcherJwtService.generate(PLAYER));
 
     expect(await run(verifyModJWT, req)).toBeInstanceOf(UnauthorizedError);
     expect(req.modAuth).toBeUndefined();

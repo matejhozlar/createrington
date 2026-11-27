@@ -3,9 +3,9 @@ import { Q } from "@/db";
 import { UnauthorizedError } from "@/errors";
 import { extractBearerToken } from "@/app/utils/bearer-token";
 import type { NextFunction, Request, RequestHandler, Response } from "express";
-import jwt from "jsonwebtoken";
+import { errors, jwtVerify } from "jose";
 
-const JWT_SECRET = config.app.auth.modAccessToken.secret;
+const JWT_KEY = new TextEncoder().encode(config.app.auth.modAccessToken.secret);
 
 export const JWT_AUDIENCE_MOD = "createrington.mod";
 
@@ -25,11 +25,11 @@ function assertModJwtPayload(value: unknown): ModJwtPayload {
   return p as unknown as ModJwtPayload;
 }
 
-export const verifyModJWT = (
+export const verifyModJWT = async (
   req: Request,
   res: Response,
   next: NextFunction,
-): void => {
+): Promise<void> => {
   try {
     const token = extractBearerToken(req);
 
@@ -37,11 +37,11 @@ export const verifyModJWT = (
       throw new UnauthorizedError("Mod authentication required");
     }
 
-    const raw = jwt.verify(token, JWT_SECRET, {
+    const { payload } = await jwtVerify(token, JWT_KEY, {
       algorithms: ["HS256"],
       audience: JWT_AUDIENCE_MOD,
     });
-    const decoded = assertModJwtPayload(raw);
+    const decoded = assertModJwtPayload(payload);
 
     const now = Math.floor(Date.now() / 1000);
     if (decoded.iat > now + 60) {
@@ -54,9 +54,9 @@ export const verifyModJWT = (
   } catch (error) {
     if (error instanceof UnauthorizedError) {
       next(error);
-    } else if (error instanceof jwt.TokenExpiredError) {
+    } else if (error instanceof errors.JWTExpired) {
       next(new UnauthorizedError("Token has expired"));
-    } else if (error instanceof jwt.JsonWebTokenError) {
+    } else if (error instanceof errors.JOSEError) {
       logger.warn("JWT verification failed:", error.message);
       next(new UnauthorizedError("Invalid token"));
     } else {

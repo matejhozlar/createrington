@@ -40,6 +40,11 @@ jobs:
           : "${INFISICAL_PROJECT_ID:?}" "${APP_DIR:?}" "${WWW_DIR:?}" "${DEPLOY_OWNER:?}"
           : "${MAVEN_REPO:?}" "${NPM_REGISTRY:?}" "${BLUEMAP_URL:?}"
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+
       - name: Install pnpm
         run: npm install -g pnpm
 
