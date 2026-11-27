@@ -37,13 +37,13 @@ function invalidRefreshToken(): UnauthorizedError {
   });
 }
 
-function sessionData(
+async function sessionData(
   player: LauncherPlayer,
   refreshToken: string,
   familyId: string,
-): LauncherSessionData {
+): Promise<LauncherSessionData> {
   return {
-    accessToken: launcherJwtService.generate({
+    accessToken: await launcherJwtService.generate({
       minecraftUuid: player.minecraftUuid,
       minecraftUsername: player.minecraftUsername,
       familyId,
@@ -140,7 +140,7 @@ export class LauncherAuthController {
     );
 
     respondSuccess(res, {
-      data: sessionData(player, session.refreshToken, session.familyId),
+      data: await sessionData(player, session.refreshToken, session.familyId),
     });
   }
 
@@ -178,7 +178,7 @@ export class LauncherAuthController {
     }
 
     respondSuccess(res, {
-      data: sessionData(player, refreshToken, session.familyId),
+      data: await sessionData(player, refreshToken, session.familyId),
     });
   }
 

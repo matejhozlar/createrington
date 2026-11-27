@@ -16,10 +16,10 @@ import type {
   WebSocketStats,
 } from "./types";
 import { SocketEvent, SubscriptionType } from "./types";
-import type { MessageCacheService } from "../discord/message/cache";
-import type { PlaytimeManagerService } from "../playtime/playtime-manager.service";
+import type { MessageCacheService } from "@/services/discord/message/cache";
+import type { PlaytimeManagerService } from "@/services/playtime/playtime-manager.service";
 import { RoomManager } from "./room-manager";
-import { isValidServerId } from "../mc-server/servers";
+import { isValidServerId } from "@/services/mc-server/servers";
 import { WebSocketDataProvider } from "./data-provider";
 import {
   parseInitialDataRequest,
@@ -27,8 +27,8 @@ import {
   rejectedSubscription,
   splitFrame,
 } from "./request-validation";
-import type { CachedMessage } from "../discord/message/cache";
-import type { SessionEndEvent, SessionStartEvent } from "../playtime";
+import type { CachedMessage } from "@/services/discord/message/cache";
+import type { SessionEndEvent, SessionStartEvent } from "@/services/playtime";
 import { jwtService } from "@/services/auth/jwt";
 import type { JWTPayload } from "@createrington/shared/auth";
 
@@ -108,27 +108,30 @@ export class WebSocketService {
 
   private setupHandshakeGate(): void {
     this.io.use((socket, next) => {
-      const ip = getSocketClientIp(socket);
-      const current = this.connectionsByIp.get(ip) ?? 0;
-      if (current >= MAX_CONNECTIONS_PER_IP) {
-        logger.warn(
-          `[ws] rejecting connection from ${ip}: ${current} concurrent sockets already open`,
-        );
-        return next(new Error("Too many connections"));
-      }
-
-      const token =
-        typeof socket.handshake.auth?.token === "string"
-          ? socket.handshake.auth.token
-          : undefined;
-      if (token) {
-        try {
-          socket.data.user = jwtService.verify(token);
-        } catch {}
-      }
-
-      next();
+      void this.attachHandshakeUser(socket).then(() => {
+        const ip = getSocketClientIp(socket);
+        const current = this.connectionsByIp.get(ip) ?? 0;
+        if (current >= MAX_CONNECTIONS_PER_IP) {
+          logger.warn(
+            `[ws] rejecting connection from ${ip}: ${current} concurrent sockets already open`,
+          );
+          next(new Error("Too many connections"));
+          return;
+        }
+        next();
+      });
     });
+  }
+
+  private async attachHandshakeUser(socket: Socket): Promise<void> {
+    const token =
+      typeof socket.handshake.auth?.token === "string"
+        ? socket.handshake.auth.token
+        : undefined;
+    if (!token) return;
+    try {
+      socket.data.user = await jwtService.verify(token);
+    } catch {}
   }
 
   private allowSocketEvent(socketId: string): boolean {

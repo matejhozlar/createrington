@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import jwt from "jsonwebtoken";
+import { signTestJwt } from "@/tests/helpers/jwt";
+import { decodeJwt } from "jose";
 
 const { LAUNCHER_SECRET } = vi.hoisted(() => ({
   LAUNCHER_SECRET: "test-launcher-secret-please-do-not-use-in-prod",
@@ -82,7 +83,7 @@ describe("authenticateLauncher", () => {
 
   it("lets a valid launcher token through and attaches the player and family", async () => {
     const { req, passed, json } = await run(
-      `Bearer ${launcherJwtService.generate(PLAYER)}`,
+      `Bearer ${await launcherJwtService.generate(PLAYER)}`,
     );
 
     expect(passed).toBe(true);
@@ -93,8 +94,8 @@ describe("authenticateLauncher", () => {
     });
   });
 
-  it("signs tokens that live exactly the advertised lifetime", () => {
-    const decoded = jwt.decode(launcherJwtService.generate(PLAYER)) as {
+  it("signs tokens that live exactly the advertised lifetime", async () => {
+    const decoded = decodeJwt(await launcherJwtService.generate(PLAYER)) as {
       iat: number;
       exp: number;
     };
@@ -112,10 +113,10 @@ describe("authenticateLauncher", () => {
   });
 
   it("answers TOKEN_EXPIRED for an expired launcher token", async () => {
-    const expired = jwt.sign(
+    const expired = await signTestJwt(
       { ...PLAYER, exp: Math.floor(Date.now() / 1000) - 10 },
       LAUNCHER_SECRET,
-      { algorithm: "HS256", audience: JWT_AUDIENCE_LAUNCHER },
+      { audience: JWT_AUDIENCE_LAUNCHER },
     );
 
     const { status, json } = await run(`Bearer ${expired}`);
@@ -127,11 +128,14 @@ describe("authenticateLauncher", () => {
   });
 
   it("answers INVALID_TOKEN for a token signed with another secret", async () => {
-    const forged = jwt.sign(PLAYER, "some-other-secret-of-sufficient-length", {
-      algorithm: "HS256",
-      audience: JWT_AUDIENCE_LAUNCHER,
-      expiresIn: 60,
-    });
+    const forged = await signTestJwt(
+      PLAYER,
+      "some-other-secret-of-sufficient-length",
+      {
+        audience: JWT_AUDIENCE_LAUNCHER,
+        expiresInSeconds: 60,
+      },
+    );
 
     const { json } = await run(`Bearer ${forged}`);
 
@@ -139,10 +143,9 @@ describe("authenticateLauncher", () => {
   });
 
   it("answers INVALID_TOKEN for a launcher-signed token without the player claims", async () => {
-    const hollow = jwt.sign({ sub: "x" }, LAUNCHER_SECRET, {
-      algorithm: "HS256",
+    const hollow = await signTestJwt({ sub: "x" }, LAUNCHER_SECRET, {
       audience: JWT_AUDIENCE_LAUNCHER,
-      expiresIn: 60,
+      expiresInSeconds: 60,
     });
 
     const { json } = await run(`Bearer ${hollow}`);
@@ -152,10 +155,9 @@ describe("authenticateLauncher", () => {
 
   it("answers INVALID_TOKEN for a launcher-signed token without a session family", async () => {
     const { familyId: _familyId, ...withoutFamily } = PLAYER;
-    const legacy = jwt.sign(withoutFamily, LAUNCHER_SECRET, {
-      algorithm: "HS256",
+    const legacy = await signTestJwt(withoutFamily, LAUNCHER_SECRET, {
       audience: JWT_AUDIENCE_LAUNCHER,
-      expiresIn: 60,
+      expiresInSeconds: 60,
     });
 
     const { json } = await run(`Bearer ${legacy}`);
@@ -173,11 +175,11 @@ describe("authenticateLauncher", () => {
     it("refuses the tokens of a signed-out family at once and keeps the player's other family", async () => {
       vi.useFakeTimers({ toFake: ["Date"] });
       vi.setSystemTime(new Date("2026-10-23T12:00:00Z"));
-      const signedOut = launcherJwtService.generate({
+      const signedOut = await launcherJwtService.generate({
         ...PLAYER,
         familyId: "11111111-1111-4111-8111-111111111111",
       });
-      const other = launcherJwtService.generate({
+      const other = await launcherJwtService.generate({
         ...PLAYER,
         familyId: "22222222-2222-4222-8222-222222222222",
       });
@@ -197,8 +199,8 @@ describe("authenticateLauncher", () => {
         ...PLAYER,
         minecraftUuid: "33333333-3333-4333-8333-333333333333",
       };
-      const first = launcherJwtService.generate(banned);
-      const second = launcherJwtService.generate({
+      const first = await launcherJwtService.generate(banned);
+      const second = await launcherJwtService.generate({
         ...banned,
         familyId: "44444444-4444-4444-8444-444444444444",
       });
@@ -220,10 +222,10 @@ describe("authenticateLauncher", () => {
         ...PLAYER,
         minecraftUuid: "55555555-5555-4555-8555-555555555555",
       };
-      const before = launcherJwtService.generate(unbanned);
+      const before = await launcherJwtService.generate(unbanned);
       await denyLauncherPlayer(unbanned.minecraftUuid);
       vi.setSystemTime(new Date("2026-10-23T12:00:02Z"));
-      const after = launcherJwtService.generate(unbanned);
+      const after = await launcherJwtService.generate(unbanned);
 
       expect((await run(`Bearer ${before}`)).json).toHaveBeenCalledWith(
         INVALID_TOKEN,
@@ -236,7 +238,7 @@ describe("authenticateLauncher", () => {
       vi.setSystemTime(new Date("2026-10-23T12:00:00Z"));
       await denyLauncherFamily("66666666-6666-4666-8666-666666666666");
       vi.setSystemTime(new Date("2026-10-23T12:16:01Z"));
-      const token = jwt.sign(
+      const token = await signTestJwt(
         {
           ...PLAYER,
           familyId: "66666666-6666-4666-8666-666666666666",
@@ -244,9 +246,8 @@ describe("authenticateLauncher", () => {
         },
         LAUNCHER_SECRET,
         {
-          algorithm: "HS256",
           audience: JWT_AUDIENCE_LAUNCHER,
-          expiresIn: 30 * 60,
+          expiresInSeconds: 30 * 60,
         },
       );
 

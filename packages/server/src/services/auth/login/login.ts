@@ -38,7 +38,7 @@ export async function completeLogin(
   res: Response,
   user: JWTPayload,
 ): Promise<string> {
-  const accessToken = jwtService.generate(user);
+  const accessToken = await jwtService.generate(user);
   const rawRefreshToken = await sessionService.createSession({
     discordId: user.discordId,
     username: user.username,

@@ -2,9 +2,9 @@ import type { LauncherPlayer } from "@createrington/shared/launcher";
 import config from "@/config";
 import {
   InvalidJwtPayloadError,
-  TokenExpiredError,
+  verifyHs256,
 } from "@/services/auth/jwt/jwt.service";
-import jwt from "jsonwebtoken";
+import { SignJWT } from "jose";
 
 export const JWT_AUDIENCE_LAUNCHER = "createrington.launcher";
 
@@ -31,32 +31,31 @@ export interface LauncherJwtPayload extends LauncherTokenClaims {
  * verifying in that state throws.
  */
 export class LauncherJwtService {
-  private readonly secret: string;
+  private readonly key: Uint8Array;
 
   constructor() {
-    this.secret = config.app.auth.launcherAccessToken.secret;
+    this.key = new TextEncoder().encode(
+      config.app.auth.launcherAccessToken.secret,
+    );
   }
 
   /** True when `LAUNCHER_JWT_SECRET` is configured and launcher sign-in can be offered. */
   isEnabled(): boolean {
-    return this.secret.length > 0;
+    return this.key.length > 0;
   }
 
   /** Signs a new launcher access token for a verified player's session family. */
-  generate(claims: LauncherTokenClaims): string {
-    return jwt.sign(
-      {
-        minecraftUuid: claims.minecraftUuid,
-        minecraftUsername: claims.minecraftUsername,
-        familyId: claims.familyId,
-      },
-      this.requireSecret(),
-      {
-        algorithm: "HS256",
-        audience: JWT_AUDIENCE_LAUNCHER,
-        expiresIn: LAUNCHER_ACCESS_TOKEN_TTL_SECONDS,
-      },
-    );
+  generate(claims: LauncherTokenClaims): Promise<string> {
+    return new SignJWT({
+      minecraftUuid: claims.minecraftUuid,
+      minecraftUsername: claims.minecraftUsername,
+      familyId: claims.familyId,
+    })
+      .setProtectedHeader({ alg: "HS256", typ: "JWT" })
+      .setIssuedAt()
+      .setAudience(JWT_AUDIENCE_LAUNCHER)
+      .setExpirationTime(`${LAUNCHER_ACCESS_TOKEN_TTL_SECONDS}s`)
+      .sign(this.requireKey());
   }
 
   /**
@@ -64,33 +63,17 @@ export class LauncherJwtService {
    * Throws `TokenExpiredError` for an expired token, otherwise `Error("Invalid token")`
    * or `InvalidJwtPayloadError`.
    */
-  verify(token: string): LauncherJwtPayload {
-    const secret = this.requireSecret();
-    try {
-      const decoded = jwt.verify(token, secret, {
-        algorithms: ["HS256"],
-        audience: JWT_AUDIENCE_LAUNCHER,
-      });
-      return assertLauncherJwtPayload(decoded);
-    } catch (error) {
-      if (error instanceof jwt.TokenExpiredError) {
-        throw new TokenExpiredError();
-      }
-      if (error instanceof jwt.JsonWebTokenError) {
-        throw new Error("Invalid token");
-      }
-      if (error instanceof InvalidJwtPayloadError) {
-        throw error;
-      }
-      throw new Error("Token verification failed");
-    }
+  async verify(token: string): Promise<LauncherJwtPayload> {
+    return assertLauncherJwtPayload(
+      await verifyHs256(token, this.requireKey(), JWT_AUDIENCE_LAUNCHER),
+    );
   }
 
-  private requireSecret(): string {
-    if (!this.secret) {
+  private requireKey(): Uint8Array {
+    if (!this.isEnabled()) {
       throw new Error("LAUNCHER_JWT_SECRET environment variable is missing");
     }
-    return this.secret;
+    return this.key;
   }
 }
 

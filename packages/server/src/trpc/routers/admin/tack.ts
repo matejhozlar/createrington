@@ -25,10 +25,10 @@ export const adminOverlayRouter = router({
         description:
           "A short-lived tack host token for the signed-in admin, asked for only once the widget is open; null while tack is not configured",
       })
-      .query(({ ctx }) => {
+      .query(async ({ ctx }) => {
         const tack = config.tack;
         if (!tack) return null;
-        return signTackToken(ctx.user, tack);
+        return await signTackToken(ctx.user, tack);
       }),
   }),
 });

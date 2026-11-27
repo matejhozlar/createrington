@@ -161,7 +161,7 @@ export class AuthController {
       minecraftUsername: player.minecraftUsername,
     };
 
-    const accessToken = jwtService.generateFromPayload(payload);
+    const accessToken = await jwtService.generateFromPayload(payload);
     refreshTokenService.setCookie(res, result.rawToken);
     accessCookieService.setCookie(res, accessToken);
 

@@ -9,7 +9,7 @@ import {
 } from "vitest";
 import type { AddressInfo } from "node:net";
 import type { Server } from "node:http";
-import jwt from "jsonwebtoken";
+import { signTestJwt } from "@/tests/helpers/jwt";
 import type { KeyValueStore } from "@/services/key-value-store";
 
 const { LAUNCHER_SECRET, WEB_SECRET, mocks, cache } = vi.hoisted(() => ({
@@ -261,7 +261,7 @@ async function resolve(body: unknown, headers: Record<string, string> = {}) {
 
 beforeAll(async () => {
   session = {
-    Authorization: `Bearer ${launcherJwtService.generate({
+    Authorization: `Bearer ${await launcherJwtService.generate({
       minecraftUuid: "069a79f4-44e9-4726-a5be-fca90e38aaf5",
       minecraftUsername: "Alice_MC",
       familyId: "0f6a7b1c-5d4e-4f3a-9b2c-1d0e9f8a7b6c",
@@ -475,9 +475,13 @@ describe("GET /api/launcher/packs/:slug/latest", () => {
   });
 
   it("answers 401 to a website token", async () => {
-    const webToken = jwt.sign({ discordId: "1", role: "admin" }, WEB_SECRET, {
-      expiresIn: "15m",
-    });
+    const webToken = await signTestJwt(
+      { discordId: "1", role: "admin" },
+      WEB_SECRET,
+      {
+        expiresInSeconds: 900,
+      },
+    );
 
     const res = await getLatest({ Authorization: `Bearer ${webToken}` });
 

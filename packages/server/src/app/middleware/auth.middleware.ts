@@ -29,11 +29,11 @@ export function presentedAccessToken(req: Request): string {
   return token;
 }
 
-export const authenticate = (
+export const authenticate = async (
   req: Request,
   res: Response,
   next: NextFunction,
-): void => {
+): Promise<void> => {
   try {
     const token = extractAccessToken(req);
 
@@ -41,7 +41,7 @@ export const authenticate = (
       throw new UnauthorizedError("Authentication required");
     }
 
-    const payload = jwtService.verify(token);
+    const payload = await jwtService.verify(token);
     req.user = payload;
 
     next();
@@ -54,16 +54,16 @@ export const authenticate = (
   }
 };
 
-export const optionalAuth = (
+export const optionalAuth = async (
   req: Request,
   res: Response,
   next: NextFunction,
-): void => {
+): Promise<void> => {
   try {
     const token = extractAccessToken(req);
 
     if (token) {
-      const payload = jwtService.verify(token);
+      const payload = await jwtService.verify(token);
       req.user = payload;
     }
 

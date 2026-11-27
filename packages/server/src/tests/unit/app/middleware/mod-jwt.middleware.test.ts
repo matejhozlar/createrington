@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import jwt from "jsonwebtoken";
+import { signTestJwt } from "@/tests/helpers/jwt";
 
 vi.mock("@/config", () => ({
   default: {
@@ -50,35 +50,33 @@ function collectNext(): {
 }
 
 describe("verifyModJWT", () => {
-  it("accepts a well-formed mod-audience token", () => {
-    const token = jwt.sign({ uuid: "u", name: "n" }, MOD_SECRET, {
-      algorithm: "HS256",
+  it("accepts a well-formed mod-audience token", async () => {
+    const token = await signTestJwt({ uuid: "u", name: "n" }, MOD_SECRET, {
       audience: "createrington.mod",
-      expiresIn: "60s",
+      expiresInSeconds: 60,
     });
     const req = makeReq(`Bearer ${token}`);
     const { next, errors, called } = collectNext();
 
-    verifyModJWT(req, fakeRes(), next);
+    await verifyModJWT(req, fakeRes(), next);
 
     expect(errors).toHaveLength(0);
     expect(called()).toBe(true);
     expect(req.modAuth?.uuid).toBe("u");
   });
 
-  it("accepts a server-level token without uuid/name claims", () => {
+  it("accepts a server-level token without uuid/name claims", async () => {
     // Regression guard for #619: PresenceAPI's heartbeat and Forceloads'
     // sync issue server-level tokens that carry only {iat, exp, aud}:
     // tightening assertModJwtPayload to require uuid/name broke both.
-    const token = jwt.sign({}, MOD_SECRET, {
-      algorithm: "HS256",
+    const token = await signTestJwt({}, MOD_SECRET, {
       audience: "createrington.mod",
-      expiresIn: "60s",
+      expiresInSeconds: 60,
     });
     const req = makeReq(`Bearer ${token}`);
     const { next, errors, called } = collectNext();
 
-    verifyModJWT(req, fakeRes(), next);
+    await verifyModJWT(req, fakeRes(), next);
 
     expect(errors).toHaveLength(0);
     expect(called()).toBe(true);
@@ -87,19 +85,18 @@ describe("verifyModJWT", () => {
     expect(req.modAuth?.aud).toBe("createrington.mod");
   });
 
-  it("rejects a mod-audience token whose uuid claim is the wrong type", () => {
+  it("rejects a mod-audience token whose uuid claim is the wrong type", async () => {
     // Partial shape is still a shape failure: a token with uuid set to
     // something non-string must not be admitted just because the claim
     // exists on the payload.
-    const token = jwt.sign({ uuid: 42 }, MOD_SECRET, {
-      algorithm: "HS256",
+    const token = await signTestJwt({ uuid: 42 }, MOD_SECRET, {
       audience: "createrington.mod",
-      expiresIn: "60s",
+      expiresInSeconds: 60,
     });
     const req = makeReq(`Bearer ${token}`);
     const { next, errors, called } = collectNext();
 
-    verifyModJWT(req, fakeRes(), next);
+    await verifyModJWT(req, fakeRes(), next);
 
     expect(called()).toBe(false);
     expect(errors).toHaveLength(1);
@@ -107,8 +104,8 @@ describe("verifyModJWT", () => {
     expect(req.modAuth).toBeUndefined();
   });
 
-  it("rejects a properly-signed web-audience token", () => {
-    const token = jwt.sign(
+  it("rejects a properly-signed web-audience token", async () => {
+    const token = await signTestJwt(
       {
         discordId: "1",
         username: "alice",
@@ -119,15 +116,14 @@ describe("verifyModJWT", () => {
       },
       WEB_SECRET,
       {
-        algorithm: "HS256",
         audience: "createrington.web",
-        expiresIn: "15m",
+        expiresInSeconds: 900,
       },
     );
     const req = makeReq(`Bearer ${token}`);
     const { next, errors, called } = collectNext();
 
-    verifyModJWT(req, fakeRes(), next);
+    await verifyModJWT(req, fakeRes(), next);
 
     expect(called()).toBe(false);
     expect(errors).toHaveLength(1);
@@ -135,42 +131,40 @@ describe("verifyModJWT", () => {
     expect(req.modAuth).toBeUndefined();
   });
 
-  it("rejects a token signed with a different secret", () => {
-    const token = jwt.sign({ uuid: "u", name: "n" }, "other-secret", {
-      algorithm: "HS256",
+  it("rejects a token signed with a different secret", async () => {
+    const token = await signTestJwt({ uuid: "u", name: "n" }, "other-secret", {
       audience: "createrington.mod",
-      expiresIn: "60s",
+      expiresInSeconds: 60,
     });
     const req = makeReq(`Bearer ${token}`);
     const { next, errors } = collectNext();
 
-    verifyModJWT(req, fakeRes(), next);
+    await verifyModJWT(req, fakeRes(), next);
 
     expect(errors).toHaveLength(1);
     expect(req.modAuth).toBeUndefined();
   });
 
-  it("rejects a mod-audience token signed with the web secret (regression: #781)", () => {
-    const token = jwt.sign({ uuid: "u", name: "n" }, WEB_SECRET, {
-      algorithm: "HS256",
+  it("rejects a mod-audience token signed with the web secret (regression: #781)", async () => {
+    const token = await signTestJwt({ uuid: "u", name: "n" }, WEB_SECRET, {
       audience: "createrington.mod",
-      expiresIn: "60s",
+      expiresInSeconds: 60,
     });
     const req = makeReq(`Bearer ${token}`);
     const { next, errors, called } = collectNext();
 
-    verifyModJWT(req, fakeRes(), next);
+    await verifyModJWT(req, fakeRes(), next);
 
     expect(called()).toBe(false);
     expect(errors).toHaveLength(1);
     expect(req.modAuth).toBeUndefined();
   });
 
-  it("rejects when the Authorization header is missing", () => {
+  it("rejects when the Authorization header is missing", async () => {
     const req = { headers: {} } as unknown as Request;
     const { next, errors } = collectNext();
 
-    verifyModJWT(req, fakeRes(), next);
+    await verifyModJWT(req, fakeRes(), next);
 
     expect(errors).toHaveLength(1);
     expect((errors[0] as Error).message).toMatch(/authentication required/i);

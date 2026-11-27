@@ -16,7 +16,9 @@ function isSandboxServiceToken(token: string): boolean {
   return expected !== null && timingSafeEqualStrings(token, expected);
 }
 
-export function createContext({ req }: CreateExpressContextOptions): Context {
+export async function createContext({
+  req,
+}: CreateExpressContextOptions): Promise<Context> {
   const token = extractBearerToken(req);
 
   let user: JWTPayload | null = null;
@@ -26,7 +28,7 @@ export function createContext({ req }: CreateExpressContextOptions): Context {
     service = "sandbox";
   } else if (token) {
     try {
-      user = jwtService.verify(token);
+      user = await jwtService.verify(token);
     } catch {}
   }
 
