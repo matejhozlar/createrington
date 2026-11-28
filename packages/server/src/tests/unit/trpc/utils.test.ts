@@ -36,16 +36,12 @@ describe("playerId", () => {
     });
   });
 
-  it("rejects an unrecognised ID with a BAD_REQUEST naming the accepted forms", () => {
-    let thrown: unknown;
-    try {
-      playerId().parse("not a player!");
-    } catch (error) {
-      thrown = error;
-    }
-    expect(thrown).toBeInstanceOf(TRPCError);
-    expect((thrown as TRPCError).code).toBe("BAD_REQUEST");
-    expect((thrown as TRPCError).message).toMatch(/^Invalid player ID\./);
+  it("reports an unrecognised ID as a validation issue naming the accepted forms", () => {
+    const result = playerId().safeParse("not a player!");
+
+    expect(result.success).toBe(false);
+    expect(result.error?.issues).toHaveLength(1);
+    expect(result.error?.issues[0]?.message).toMatch(/^Invalid player ID\./);
   });
 });
 

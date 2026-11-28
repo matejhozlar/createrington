@@ -52,6 +52,7 @@
     "@createrington/server": "workspace:*",
     "@createrington/shared": "workspace:*",
     "@eslint/js": "^9.39.1",
+    "@trpc/server": "^11.24.0",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.5",
     "@types/react-dom": "^19.2.3",

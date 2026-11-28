@@ -85,17 +85,25 @@ export function inputValidationMessage(error: TRPCError): string | null {
   return error.cause.issues[0]?.message ?? null;
 }
 
+const INVALID_PLAYER_ID =
+  "Invalid player ID. Must be a Discord ID, Minecraft UUID, or Minecraft Username.";
+
 export function parsePlayerId(id: string) {
   const identifier = idToObject(id);
-  if (!identifier) {
-    throw trpcError.badRequest(
-      "Invalid player ID. Must be a Discord ID, Minecraft UUID, or Minecraft Username.",
-    );
-  }
+  if (!identifier) throw trpcError.badRequest(INVALID_PLAYER_ID);
   return identifier;
 }
 
-export const playerId = () => z.string().min(1).transform(parsePlayerId);
+export const playerId = () =>
+  z
+    .string()
+    .min(1)
+    .transform((id, ctx) => {
+      const identifier = idToObject(id);
+      if (identifier) return identifier;
+      ctx.addIssue({ code: "custom", message: INVALID_PLAYER_ID });
+      return z.NEVER;
+    });
 
 export function auditActor(ctx: {
   user: { discordId: string; minecraftUsername: string };

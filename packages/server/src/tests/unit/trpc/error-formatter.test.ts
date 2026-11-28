@@ -19,7 +19,7 @@ vi.mock("@/services/auth/admin-status/admin-status.service", () => ({
 
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 import { publicProcedure, router } from "@/trpc/trpc";
-import { coercedId, trpcError } from "@/trpc/utils";
+import { coercedId, playerId, trpcError } from "@/trpc/utils";
 import { NotFoundError } from "@/errors";
 import { testContext } from "@/tests/helpers/trpc";
 import { z } from "zod";
@@ -50,6 +50,7 @@ const appRouter = router({
       }),
     )
     .query(() => "ok"),
+  player: publicProcedure.input(z.object({ id: playerId() })).query(() => "ok"),
 });
 
 async function errorOf(
@@ -130,6 +131,13 @@ describe("tRPC error messages sent to the caller", () => {
     } finally {
       envMode.isDev = false;
     }
+  });
+
+  it("answers an unrecognised player ID with the accepted forms", async () => {
+    const error = await errorOf("player", { id: "not a player!" });
+
+    expect(error.code).toBe("BAD_REQUEST");
+    expect(error.message).toMatch(/^Invalid player ID\./);
   });
 
   it("keeps the message of a bad request the router raised itself", async () => {
