@@ -32,7 +32,7 @@ importers:
         specifier: ^16.4.0
         version: 16.4.0
       node:
-        specifier: runtime:26.13.1
+        specifier: runtime:^26.13.1
         version: runtime:26.13.1
       prettier:
         specifier: ^3.8.1
