@@ -34,6 +34,7 @@ type ReleaseRow = {
   platform: string;
   url: string;
   signature: string;
+  size: number | null;
   notes: string;
   pubDate: Date;
   status: string;
@@ -54,6 +55,7 @@ function released(
     platform,
     url: `https://gitea.example.com/launcher-${version}.exe`,
     signature: `signature-${version}`,
+    size: null,
     notes: `Notes of ${version}`,
     pubDate: new Date("2026-10-01T10:00:00.000Z"),
     status: "released",
@@ -96,6 +98,46 @@ describe("checkForUpdate", () => {
     expect(release.findAll).toHaveBeenCalledWith({
       platform: PLATFORM,
       status: { $in: ["released", "pruned"] },
+    });
+  });
+
+  it("names the size of the file when the release has one", async () => {
+    release.findAll.mockResolvedValue([
+      released("0.2.0"),
+      { ...released("0.3.0"), size: 7_400_000 },
+    ]);
+
+    const update = await launcherReleaseService.checkForUpdate(
+      PLATFORM,
+      "0.1.0",
+    );
+
+    expect(update).toEqual({
+      version: "0.3.0",
+      notes: "Notes of 0.3.0",
+      pub_date: "2026-10-01T10:00:00.000Z",
+      url: "https://gitea.example.com/launcher-0.3.0.exe",
+      signature: "signature-0.3.0",
+      size: 7_400_000,
+      required: false,
+    });
+  });
+
+  it("answers without a size for a release announced without one", async () => {
+    release.findAll.mockResolvedValue([released("0.3.0")]);
+
+    const update = await launcherReleaseService.checkForUpdate(
+      PLATFORM,
+      "0.1.0",
+    );
+
+    expect(update).toEqual({
+      version: "0.3.0",
+      notes: "Notes of 0.3.0",
+      pub_date: "2026-10-01T10:00:00.000Z",
+      url: "https://gitea.example.com/launcher-0.3.0.exe",
+      signature: "signature-0.3.0",
+      required: false,
     });
   });
 

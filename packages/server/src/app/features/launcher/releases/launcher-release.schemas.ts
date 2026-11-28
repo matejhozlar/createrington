@@ -11,6 +11,7 @@ export const PublishReleaseBodySchema = z.object({
   platform: z.enum(LAUNCHER_PLATFORMS),
   url: z.string().url().max(2048),
   signature: z.string().min(1).max(4096),
+  size: z.number().int().positive().max(2_147_483_647).optional(),
   notes: z.string().max(LAUNCHER_RELEASE_NOTES_MAX_LENGTH).default(""),
   structuredNotes: z.unknown().optional(),
   pubDate: z.coerce.date(),

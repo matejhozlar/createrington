@@ -743,6 +743,13 @@
       "when": 1795704403536,
       "tag": "0105_orange_sentry",
       "breakpoints": true
+    },
+    {
+      "idx": 106,
+      "version": "7",
+      "when": 1795862084454,
+      "tag": "0106_foamy_war_machine",
+      "breakpoints": true
     }
   ]
 }

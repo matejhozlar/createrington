@@ -51,6 +51,7 @@ function release(overrides: Partial<LauncherRelease> = {}): LauncherRelease {
     platform: WINDOWS,
     url: "https://gitea.example.com/packages/launcher/0.3.0/setup.exe",
     signature: "signature-of-0.3.0",
+    size: null,
     notes: "Notes for 0.3.0",
     structuredNotes: null,
     pubDate: new Date("2026-09-29T18:00:00Z"),

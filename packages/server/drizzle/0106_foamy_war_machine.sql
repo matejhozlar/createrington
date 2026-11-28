@@ -1,0 +1,1 @@
+ALTER TABLE "launcher_release" ADD COLUMN "size" integer;

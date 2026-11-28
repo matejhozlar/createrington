@@ -55,6 +55,10 @@ export const launcherRelease = pgTable(
     platform: text("platform").notNull(),
     url: text("url").notNull(),
     signature: text("signature").notNull(),
+    // Size of the file at url in bytes, sent with the update answer so a
+    // launcher refuses a larger download. Null for a release announced
+    // without it.
+    size: integer("size"),
     notes: text("notes").notNull().default(""),
     // The same notes as summary plus typed changes, for pages that render
     // them. Null for a release announced without them.

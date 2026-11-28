@@ -185,6 +185,16 @@ describe("LauncherReleaseService", () => {
       expect(release.structuredNotes).toBeNull();
     });
 
+    it("stores the size of the file, and none for a release announced without it", async () => {
+      const sized = await launcherReleaseService.publish(
+        input("0.2.0", { size: 7_400_000 }),
+      );
+      const unsized = await launcherReleaseService.publish(input("0.3.0"));
+
+      expect(sized.size).toBe(7_400_000);
+      expect(unsized.size).toBeNull();
+    });
+
     it("checks the download address with a HEAD request before storing", async () => {
       const fetchMock = stubDownload(200);
 
@@ -311,6 +321,18 @@ describe("LauncherReleaseService", () => {
         signature: "signature-of-0.2.0",
         required: false,
       });
+    });
+
+    it("names the size of the released file in the update", async () => {
+      const pending = await launcherReleaseService.publish(
+        input("0.2.0", { size: 7_400_000 }),
+      );
+
+      await launcherReleaseService.release(pending.id, OWNER);
+
+      expect(
+        await launcherReleaseService.checkForUpdate(PLATFORM, "0.1.0"),
+      ).toMatchObject({ version: "0.2.0", size: 7_400_000 });
     });
 
     it("offers nothing to the newest released version", async () => {

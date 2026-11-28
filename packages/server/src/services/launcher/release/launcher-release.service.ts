@@ -67,6 +67,7 @@ export interface PublishLauncherReleaseInput {
   platform: LauncherPlatform;
   url: string;
   signature: string;
+  size?: number;
   notes: string;
   structuredNotes?: unknown;
   pubDate: Date;
@@ -78,13 +79,14 @@ export interface LauncherUpdate {
   pub_date: string;
   url: string;
   signature: string;
+  size?: number;
   required: boolean;
 }
 
 interface ReleasedVersions {
   newest: Pick<
     LauncherUpdate,
-    "version" | "notes" | "pub_date" | "url" | "signature"
+    "version" | "notes" | "pub_date" | "url" | "signature" | "size"
   > | null;
   minimumVersion: string | null;
 }
@@ -176,6 +178,7 @@ class LauncherReleaseService {
         platform: input.platform,
         url: input.url,
         signature: input.signature,
+        size: input.size ?? null,
         notes: input.notes,
         structuredNotes,
         pubDate: input.pubDate,
@@ -199,7 +202,8 @@ class LauncherReleaseService {
    * The newest released version when it is newer than `currentVersion`, else null. An
    * unknown platform or an unreadable version also yields null, never an error. The update
    * is `required` when any released version newer than `currentVersion` is, also when the
-   * newest one itself is not.
+   * newest one itself is not. `size` is the file's size in bytes, left out for a release
+   * announced without it.
    */
   async checkForUpdate(
     platform: string,
@@ -380,6 +384,7 @@ class LauncherReleaseService {
                 pub_date: newest.pubDate.toISOString(),
                 url: newest.url,
                 signature: newest.signature,
+                ...(newest.size !== null && { size: newest.size }),
               }
             : null,
           minimumVersion:
