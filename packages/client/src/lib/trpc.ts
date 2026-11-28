@@ -3,6 +3,7 @@ import { createTRPCOptionsProxy } from "@trpc/tanstack-react-query";
 import { MutationCache, QueryClient } from "@tanstack/react-query";
 import type { AppRouter } from "@createrington/server/trpc";
 import type { inferRouterInputs, inferRouterOutputs } from "@trpc/server";
+import { TRPC_MAX_BATCH_SIZE } from "@createrington/shared/trpc";
 import { HTTPError } from "ky";
 import {
   getAccessToken,
@@ -45,6 +46,7 @@ const trpcClient = createTRPCClient<AppRouter>({
   links: [
     httpBatchLink({
       url: "/trpc",
+      maxItems: TRPC_MAX_BATCH_SIZE,
       headers() {
         const token = getAccessToken();
         return token ? { Authorization: `Bearer ${token}` } : {};
