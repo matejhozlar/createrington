@@ -35,7 +35,11 @@ import {
 } from "@/features/leaderboards/hooks/use-board-params";
 import { StatPicker, type Stat } from "./StatPicker";
 import { RowDetails, type DetailTab } from "./RowDetails";
-import { useSuspenseQuery, useQuery } from "@tanstack/react-query";
+import {
+  partialMatchKey,
+  useSuspenseQuery,
+  useQuery,
+} from "@tanstack/react-query";
 
 type BoardPage = RouterOutput["public"]["leaderboards"]["list"];
 type BoardRow = BoardPage["items"][number];
@@ -48,19 +52,6 @@ const BOARDS: { board: Board; roleKey: string; metric: TopRoleMetric }[] = [
   { board: "records", roleKey: "the_unrivaled", metric: "records" },
   { board: "balance", roleKey: "capitalist", metric: "balance" },
 ];
-
-function sameInput(
-  queryKey: readonly unknown[] | undefined,
-  match: Record<string, unknown>,
-): boolean {
-  const input = (
-    queryKey?.[1] as { input?: Record<string, unknown> } | undefined
-  )?.input;
-  return (
-    input !== undefined &&
-    Object.entries(match).every(([key, value]) => input[key] === value)
-  );
-}
 
 function reveal(start: number): CSSProperties {
   const progress = `clamp(0, (var(--land, 1) - ${start}) / ${(1 - start).toFixed(2)}, 1)`;
@@ -359,7 +350,13 @@ export function LeaderboardTable() {
       {
         staleTime: 60 * 1000,
         placeholderData: (previous, previousQuery) =>
-          sameInput(previousQuery?.queryKey, { board }) ? previous : undefined,
+          previousQuery &&
+          partialMatchKey(
+            previousQuery.queryKey,
+            trpc.public.leaderboards.list.queryKey({ board }),
+          )
+            ? previous
+            : undefined,
         enabled: !activeStat,
       },
     ),
@@ -370,7 +367,13 @@ export function LeaderboardTable() {
       {
         staleTime: 60 * 1000,
         placeholderData: (previous, previousQuery) =>
-          sameInput(previousQuery?.queryKey, statKey) ? previous : undefined,
+          previousQuery &&
+          partialMatchKey(
+            previousQuery.queryKey,
+            trpc.public.leaderboards.stat.queryKey(statKey),
+          )
+            ? previous
+            : undefined,
         enabled: !!activeStat,
       },
     ),
