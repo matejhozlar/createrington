@@ -36,12 +36,26 @@ const appRouter = router({
   missing: publicProcedure.query(() => {
     throw new NotFoundError("Player not found");
   }),
+  rejected: publicProcedure.query(() => {
+    throw trpcError.badRequest("Nothing to update");
+  }),
   count: publicProcedure
     .input(z.object({ serverId: coercedId().optional() }))
     .query(({ input }) => input.serverId ?? null),
+  lookup: publicProcedure
+    .input(
+      z.object({
+        id: z.string().min(1, "Player ID is required"),
+        amount: z.number().positive("Amount must be positive"),
+      }),
+    )
+    .query(() => "ok"),
 });
 
-async function messageOf(path: string, input?: unknown): Promise<string> {
+async function errorOf(
+  path: string,
+  input?: unknown,
+): Promise<{ message: string; code: string }> {
   const query =
     input === undefined
       ? ""
@@ -52,8 +66,14 @@ async function messageOf(path: string, input?: unknown): Promise<string> {
     router: appRouter,
     createContext: () => testContext(),
   });
-  const body = (await response.json()) as { error: { message: string } };
-  return body.error.message;
+  const body = (await response.json()) as {
+    error: { message: string; data: { code: string } };
+  };
+  return { message: body.error.message, code: body.error.data.code };
+}
+
+async function messageOf(path: string, input?: unknown): Promise<string> {
+  return (await errorOf(path, input)).message;
 }
 
 describe("tRPC error messages sent to the caller", () => {
@@ -83,8 +103,36 @@ describe("tRPC error messages sent to the caller", () => {
   });
 
   it("rejects an id past the int4 range as bad input instead of reaching the database", async () => {
-    expect(await messageOf("count", { serverId: 99999999999 })).toContain(
-      "serverId",
+    expect(await errorOf("count", { serverId: 99999999999 })).toMatchObject({
+      code: "BAD_REQUEST",
+    });
+  });
+
+  it("answers a failed input with the message its schema defines", async () => {
+    expect(await errorOf("lookup", { id: "", amount: 5 })).toEqual({
+      code: "BAD_REQUEST",
+      message: "Player ID is required",
+    });
+  });
+
+  it("answers with the first failing field when several fail", async () => {
+    expect(await messageOf("lookup", { id: "", amount: -1 })).toBe(
+      "Player ID is required",
     );
+  });
+
+  it("gives the schema's message in dev too", async () => {
+    envMode.isDev = true;
+    try {
+      expect(await messageOf("lookup", { id: "", amount: 5 })).toBe(
+        "Player ID is required",
+      );
+    } finally {
+      envMode.isDev = false;
+    }
+  });
+
+  it("keeps the message of a bad request the router raised itself", async () => {
+    expect(await messageOf("rejected")).toBe("Nothing to update");
   });
 });
