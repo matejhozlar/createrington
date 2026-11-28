@@ -24,6 +24,9 @@ import helmet from "helmet";
 import { registerHealthRoute } from "./health";
 import { spaFallback } from "./spa-fallback";
 import { allowedOrigins } from "./utils/allowed-origins";
+import { TRPC_MAX_BATCH_SIZE } from "@createrington/shared/trpc";
+
+const TRPC_MAX_BODY_BYTES = 1024 * 1024;
 
 function mountTrpc(
   app: Express,
@@ -36,6 +39,8 @@ function mountTrpc(
     createExpressMiddleware({
       router,
       createContext,
+      maxBodySize: TRPC_MAX_BODY_BYTES,
+      maxBatchSize: TRPC_MAX_BATCH_SIZE,
       onError({ error, path: procedure }) {
         if (error.code === "INTERNAL_SERVER_ERROR") {
           logger.error(`[${tag}] ${procedure}:`, {
