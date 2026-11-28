@@ -207,6 +207,17 @@ describe("POST /api/launcher/releases", () => {
     });
   });
 
+  it("passes the size of the file on to the service", async () => {
+    const res = await post({ ...VALID_BODY, size: 7_400_000 }, auth);
+
+    expect(res.status).toBe(201);
+    expect(mocks.publish).toHaveBeenCalledWith({
+      ...VALID_BODY,
+      size: 7_400_000,
+      pubDate: new Date("2026-09-29T18:00:00Z"),
+    });
+  });
+
   it("passes structured notes on to the service", async () => {
     const res = await post(
       { ...VALID_BODY, structuredNotes: STRUCTURED_NOTES },
@@ -285,6 +296,9 @@ describe("POST /api/launcher/releases", () => {
     ["an unknown platform", { platform: "darwin-aarch64" }],
     ["a URL that is not one", { url: "setup.exe" }],
     ["an empty signature", { signature: "" }],
+    ["a size of zero", { size: 0 }],
+    ["a size that is not whole", { size: 1.5 }],
+    ["a size given as text", { size: "7400000" }],
     ["an unreadable publish date", { pubDate: "yesterday" }],
   ])("refuses a body with %s", async (_label, override) => {
     const res = await post({ ...VALID_BODY, ...override }, auth);

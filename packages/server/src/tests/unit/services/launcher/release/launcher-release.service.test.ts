@@ -5,6 +5,7 @@ const { release } = vi.hoisted(() => ({
     findAll: vi.fn(),
     find: vi.fn(),
     updateAll: vi.fn(),
+    createAndReturn: vi.fn(),
   },
 }));
 
@@ -13,7 +14,7 @@ vi.mock("@/config", () => ({
     launcher: {
       channel: "staging",
       publishTokenHash: "",
-      downloadHosts: [],
+      downloadHosts: ["gitea.example.com"],
     },
     redis: { url: null },
   },
@@ -23,7 +24,10 @@ vi.mock("@/db/utils", async () =>
   (await import("@/tests/helpers/mocks/db-utils")).dbUtilsMock(),
 );
 
-import { launcherReleaseService } from "@/services/launcher/release/launcher-release.service";
+import {
+  launcherReleaseService,
+  type PublishLauncherReleaseInput,
+} from "@/services/launcher/release/launcher-release.service";
 
 const PLATFORM = "windows-x86_64";
 const LINUX = "linux-x86_64";
@@ -34,6 +38,7 @@ type ReleaseRow = {
   platform: string;
   url: string;
   signature: string;
+  size: number | null;
   notes: string;
   pubDate: Date;
   status: string;
@@ -54,6 +59,7 @@ function released(
     platform,
     url: `https://gitea.example.com/launcher-${version}.exe`,
     signature: `signature-${version}`,
+    size: null,
     notes: `Notes of ${version}`,
     pubDate: new Date("2026-10-01T10:00:00.000Z"),
     status: "released",
@@ -80,7 +86,84 @@ beforeEach(async () => {
   release.findAll.mockReset();
   release.find.mockReset();
   release.updateAll.mockReset();
+  release.createAndReturn.mockReset();
+  vi.unstubAllGlobals();
   await launcherReleaseService.clearCache();
+});
+
+describe("publish", () => {
+  const INPUT: PublishLauncherReleaseInput = {
+    channel: "staging",
+    version: "0.3.0",
+    platform: "windows-x86_64",
+    url: "https://gitea.example.com/launcher-0.3.0.exe",
+    signature: "signature-0.3.0",
+    notes: "Notes of 0.3.0",
+    pubDate: new Date("2026-10-01T10:00:00.000Z"),
+  };
+
+  function stubHead(headers: Record<string, string>) {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(null, { status: 200, headers })),
+    );
+  }
+
+  beforeEach(() => {
+    release.findAll.mockResolvedValue([]);
+    release.createAndReturn.mockImplementation(async (row) => ({
+      id: 1,
+      ...row,
+    }));
+  });
+
+  it("refuses a size that differs from the length the download URL announces", async () => {
+    stubHead({ "Content-Length": "7400001" });
+
+    await expect(
+      launcherReleaseService.publish({ ...INPUT, size: 7_400_000 }),
+    ).rejects.toMatchObject({ code: "SIZE_MISMATCH", statusCode: 400 });
+    expect(release.createAndReturn).not.toHaveBeenCalled();
+  });
+
+  it("stores a size that matches the announced length", async () => {
+    stubHead({ "Content-Length": "7400000" });
+
+    const stored = await launcherReleaseService.publish({
+      ...INPUT,
+      size: 7_400_000,
+    });
+
+    expect(stored.size).toBe(7_400_000);
+  });
+
+  it.each([
+    ["announces no length", {}],
+    [
+      "announces the length of a compressed body",
+      { "Content-Length": "100", "Content-Encoding": "gzip" },
+    ],
+  ])(
+    "stores the size as given when the download URL %s",
+    async (_label, headers) => {
+      stubHead(headers);
+
+      const stored = await launcherReleaseService.publish({
+        ...INPUT,
+        size: 7_400_000,
+      });
+
+      expect(stored.size).toBe(7_400_000);
+    },
+  );
+
+  it("stores a release without a size whatever length the download URL announces", async () => {
+    stubHead({ "Content-Length": "7400000" });
+
+    const stored = await launcherReleaseService.publish(INPUT);
+
+    expect(stored.size).toBeNull();
+  });
 });
 
 describe("checkForUpdate", () => {
@@ -96,6 +179,46 @@ describe("checkForUpdate", () => {
     expect(release.findAll).toHaveBeenCalledWith({
       platform: PLATFORM,
       status: { $in: ["released", "pruned"] },
+    });
+  });
+
+  it("names the size of the file when the release has one", async () => {
+    release.findAll.mockResolvedValue([
+      released("0.2.0"),
+      { ...released("0.3.0"), size: 7_400_000 },
+    ]);
+
+    const update = await launcherReleaseService.checkForUpdate(
+      PLATFORM,
+      "0.1.0",
+    );
+
+    expect(update).toEqual({
+      version: "0.3.0",
+      notes: "Notes of 0.3.0",
+      pub_date: "2026-10-01T10:00:00.000Z",
+      url: "https://gitea.example.com/launcher-0.3.0.exe",
+      signature: "signature-0.3.0",
+      size: 7_400_000,
+      required: false,
+    });
+  });
+
+  it("answers without a size for a release announced without one", async () => {
+    release.findAll.mockResolvedValue([released("0.3.0")]);
+
+    const update = await launcherReleaseService.checkForUpdate(
+      PLATFORM,
+      "0.1.0",
+    );
+
+    expect(update).toEqual({
+      version: "0.3.0",
+      notes: "Notes of 0.3.0",
+      pub_date: "2026-10-01T10:00:00.000Z",
+      url: "https://gitea.example.com/launcher-0.3.0.exe",
+      signature: "signature-0.3.0",
+      required: false,
     });
   });
 
