@@ -34,8 +34,13 @@ permissions:
   "@trpc/client":
     skills: false
   "@trpc/server":
-    skills: false
+    skills:
+      - adapter-express
+      - middlewares
+      - trpc-router
+      - validators
   "@trpc/tanstack-react-query":
-    skills: false
+    skills:
+      - react-query-setup
   dotenv:
     skills: false
