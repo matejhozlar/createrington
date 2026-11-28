@@ -61,7 +61,7 @@
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/multer": "^2.0.0",
-    "@types/node": "^24.10.1",
+    "@types/node": "^26.6.11",
     "@types/pg": "^8.15.6",
     "@types/semver": "^7.8.0",
     "@types/ssh2-sftp-client": "^9.0.6",
