@@ -2,6 +2,7 @@ import { initTRPC } from "@trpc/server";
 import type { Context } from "./context";
 import {
   INTERNAL_ERROR_MESSAGE,
+  inputValidationMessage,
   isUnmappedFailure,
   mapDomainError,
   trpcError,
@@ -21,6 +22,8 @@ const t = initTRPC
   .create({
     isDev: config.envMode.isDev,
     errorFormatter({ shape, error }) {
+      const validationMessage = inputValidationMessage(error);
+      if (validationMessage) return { ...shape, message: validationMessage };
       if (config.envMode.isDev || !isUnmappedFailure(error)) return shape;
       return { ...shape, message: INTERNAL_ERROR_MESSAGE };
     },

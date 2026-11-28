@@ -78,6 +78,13 @@ export function isUnmappedFailure(error: TRPCError): boolean {
   return error.code === "INTERNAL_SERVER_ERROR" && error.cause !== undefined;
 }
 
+export function inputValidationMessage(error: TRPCError): string | null {
+  if (error.code !== "BAD_REQUEST" || !(error.cause instanceof z.ZodError)) {
+    return null;
+  }
+  return error.cause.issues[0]?.message ?? null;
+}
+
 export function parsePlayerId(id: string) {
   const identifier = idToObject(id);
   if (!identifier) {
