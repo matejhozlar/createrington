@@ -45,6 +45,7 @@ function stubDownload(status: number) {
   const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => ({
     ok: status >= 200 && status < 300,
     status,
+    headers: new Headers(),
   }));
   vi.stubGlobal("fetch", fetchMock);
   return fetchMock;

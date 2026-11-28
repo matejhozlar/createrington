@@ -37,6 +37,7 @@ export type LauncherReleaseErrorCode =
   | "INVALID_VERSION"
   | "HOST_NOT_ALLOWED"
   | "DOWNLOAD_UNREACHABLE"
+  | "SIZE_MISMATCH"
   | "DUPLICATE_VERSION"
   | "NOT_NEWER"
   | "NOT_FOUND"
@@ -47,6 +48,7 @@ const ERROR_STATUS: Record<LauncherReleaseErrorCode, number> = {
   INVALID_VERSION: 400,
   HOST_NOT_ALLOWED: 400,
   DOWNLOAD_UNREACHABLE: 400,
+  SIZE_MISMATCH: 400,
   DUPLICATE_VERSION: 409,
   NOT_NEWER: 409,
   NOT_FOUND: 404,
@@ -112,8 +114,9 @@ class LauncherReleaseService {
 
   /**
    * Stores a new version as pending. Throws `LauncherReleaseError` when the channel is not
-   * this environment's, the download host is not allowed or does not answer, or the version
-   * is already stored or not newer than every stored one (in any state). Structured notes
+   * this environment's, the download host is not allowed or does not answer, the size differs
+   * from the length the download URL announces, or the version is already stored or not
+   * newer than every stored one (in any state). Structured notes
    * that cannot be read are dropped with a warning, the release is stored with its text.
    */
   async publish(input: PublishLauncherReleaseInput): Promise<LauncherRelease> {
@@ -158,10 +161,22 @@ class LauncherReleaseService {
       );
     }
 
-    if (!(await this.downloadAnswers(input.url))) {
+    const download = await this.headDownload(input.url);
+    if (!download.answers) {
       throw new LauncherReleaseError(
         "DOWNLOAD_UNREACHABLE",
         "Download URL did not answer",
+      );
+    }
+
+    if (
+      input.size !== undefined &&
+      download.size !== null &&
+      download.size !== input.size
+    ) {
+      throw new LauncherReleaseError(
+        "SIZE_MISMATCH",
+        `Size ${input.size} does not match the ${download.size} bytes the download URL announces`,
       );
     }
 
@@ -401,16 +416,29 @@ class LauncherReleaseService {
     );
   }
 
-  private async downloadAnswers(url: string): Promise<boolean> {
+  private async headDownload(
+    url: string,
+  ): Promise<{ answers: boolean; size: number | null }> {
     try {
       const res = await fetch(url, {
         method: "HEAD",
+        headers: { "Accept-Encoding": "identity" },
         signal: AbortSignal.timeout(DOWNLOAD_CHECK_TIMEOUT_MS),
       });
-      return res.ok;
+      if (!res.ok) return { answers: false, size: null };
+
+      const length = res.headers.get("content-length");
+      const encoding = res.headers.get("content-encoding");
+      const size =
+        length !== null &&
+        /^\d+$/.test(length) &&
+        (encoding === null || encoding === "identity")
+          ? Number(length)
+          : null;
+      return { answers: true, size };
     } catch (error) {
       logger.warn(`Launcher release download check failed for ${url}:`, error);
-      return false;
+      return { answers: false, size: null };
     }
   }
 }
