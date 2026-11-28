@@ -54,7 +54,7 @@ beforeEach(async () => {
     socket.on("error", () => {});
     let pending = Buffer.alloc(0);
     socket.on("data", (chunk) => {
-      pending = Buffer.concat([pending, chunk]);
+      pending = Buffer.concat([pending, Buffer.from(chunk)]);
       while (pending.length >= 4) {
         const length = pending.readInt32LE(0);
         if (pending.length < length + 4) break;
