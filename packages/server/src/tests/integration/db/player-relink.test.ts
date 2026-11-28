@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterAll } from "vitest";
 import { Q, playerRepo } from "@/db";
 import { sessionService } from "@/services/auth/session/session.service";
+import { launcherSessionService } from "@/services/auth/launcher/launcher-session.service";
 
 const OLD_ID = "779500000000000001";
 const NEW_ID = "779500000000000002";
@@ -49,6 +50,18 @@ describe("playerRepo.adminUpdate with a new Discord ID", () => {
     await relink();
 
     expect(await sessionService.rotateToken(rawToken)).toBeNull();
+  });
+
+  it("refuses a launcher refresh token issued before the relink", async () => {
+    const { refreshToken } = await launcherSessionService.createSession({
+      minecraftUuid: PLAYER.minecraftUuid,
+    });
+
+    await relink();
+
+    expect(
+      await launcherSessionService.resolveActiveSession(refreshToken),
+    ).toBeNull();
   });
 
   it("moves the player's Discord-keyed rows to the new ID", async () => {

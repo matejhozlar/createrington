@@ -9,7 +9,7 @@ import type {
 } from "@createrington/shared/db";
 import { BalanceUtils } from "@/db/utils/balance";
 import { BasePlayerRepository, type PlayerIdentifier } from "./base";
-import { launcherSessionService } from "@/services/auth/launcher/launcher-session.service";
+import { denyLauncherPlayer } from "@/services/auth/launcher/launcher-token-denylist";
 
 /**
  * Core player CRUD plus the aggregate read paths used by the admin panel
@@ -109,9 +109,11 @@ export class PlayerRepository extends BasePlayerRepository {
    * Update player fields and write one admin_log_action entry per changed
    * field, all inside a single transaction. A Discord ID change also revokes
    * the old account's web sessions and moves its Discord-keyed rows in that
-   * transaction, then revokes the player's launcher sessions. A Minecraft UUID
-   * change moves the UUID-keyed rows without a foreign key and links votes
-   * cast under the new username. Resolves to the post-update row.
+   * transaction. A Minecraft UUID change moves the UUID-keyed rows without a
+   * foreign key and links votes cast under the new username. Either change
+   * revokes the player's launcher sessions in the transaction and then denies
+   * the launcher access tokens issued under the old UUID. Resolves to the
+   * post-update row.
    */
   async adminUpdate(
     identifier: PlayerIdentifier,
@@ -131,12 +133,20 @@ export class PlayerRepository extends BasePlayerRepository {
         ? updates.discordId
         : null;
     const newUuid = updates.minecraftUuid ?? uuid;
+    const signsOutLauncher = relinkedTo !== null || newUuid !== uuid;
 
     const updated = await db.inTransaction(async (tx) => {
       if (relinkedTo) {
         await tx.auth.session.updateAll(
           { revokedAt: new Date() },
           { discordId: oldPlayer.discordId, revokedAt: { $exists: false } },
+        );
+      }
+
+      if (signsOutLauncher) {
+        await tx.auth.launcher.session.updateAll(
+          { revokedAt: new Date() },
+          { playerMinecraftUuid: uuid, revokedAt: null },
         );
       }
 
@@ -176,12 +186,12 @@ export class PlayerRepository extends BasePlayerRepository {
       return await tx.player.get({ minecraftUuid: newUuid });
     });
 
-    if (relinkedTo) {
+    if (signsOutLauncher) {
       try {
-        await launcherSessionService.revokeAllForPlayer(newUuid);
+        await denyLauncherPlayer(uuid);
       } catch (error) {
         logger.error(
-          `Failed to revoke launcher sessions of re-linked player ${oldPlayer.minecraftUsername}:`,
+          `Failed to deny the launcher access tokens of moved player ${oldPlayer.minecraftUsername}:`,
           error,
         );
       }
