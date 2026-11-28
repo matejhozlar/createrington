@@ -5,6 +5,13 @@
   "license": "UNLICENSED",
   "type": "module",
   "packageManager": "pnpm@11.15.0",
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": "^26.13.1",
+      "onFail": "download"
+    }
+  },
   "scripts": {
     "generate": "pnpm --filter @createrington/server generate && pnpm build:shared && pnpm typecheck",
     "generate:ci": "pnpm --filter @createrington/server generate && pnpm build:shared",

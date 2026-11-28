@@ -45,8 +45,8 @@ jobs:
         with:
           node-version-file: .node-version
 
-      - name: Install pnpm
-        run: npm install -g pnpm
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
 
       - name: Install dependencies
         run: pnpm install
