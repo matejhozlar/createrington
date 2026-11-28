@@ -9,7 +9,7 @@ import {
 } from "vitest";
 import type { AddressInfo } from "node:net";
 import type { Server } from "node:http";
-import jwt from "jsonwebtoken";
+import { signTestJwt } from "@/tests/helpers/jwt";
 
 const { LAUNCHER_SECRET, WEB_SECRET, mocks } = vi.hoisted(() => ({
   LAUNCHER_SECRET: "test-launcher-secret-please-do-not-use-in-prod",
@@ -130,9 +130,11 @@ let server: Server;
 let baseUrl: string;
 let playerNumber = 0;
 
-function sessionOf(minecraftUuid: string): Record<string, string> {
+async function sessionOf(
+  minecraftUuid: string,
+): Promise<Record<string, string>> {
   return {
-    Authorization: `Bearer ${launcherJwtService.generate({
+    Authorization: `Bearer ${await launcherJwtService.generate({
       minecraftUuid,
       minecraftUsername: "Alice_MC",
       familyId: "0f6a7b1c-5d4e-4f3a-9b2c-1d0e9f8a7b6c",
@@ -140,7 +142,7 @@ function sessionOf(minecraftUuid: string): Record<string, string> {
   };
 }
 
-function newSession(): Record<string, string> {
+async function newSession(): Promise<Record<string, string>> {
   playerNumber += 1;
   return sessionOf(
     `069a79f4-44e9-4726-a5be-${String(playerNumber).padStart(12, "0")}`,
@@ -224,7 +226,7 @@ beforeEach(() => {
 
 describe("GET /api/launcher/content/search", () => {
   it("searches mods on the first page by default", async () => {
-    const res = await get("/search", newSession());
+    const res = await get("/search", await newSession());
 
     expect(res.status).toBe(200);
     expect(mocks.search).toHaveBeenCalledWith({
@@ -245,7 +247,7 @@ describe("GET /api/launcher/content/search", () => {
   it("passes the text, kind, version, loader and page on", async () => {
     await get(
       "/search?query=%20create%20&kind=shader&minecraftVersion=1.21.1&loader=neoforge&page=2&limit=10",
-      newSession(),
+      await newSession(),
     );
 
     expect(mocks.search).toHaveBeenCalledWith({
@@ -261,7 +263,7 @@ describe("GET /api/launcher/content/search", () => {
   it("passes a modpack search on with its loader and version", async () => {
     const res = await get(
       "/search?kind=modpack&loader=neoforge&minecraftVersion=1.21.1",
-      newSession(),
+      await newSession(),
     );
 
     expect(res.status).toBe(200);
@@ -273,7 +275,7 @@ describe("GET /api/launcher/content/search", () => {
   });
 
   it("passes one category and the sort order on", async () => {
-    await get("/search?categoryId=412&sort=newest", newSession());
+    await get("/search?categoryId=412&sort=newest", await newSession());
 
     expect(mocks.search).toHaveBeenCalledWith({
       query: "",
@@ -286,7 +288,7 @@ describe("GET /api/launcher/content/search", () => {
   });
 
   it("passes several categories on", async () => {
-    await get("/search?categoryId=412&categoryId=420", newSession());
+    await get("/search?categoryId=412&categoryId=420", await newSession());
 
     expect(mocks.search.mock.calls[0]?.[0]).toMatchObject({
       categoryIds: [412, 420],
@@ -296,7 +298,7 @@ describe("GET /api/launcher/content/search", () => {
   it.each(["relevance", "downloads", "newest", "updated"])(
     "takes the sort order %s",
     async (sort) => {
-      const res = await get(`/search?sort=${sort}`, newSession());
+      const res = await get(`/search?sort=${sort}`, await newSession());
 
       expect(res.status).toBe(200);
       expect(mocks.search.mock.calls[0]?.[0]).toMatchObject({ sort });
@@ -320,14 +322,14 @@ describe("GET /api/launcher/content/search", () => {
     ["a page size above the cap", "?limit=51"],
     ["a page past what CurseForge lets a search reach", "?page=500&limit=20"],
   ])("refuses %s", async (_label, query) => {
-    const res = await get(`/search${query}`, newSession());
+    const res = await get(`/search${query}`, await newSession());
 
     expect(res.status).toBe(400);
     expect(mocks.search).not.toHaveBeenCalled();
   });
 
   it("answers the last page CurseForge lets a search reach", async () => {
-    const res = await get("/search?page=499&limit=20", newSession());
+    const res = await get("/search?page=499&limit=20", await newSession());
 
     expect(res.status).toBe(200);
   });
@@ -341,9 +343,13 @@ describe("GET /api/launcher/content/search", () => {
   });
 
   it("answers 401 to a website token", async () => {
-    const webToken = jwt.sign({ discordId: "1", role: "admin" }, WEB_SECRET, {
-      expiresIn: "15m",
-    });
+    const webToken = await signTestJwt(
+      { discordId: "1", role: "admin" },
+      WEB_SECRET,
+      {
+        expiresInSeconds: 900,
+      },
+    );
 
     const res = await get("/search", { Authorization: `Bearer ${webToken}` });
 
@@ -365,7 +371,7 @@ describe("GET /api/launcher/content/search", () => {
       ),
     );
 
-    const res = await get("/search", newSession());
+    const res = await get("/search", await newSession());
 
     expect(res.status).toBe(503);
     expect((await res.json()).error.code).toBe("CONTENT_UNAVAILABLE");
@@ -385,7 +391,7 @@ describe("GET /api/launcher/content/search", () => {
       ),
     );
 
-    const res = await get("/search", newSession());
+    const res = await get("/search", await newSession());
 
     expect(res.status).toBe(503);
     expect(res.headers.get("retry-after")).toBe("7");
@@ -395,7 +401,7 @@ describe("GET /api/launcher/content/search", () => {
 
 describe("GET /api/launcher/content/categories", () => {
   it("lists the categories of mods by default", async () => {
-    const res = await get("/categories", newSession());
+    const res = await get("/categories", await newSession());
 
     expect(res.status).toBe(200);
     expect(mocks.listCategories).toHaveBeenCalledWith("mod");
@@ -408,14 +414,14 @@ describe("GET /api/launcher/content/categories", () => {
   it.each(["mod", "resourcepack", "shader", "modpack"])(
     "lists the categories of the kind %s",
     async (kind) => {
-      await get(`/categories?kind=${kind}`, newSession());
+      await get(`/categories?kind=${kind}`, await newSession());
 
       expect(mocks.listCategories).toHaveBeenCalledWith(kind);
     },
   );
 
   it("refuses an unknown kind", async () => {
-    const res = await get("/categories?kind=datapack", newSession());
+    const res = await get("/categories?kind=datapack", await newSession());
 
     expect(res.status).toBe(400);
     expect(mocks.listCategories).not.toHaveBeenCalled();
@@ -434,7 +440,7 @@ describe("GET /api/launcher/content/categories", () => {
       ),
     );
 
-    const res = await get("/categories", newSession());
+    const res = await get("/categories", await newSession());
 
     expect(res.status).toBe(503);
     expect((await res.json()).error.code).toBe("CONTENT_UNAVAILABLE");
@@ -452,7 +458,7 @@ describe("POST /api/launcher/content/projects", () => {
   it("looks the projects up by their ids", async () => {
     const res = await postProjects(
       { projectIds: ["328085", "999999999"] },
-      newSession(),
+      await newSession(),
     );
 
     expect(res.status).toBe(200);
@@ -475,7 +481,7 @@ describe("POST /api/launcher/content/projects", () => {
       { projectIds: Array(101).fill("1") },
     ],
   ])("refuses %s", async (_label, body) => {
-    const res = await postProjects(body, newSession());
+    const res = await postProjects(body, await newSession());
 
     expect(res.status).toBe(400);
     expect(mocks.getProjects).not.toHaveBeenCalled();
@@ -491,7 +497,7 @@ describe("POST /api/launcher/content/projects", () => {
 
 describe("GET /api/launcher/content/projects/:id", () => {
   it("answers one project in full", async () => {
-    const res = await get("/projects/328085", newSession());
+    const res = await get("/projects/328085", await newSession());
 
     expect(res.status).toBe(200);
     expect(mocks.getProjectDetails).toHaveBeenCalledWith(328085);
@@ -506,7 +512,7 @@ describe("GET /api/launcher/content/projects/:id", () => {
     ["a project id of zero", "/projects/0"],
     ["a project id too large for CurseForge", "/projects/2147483648"],
   ])("refuses %s", async (_label, path) => {
-    const res = await get(path, newSession());
+    const res = await get(path, await newSession());
 
     expect(res.status).toBe(400);
     expect(mocks.getProjectDetails).not.toHaveBeenCalled();
@@ -519,7 +525,7 @@ describe("GET /api/launcher/content/projects/:id", () => {
       }),
     );
 
-    const res = await get("/projects/999999999", newSession());
+    const res = await get("/projects/999999999", await newSession());
 
     expect(res.status).toBe(404);
     expect(await res.json()).toMatchObject({
@@ -539,7 +545,7 @@ describe("GET /api/launcher/content/projects/:id", () => {
       ),
     );
 
-    const res = await get("/projects/328085", newSession());
+    const res = await get("/projects/328085", await newSession());
 
     expect(res.status).toBe(503);
     expect((await res.json()).error.code).toBe("CONTENT_UNAVAILABLE");
@@ -553,7 +559,7 @@ describe("GET /api/launcher/content/projects/:id", () => {
   });
 
   it("leaves the file list of a project to its own route", async () => {
-    const res = await get("/projects/328085/files", newSession());
+    const res = await get("/projects/328085/files", await newSession());
 
     expect(res.status).toBe(200);
     expect(mocks.listFiles).toHaveBeenCalled();
@@ -565,7 +571,7 @@ describe("POST /api/launcher/content/fingerprints", () => {
   it("identifies the files behind the fingerprints", async () => {
     const res = await postFingerprints(
       { fingerprints: [522093599, 1] },
-      newSession(),
+      await newSession(),
     );
 
     expect(res.status).toBe(200);
@@ -582,11 +588,11 @@ describe("POST /api/launcher/content/fingerprints", () => {
   it("takes the smallest and the largest fingerprint, and 1000 of them", async () => {
     const few = await postFingerprints(
       { fingerprints: [0, 4294967295] },
-      newSession(),
+      await newSession(),
     );
     const many = await postFingerprints(
       { fingerprints: Array.from({ length: 1000 }, (_, index) => index) },
-      newSession(),
+      await newSession(),
     );
 
     expect(few.status).toBe(200);
@@ -605,7 +611,7 @@ describe("POST /api/launcher/content/fingerprints", () => {
       { fingerprints: Array(1001).fill(1) },
     ],
   ])("refuses %s", async (_label, body) => {
-    const res = await postFingerprints(body, newSession());
+    const res = await postFingerprints(body, await newSession());
 
     expect(res.status).toBe(400);
     expect(mocks.identifyFingerprints).not.toHaveBeenCalled();
@@ -622,7 +628,10 @@ describe("POST /api/launcher/content/fingerprints", () => {
       ),
     );
 
-    const res = await postFingerprints({ fingerprints: [1] }, newSession());
+    const res = await postFingerprints(
+      { fingerprints: [1] },
+      await newSession(),
+    );
 
     expect(res.status).toBe(503);
     expect((await res.json()).error.code).toBe("CONTENT_UNAVAILABLE");
@@ -638,7 +647,7 @@ describe("POST /api/launcher/content/fingerprints", () => {
 
 describe("GET /api/launcher/content/projects/:id/files", () => {
   it("lists the first page of a project's files by default", async () => {
-    const res = await get("/projects/328085/files", newSession());
+    const res = await get("/projects/328085/files", await newSession());
 
     expect(res.status).toBe(200);
     expect(mocks.listFiles).toHaveBeenCalledWith(328085, {
@@ -657,7 +666,7 @@ describe("GET /api/launcher/content/projects/:id/files", () => {
   it("passes the version, loader and page on", async () => {
     await get(
       "/projects/328085/files?minecraftVersion=1.21.1&loader=fabric&page=1&limit=5",
-      newSession(),
+      await newSession(),
     );
 
     expect(mocks.listFiles).toHaveBeenCalledWith(328085, {
@@ -673,7 +682,7 @@ describe("GET /api/launcher/content/projects/:id/files", () => {
     ["an unknown loader", "/projects/328085/files?loader=rift"],
     ["a page size above the cap", "/projects/328085/files?limit=51"],
   ])("refuses %s", async (_label, path) => {
-    const res = await get(path, newSession());
+    const res = await get(path, await newSession());
 
     expect(res.status).toBe(400);
     expect(mocks.listFiles).not.toHaveBeenCalled();
@@ -686,7 +695,7 @@ describe("GET /api/launcher/content/projects/:id/files", () => {
       }),
     );
 
-    const res = await get("/projects/999999999/files", newSession());
+    const res = await get("/projects/999999999/files", await newSession());
 
     expect(res.status).toBe(404);
     expect((await res.json()).error.code).toBe("PROJECT_NOT_FOUND");
@@ -702,7 +711,7 @@ describe("GET /api/launcher/content/projects/:id/files", () => {
 
 describe("GET /api/launcher/content/files/:id", () => {
   it("answers one file", async () => {
-    const res = await get("/files/7000001", newSession());
+    const res = await get("/files/7000001", await newSession());
 
     expect(res.status).toBe(200);
     expect(mocks.getFile).toHaveBeenCalledWith(7000001);
@@ -710,7 +719,7 @@ describe("GET /api/launcher/content/files/:id", () => {
   });
 
   it("refuses a file id that is not a number", async () => {
-    const res = await get("/files/latest", newSession());
+    const res = await get("/files/latest", await newSession());
 
     expect(res.status).toBe(400);
     expect(mocks.getFile).not.toHaveBeenCalled();
@@ -723,7 +732,7 @@ describe("GET /api/launcher/content/files/:id", () => {
       }),
     );
 
-    const res = await get("/files/999999999", newSession());
+    const res = await get("/files/999999999", await newSession());
 
     expect(res.status).toBe(404);
     expect((await res.json()).error.code).toBe("FILE_NOT_FOUND");
@@ -741,7 +750,7 @@ describe("POST /api/launcher/content/files", () => {
   it("looks the files up by their ids", async () => {
     const res = await postFiles(
       { fileIds: ["7000001", "999999999"] },
-      newSession(),
+      await newSession(),
     );
 
     expect(res.status).toBe(200);
@@ -757,7 +766,7 @@ describe("POST /api/launcher/content/files", () => {
       String(7000001 + index),
     );
 
-    const res = await postFiles({ fileIds }, newSession());
+    const res = await postFiles({ fileIds }, await newSession());
 
     expect(res.status).toBe(200);
     expect(mocks.getFiles.mock.calls[0]?.[0]).toHaveLength(1000);
@@ -772,7 +781,7 @@ describe("POST /api/launcher/content/files", () => {
     ["an id too large for CurseForge", { fileIds: ["2147483648"] }],
     ["more ids than one request may carry", { fileIds: Array(1001).fill("1") }],
   ])("refuses %s", async (_label, body) => {
-    const res = await postFiles(body, newSession());
+    const res = await postFiles(body, await newSession());
 
     expect(res.status).toBe(400);
     expect(mocks.getFiles).not.toHaveBeenCalled();
@@ -791,7 +800,7 @@ describe("POST /api/launcher/content/files", () => {
       ),
     );
 
-    const res = await postFiles({ fileIds: ["7000001"] }, newSession());
+    const res = await postFiles({ fileIds: ["7000001"] }, await newSession());
 
     expect(res.status).toBe(503);
     expect((await res.json()).error.code).toBe("CONTENT_UNAVAILABLE");
@@ -807,7 +816,7 @@ describe("POST /api/launcher/content/files", () => {
 
 describe("GET /api/launcher/content/files/:id/changelog", () => {
   it("answers the changelog of one file, and not the file", async () => {
-    const res = await get("/files/7000001/changelog", newSession());
+    const res = await get("/files/7000001/changelog", await newSession());
 
     expect(res.status).toBe(200);
     expect(mocks.getFileChangelog).toHaveBeenCalledWith(7000001, undefined);
@@ -821,7 +830,7 @@ describe("GET /api/launcher/content/files/:id/changelog", () => {
   it("passes the project on when the launcher names it", async () => {
     const res = await get(
       "/files/7000001/changelog?projectId=328085",
-      newSession(),
+      await newSession(),
     );
 
     expect(res.status).toBe(200);
@@ -838,7 +847,10 @@ describe("GET /api/launcher/content/files/:id/changelog", () => {
     ["a project id too large for CurseForge", "?projectId=2147483648"],
     ["two project ids", "?projectId=328085&projectId=238222"],
   ])("refuses %s", async (_label, query) => {
-    const res = await get(`/files/7000001/changelog${query}`, newSession());
+    const res = await get(
+      `/files/7000001/changelog${query}`,
+      await newSession(),
+    );
 
     expect(res.status).toBe(400);
     expect(mocks.getFileChangelog).not.toHaveBeenCalled();
@@ -847,7 +859,7 @@ describe("GET /api/launcher/content/files/:id/changelog", () => {
   it("answers null for a file without a changelog", async () => {
     mocks.getFileChangelog.mockResolvedValue(null);
 
-    const res = await get("/files/7000001/changelog", newSession());
+    const res = await get("/files/7000001/changelog", await newSession());
 
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({
@@ -857,14 +869,14 @@ describe("GET /api/launcher/content/files/:id/changelog", () => {
   });
 
   it("leaves the changelog to its own route when the file is asked for", async () => {
-    const res = await get("/files/7000001", newSession());
+    const res = await get("/files/7000001", await newSession());
 
     expect(await res.json()).toEqual({ success: true, data: { file: FILE } });
     expect(mocks.getFileChangelog).not.toHaveBeenCalled();
   });
 
   it("refuses a file id that is not a number", async () => {
-    const res = await get("/files/latest/changelog", newSession());
+    const res = await get("/files/latest/changelog", await newSession());
 
     expect(res.status).toBe(400);
     expect(mocks.getFileChangelog).not.toHaveBeenCalled();
@@ -877,7 +889,7 @@ describe("GET /api/launcher/content/files/:id/changelog", () => {
       }),
     );
 
-    const res = await get("/files/999999999/changelog", newSession());
+    const res = await get("/files/999999999/changelog", await newSession());
 
     expect(res.status).toBe(404);
     expect(await res.json()).toMatchObject({
@@ -897,7 +909,7 @@ describe("GET /api/launcher/content/files/:id/changelog", () => {
       ),
     );
 
-    const res = await get("/files/7000001/changelog", newSession());
+    const res = await get("/files/7000001/changelog", await newSession());
 
     expect(res.status).toBe(503);
     expect((await res.json()).error.code).toBe("CONTENT_UNAVAILABLE");
@@ -913,8 +925,8 @@ describe("GET /api/launcher/content/files/:id/changelog", () => {
 
 describe("the content rate limit", () => {
   it("slows one player down after 60 requests in a minute and leaves another alone", async () => {
-    const busy = newSession();
-    const other = newSession();
+    const busy = await newSession();
+    const other = await newSession();
 
     const statuses: number[] = [];
     for (let request = 0; request < 61; request += 1) {
@@ -927,8 +939,8 @@ describe("the content rate limit", () => {
   });
 
   it("lets one player look files up in batches 10 times in 15 minutes, and leaves their other lookups and another player alone", async () => {
-    const busy = newSession();
-    const other = newSession();
+    const busy = await newSession();
+    const other = await newSession();
 
     const statuses: number[] = [];
     for (let request = 0; request < 11; request += 1) {

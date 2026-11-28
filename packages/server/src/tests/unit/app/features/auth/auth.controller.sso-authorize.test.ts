@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import jwt from "jsonwebtoken";
+import { signTestJwt } from "@/tests/helpers/jwt";
+import { decodeJwt } from "jose";
 import { AuthRole, type JWTPayload } from "@createrington/shared/auth";
 
 const { SECRET, RETURN_TO, mocks } = vi.hoisted(() => ({
@@ -83,16 +84,15 @@ const PAYLOAD: JWTPayload = {
   minecraftUsername: "Alice_MC",
 };
 
-function signExpiringIn(seconds: number): string {
-  return jwt.sign(PAYLOAD, SECRET, {
-    algorithm: "HS256",
+function signExpiringIn(seconds: number): Promise<string> {
+  return signTestJwt(PAYLOAD, SECRET, {
     audience: "createrington.web",
-    expiresIn: seconds,
+    expiresInSeconds: seconds,
   });
 }
 
 function expOf(token: string): number {
-  return (jwt.decode(token) as { exp: number }).exp;
+  return (decodeJwt(token) as { exp: number }).exp;
 }
 
 async function authorizeWith(transport: "header" | "cookie", token: string) {
@@ -100,7 +100,7 @@ async function authorizeWith(transport: "header" | "cookie", token: string) {
     headers: transport === "header" ? { authorization: `Bearer ${token}` } : {},
     cookies: transport === "cookie" ? { crt_access: token } : {},
     body: { state: "state-1", action: "approve" },
-    user: jwtService.verify(token),
+    user: await jwtService.verify(token),
   });
   const res = fakeRes();
   await AuthController.ssoAuthorize(req, res);
@@ -117,7 +117,7 @@ describe("AuthController.ssoAuthorize", () => {
   it.each(["header", "cookie"] as const)(
     "never re-emits a token that outlives the one presented by %s",
     async (transport) => {
-      const presented = signExpiringIn(30);
+      const presented = await signExpiringIn(30);
 
       const res = await authorizeWith(transport, presented);
 
@@ -132,7 +132,7 @@ describe("AuthController.ssoAuthorize", () => {
   );
 
   it("cannot be chained to extend a session past the first token's expiry", async () => {
-    const first = signExpiringIn(30);
+    const first = await signExpiringIn(30);
 
     await authorizeWith("cookie", first);
     const second = mocks.setAccessCookie.mock.calls[0][1] as string;

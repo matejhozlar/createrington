@@ -13,7 +13,7 @@ vi.mock("@/db/utils", async () =>
 // jwtService.verify is the only thing we need from the JWT service.
 vi.mock("@/services/auth/jwt", () => ({
   jwtService: {
-    verify: vi.fn((token: string) => {
+    verify: vi.fn(async (token: string) => {
       if (token === "good") {
         return {
           discordId: "123",
@@ -71,35 +71,35 @@ describe("authenticate", () => {
     extractFromRequestMock.mockClear();
   });
 
-  it("uses the Bearer header when present", () => {
+  it("uses the Bearer header when present", async () => {
     const req = makeReq({ header: "Bearer good" });
-    authenticate(req, fakeRes(), next);
+    await authenticate(req, fakeRes(), next);
     expect(nextErrors).toHaveLength(0);
     expect(req.user?.username).toBe("alice");
   });
 
-  it("falls back to the access cookie when no header is present", () => {
+  it("falls back to the access cookie when no header is present", async () => {
     const req = makeReq({ cookie: "good" });
-    authenticate(req, fakeRes(), next);
+    await authenticate(req, fakeRes(), next);
     expect(nextErrors).toHaveLength(0);
     expect(req.user?.username).toBe("alice");
   });
 
-  it("prefers the header over the cookie when both are present", () => {
+  it("prefers the header over the cookie when both are present", async () => {
     const req = makeReq({ header: "Bearer good", cookie: "ignored" });
-    authenticate(req, fakeRes(), next);
+    await authenticate(req, fakeRes(), next);
     expect(nextErrors).toHaveLength(0);
     expect(req.user).toBeDefined();
   });
 
-  it("rejects when neither header nor cookie is present", () => {
-    authenticate(makeReq({}), fakeRes(), next);
+  it("rejects when neither header nor cookie is present", async () => {
+    await authenticate(makeReq({}), fakeRes(), next);
     expect(nextErrors).toHaveLength(1);
     expect((nextErrors[0] as Error).message).toMatch(/Authentication required/);
   });
 
-  it("rejects an invalid token", () => {
-    authenticate(makeReq({ header: "Bearer bad" }), fakeRes(), next);
+  it("rejects an invalid token", async () => {
+    await authenticate(makeReq({ header: "Bearer bad" }), fakeRes(), next);
     expect(nextErrors).toHaveLength(1);
     expect((nextErrors[0] as Error).message).toMatch(
       /Invalid or expired token/,
@@ -111,8 +111,8 @@ describe("authenticate", () => {
       isEnabledMock.mockReturnValue(false);
     });
 
-    it("does not consult the cookie even when one is present", () => {
-      authenticate(makeReq({ cookie: "good" }), fakeRes(), next);
+    it("does not consult the cookie even when one is present", async () => {
+      await authenticate(makeReq({ cookie: "good" }), fakeRes(), next);
       expect(extractFromRequestMock).not.toHaveBeenCalled();
       // No header, cookie ignored → unauthorized
       expect(nextErrors).toHaveLength(1);
@@ -121,9 +121,9 @@ describe("authenticate", () => {
       );
     });
 
-    it("still accepts the Bearer header", () => {
+    it("still accepts the Bearer header", async () => {
       const req = makeReq({ header: "Bearer good" });
-      authenticate(req, fakeRes(), next);
+      await authenticate(req, fakeRes(), next);
       expect(nextErrors).toHaveLength(0);
       expect(req.user?.username).toBe("alice");
     });
@@ -139,29 +139,29 @@ describe("optionalAuth", () => {
     extractFromRequestMock.mockClear();
   });
 
-  it("attaches user when a valid header token is present", () => {
+  it("attaches user when a valid header token is present", async () => {
     const req = makeReq({ header: "Bearer good" });
-    optionalAuth(req, fakeRes(), next);
+    await optionalAuth(req, fakeRes(), next);
     expect(req.user?.username).toBe("alice");
     expect(next).toHaveBeenCalledWith();
   });
 
-  it("attaches user when a valid cookie token is present", () => {
+  it("attaches user when a valid cookie token is present", async () => {
     const req = makeReq({ cookie: "good" });
-    optionalAuth(req, fakeRes(), next);
+    await optionalAuth(req, fakeRes(), next);
     expect(req.user?.username).toBe("alice");
   });
 
-  it("does not throw when no token is present", () => {
+  it("does not throw when no token is present", async () => {
     const req = makeReq({});
-    optionalAuth(req, fakeRes(), next);
+    await optionalAuth(req, fakeRes(), next);
     expect(req.user).toBeUndefined();
     expect(next).toHaveBeenCalledWith();
   });
 
-  it("silently skips when the token is invalid", () => {
+  it("silently skips when the token is invalid", async () => {
     const req = makeReq({ cookie: "bad" });
-    optionalAuth(req, fakeRes(), next);
+    await optionalAuth(req, fakeRes(), next);
     expect(req.user).toBeUndefined();
     expect(next).toHaveBeenCalledWith();
   });

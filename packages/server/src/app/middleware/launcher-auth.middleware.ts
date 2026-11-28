@@ -33,7 +33,7 @@ export const authenticateLauncher = async (
 
   let payload: LauncherJwtPayload;
   try {
-    payload = launcherJwtService.verify(token);
+    payload = await launcherJwtService.verify(token);
   } catch (error) {
     next(
       error instanceof TokenExpiredError

@@ -1,3 +1,9 @@
+## v1.83.3 (2026-11-27)
+
+### @createrington/server (1.83.2 → 1.83.3)
+- [refactor] Replace `jsonwebtoken` with `jose` for every JWT the server signs and verifies (web access tokens, launcher tokens, mod tokens and Tack tokens): signing and verification are now async, still HS256 with the same audiences and expiry, so existing tokens stay valid
+- [chore] Build, test and deploy on Node 26: CI and both deploy workflows read the Node version from a new `.node-version` file instead of pinning Node 22
+
 ## v1.83.2 (2026-11-26)
 
 ### @createrington/server (1.83.1 → 1.83.2)

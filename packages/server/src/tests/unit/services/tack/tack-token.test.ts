@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import jwt from "jsonwebtoken";
+import { jwtVerify } from "jose";
 import { AuthRole, type JWTPayload } from "@createrington/shared/auth";
 import { signTackToken } from "@/services/tack";
 
@@ -18,20 +18,25 @@ const USER: JWTPayload = {
   minecraftUsername: "Steve",
 };
 
-function verify(token: string, secret = TACK.secret) {
-  return jwt.verify(token, secret, { algorithms: ["HS256"] }) as jwt.JwtPayload;
+async function verify(token: string, secret = TACK.secret) {
+  const { payload } = await jwtVerify(token, new TextEncoder().encode(secret), {
+    algorithms: ["HS256"],
+  });
+  return payload;
 }
 
 describe("signTackToken", () => {
-  it("signs with the whole secret, prefix included", () => {
-    const token = signTackToken(USER, TACK);
+  it("signs with the whole secret, prefix included", async () => {
+    const token = await signTackToken(USER, TACK);
 
-    expect(() => verify(token)).not.toThrow();
-    expect(() => verify(token, TACK.secret.replace("tack_sk_", ""))).toThrow();
+    await expect(verify(token)).resolves.toBeDefined();
+    await expect(
+      verify(token, TACK.secret.replace("tack_sk_", "")),
+    ).rejects.toThrow();
   });
 
-  it("names the session's Discord user as subject with a Discord avatar", () => {
-    const claims = verify(signTackToken(USER, TACK));
+  it("names the session's Discord user as subject with a Discord avatar", async () => {
+    const claims = await verify(await signTackToken(USER, TACK));
 
     expect(claims.sub).toBe(USER.discordId);
     expect(claims.name).toBe("Steve");
@@ -40,15 +45,15 @@ describe("signTackToken", () => {
     );
   });
 
-  it("expires after the configured lifetime", () => {
-    const claims = verify(signTackToken(USER, TACK));
+  it("expires after the configured lifetime", async () => {
+    const claims = await verify(await signTackToken(USER, TACK));
 
     expect(claims.exp! - claims.iat!).toBe(TACK.tokenTtlSeconds);
   });
 
-  it("falls back to the Discord username and caps the name at 64 characters", () => {
-    const claims = verify(
-      signTackToken(
+  it("falls back to the Discord username and caps the name at 64 characters", async () => {
+    const claims = await verify(
+      await signTackToken(
         { ...USER, minecraftUsername: "", username: "x".repeat(80) },
         TACK,
       ),

@@ -59,6 +59,11 @@ jobs:
             echo "$NON_CLIENT"
           fi
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+
       - name: Install pnpm
         run: npm install -g pnpm
 

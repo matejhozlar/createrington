@@ -1,4 +1,4 @@
-import jwt from "jsonwebtoken";
+import { SignJWT } from "jose";
 import type { JWTPayload } from "@createrington/shared/auth";
 import type config from "@/config";
 
@@ -13,24 +13,24 @@ function discordAvatarUrl(discordId: string, hash: string): string {
   return `https://cdn.discordapp.com/avatars/${discordId}/${hash}.png?size=128`;
 }
 
-export function signTackToken(user: JWTPayload, tack: TackSigning): string {
+export function signTackToken(
+  user: JWTPayload,
+  tack: TackSigning,
+): Promise<string> {
   const name = (user.minecraftUsername || user.username).slice(
     0,
     MAX_NAME_LENGTH,
   );
 
-  return jwt.sign(
-    {
-      name,
-      ...(user.avatar && {
-        avatar: discordAvatarUrl(user.discordId, user.avatar),
-      }),
-    },
-    tack.secret,
-    {
-      algorithm: "HS256",
-      subject: user.discordId,
-      expiresIn: tack.tokenTtlSeconds,
-    },
-  );
+  return new SignJWT({
+    name,
+    ...(user.avatar && {
+      avatar: discordAvatarUrl(user.discordId, user.avatar),
+    }),
+  })
+    .setProtectedHeader({ alg: "HS256", typ: "JWT" })
+    .setIssuedAt()
+    .setSubject(user.discordId)
+    .setExpirationTime(`${tack.tokenTtlSeconds}s`)
+    .sign(new TextEncoder().encode(tack.secret));
 }

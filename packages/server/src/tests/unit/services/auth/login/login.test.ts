@@ -62,11 +62,11 @@ beforeEach(() => {
 });
 
 describe("deriveRole", () => {
-  it("keeps an unverified user unverified whatever the admin flag", () => {
+  it("keeps an unverified user unverified whatever the admin flag", async () => {
     expect(deriveRole(AuthRole.UNVERIFIED, true)).toBe(AuthRole.UNVERIFIED);
   });
 
-  it("follows the admin flag for a verified user", () => {
+  it("follows the admin flag for a verified user", async () => {
     expect(deriveRole(AuthRole.USER, true)).toBe(AuthRole.ADMIN);
     expect(deriveRole(AuthRole.ADMIN, false)).toBe(AuthRole.USER);
   });
@@ -94,7 +94,7 @@ describe("withLiveAdminStatus", () => {
 });
 
 describe("toUserDto", () => {
-  it("keeps only the user fields", () => {
+  it("keeps only the user fields", async () => {
     const dto = toUserDto({ ...USER, exp: 1700000000 } as JWTPayload);
     expect(dto).toEqual(USER);
   });
@@ -111,7 +111,7 @@ describe("completeLogin", () => {
 
     const accessToken = await completeLogin(req, res, USER);
 
-    expect(jwtService.verify(accessToken).discordId).toBe("user-1");
+    expect((await jwtService.verify(accessToken)).discordId).toBe("user-1");
     expect(mocks.createSession).toHaveBeenCalledWith({
       discordId: "user-1",
       username: "alice",
