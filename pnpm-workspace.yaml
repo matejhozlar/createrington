@@ -21,11 +21,21 @@ allowBuilds:
 
 minimumReleaseAgeExclude:
   - createrington-skin-api@2.7.0 || 2.8.0 || 2.9.0 || 2.10.0 || 2.11.0 || 2.12.0 || 2.14.0 || 2.15.0 || 2.16.0
-  - '@createrington/content-gateway-client@0.2.0'
-  - '@createrington/icons@0.6.0'
+  - "@createrington/content-gateway-client@0.2.0"
+  - "@createrington/icons@0.6.0"
 
 auditConfig:
   ignoreGhsas:
     - GHSA-vfj7-8cjw-p6xm
     - GHSA-gcqx-w48m-w2h4
     - GHSA-fc5q-39xc-vjpf
+
+permissions:
+  "@trpc/client":
+    skills: false
+  "@trpc/server":
+    skills: false
+  "@trpc/tanstack-react-query":
+    skills: false
+  dotenv:
+    skills: false
